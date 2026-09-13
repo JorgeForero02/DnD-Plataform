@@ -1,5 +1,6 @@
 import type {
   AbilityKey,
+  AbilityRollAttemptDto,
   AttackResolution,
   ChangeHpInput,
   CharacterSheetActivity,
@@ -331,6 +332,26 @@ export function setHp(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+// --- Reglas de la mesa: características por dados (Task 3/6, D-CF-53) ---
+
+/** El servidor tira la expresión de la regla una vez más y escribe el intento (E-RM-*). */
+export function rollAbilities(
+  campaignId: string,
+  characterId: string,
+): Promise<AbilityRollAttemptDto> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/ability-rolls`, {
+    method: "POST",
+  });
+}
+
+/** Todos los intentos de este personaje, el elegido incluido. */
+export function fetchAbilityRolls(
+  campaignId: string,
+  characterId: string,
+): Promise<AbilityRollAttemptDto[]> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/ability-rolls`);
 }
 
 export function rollDeathSave(

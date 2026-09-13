@@ -484,6 +484,7 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   "ac.unarmored": "Sin armadura",
   "maxHp.firstLevel": "Dado de golpe (nivel 1)",
   "maxHp.perLevel": "Media del dado de golpe por nivel",
+  "maxHp.perLevelAtCreation": "PG por nivel fijados al nacer (regla de la mesa)",
   "maxHp.conPerLevel": "Constitución por nivel",
   "maxHp.minimum": "Mínimo de 1 PG por nivel",
   "passive.base": "Base de un valor pasivo",

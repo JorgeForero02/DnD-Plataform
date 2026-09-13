@@ -146,6 +146,7 @@ export function CharacterDetailPage() {
           characterId={characterId}
           puedeEditar={puedeEditar}
           disposicion="pagina"
+          esDM={!roleUnresolved && role === "DM"}
         />
 
         <section>

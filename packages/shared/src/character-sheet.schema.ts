@@ -32,6 +32,12 @@ export const updateCharacterSheetSchema = z.object({
   subclass: contentRefSchema.nullable().optional(),
   level: z.number().int().min(1).max(20).optional(),
   choices: characterChoicesSchema.optional(),
+  /**
+   * Reglas de la mesa (D-CF-53): con `abilities.metodo === "DADOS"`, el intento
+   * (`AbilityRollAttempt.id`) del que salen las seis. El servidor comprueba que los valores son
+   * exactamente los del intento y **a partir de ahí las fija**.
+   */
+  attemptId: z.string().min(1).max(60).optional(),
 });
 export type UpdateCharacterSheetInput = z.infer<typeof updateCharacterSheetSchema>;
 

@@ -1183,3 +1183,49 @@ dentro de la transacción que la disparó y tragarse el error ahí borraría la 
 
 **Deuda declarada, no de esta tarea**: `entrega` solo se puede escribir hoy por API — el formulario
 de crear tablas no tiene campo para redactarla. Ficha en [06-pendientes.md](./06-pendientes.md).
+
+## Reglas de la mesa: `tableRules`, `hitPointsPerLevel` y `AbilityRollAttempt` (D-CF-53, migración `20260913100000_table_rules`)
+
+Lo que hasta ahora decidía quien creaba un personaje —cómo salen las seis características, a qué
+nivel nace, qué razas y clases se pueden elegir, cuánto oro trae— pasa a ser una decisión **de la
+mesa entera**, escrita una vez por el DM en los ajustes de la campaña y aplicada por el servidor a
+partir de ahí, no una convención que cada jugador siga o no por su cuenta.
+
+**`Campaign.tableRules`** (`Json @default("{}")`, sin migración de columna nueva propia —viaja en
+la misma `20260913100000_table_rules` que las otras dos— porque `Campaign` no gana una columna por
+cada regla: es una sola bolsa validada por `tableRulesSchema` (`packages/shared/src/table-rules.schema.ts`).
+`{}` son las reglas de siempre —libre, nivel 1, media, todo permitido, equipo—, así que ninguna
+campaña que ya existiera cambia de comportamiento el día que esta columna aparece. Dentro:
+`abilities` (unión discriminada por `metodo`: `LIBRE` | `MATRIZ` | `PUNTOS` | `DADOS`, esta última
+con su `expresion`, sus `intentos` y si la asignación es libre), `nivelInicial`, `pgNivelesSiguientes`
+(`MAXIMO` | `MEDIA` | `TIRADA`), `permitidos` (listas de claves de raza/clase/subclase; vacía =
+todas permitidas) y `oroInicial` (`EQUIPO` | `ORO_TABLA` | `ORO_FIJO`). Se valida al guardar
+(`PATCH /campaigns/:id`) y al leer (`reglasCompletas`, tanto en la API como en la web), así que un
+valor parcial o una campaña anterior a esta columna resuelven igual, con los defaults puestos.
+
+**`Character.hitPointsPerLevel`** (`Json?`): los puntos de golpe **ya decididos** para los niveles
+2..N de un personaje que nace directamente a nivel N (regla `pgNivelesSiguientes` distinta de
+`MEDIA`) — un valor por nivel, la tirada del dado de golpe o su máximo, **sin Constitución** (esa
+se suma en la derivación, como siempre). `null` es el caso de siempre: la media. **`maxHp` no pasa
+a guardarse por tener esta columna** — sigue sin existir como campo, y sigue siendo el motor quien
+lo deriva sumando estos valores en vez de `(N−1) · media`; la traza lo cuenta en
+`maxHp.perLevelAtCreation` para que la hoja diga de dónde sale cada punto, no solo el total. Se
+escribe **una sola vez**, al fijar la clase por primera vez (E-RM-2/3): es entonces cuando el
+personaje nace a su nivel inicial y hay un dado de golpe que tirar o promediar para cada nivel
+además del primero.
+
+**`AbilityRollAttempt`**: un intento de tirar las seis características con el servidor
+(`abilities.metodo = "DADOS"`). Existe como tabla, y no como una fila más del log, por el mismo
+motivo que `RollRequest` (§ arriba): tiene estado — nace sin elegir y un intento pasa a `chosen` —
+y lo que hace falta comprobar es «¿cuántos intentos lleva ya este personaje?», una consulta por
+`characterId`, no un recorrido del historial. Esa cuenta es la razón de ser de la tabla: **para
+que no se pueda repetir a escondidas** — el servicio (`AbilityRollsService.roll`) cuenta las filas
+de un personaje contra `abilities.intentos` de la regla vigente y rechaza el intento N+1 con 409,
+en vez de fiarse de que la pantalla deje de ofrecer el botón. Guarda `values` (los seis totales, en
+el orden en que salieron) y `rollEventIds` (los seis `GameEvent.id` de tipo `ABILITY_ROLL` que los
+produjeron, para que la traza pueda señalar la tirada exacta) — nunca la expresión ni los dados
+sueltos, que ya viven en el propio `GameEvent`. `chosen` se pone al elegir un intento
+(`PATCH .../sheet` con `attemptId`) y, desde entonces, ningún intento nuevo se admite para ese
+personaje: el jugador ya fijó sus seis números (E-RM-13), y solo el DM puede seguir corrigiéndolos
+directamente porque `OVERRIDABLE_KEYS` nunca incluyó ninguna `ability.*`. Cuelga de `Character` con
+`onDelete: Cascade`, igual que el resto de su estado mutable.

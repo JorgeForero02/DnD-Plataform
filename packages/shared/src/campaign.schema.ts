@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { roleSchema } from "./visibility.schema";
+import { tableRulesSchema } from "./table-rules.schema";
 
 export const createCampaignSchema = z.object({
   name: z.string().min(1).max(120),
@@ -22,7 +23,10 @@ export const createCampaignSchema = z.object({
 });
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
 
-export const updateCampaignSchema = createCampaignSchema.partial();
+// Reglas de la mesa (D-CF-53). Solo por `PATCH`: al crear la campaña se dejan las de siempre.
+export const updateCampaignSchema = createCampaignSchema
+  .partial()
+  .extend({ tableRules: tableRulesSchema.optional() });
 export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>;
 
 /**

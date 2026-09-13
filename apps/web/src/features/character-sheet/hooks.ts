@@ -33,6 +33,9 @@ export const sheetKey = (campaignId: string, characterId: string) =>
   ["campaigns", campaignId, "characters", characterId, "sheet"] as const;
 export const resourcesKey = (campaignId: string, characterId: string) =>
   ["campaigns", campaignId, "characters", characterId, "resources"] as const;
+/** Reglas de la mesa (Task 3/6, D-CF-53) — los intentos de tirada de características. */
+export const abilityRollsKey = (campaignId: string, characterId: string) =>
+  ["campaigns", campaignId, "characters", characterId, "ability-rolls"] as const;
 export const conditionsKey = (campaignId: string, characterId: string) =>
   ["campaigns", campaignId, "characters", characterId, "conditions"] as const;
 
@@ -124,7 +127,38 @@ export function useUpdateSheet(campaignId: string, characterId: string) {
       // el de la fila se quedaban viejos delante de quien los acababa de cambiar. Lo cazó el
       // recorrido de navegador; ninguna unitaria lo veía.
       void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "characters"] });
+      // Reglas de la mesa (Task 6) — fijar las seis con `attemptId` marca ese intento como
+      // `chosen` en el servidor; sin esta invalidación, `AsignarCaracteristicas` seguía
+      // enseñando el botón «Quedarme con este» hasta el siguiente sondeo.
+      void qc.invalidateQueries({ queryKey: abilityRollsKey(campaignId, characterId) });
     },
+  });
+}
+
+/**
+ * Reglas de la mesa (Task 3/6, D-CF-53) — los intentos ya tirados de este personaje.
+ * `enabled` por si algún día hace falta apagarla (hoy siempre `true` por defecto), igual que
+ * `useCharacterSheet`.
+ */
+export function useAbilityRolls(
+  campaignId: string,
+  characterId: string,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: abilityRollsKey(campaignId, characterId),
+    queryFn: () => characterSheetApi.fetchAbilityRolls(campaignId, characterId),
+    enabled: Boolean(campaignId && characterId) && (options?.enabled ?? true),
+  });
+}
+
+/** Tira un intento más (`POST .../ability-rolls`). La lista se refresca sola al éxito. */
+export function useRollAbilities(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => characterSheetApi.rollAbilities(campaignId, characterId),
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: abilityRollsKey(campaignId, characterId) }),
   });
 }
 

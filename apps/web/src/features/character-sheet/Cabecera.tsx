@@ -26,6 +26,7 @@ export function Cabecera({
   data,
   puedeEditar,
   disposicion,
+  esDM = false,
   onAlto,
 }: PropsDePestana & {
   /**
@@ -163,6 +164,7 @@ export function Cabecera({
               campaignId={campaignId}
               characterId={characterId}
               level={character.level}
+              esDM={esDM}
             />
           )}
         </div>

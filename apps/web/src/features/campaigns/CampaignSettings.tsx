@@ -7,6 +7,8 @@ import { CHECKING_PERMISSIONS, RetryPermissions } from "./PermissionStatus";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { Panel } from "../../ui/Panel";
+import { ReglasDeLaMesa } from "./ReglasDeLaMesa";
+import { reglasCompletas } from "./reglas";
 
 // Fetches its own campaign (useCampaign shares the query cache and key with
 // CampaignDetailPage's own call, so this is not a second network request) instead of
@@ -169,6 +171,13 @@ export function CampaignSettings({ campaignId }: { campaignId: string }) {
         campaignId={campaignId}
         url={campaign.boardRoomUrl ?? null}
         disabled={roleUnresolved || !isDM}
+      />
+
+      <ReglasDeLaMesa
+        campaignId={campaignId}
+        reglas={reglasCompletas(campaign.tableRules)}
+        disabled={roleUnresolved || !isDM}
+        motivo={disabledReason}
       />
     </Panel>
   );

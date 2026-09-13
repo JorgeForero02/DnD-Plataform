@@ -58,7 +58,13 @@ describe("Subida de nivel (e2e)", () => {
     await app.close();
   });
 
-  /** Un guerrero de nivel 1, con la hoja completa, dueño del propio jugador. */
+  /**
+   * Un guerrero de nivel 1, con la hoja completa, dueño del propio jugador.
+   *
+   * **D-CF-66: el nivel lo fija el DM**, así que el PATCH de la hoja que manda `level` va con
+   * `tokenDM` — el resto de la hoja (características, raza, clase, elecciones) sigue siendo
+   * cosa del dueño en el resto de este fichero, esto solo mueve quién puede tocar `level`.
+   */
   const crearPersonaje = async () => {
     const s = app.getHttpServer();
     const characterId = (
@@ -69,7 +75,7 @@ describe("Subida de nivel (e2e)", () => {
     ).body.id as string;
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
@@ -90,9 +96,10 @@ describe("Subida de nivel (e2e)", () => {
     expect(antes.status).toBe(200);
     const maxHpAntes = antes.body.hp.max as number;
 
+    // D-CF-66: solo el DM decide cuándo sube de nivel la mesa.
     const previo = await request(s)
       .get(`/campaigns/${campaignId}/characters/${characterId}/level-up/preview`)
-      .set("Authorization", `Bearer ${tokenPL}`);
+      .set("Authorization", `Bearer ${tokenDM}`);
     expect(previo.status).toBe(200);
     expect(previo.body.from).toBe(1);
     expect(previo.body.to).toBe(2);
@@ -100,7 +107,7 @@ describe("Subida de nivel (e2e)", () => {
 
     const subida = await request(s)
       .post(`/campaigns/${campaignId}/characters/${characterId}/level-up`)
-      .set("Authorization", `Bearer ${tokenPL}`);
+      .set("Authorization", `Bearer ${tokenDM}`);
     expect(subida.status).toBe(201);
     expect(subida.body.level).toBe(2);
 
@@ -127,10 +134,10 @@ describe("Subida de nivel (e2e)", () => {
 
     const primero = await request(s)
       .get(`/campaigns/${campaignId}/characters/${characterId}/level-up/preview`)
-      .set("Authorization", `Bearer ${tokenPL}`);
+      .set("Authorization", `Bearer ${tokenDM}`);
     const segundo = await request(s)
       .get(`/campaigns/${campaignId}/characters/${characterId}/level-up/preview`)
-      .set("Authorization", `Bearer ${tokenPL}`);
+      .set("Authorization", `Bearer ${tokenDM}`);
 
     expect(segundo.body).toEqual(primero.body);
 
@@ -170,22 +177,43 @@ describe("Subida de nivel (e2e)", () => {
     await prisma.user.deleteMany({ where: { email: emailOtro } });
   });
 
+  // D-CF-66: el dueño no puede subir de nivel a su propio personaje, ni siquiera el suyo.
+  it("el dueño no puede subir de nivel: 403", async () => {
+    const s = app.getHttpServer();
+    const characterId = await crearPersonaje();
+
+    const previo = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${characterId}/level-up/preview`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(previo.status).toBe(403);
+
+    const aplicar = await request(s)
+      .post(`/campaigns/${campaignId}/characters/${characterId}/level-up`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(aplicar.status).toBe(403);
+
+    const sheet = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
+      .set("Authorization", `Bearer ${tokenPL}`);
+    expect(sheet.body.character.level).toBe(1);
+  });
+
   it("el nivel 20 es el techo: subir se rechaza con 400", async () => {
     const s = app.getHttpServer();
     const characterId = await crearPersonaje();
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
-      .set("Authorization", `Bearer ${tokenPL}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
       .send({ level: 20 });
 
     const previo = await request(s)
       .get(`/campaigns/${campaignId}/characters/${characterId}/level-up/preview`)
-      .set("Authorization", `Bearer ${tokenPL}`);
+      .set("Authorization", `Bearer ${tokenDM}`);
     expect(previo.status).toBe(400);
 
     const aplicar = await request(s)
       .post(`/campaigns/${campaignId}/characters/${characterId}/level-up`)
-      .set("Authorization", `Bearer ${tokenPL}`);
+      .set("Authorization", `Bearer ${tokenDM}`);
     expect(aplicar.status).toBe(400);
 
     const sheet = await request(s)

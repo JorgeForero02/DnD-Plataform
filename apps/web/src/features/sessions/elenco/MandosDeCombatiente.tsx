@@ -215,6 +215,7 @@ export function MandosDeCombatiente({
             characterId={characterId}
             puedeEditar
             disposicion="mesa"
+            esDM={soyDm}
           />
         )}
       </Dialog>

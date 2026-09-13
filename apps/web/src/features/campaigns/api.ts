@@ -1,4 +1,9 @@
-import type { CampaignEntityCount, CreateCampaignInput, UpdateCampaignInput } from "@dnd/shared";
+import type {
+  CampaignEntityCount,
+  CreateCampaignInput,
+  TableRules,
+  UpdateCampaignInput,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 export interface Campaign {
@@ -52,6 +57,15 @@ export interface Campaign {
    * `encumbranceVariant`. `null` significa "sin sala"; ausente, una respuesta vieja en caché.
    */
   boardRoomUrl?: string | null;
+  /**
+   * Task 5 (spec 2026-09-12, D-CF-53) — las reglas de la mesa que el DM fija antes de que nadie
+   * haga su hoja (método de características, nivel inicial, PG de los niveles siguientes, razas
+   * / clases / caminos permitidos y oro inicial). La escribe con `PATCH /campaigns/:id`, igual
+   * que `boardRoomUrl`. Opcional como el resto: el servidor siempre la manda con sus defaults
+   * (`tableRulesSchema`), pero una respuesta vieja en caché puede no traerla — `reglasCompletas`
+   * (`reglas.ts`) la rellena en ese caso, nunca la trata como un error.
+   */
+  tableRules?: TableRules;
 }
 
 export function fetchCampaigns(): Promise<Campaign[]> {

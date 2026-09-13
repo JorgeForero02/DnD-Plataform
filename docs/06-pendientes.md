@@ -126,6 +126,28 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
+## Dejado por «reglas de la mesa» (2026-09-13) — cerrada en rama, sin fusionar
+
+Rama `reglas-de-la-mesa/antes-del-paso-3`; revisión Opus de la rama entera en
+`.superpowers/sdd/2026-09-13-reglas-de-la-mesa/final-review.md` (0 críticos, 4 importantes —los
+cuatro cerrados en dos olas—, 14 menores). RM-1 (¿pierde el dueño el nivel a mano?) **la decidió el autor el mismo día**: el
+nivel es del DM (D-CF-66, hecha en la ola 3). Lo que queda:
+
+### RM-2 · Menores aplazados de la revisión final (con su línea en `final-review.md`)
+
+| | Qué | Coste |
+|---|---|---|
+| M-4 | `AbilityRollsService.list` moldea el `payload` releído a mano; pasar la respuesta por `abilityRollAttemptSchema.parse` | 20 min |
+| M-5 | `of = 0` cuando la regla no es `DADOS` viola `abilityRollAttemptSchema.of.min(1)`; hacer `of` opcional o `Math.max(1, …)` | 10 min |
+| M-6 | La invalidación de `abilityRollsKey` en `useUpdateSheet` es redundante (prefijo ya invalidado) — quitar o corregir el comentario | 5 min |
+| M-7 | `as CreateCharacterInput` en `CharacterEditor`: exportar `z.input<typeof createCharacterSchema>` en shared y usarlo | 10 min |
+| M-8 | `r as DesgloseDeTirada` en `AsignarCaracteristicas`: probar sin moldear; si no compila, `dc?` en el DTO | 10 min |
+| M-9 | `Number("")` = 0 en los campos numéricos de `ReglasDeLaMesa` se manda y vuelve un 400 técnico de Zod; comprobar rango en `onGuardar` y escribir la frase en español | 20 min |
+| M-12 | `CARACTERISTICAS` en `IdentidadEditable.tsx` duplica `ORDEN_DE_CARACTERISTICAS` de shared | 5 min |
+| M-14 | `borrador` de `ReglasDeLaMesa` se siembra una vez por campaña; re-sembrar cuando cambie la campaña y no haya edición en curso | 15 min |
+| — | Sin e2e de concurrencia real para los cerrojos `FOR UPDATE` (M-1/M-2): las unitarias prueban el orden de las sentencias, no el bloqueo de Postgres. Un e2e con dos `POST …/ability-rolls` en `Promise.all` y `intentos: 1` → exactamente un 201 y un 409 | 30 min |
+| — | `attemptId` bajo `MATRIZ`/`PUNTOS` se acepta y marca un intento caduco; rechazarlo con 400 cuando la regla no es `DADOS` | 10 min |
+
 ## Cierre de la tanda del pulido antes del paso 3 (2026-09-13, Tarea 15)
 
 Rama `pulido/antes-del-paso-3`, 43 commits sobre `0ebdd9f`, sin fusionar todavía. Lo que sigue son
@@ -236,6 +258,12 @@ esperas ciegas a lo largo de la tanda (Tareas 1, 4, 8 y 9). Ya se añadió la re
 `04-convenciones.md` § *Trabajo con varios agentes a la vez* en este mismo commit; esta ficha
 queda como recordatorio de que **la regla nueva no se ha probado en una tanda completa todavía** —
 cierra sola cuando la siguiente tanda (reglas de la mesa) no repita el patrón.
+
+**Medido en «reglas de la mesa» (2026-09-13):** seis implementadores y dos revisores llevaron la
+frase en el brief; **uno repitió el patrón** (Tarea 6: lanzó el `git commit` en segundo plano y se
+quedó esperando; ~5 min, informe pedido a posteriori). De ~40 min a ~5: la regla funciona pero no
+cierra sola. **Siguiente ajuste al brief**: la frase «INCLUIDO `git commit`» en mayúsculas al
+principio, no al final; se comprueba en la puerta de efectos.
 
 > ## Decidido el 2026-09-10 y todavía abierto — el trabajo que queda, con su decisión tomada
 >

@@ -240,6 +240,11 @@ model Campaign {
   // ella, la mesa es la de siempre. Texto libre validado en el contrato (http(s), ≤ 500).
   boardRoomUrl String?
 
+  // Reglas de la mesa (D-CF-53, 2026-09-13): cómo nacen los personajes de esta campaña. Json
+  // validado por `tableRulesSchema` (`@dnd/shared`); `{}` = las reglas de siempre (libre, nivel
+  // 1, media, todo permitido, equipo), así que ninguna campaña existente cambia.
+  tableRules Json @default("{}")
+
   // El reloj de la campana (2C.3): **segundos de juego**, no una fecha. Un asalto son seis, asi
   // que la iniciativa de Encuentros avanzara este mismo contador de seis en seis. Un calendario
   // es una capa de presentacion encima; al reves no se puede.
@@ -642,6 +647,12 @@ model Character {
   // asi que **sale en la traza con su delta** y nadie se pregunta de donde viene el numero.
   overrides     Json?
 
+  /// Reglas de la mesa (E-RM-3): los PG **decididos** para los niveles 2..N al nacer a nivel N —
+  /// la tirada del dado de golpe o su máximo, uno por nivel y SIN Constitución—, cuando la regla
+  /// no es la media. `null` = la media de siempre. `maxHp` sigue sin guardarse: el motor suma
+  /// estos en vez de `(N−1)·media` y lo enseña en la traza (`maxHp.perLevelAtCreation`).
+  hitPointsPerLevel Json?
+
   // --- Estado mutable (2A.7). PG maximos NO se guardan: se calculan ---
   // `null` = a PG maximos; se materializa al primer cambio.
   currentHp          Int?
@@ -683,8 +694,26 @@ model Character {
   rollRequests       RollRequest[]
   combatants         Combatant[]
   temporaryModifiers TemporaryModifier[]
+  abilityRollAttempts AbilityRollAttempt[]
 
   @@index([campaignId])
+}
+
+/// Reglas de la mesa (D-CF-53): un intento de tirar las seis características en el servidor.
+/// Existe para que el azar quede escrito y **no se pueda repetir a escondidas**: el servicio
+/// cuenta filas contra `abilities.intentos` y rechaza el N+1 con 409.
+model AbilityRollAttempt {
+  id           String    @id @default(cuid())
+  characterId  String
+  /// Los seis totales, en el orden en que salieron.
+  values       Json
+  /// Los seis `GameEvent.id` (`ABILITY_ROLL`) que los produjeron, para la traza.
+  rollEventIds Json
+  chosen       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId, createdAt])
 }
 
 // Recursos consumibles (2A.8): inspiracion, furia, ki, dados de golpe, espacios de conjuro.

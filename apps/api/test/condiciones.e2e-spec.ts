@@ -60,12 +60,18 @@ describe("Condiciones: la puerta genérica (e2e)", () => {
 
     // **El personaje es de la jugadora**, que es lo que hace este caso interesante: la
     // autorización de escritura la aprueba y aun así la clave no entra.
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     characterId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Mira", level: 3, visibility: "PLAYERS" })
     ).body.id;
+    // D-CF-66: el nivel lo fija el DM, no el dueño.
+    await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${characterId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ level: 3 });
   });
 
   afterAll(async () => {

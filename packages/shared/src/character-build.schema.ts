@@ -79,6 +79,8 @@ export const characterBuildSchema = z.object({
   items: z.array(resolvedItemSchema).max(60).optional(),
   skillProficiencies: z.record(z.string().min(1).max(60), proficiencyLevelSchema).optional(),
   choices: characterChoicesSchema.optional(),
+  /** Reglas de la mesa (E-RM-3): PG por nivel fijados al nacer, del 2 en adelante, sin CON. */
+  hitPointsPerLevel: z.array(z.number().int().min(1).max(12)).max(19).optional(),
 });
 export type CharacterBuildInput = z.infer<typeof characterBuildSchema>;
 

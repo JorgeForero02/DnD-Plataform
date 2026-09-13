@@ -239,6 +239,12 @@ export interface SrdClass {
   name: string;
   /** 6, 8, 10 o 12. */
   hitDie: number;
+  /**
+   * Reglas de la mesa (D-CF-53). SRD 5.1, «Starting Wealth by Class»: la tirada en po con la que
+   * nace quien no coge el equipo de clase. `times` porque la gramática de `dice.ts` no tiene
+   * multiplicación y `5d4×10` es «tira 5d4 y multiplica»; el monje va sin ×10 en la tabla.
+   */
+  startingGold: { dice: string; times: number };
   /** **Exactamente dos**, y hay un invariante que lo comprueba. */
   saveProficiencies: AbilityKey[];
   /**

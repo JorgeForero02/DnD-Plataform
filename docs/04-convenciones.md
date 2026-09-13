@@ -87,6 +87,17 @@ se cambia el control como decisión declarada aquí.
 Medido tras cada tarea: `pnpm verify` pasa. Cifras de unitarias al día en el bloque generado
 de [00-INDEX.md](./00-INDEX.md); de e2e, en [08-pruebas.md](./08-pruebas.md).
 
+**Excepción declarada, D-CF-65 (2026-09-13), solo para las tandas de arreglos antes del paso 3
+—reglas de la mesa y puerta de efectos—:** el ritmo por tarea se aligera y el cierre se endurece.
+**Por tarea:** unitarias + mutación + `pnpm verify` limpio, un commit y una línea en el ledger;
+**no** se corre Playwright ni se pide revisión Opus por tarea, y los implementadores son Sonnet.
+**Al cerrar la tanda:** revisión Opus de la rama entera, Playwright en **todos los spec tocados** y
+la suite de navegador **entera** una vez; lo que salga se arregla en olas (Opus fresco), tope cinco
+rondas, con re-revisión acotada tras cada ola. No se afloja ningún control: se mueve de la tarea al
+cierre, donde el árbol entero hace que un fallo signifique algo. El paso 3 no hereda esto — tendrá
+sus propias reglas cuando llegue. Más abajo, § *Trabajo con varios agentes a la vez*, están las dos
+guardas que cada brief lleva a cambio.
+
 **Fuera de N1, a propósito:** los e2e de API y los de navegador (ambos existen desde
 `c6fa899`; ambos necesitan Docker, y los de navegador además dos servidores vivos).
 Encadenarlos al gancho lo haría inservible. **No por eso son opcionales** — corren en su
@@ -732,6 +743,14 @@ perdidos en la tanda del pulido (2026-09-12/13).** No es la misma regla que la d
 tardar»): un `pnpm verify` o un `git commit` con gancho de pre-commit sin `timeout` en la llamada
 pasa a segundo plano por su cuenta pasados los 120 s por defecto, y el agente no se entera. El
 `timeout` va como **parámetro de la herramienta**, no como prefijo de comando de shell.
+
+**Bajo D-CF-65 (tandas de arreglos antes del paso 3), dos guardas baratas van en cada brief**,
+porque la revisión y el navegador se posponen al cierre: **(1)** si el implementador renombra un
+rótulo visible, hace `grep` del rótulo viejo en `apps/web/e2e` y ajusta los spec en el mismo commit
+—es la trampa que barrió dos e2e en una noche—; **(2)** todo Bash que pueda pasar de 120 s lleva
+`timeout: 600000` como parámetro de la herramienta (la regla de arriba, repetida en el brief y no
+solo aquí). El orquestador corre Playwright **una vez por tanda** —los spec tocados y la suite
+entera— y ahí caza lo que la tarea no vio.
 
 **Techo de cinco agentes.** Por encima, las compilaciones se comen la máquina y el cuello deja de
 ser el modelo. La recomendación general es 3-5; cinco es sostenible en un equipo con 32 GB.

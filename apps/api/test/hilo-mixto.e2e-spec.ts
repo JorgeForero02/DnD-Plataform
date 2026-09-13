@@ -75,12 +75,18 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
 
     // Personaje del jugador, para archivarlo mientras la sesión 1 está en curso: es un acto de
     // campaña (sin `sessionId`) posterior al `startedAt` de la sesión 1.
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     const personaje = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Faramir", level: 3, visibility: "PLAYERS" })
     ).body;
+    const nivelFijado = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${personaje.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ level: 3 });
+    expect(nivelFijado.status).toBe(200);
 
     const archivado = await request(s)
       .post(`/campaigns/${campaignId}/characters/${personaje.id}/archive`)
@@ -167,6 +173,11 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Éowyn", level: 3, visibility: "PLAYERS" })
     ).body;
+    const nivelFijado = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${otroPersonaje.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ level: 3 });
+    expect(nivelFijado.status).toBe(200);
     const archivadoTrasCierre = await request(s)
       .post(`/campaigns/${campaignId}/characters/${otroPersonaje.id}/archive`)
       .set("Authorization", `Bearer ${tokenDM}`);
@@ -205,6 +216,11 @@ describe("El hilo de la sesión mezcla los sucesos de campaña posteriores a su 
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Éomer", level: 3, visibility: "PLAYERS" })
     ).body;
+    const nivelFijado = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${otroPersonaje.id}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ level: 3 });
+    expect(nivelFijado.status).toBe(200);
     const archivado = await request(s)
       .post(`/campaigns/${campaignId}/characters/${otroPersonaje.id}/archive`)
       .set("Authorization", `Bearer ${tokenDM}`);

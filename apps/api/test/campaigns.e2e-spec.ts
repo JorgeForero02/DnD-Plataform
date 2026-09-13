@@ -267,6 +267,52 @@ describe("Campaigns (e2e)", () => {
     });
   });
 
+  // Reglas de la mesa (D-CF-53, 2026-09-13). tokenA es el DM, tokenC un jugador ya miembro de
+  // esta misma campaña (aceptó una invitación más arriba).
+  describe("PATCH /campaigns/:id — reglas de la mesa (D-CF-53)", () => {
+    it("reglas de la mesa: el jugador no puede cambiarlas (403), el DM sí, y GET las devuelve con defaults rellenos", async () => {
+      const s = app.getHttpServer();
+      const comoJugador = await request(s)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenC}`)
+        .send({ tableRules: { nivelInicial: 3 } });
+      expect(comoJugador.status).toBe(403);
+
+      const comoDM = await request(s)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          tableRules: {
+            abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2 },
+            nivelInicial: 3,
+          },
+        });
+      expect(comoDM.status).toBe(200);
+      expect(comoDM.body.tableRules.abilities).toEqual({
+        metodo: "DADOS",
+        expresion: "3d6",
+        intentos: 2,
+        asignacionLibre: true,
+      });
+      expect(comoDM.body.tableRules.pgNivelesSiguientes).toBe("MEDIA");
+
+      const leida = await request(s)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenC}`);
+      expect(leida.body.tableRules.nivelInicial).toBe(3);
+    });
+
+    it("reglas de la mesa: una expresión que el evaluador no acepta es 400 con su código", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ tableRules: { abilities: { metodo: "DADOS", expresion: "4d" } } });
+      expect(r.status).toBe(400);
+      expect(r.body.code).toBe("SINTAXIS");
+    });
+  });
+
   describe("DELETE /campaigns/:id", () => {
     it("as a player: 403", async () => {
       // tokenC's membership (not DM) was established and asserted (201 on accept) in the

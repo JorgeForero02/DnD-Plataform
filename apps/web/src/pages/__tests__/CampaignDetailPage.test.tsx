@@ -1037,7 +1037,10 @@ describe("CampaignDetailPage — Ajustes: campaña y miembros (1.17d)", () => {
       "aria-disabled",
       "true",
     );
-    expect(screen.getByText("Solo el DM puede editar la campaña.")).toBeInTheDocument();
+    // Task 5 (D-CF-53): "Reglas de la mesa" repeats this same reason on its own block, so this
+    // text now legitimately appears twice on screen — once above the name/description form,
+    // once above the new block's disabled controls (getAllByText, not getByText).
+    expect(screen.getAllByText("Solo el DM puede editar la campaña.").length).toBeGreaterThan(0);
     // Fix round 2, IMPORTANT B: DeleteButton only ever exposes disabledReason via title=,
     // invisible on touch and to a screen reader — CampaignSettings.tsx has to put the
     // delete-specific wording ("borrar", not "editar") on screen itself for it to satisfy

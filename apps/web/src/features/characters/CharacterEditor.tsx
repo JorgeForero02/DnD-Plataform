@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Visibility } from "@dnd/shared";
+import type { CreateCharacterInput, Visibility } from "@dnd/shared";
 import { useCreateCharacter, charactersKey } from "./hooks";
 import { CHARACTER_VISIBILITIES } from "./niveles";
 import { Button } from "../../ui/Button";
@@ -14,6 +14,8 @@ import {
   opcionesDeRaza,
   opcionesDeSubraza,
 } from "../character-sheet/opcionesDeCatalogo";
+import { useCampaign } from "../campaigns/hooks";
+import { reglasCompletas } from "../campaigns/reglas";
 
 // H6 del reseño de interfaz — **este diálogo solo crea.**
 //
@@ -69,7 +71,6 @@ export function CharacterEditor({
   const [raceKey, setRaceKey] = useState("");
   const [subraceKey, setSubraceKey] = useState("");
   const [classKey, setClassKey] = useState("");
-  const [level, setLevel] = useState("1");
   const [bio, setBio] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("PLAYERS");
   const [error, setError] = useState<string | null>(null);
@@ -81,10 +82,14 @@ export function CharacterEditor({
   const create = useCreateCharacter(campaignId);
   const { data: catalogo } = useCatalog();
   const qc = useQueryClient();
+  // Reglas de la mesa (Task 6, D-CF-53) — el nivel ya no lo teclea quien crea, lo fija el DM en
+  // «Reglas de la mesa» (`nivelInicial`); y la lista de razas/clases se filtra por `permitidos`.
+  const { data: campaign } = useCampaign(campaignId);
+  const reglas = reglasCompletas(campaign?.tableRules);
 
-  const razas = opcionesDeRaza(catalogo);
+  const razas = opcionesDeRaza(catalogo, reglas.permitidos.razas);
   const subrazas = opcionesDeSubraza(catalogo, raceKey || null);
-  const clases = opcionesDeClase(catalogo);
+  const clases = opcionesDeClase(catalogo, reglas.permitidos.clases);
 
   // Bloqueado en cuanto el personaje existe en el servidor: si el `PATCH` a la hoja falló, un
   // segundo «Guardar» no puede volver a crearlo. `create.isPending` cubre el primer tramo.
@@ -98,14 +103,16 @@ export function CharacterEditor({
     // Creating has no previous value to preserve, so an empty field is simply omitted (the
     // schema field is optional). The "send the empty string to clear it" rule that used to live
     // here belonged to edit mode, and edit mode is gone.
+    // D-CF-65: `level` ya no se manda. El esquema le pone `default(1)` y el servidor lo ignora
+    // (E-RM-1) — el nivel de nacimiento lo decide `nivelInicial` de las reglas de la mesa, no
+    // quien crea la fila. El `as CreateCharacterInput` es solo el hueco del tipo: `z.infer`
+    // describe la SALIDA del `parse` (con el default ya puesto), no lo que hace falta mandar en
+    // la petición, y este esquema no exporta el tipo de entrada por separado.
     const payload = {
       name,
-      // Number(), not parseInt: an input left blank becomes Number("") === 0, which the
-      // schema's min(1) rejects with a readable 400 instead of silently coercing to 1.
-      level: Number(level),
       visibility,
       ...(trimmedBio ? { bio: trimmedBio } : {}),
-    };
+    } as CreateCharacterInput;
     let created;
     try {
       created = await create.mutateAsync(payload);
@@ -215,20 +222,11 @@ export function CharacterEditor({
               </select>
             </Field>
           </div>
-          <div className="w-24">
-            <Field label="Nivel">
-              <input
-                id="character-level"
-                type="number"
-                min={1}
-                max={20}
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className={fieldControlClass}
-              />
-            </Field>
-          </div>
         </div>
+        {/* D-CF-65 — el nivel ya no se teclea aquí: lo fija la mesa (`nivelInicial`, Task 5). */}
+        <p className="font-chrome text-chrome-xs text-muted">
+          Nivel {reglas.nivelInicial} — lo fija la mesa
+        </p>
         <Field label="Biografía">
           <textarea
             id="character-bio"

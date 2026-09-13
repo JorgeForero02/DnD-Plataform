@@ -58,9 +58,13 @@ function montar(roller?: Roller) {
     campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
     transaction: jest.fn(),
   };
+  // D-CF-66: preview() y apply() exigen DM. Por defecto el que llama es DM — la mayoría de
+  // estas pruebas comprueban el cálculo del diff, no la autorización, y la autorización tiene
+  // sus propios casos explícitos más abajo (que sobrescriben este mock).
   const membership = {
     requireMember: jest.fn().mockResolvedValue({ role: "PLAYER" }),
-    getMembership: jest.fn().mockResolvedValue({ role: "PLAYER" }),
+    requireDM: jest.fn().mockResolvedValue({ role: "DM" }),
+    getMembership: jest.fn().mockResolvedValue({ role: "DM" }),
   };
   const events = { record: jest.fn().mockResolvedValue({ id: "ev1" }) };
 
@@ -227,11 +231,31 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
     it("un jugador ajeno (ni dueño ni DM) recibe 403", async () => {
       const { service, prisma, membership } = montar();
       membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      membership.requireDM.mockRejectedValue(new ForbiddenException("DM role required"));
       prisma.character.findFirst.mockResolvedValue(personaje({ ownerId: "otro" }));
 
       await expect(service.preview("intruso", "c1", "ch1", false)).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+
+    // D-CF-66: solo el DM decide cuándo sube de nivel la mesa — ni siquiera el propio dueño.
+    it("el dueño del personaje (no DM) recibe 403 en el previo", async () => {
+      const { service, prisma, membership } = montar();
+      membership.requireDM.mockRejectedValue(new ForbiddenException("DM role required"));
+      prisma.character.findFirst.mockResolvedValue(personaje({ ownerId: "p1" }));
+
+      await expect(service.preview("p1", "c1", "ch1", false)).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it("el DM puede pedir el previo aunque no sea el dueño", async () => {
+      const { service, prisma, membership } = montar();
+      membership.requireDM.mockResolvedValue({ role: "DM" });
+      prisma.character.findFirst.mockResolvedValue(personaje({ ownerId: "otro" }));
+
+      await expect(service.preview("dm1", "c1", "ch1", false)).resolves.toBeDefined();
     });
   });
 
@@ -315,12 +339,24 @@ describe("LevelUpService — 2A.9 el diff propuesto y el jugador que confirma", 
     it("un jugador ajeno (ni dueño ni DM) recibe 403 y el nivel no cambia", async () => {
       const { service, prisma, membership } = montar();
       membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      membership.requireDM.mockRejectedValue(new ForbiddenException("DM role required"));
       const fila = personaje({ ownerId: "otro" });
       prisma.character.findFirst.mockResolvedValue(fila);
 
       await expect(service.apply("intruso", "c1", "ch1")).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+      expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    // D-CF-66: el dueño no puede confirmar su propia subida de nivel.
+    it("el dueño del personaje (no DM) recibe 403 al confirmar, y el nivel no cambia", async () => {
+      const { service, prisma, membership } = montar();
+      membership.requireDM.mockRejectedValue(new ForbiddenException("DM role required"));
+      const fila = personaje({ ownerId: "p1" });
+      prisma.character.findFirst.mockResolvedValue(fila);
+
+      await expect(service.apply("p1", "c1", "ch1")).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.transaction).not.toHaveBeenCalled();
     });
   });

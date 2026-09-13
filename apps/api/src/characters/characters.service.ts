@@ -1,5 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { CreateCharacterInput, UpdateCharacterInput, Visibility } from "@dnd/shared";
+import {
+  CreateCharacterInput,
+  UpdateCharacterInput,
+  Visibility,
+  tableRulesSchema,
+} from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -22,6 +27,13 @@ export class CharactersService {
 
   async create(userId: string, campaignId: string, input: CreateCharacterInput) {
     await this.membership.requireMember(campaignId, userId);
+    // Reglas de la mesa (D-CF-53): el nivel lo fija la mesa, no el cuerpo de la petición. El
+    // esquema sigue admitiendo `level` para no romper a ningún cliente, y se ignora a propósito.
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { tableRules: true },
+    });
+    const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
     // **El personaje y su fila de inspiración nacen juntos** (plan 08, ficha I8), en una
     // transacción: media creación —un personaje al que el DM no puede conceder nada— sería un
     // estado que solo se arregla a mano. La escritura la hace `ResourcesService`, que sigue
@@ -32,7 +44,7 @@ export class CharactersService {
           campaignId,
           ownerId: userId,
           name: input.name,
-          level: input.level,
+          level: regla.nivelInicial,
           bio: input.bio,
           visibility: input.visibility,
           color: input.color ?? null,
@@ -113,6 +125,16 @@ export class CharactersService {
   ) {
     await this.membership.requireMember(campaignId, userId);
     await this.requireEditable(userId, campaignId, characterId);
+    // D-CF-66: el nivel lo fija el DM, nunca el dueño desde este endpoint. Solo se comprueba
+    // cuando `level` viene en el cuerpo — el resto de campos del dueño siguen funcionando igual.
+    if (input.level !== undefined) {
+      const membresia = await this.membership.getMembership(campaignId, userId);
+      if (membresia?.role !== "DM") {
+        throw new ForbiddenException(
+          "El nivel lo fija el DM: se sube con «Subir de nivel» cuando el DM lo lance.",
+        );
+      }
+    }
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data.name = input.name;
     if (input.level !== undefined) data.level = input.level;

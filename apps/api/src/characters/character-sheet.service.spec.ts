@@ -11,6 +11,7 @@ import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CharactersService } from "./characters.service";
+import { AbilityRollsService } from "./ability-rolls.service";
 import { RollsService } from "../rolls/rolls.service";
 import { ResourcesService } from "../character-state/resources/resources.service";
 import type { StatblocksService } from "../statblocks/statblocks.service";
@@ -101,7 +102,22 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     campaignItem: { findFirst: jest.fn().mockResolvedValue(null) },
     // 2C.4: la hoja lee el reloj para saber qué condiciones siguen vivas y si el agotamiento
     // parte los PG máximos. Reloj a cero por defecto: nada ha vencido todavía.
-    campaign: { findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }) },
+    campaign: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ id: "cmp1", clockSeconds: 0 }),
+      // Reglas de la mesa (Tarea 4): `updateSheet` lee `tableRules` en cada llamada. `{}` por
+      // defecto — LIBRE/MEDIA/EQUIPO, el comportamiento de siempre.
+      findUnique: jest.fn().mockResolvedValue({ id: "c1", tableRules: {} }),
+    },
+    // Reglas de la mesa (Tarea 4): un intento de dados elegido bloquea volver a mandar
+    // características sin `attemptId`. Sin ninguno elegido por defecto.
+    // Ola de arreglos 1 (M-2): fijar un intento va bajo candado (`SELECT … FOR UPDATE` sobre la
+    // fila del personaje) y marca con `updateMany({ where: { id, chosen: false } })`, que devuelve
+    // `count: 1` cuando nadie se adelantó — el valor por defecto aquí.
+    abilityRollAttempt: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    $queryRaw: jest.fn().mockResolvedValue([{ id: "ch1" }]),
     user: { findUnique: jest.fn() },
     // Tarea 2.5.4: `rollAttack` lee el `natural` de una tirada de ataque real fuera de
     // transacción (`esCriticoDesdeLaTirada`); por defecto no existe, así que el camino sin
@@ -114,6 +130,19 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     combatant: { findFirst: jest.fn().mockResolvedValue({ id: "comb1" }) },
     transaction: jest.fn(),
   };
+  // Reglas de la mesa (Tarea 4): `updateSheet` escribe en `this.prisma.transaction(...)`. Por
+  // defecto el `tx` es el propio doble de Prisma — `character.update` y `abilityRollAttempt.update`
+  // viven ahí, así que las pruebas que ya mockeaban `prisma.character.update` a secas siguen
+  // funcionando sin tocarlas. Las pruebas que necesitan un `tx` distinto (`montarTransaccion`)
+  // lo sobrescriben después.
+  prisma.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(prisma));
+  // Reglas de la mesa (Tarea 4): un valor por defecto que deriva de verdad, para las pruebas
+  // nuevas que llegan hasta el final de `updateSheet` sin mockear `update` a mano. Las que ya lo
+  // hacían (`mockResolvedValue`/`mockImplementation` propio) lo sobrescriben igual que siempre.
+  prisma.character.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+    ...personaje(),
+    ...data,
+  }));
   const membership = {
     requireMember: jest.fn().mockResolvedValue({ role: "PLAYER" }),
     requireDM: jest.fn().mockResolvedValue({ role: "DM" }),
@@ -125,6 +154,9 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
   prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
 
   const resources = { seedResourcesFor: jest.fn().mockResolvedValue(undefined) };
+  // Reglas de la mesa (Tarea 4): sin intento por defecto, `updateSheet` lo pide solo cuando la
+  // regla de la mesa es DADOS y llega `attemptId`.
+  const abilityRolls = { requireAttempt: jest.fn() };
 
   const service = new CharacterSheetService(
     prisma as unknown as PrismaService,
@@ -132,11 +164,12 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     events as unknown as GameEventsService,
     characters as unknown as CharactersService,
     rolls as unknown as RollsService,
+    abilityRolls as unknown as AbilityRollsService,
     roller,
     resources as unknown as ResourcesService,
     statblocks as unknown as StatblocksService,
   );
-  return { service, prisma, membership, events, characters, resources, rolls };
+  return { service, prisma, membership, events, characters, resources, rolls, abilityRolls };
 }
 
 /** Simula `prisma.transaction`, con un `tx` que solo sabe bloquear la fila dada y actualizarla. */
@@ -251,6 +284,353 @@ describe("CharacterSheetService — 2A.6 la hoja calculada", () => {
     await expect(
       service.updateSheet("p1", "c1", "ch1", { race: { source: "SRD", key: "no-existe" } }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  // D-CF-66: el nivel lo fija el DM, no el dueño — ni siquiera vía PATCH de la hoja.
+  it("updateSheet() rechaza al dueño no-DM que manda level (403)", async () => {
+    const { service, characters, membership } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(service.updateSheet("p1", "c1", "ch1", { level: 2 })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it("updateSheet() permite al DM mandar level", async () => {
+    const { service, characters, membership } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(service.updateSheet("dm1", "c1", "ch1", { level: 2 })).resolves.toBeDefined();
+  });
+
+  it("updateSheet() sigue dejando al dueño cambiar otros campos (level es lo único que exige DM)", async () => {
+    const { service, characters, membership } = montar();
+    characters.requireEditable.mockResolvedValue(personaje());
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.updateSheet("p1", "c1", "ch1", { abilities: { str: 16 } }),
+    ).resolves.toBeDefined();
+  });
+});
+
+describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
+  const personajeBase = personaje();
+
+  /** Fija `tableRules` para esta llamada y deja el personaje listo para editar. */
+  function prep(
+    prisma: ReturnType<typeof montar>["prisma"],
+    characters: ReturnType<typeof montar>["characters"],
+    tableRules: unknown,
+    fila: Character = personajeBase,
+  ) {
+    (prisma.campaign.findUnique as jest.Mock).mockResolvedValue({ id: "c1", tableRules });
+    characters.requireEditable.mockResolvedValue(fila);
+  }
+
+  it("LIBRE (por defecto) sigue admitiendo una característica a la vez", async () => {
+    const { service, prisma, characters } = montar();
+    prep(prisma, characters, {});
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", { abilities: { str: 16 } }),
+    ).resolves.toBeDefined();
+  });
+
+  it("MATRIZ: cinco de seis es 400 «se fijan juntas»; una permutación de la matriz pasa; una repetición es 400", async () => {
+    const { service, prisma, characters } = montar();
+    prep(prisma, characters, { abilities: { metodo: "MATRIZ" } });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10 },
+      }),
+    ).rejects.toThrow(/juntas/);
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 8, dex: 10, con: 12, int: 13, wis: 14, cha: 15 },
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 15, con: 13, int: 12, wis: 10, cha: 8 },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("PUNTOS: 28 puntos es 400 con el coste en el mensaje", async () => {
+    const { service, prisma, characters } = montar();
+    prep(prisma, characters, { abilities: { metodo: "PUNTOS", puntos: 27 } });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 15, con: 15, int: 9, wis: 8, cha: 8 },
+      }),
+    ).rejects.toThrow(/28/);
+  });
+
+  it("DADOS: con attemptId cuyos valores encajan, guarda y marca chosen; sin attemptId es 400", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a1",
+      characterId: "ch1",
+      values: [12, 9, 15, 10, 14, 11],
+      chosen: false,
+    });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+        attemptId: "a1",
+      }),
+    ).resolves.toBeDefined();
+    // M-2: se marca solo si sigue sin elegir (`chosen: false` en el `where`), y bajo el candado
+    // de la fila del personaje, que se toma ANTES de escribir nada.
+    expect(prisma.abilityRollAttempt.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "a1", chosen: false }, data: { chosen: true } }),
+    );
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const sql = (prisma.$queryRaw as jest.Mock).mock.calls[0][0] as string[];
+    expect(sql.join("?")).toMatch(/FROM "Character" WHERE id = \? FOR UPDATE/);
+    const ordenDeLlamadas = [
+      prisma.$queryRaw.mock.invocationCallOrder[0],
+      prisma.character.update.mock.invocationCallOrder[0],
+      prisma.abilityRollAttempt.updateMany.mock.invocationCallOrder[0],
+    ];
+    expect(ordenDeLlamadas).toEqual([...ordenDeLlamadas].sort((a, b) => a - b));
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("DADOS (M-2): si al marcar el intento otro ya lo eligió (count 0), es 409 ATTEMPT_ALREADY_CHOSEN y no se guarda", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a1",
+      characterId: "ch1",
+      values: [12, 9, 15, 10, 14, 11],
+      chosen: false,
+    });
+    // Fuera de la transacción nadie había elegido; DENTRO, tras el candado, el `updateMany`
+    // no encuentra la fila con `chosen: false` — la otra pestaña llegó antes.
+    (prisma.abilityRollAttempt.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+        attemptId: "a1",
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: "ATTEMPT_ALREADY_CHOSEN" }),
+    });
+  });
+
+  it("DADOS (M-2): si dentro de la transacción ya hay OTRO intento elegido, es 409 ATTEMPT_ALREADY_CHOSEN", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a1",
+      characterId: "ch1",
+      values: [12, 9, 15, 10, 14, 11],
+      chosen: false,
+    });
+    // Primera lectura (antes de la transacción): ninguno elegido. Segunda (bajo candado): a2.
+    (prisma.abilityRollAttempt.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "a2", chosen: true });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+        attemptId: "a1",
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: "ATTEMPT_ALREADY_CHOSEN" }),
+    });
+    expect(prisma.abilityRollAttempt.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("DADOS (I-1): con un intento ya elegido, el dueño NO puede elegir OTRO mandando su attemptId — 400 «se fijaron con dados»", async () => {
+    const { service, prisma, characters, membership, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a2",
+      characterId: "ch1",
+      values: [18, 17, 16, 15, 14, 13],
+      chosen: false,
+    });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        attemptId: "a2",
+        abilities: { str: 18, dex: 17, con: 16, int: 15, wis: 14, cha: 13 },
+      }),
+    ).rejects.toThrow(/fijaron con dados; solo el DM puede cambiarlas/);
+    expect(prisma.character.update).not.toHaveBeenCalled();
+    expect(prisma.abilityRollAttempt.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("DADOS (I-1): con un intento ya elegido, el DM que manda attemptId recibe 400 — el arbitraje va sin intento", async () => {
+    const { service, prisma, characters, membership } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(
+      service.updateSheet("dm", "c1", "ch1", {
+        attemptId: "a2",
+        abilities: { str: 18, dex: 17, con: 16, int: 15, wis: 14, cha: 13 },
+      }),
+    ).rejects.toThrow(/sin attemptId/);
+    expect(prisma.character.update).not.toHaveBeenCalled();
+  });
+
+  it("DADOS: con un intento ya elegido, cambiar una característica sin attemptId es 400 «se fijaron con dados» para el dueño", async () => {
+    const { service, prisma, characters, membership } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 1, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 18, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+      }),
+    ).rejects.toThrow(/fijaron con dados; solo el DM puede cambiarlas/);
+    // Y la raza sí se puede seguir cambiando: la fijación es de las seis, no de la hoja.
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", { race: { source: "SRD", key: "elf" } }),
+    ).resolves.toBeDefined();
+  });
+
+  it("DADOS: con un intento ya elegido, el DM SÍ puede cambiar las seis juntas sin attemptId (E-RM-13)", async () => {
+    const { service, prisma, characters, membership } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 1, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(
+      service.updateSheet("dm", "c1", "ch1", {
+        abilities: { str: 20, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+      }),
+    ).resolves.toBeDefined();
+    const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
+    expect(data).toMatchObject({ str: 20, dex: 14, con: 12, int: 11, wis: 10, cha: 9 });
+    // Arbitraje, no una tirada más: ningún intento se toca.
+    expect(prisma.abilityRollAttempt.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("permitidos: una clase fuera de la lista es 400 con su nombre legible; la lista vacía deja todo", async () => {
+    const { service, prisma, characters } = montar();
+    prep(prisma, characters, { permitidos: { clases: ["fighter"] } });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", { class: { source: "SRD", key: "wizard" } }),
+    ).rejects.toThrow(/Mago/);
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", { class: { source: "SRD", key: "fighter" } }),
+    ).resolves.toBeDefined();
+  });
+
+  it("al fijar la clase por primera vez con nivel 3, MAXIMO escribe hitPointsPerLevel [10,10] y ORO_TABLA suma gp y escribe MONEY_CHANGED", async () => {
+    const { service, prisma, characters, events } = montar();
+    const personajeSinNumeros = {
+      ...personajeBase,
+      str: null,
+      dex: null,
+      con: null,
+      int: null,
+      wis: null,
+      cha: null,
+      classKey: null,
+      level: 3,
+    } as unknown as Character;
+    prep(
+      prisma,
+      characters,
+      { pgNivelesSiguientes: "MAXIMO", oroInicial: { modo: "ORO_TABLA" } },
+      personajeSinNumeros,
+    );
+
+    await service.updateSheet("pl", "c1", "ch1", { class: { source: "SRD", key: "fighter" } });
+
+    const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
+    expect(data.hitPointsPerLevel).toEqual([10, 10]);
+    expect(data.gp).toEqual({ increment: expect.any(Number) });
+    expect(events.record).toHaveBeenCalledWith(
+      "pl",
+      "c1",
+      expect.objectContaining({ payload: expect.objectContaining({ type: "MONEY_CHANGED" }) }),
+      expect.anything(),
+    );
+  });
+
+  it("cambiar de clase después NO vuelve a tirar ni a dar oro", async () => {
+    const { service, prisma, characters } = montar();
+    const yaTieneClase = {
+      ...personajeBase,
+      level: 3,
+      classKey: "fighter",
+      hitPointsPerLevel: [7, 3],
+    } as unknown as Character;
+    prep(
+      prisma,
+      characters,
+      { pgNivelesSiguientes: "TIRADA", oroInicial: { modo: "ORO_TABLA" } },
+      yaTieneClase,
+    );
+
+    await service.updateSheet("pl", "c1", "ch1", { class: { source: "SRD", key: "rogue" } });
+
+    const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
+    expect("hitPointsPerLevel" in data).toBe(false);
+    expect("gp" in data).toBe(false);
+  });
+
+  it("E-RM-16: un PNJ instanciado (statblockRef) no está sujeto a MATRIZ — una característica sola pasa", async () => {
+    const { service, prisma, characters } = montar();
+    const pnj = { ...personajeBase, statblockRef: "SRD:goblin" } as unknown as Character;
+    prep(prisma, characters, { abilities: { metodo: "MATRIZ" } }, pnj);
+
+    await expect(
+      service.updateSheet("dm", "c1", "ch1", { abilities: { str: 16 } }),
+    ).resolves.toBeDefined();
+    const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
+    expect(data.str).toBe(16);
   });
 });
 
@@ -858,12 +1238,14 @@ describe("la siembra de recursos al terminar la ficha", () => {
   // suite.
 
   it("al fijar clase y nivel, siembra con la hoja derivada y el nivel guardado", async () => {
-    const { service, prisma, characters, resources } = montar();
+    const { service, prisma, characters, resources, membership } = montar();
     const guardado = personaje({ classKey: "wizard", level: 3 });
     characters.requireEditable.mockResolvedValue(guardado);
     prisma.character.update.mockResolvedValue(guardado);
+    // D-CF-66: el nivel lo fija el DM — quien llama aquí es el DM, no el dueño.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
 
-    await service.updateSheet("owner1", "cmp1", "ch1", { level: 3 });
+    await service.updateSheet("dm1", "cmp1", "ch1", { level: 3 });
 
     expect(resources.seedResourcesFor).toHaveBeenCalledWith(
       "ch1",
@@ -873,12 +1255,14 @@ describe("la siembra de recursos al terminar la ficha", () => {
   });
 
   it("una ficha a medias no siembra nada — no hay clase de la que sembrar", async () => {
-    const { service, prisma, characters, resources } = montar();
+    const { service, prisma, characters, resources, membership } = montar();
     const aMedias = personaje({ classKey: null, raceKey: null });
     characters.requireEditable.mockResolvedValue(aMedias);
     prisma.character.update.mockResolvedValue(aMedias);
+    // D-CF-66: el nivel lo fija el DM.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
 
-    await service.updateSheet("owner1", "cmp1", "ch1", { level: 2 });
+    await service.updateSheet("dm1", "cmp1", "ch1", { level: 2 });
 
     expect(resources.seedResourcesFor).not.toHaveBeenCalled();
   });
@@ -1200,7 +1584,7 @@ describe("las elecciones se validan al escribir, no solo al derivar", () => {
     // La otra mitad de la regla, y la que hace que no sea una simple validación: cambiar de
     // clase deja elecciones viejas en la fila. Si eso rechazara cualquier edición posterior, el
     // personaje quedaría bloqueado por un dato que él mismo dejó atrás. Al derivar es un aviso.
-    const { service, prisma, characters } = montar();
+    const { service, prisma, characters, membership } = montar();
     const guardado = personaje({
       classKey: "rogue",
       raceKey: "human",
@@ -1209,8 +1593,10 @@ describe("las elecciones se validan al escribir, no solo al derivar", () => {
     });
     characters.requireEditable.mockResolvedValue(guardado);
     prisma.character.update.mockResolvedValue(guardado);
+    // D-CF-66: el nivel lo fija el DM.
+    membership.getMembership.mockResolvedValue({ role: "DM" });
 
-    await expect(service.updateSheet("owner1", "cmp1", "ch1", { level: 2 })).resolves.toBeDefined();
+    await expect(service.updateSheet("dm1", "cmp1", "ch1", { level: 2 })).resolves.toBeDefined();
     expect(prisma.character.update).toHaveBeenCalled();
   });
 });

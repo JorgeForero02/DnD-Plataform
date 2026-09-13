@@ -8,6 +8,8 @@ import {
   TextoEditable,
 } from "../EdicionEnSitio";
 import { Caracteristicas, FichaEditable } from "../IdentidadEditable";
+import * as campaignsApi from "../../campaigns/api";
+import * as characterSheetApi from "../api";
 
 // **Estos dos se importan arriba y no dentro de cada prueba, y eso NO es estilo.** Un
 // `await import()` en el cuerpo de una prueba mete el coste de transformar el módulo dentro de
@@ -410,6 +412,51 @@ describe("la hoja ya no tiene botones de «Editar»", () => {
   });
 });
 
+// D-CF-66: el nivel lo fija el DM. La casilla se deshabilita con su motivo, nunca se esconde.
+describe("FichaEditable — D-CF-66, el nivel es DM-only", () => {
+  const montarFicha = (esDM: boolean) => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <IdentidadEditable
+          campaignId="c1"
+          characterId="ch1"
+          character={
+            {
+              id: "ch1",
+              level: 3,
+              raceKey: "dwarf",
+              subraceKey: null,
+              classKey: "fighter",
+              str: 16,
+              dex: 12,
+              con: 14,
+              int: 10,
+              wis: 10,
+              cha: 8,
+            } as never
+          }
+          sheet={null}
+          puedeEditar
+          esDM={esDM}
+        />
+      </QueryClientProvider>,
+    );
+  };
+
+  it("el dueño (no DM) ve «Nivel» deshabilitado con el motivo a la vista", () => {
+    montarFicha(false);
+    const campo = screen.getByLabelText("Nivel");
+    expect(campo).toBeDisabled();
+    expect(screen.getByTitle("El nivel lo fija el DM")).toBeInTheDocument();
+  });
+
+  it("el DM ve «Nivel» editable", () => {
+    montarFicha(true);
+    expect(screen.getByLabelText("Nivel")).not.toBeDisabled();
+  });
+});
+
 describe("las dos reglas de la identidad que solo se ven al usarla", () => {
   const montar = async (over: Record<string, unknown>, sheet: unknown) => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -510,5 +557,95 @@ describe("las dos reglas de la identidad que solo se ven al usarla", () => {
     // renombrar el atributo dejaba la unitaria en verde y la de navegador buscando un elemento
     // que ya no existe — un fallo que solo aparecería en la siguiente corrida de Playwright.
     expect(modificador.getAttribute("data-derivado")).toBe("abilityMod.int");
+  });
+});
+
+// Ola de arreglos 1 (I-2) — bajo una regla que no sea LIBRE, el servidor exige las seis juntas a
+// TODO el mundo; así que las casillas de una en una no le sirven a nadie y el bloque de abajo se
+// pinta para el dueño Y para el DM (spec §7, «dueño o DM»). El DM ve sus casillas apagadas con su
+// propio motivo — nunca una casilla que parece editable y devuelve 400 al soltar.
+describe("las características bajo una regla de la mesa que no es LIBRE (I-2)", () => {
+  const seis = { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 };
+  const campana = (tableRules: unknown) =>
+    ({
+      id: "c1",
+      name: "Mesa",
+      description: null,
+      ownerId: "dm",
+      createdAt: "2026-09-13T00:00:00Z",
+      tableRules,
+    }) as never;
+
+  const montar = (esDM: boolean, character: Record<string, unknown> = seis) => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <Caracteristicas
+          campaignId="c1"
+          characterId="ch1"
+          character={{ id: "ch1", level: 1, ...character } as never}
+          sheet={null}
+          puedeEditar
+          esDM={esDM}
+        />
+      </QueryClientProvider>,
+    );
+  };
+
+  it("MATRIZ, DM: el bloque de asignar está, y las seis casillas van apagadas con el motivo «se cambian juntas, abajo»", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(
+      campana({ abilities: { metodo: "MATRIZ" } }),
+    );
+
+    montar(true);
+
+    expect(
+      await screen.findByRole("button", { name: "Fijar características" }),
+    ).toBeInTheDocument();
+    // Dos «Fuerza»: la casilla apagada de la hoja y el desplegable del bloque. La casilla es el
+    // spinbutton.
+    const casilla = screen.getByRole("spinbutton", { name: "Fuerza" });
+    expect(casilla).toBeDisabled();
+    expect(casilla).toHaveAttribute("title", "Bajo esta regla las seis se cambian juntas, abajo");
+  });
+
+  it("MATRIZ, dueño: el bloque está y la casilla dice que las fija la regla de la mesa", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(
+      campana({ abilities: { metodo: "MATRIZ" } }),
+    );
+
+    montar(false);
+
+    expect(
+      await screen.findByRole("button", { name: "Fijar características" }),
+    ).toBeInTheDocument();
+    const casilla = screen.getByRole("spinbutton", { name: "Fuerza" });
+    expect(casilla).toBeDisabled();
+    expect(casilla).toHaveAttribute("title", "Las características las fija la regla de la mesa");
+  });
+
+  it("DADOS sin intento elegido, DM: ve «Tirar características» — tira por el jugador", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(
+      campana({
+        abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+      }),
+    );
+    vi.spyOn(characterSheetApi, "fetchAbilityRolls").mockResolvedValue([]);
+
+    montar(true, { str: null, dex: null, con: null, int: null, wis: null, cha: null });
+
+    expect(
+      await screen.findByRole("button", { name: "Tirar características" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Fuerza" })).toBeDisabled();
+  });
+
+  it("LIBRE: nada cambia — seis casillas editables y ningún bloque", async () => {
+    vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue(campana({}));
+
+    montar(true);
+
+    expect(await screen.findByRole("spinbutton", { name: "Fuerza" })).not.toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Fijar características" })).not.toBeInTheDocument();
   });
 });

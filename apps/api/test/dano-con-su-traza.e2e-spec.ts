@@ -120,12 +120,14 @@ describe("El daño, con su traza (e2e)", () => {
       // ejemplo de cierre del propio spec («25 de daño … CD 12») era **irrealizable a nivel 1**,
       // y esta prueba se escribió sin ejecutarse. Con 68 PG el golpe la deja viva, que es la
       // situación que la regla describe.
+      // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
       .send({ name: "Elara", level: 8, visibility: "PLAYERS" });
     const elaraId = jugador.body.id;
     await request(s)
       .patch(`${ficha(elaraId)}/sheet`)
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
+        level: 8,
         abilities: { str: 10, dex: 12, con: 14, int: 15, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "fighter" },
@@ -276,8 +278,9 @@ describe("El daño, con su traza (e2e)", () => {
     ).body.id;
     await request(s)
       .patch(`${ficha(enano)}/sheet`)
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
+        level: 8,
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "dwarf" },
         subrace: { source: "SRD", key: "dwarf-hill" },
@@ -322,8 +325,9 @@ describe("El daño, con su traza (e2e)", () => {
     ).body.id;
     await request(s)
       .patch(`${ficha(enano)}/sheet`)
-      .set("Authorization", auth(tokenPL))
+      .set("Authorization", auth(tokenDM))
       .send({
+        level: 8,
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "dwarf" },
         subrace: { source: "SRD", key: "dwarf-hill" },

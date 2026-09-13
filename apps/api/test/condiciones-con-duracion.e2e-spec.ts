@@ -40,6 +40,7 @@ describe("Condiciones con duración (e2e)", () => {
         .set("Authorization", `Bearer ${tokenDM}`)
         .send({ name: "Campaña de las condiciones" })
     ).body.id;
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     characterId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
@@ -50,6 +51,7 @@ describe("Condiciones con duración (e2e)", () => {
       .patch(sheetUrl())
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({
+        level: 3,
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "dwarf" },
         subrace: { source: "SRD", key: "dwarf-hill" },

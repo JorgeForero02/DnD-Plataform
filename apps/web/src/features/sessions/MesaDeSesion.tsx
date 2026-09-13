@@ -492,6 +492,7 @@ function PanelesSuperpuestos({
             characterId={personajeId}
             puedeEditar
             disposicion="mesa"
+            esDM={esDm}
           />
         )}
       </Dialog>

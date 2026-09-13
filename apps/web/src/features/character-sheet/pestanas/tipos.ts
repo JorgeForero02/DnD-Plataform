@@ -13,6 +13,13 @@ export interface PropsDePestana {
   data: SheetResponse & { sheet: NonNullable<SheetResponse["sheet"]> };
   puedeEditar: boolean;
   disposicion: Disposicion;
+  /**
+   * Reglas de la mesa (Task 6, D-CF-53) — solo la pestaña `Numeros` la usa hoy (`Caracteristicas`,
+   * E-RM-13), pero vive en el contrato compartido igual que `puedeEditar` para que un caller no
+   * tenga que acordarse de pasarla a una pestaña nueva que la necesite mañana. `false` por
+   * defecto en quien la omite (`HojaCalculada`).
+   */
+  esDM?: boolean;
 }
 
 // Tarea 7 (spec 2026-09-11) — las pestañas de la hoja, en el orden de la spec. El `id` es lo que

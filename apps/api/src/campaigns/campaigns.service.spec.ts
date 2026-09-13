@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CampaignsService } from "./campaigns.service";
 import { MembershipService } from "./membership.service";
@@ -106,6 +106,40 @@ describe("CampaignsService", () => {
         campaignId: "c1",
         actorId: "u1",
       });
+    });
+
+    it("update escribe tableRules cuando viaja y no la toca cuando no", async () => {
+      membership.requireDM.mockResolvedValue({ id: "m1", role: "DM" });
+      prisma.campaign.update.mockResolvedValue({ id: "c1" });
+      const reglas = { abilities: { metodo: "MATRIZ" }, nivelInicial: 3 };
+      await service.update("dm", "c1", { tableRules: reglas as never });
+      expect(prisma.campaign.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ tableRules: reglas }) }),
+      );
+      (prisma.campaign.update as jest.Mock).mockClear();
+      await service.update("dm", "c1", { name: "Otra" });
+      const data = (prisma.campaign.update as jest.Mock).mock.calls[0][0].data;
+      expect("tableRules" in data).toBe(false);
+    });
+
+    it("update rechaza con 400 una expresión de dados que el evaluador no acepta, y acepta 3d6", async () => {
+      membership.requireDM.mockResolvedValue({ id: "m1", role: "DM" });
+      prisma.campaign.update.mockResolvedValue({ id: "c1" });
+      await expect(
+        service.update("dm", "c1", {
+          tableRules: {
+            abilities: { metodo: "DADOS", expresion: "4d", intentos: 1, asignacionLibre: true },
+          } as never,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.campaign.update).not.toHaveBeenCalled();
+      await expect(
+        service.update("dm", "c1", {
+          tableRules: {
+            abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: false },
+          } as never,
+        }),
+      ).resolves.toBeDefined();
     });
   });
 

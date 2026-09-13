@@ -4,6 +4,9 @@ import { useCatalog, useUpdateSheet } from "./hooks";
 import type { CharacterRow } from "./api";
 import { resumenDeAjustes } from "./formula";
 import { opcionesDeClase, opcionesDeRaza, opcionesDeSubraza } from "./opcionesDeCatalogo";
+import { AsignarCaracteristicas } from "./AsignarCaracteristicas";
+import { useCampaign } from "../campaigns/hooks";
+import { reglasCompletas } from "../campaigns/reglas";
 import {
   explicacionSubclase,
   NOMBRE_CARACTERISTICA,
@@ -39,18 +42,28 @@ export function FichaEditable({
   characterId,
   character,
   puedeEditar,
+  esDM = false,
 }: {
   campaignId: string;
   characterId: string;
   character: CharacterRow;
   puedeEditar: boolean;
+  /**
+   * D-CF-66: el nivel lo fija el DM, ni siquiera el dueño puede tocarlo desde aquí. `false` por
+   * defecto — quien no sabe el rol de quien mira se queda con el trato más restrictivo, igual
+   * que `Caracteristicas.esDM`.
+   */
+  esDM?: boolean;
 }) {
   const actualizar = useUpdateSheet(campaignId, characterId);
   const { data: catalogo } = useCatalog();
+  // Reglas de la mesa (Task 6, D-CF-53) — el catálogo se filtra por lo que el DM permitió.
+  const { data: campaign } = useCampaign(campaignId);
+  const { permitidos } = reglasCompletas(campaign?.tableRules);
 
-  const razas = opcionesDeRaza(catalogo);
+  const razas = opcionesDeRaza(catalogo, permitidos.razas);
   const subrazas = opcionesDeSubraza(catalogo, character.raceKey);
-  const clases = opcionesDeClase(catalogo);
+  const clases = opcionesDeClase(catalogo, permitidos.clases);
 
   // Encargo A8 (2026-09-07) — el camino (subclase) de la clase actual, y a qué nivel se elige.
   // **Ninguna subclase se elige antes de `chosenAtLevel`**, así que el selector ni se pinta hasta
@@ -60,7 +73,12 @@ export function FichaEditable({
   const subclases = claseActual?.subclasses ?? [];
   const chosenAtLevel =
     subclases.length > 0 ? Math.min(...subclases.map((s) => s.chosenAtLevel)) : undefined;
-  const caminosDeLaClase = subclases.map((s) => ({
+  // La lista vacía deja todo, misma semántica que `opcionesDeRaza`/`opcionesDeClase`.
+  const caminosPermitidos =
+    permitidos.subclases.length === 0
+      ? subclases
+      : subclases.filter((s) => permitidos.subclases.includes(s.key));
+  const caminosDeLaClase = caminosPermitidos.map((s) => ({
     valor: s.key,
     texto: s.name,
     explicacion: explicacionSubclase(s.key),
@@ -143,8 +161,8 @@ export function FichaEditable({
             min={1}
             max={20}
             ancho="w-14"
-            disabled={!puedeEditar}
-            motivoDeshabilitado={motivo}
+            disabled={!puedeEditar || !esDM}
+            motivoDeshabilitado={esDM ? motivo : "El nivel lo fija el DM"}
             onGuardar={async (n) => actualizar.mutateAsync({ level: n })}
           />
         </label>
@@ -195,6 +213,7 @@ export function Caracteristicas({
   character,
   sheet,
   puedeEditar,
+  esDM = false,
 }: {
   campaignId: string;
   characterId: string;
@@ -202,9 +221,27 @@ export function Caracteristicas({
   /** `null` mientras la hoja no se puede derivar: falta raza, clase o alguna característica. */
   sheet: CalculatedSheet | null;
   puedeEditar: boolean;
+  /**
+   * Reglas de la mesa (Task 6, D-CF-53; ola de arreglos 1, I-2). Con una regla distinta de
+   * `LIBRE` el servidor exige las seis juntas **a todo el mundo**, así que las casillas de una en
+   * una se apagan para el dueño y para el DM, cada uno con su motivo, y el bloque de abajo se
+   * pinta para los dos (spec §7, «dueño o DM»). Hasta este arreglo el DM conservaba las casillas
+   * abiertas y cada una devolvía 400 al soltar. **Solo el DM conserva la llave tras elegir con
+   * dados** (E-RM-13), y la usa desde el bloque, con las seis juntas. `false` por defecto: quien no
+   * sabe el rol de quien mira se queda con el trato de jugador, que es el más restrictivo.
+   */
+  esDM?: boolean;
 }) {
   const actualizar = useUpdateSheet(campaignId, characterId);
   const motivo = "Solo el dueño del personaje o el DM pueden editarlo.";
+  const { data: campaign } = useCampaign(campaignId);
+  const regla = reglasCompletas(campaign?.tableRules).abilities;
+  const fijaLaMesa = regla.metodo !== "LIBRE";
+  // Una casilla apagada siempre dice por qué (`docs/04-convenciones.md`): al jugador, que la
+  // regla de la mesa las fija; al DM, que bajo esta regla no se cambian de una en una.
+  const motivoBloqueo = esDM
+    ? "Bajo esta regla las seis se cambian juntas, abajo"
+    : "Las características las fija la regla de la mesa";
 
   return (
     <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
@@ -240,8 +277,8 @@ export function Caracteristicas({
               min={1}
               max={30}
               ancho="w-12"
-              disabled={!puedeEditar}
-              motivoDeshabilitado={motivo}
+              disabled={!puedeEditar || fijaLaMesa}
+              motivoDeshabilitado={fijaLaMesa ? motivoBloqueo : motivo}
               onGuardar={async (n) => actualizar.mutateAsync({ abilities: { [ability]: n } })}
             />
             {/* Cuando la raza sube la puntuación, la casilla enseñaría un 14 con un +3 al
@@ -255,6 +292,18 @@ export function Caracteristicas({
           </div>
         );
       })}
+      {fijaLaMesa && (
+        <div className="col-span-full">
+          <AsignarCaracteristicas
+            campaignId={campaignId}
+            characterId={characterId}
+            regla={regla}
+            puedeEditar={puedeEditar}
+            esDM={esDM}
+            character={character}
+          />
+        </div>
+      )}
     </div>
   );
 }

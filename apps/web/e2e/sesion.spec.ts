@@ -62,7 +62,19 @@ async function crearCampanaConSesion(page: Page) {
  *
  * Misma receta que `hoja.spec.ts`: enano guerrero de nivel 1 con Constitución 14, o sea 12 PG.
  */
-async function crearPersonajeConHoja(page: Page, nombre: string) {
+/**
+ * D-CF-66: el nivel lo fija el DM, así que la casilla «Nivel» sale deshabilitada para quien no
+ * lo es. `esDM` por defecto en `true` — todas las llamadas de este fichero salvo la de la
+ * jugadora invitada («Sirella», más abajo) son la cuenta que crea su propia campaña, y esa
+ * cuenta es su DM. Un nuevo personaje ya nace a nivel 1 (`nivelInicial` por defecto), así que
+ * quien no es DM no pierde nada al no tocar la casilla: el valor que se comprobaría ya está ahí.
+ */
+async function crearPersonajeConHoja(
+  page: Page,
+  nombre: string,
+  opciones: { esDM?: boolean } = {},
+) {
+  const esDM = opciones.esDM ?? true;
   await page.getByRole("button", { name: "Personajes" }).click();
   await page.getByRole("button", { name: "Nuevo personaje" }).click();
   await page.getByLabel("Nombre").fill(nombre);
@@ -74,8 +86,10 @@ async function crearPersonajeConHoja(page: Page, nombre: string) {
 
   await page.getByLabel("Raza", { exact: true }).selectOption("dwarf");
   await page.getByLabel("Clase", { exact: true }).selectOption("fighter");
-  await page.getByLabel("Nivel", { exact: true }).fill("1");
-  await page.getByLabel("Nivel", { exact: true }).blur();
+  if (esDM) {
+    await page.getByLabel("Nivel", { exact: true }).fill("1");
+    await page.getByLabel("Nivel", { exact: true }).blur();
+  }
   for (const [etiqueta, valor] of [
     ["Fuerza", "16"],
     ["Destreza", "12"],
@@ -738,7 +752,8 @@ test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", asy
   await paginaJugadora.getByRole("button", { name: "Crear cuenta" }).click();
   await paginaJugadora.getByRole("button", { name: "Unirse a la campaña" }).click();
   await expect(paginaJugadora.getByRole("heading", { name: "La mesa de prueba" })).toBeVisible();
-  await crearPersonajeConHoja(paginaJugadora, "Sirella");
+  // D-CF-66: Sirella es de la jugadora, no del DM — su «Nivel» sale deshabilitado.
+  await crearPersonajeConHoja(paginaJugadora, "Sirella", { esDM: false });
   await paginaJugadora.getByRole("link", { name: "La mesa de prueba" }).click();
 
   await paginaDm.getByRole("tab", { name: "Sesiones" }).click();

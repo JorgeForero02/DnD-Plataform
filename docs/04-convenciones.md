@@ -98,6 +98,14 @@ cierre, donde el árbol entero hace que un fallo signifique algo. El paso 3 no h
 sus propias reglas cuando llegue. Más abajo, § *Trabajo con varios agentes a la vez*, están las dos
 guardas que cada brief lleva a cambio.
 
+**Enmienda D-CF-67 (2026-09-13), solo para la tanda «desbordes»:** ahí **no hay unitarias ni
+mutación por tarea**, porque lo que se arregla —un panel recortado por un `overflow`, un texto que
+se sale de su casilla— solo existe maquetado y `jsdom` no maqueta. Cada tarea cierra con
+`pnpm verify` limpio y con la prueba gráfica desbordes.spec.ts (en `apps/web/e2e/`) en verde sobre lo que
+tocó, **corrida por el propio implementador** (solo ese fichero, un agente a la vez). El cierre es
+el de D-CF-65 sin la revisión de rama entera: suite de navegador entera una vez y revisión acotada
+al componente nuevo y a los dos ficheros más tocados. Puerta de efectos vuelve a D-CF-65.
+
 **Fuera de N1, a propósito:** los e2e de API y los de navegador (ambos existen desde
 `c6fa899`; ambos necesitan Docker, y los de navegador además dos servidores vivos).
 Encadenarlos al gancho lo haría inservible. **No por eso son opcionales** — corren en su
@@ -347,6 +355,14 @@ patrón (`resolver`, `service`, `schema`), infraestructura y las claves de traza
   [autoridad de las reglas](./superpowers/specs/2026-09-02-autoridad-de-las-reglas-design.md).
 
 ### Reglas de interfaz que salieron del reseño (2026-09-02) — vinculantes
+
+> **Añadida el 2026-09-13 (desbordes, D-CF-67):** **todo desplegable propio vive en
+> `apps/web/src/ui/PanelFlotante.tsx`** —un portal al `body` con posición fija calculada desde su
+> disparador, `Escape`, clic fuera y devolución del foco—. **Un `absolute` dentro de un contenedor con
+> `overflow` distinto de `visible` no es una opción**: recorta en los dos ejes aunque solo se pidiera
+> uno, y así estuvo escondida la lista de objetivos al atacar con toda la suite unitaria en verde. Y **un
+> texto que no cabe hace crecer su caja o envuelve en los espacios, nunca se sale ni parte palabras**
+> (`Casilla` crece con la traza abierta). Lo mide `apps/web/e2e/desbordes.spec.ts`.
 
 Cada una nació de un defecto real, encontrado en producción o señalado por el autor. Se
 escriben aquí porque **volvieron a aparecer más de una vez**: una regla que solo vive en la

@@ -211,7 +211,9 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   });
   await expect(cuadroDeAtaques.getByText("Hacha grande")).toBeVisible();
   await cuadroDeAtaques.getByRole("button", { name: "Tirada de Hacha grande" }).click();
-  await cuadroDeAtaques.getByRole("button", { name: "Tirar daño de Hacha grande" }).click();
+  // Desbordes (2026-09-13): el panel de ataque vive en un portal al `body` (`PanelFlotante`); el
+  // botón de daño ya no cuelga de la región de ataques sino de la página.
+  await page.getByRole("button", { name: "Tirar daño de Hacha grande" }).click();
 
   // Se cierra la hoja para leer el registro de la mesa, que es donde queda constancia — la
   // misma razón por la que `combate.spec.ts` lee `sucesos` y no un toast que se ha ido antes de

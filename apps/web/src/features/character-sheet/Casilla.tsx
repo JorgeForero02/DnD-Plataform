@@ -49,7 +49,17 @@ export function Casilla({
   return (
     <div
       className={[
-        ANCHO_CASILLA,
+        // Desbordes, ronda 3 (2026-09-13, E-DB-10 — «la caja crece», la otra mitad de la
+        // regla): forzar el rótulo a envolver DENTRO de los 6rem fijos partía palabras a mitad
+        // («Bonific/icador») para que cupieran — legible, pero no es lo que E-DB-10 pedía. Con
+        // la traza ABIERTA la casilla puede crecer en su lugar: `min-w-[6rem] w-auto` deja que
+        // el ancho lo decida el contenido (nunca por debajo de las 6rem de las demás), y
+        // `max-w-[14rem]` la frena antes de invadir la casilla vecina o salirse de la ventana —
+        // a partir de ahí, el rótulo sí envuelve, pero por espacios (`break-normal` en
+        // `PasoDeTraza`, `Traza.tsx`), nunca a mitad de palabra. CERRADA sigue midiendo
+        // `ANCHO_CASILLA` fijo, sin cambio: las aserciones de `hoja.spec.ts` sobre las cinco
+        // casillas en reposo no dependen de esta rama.
+        desplegable ? "min-w-[6rem] w-auto max-w-[14rem]" : ANCHO_CASILLA,
         ALTO_CASILLA,
         desplegable ? "grid-rows-[auto_1fr_auto_auto]" : "grid-rows-[auto_1fr_auto]",
         "grid rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
@@ -76,7 +86,13 @@ export function Casilla({
       {desplegable && (
         <div
           data-testid="casilla-desplegable"
-          className="whitespace-normal text-left leading-normal"
+          // `min-w-0`: esta fila es también un ÍTEM de la rejilla (`grid-rows-…` de arriba); sin
+          // él, su pista de columna implícita crecería para acomodar el contenido más ancho por
+          // encima del `max-w-[14rem]` del contenedor (de arriba) en vez de respetarlo. Con
+          // `min-w-0` la columna se ciñe al ancho que el contenedor haya resuelto —entre 6 y
+          // 14rem— y el texto envuelve por espacios en su lugar (`break-normal` en
+          // `PasoDeTraza`, `Traza.tsx`).
+          className="min-w-0 whitespace-normal text-left leading-normal"
         >
           {desplegable}
         </div>

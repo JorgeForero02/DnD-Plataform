@@ -142,7 +142,14 @@ function PasoDeTraza({ paso, total }: { paso: TraceStep; total: number }) {
   );
 
   return (
-    <li className="flex items-baseline justify-between gap-s2 py-0.5">
+    // Desbordes, ronda 2 (2026-09-13): `items-baseline` alineaba la columna numérica con la
+    // PRIMERA línea del rótulo cuando éste envuelve (el `min-w-0` de abajo), y en una casilla
+    // estrecha esa primera línea es exactamente donde cae la cifra — «BASE Bonific2dor de
+    // competencia», la cifra pintada ENCIMA de la letra en vez de al lado. `items-start` fija a
+    // los dos arriba del todo en su lugar; la cifra ya no comparte renglón con ninguna línea del
+    // rótulo mientras éste se reserve su propio ancho (`flex-1 min-w-0`, más abajo) y la cifra el
+    // suyo (`shrink-0`, sin encoger nunca).
+    <li className="flex items-start gap-s2 py-0.5">
       {causa ? (
         <button
           type="button"
@@ -153,16 +160,29 @@ function PasoDeTraza({ paso, total }: { paso: TraceStep; total: number }) {
           // fallo que ya se pagó una vez en `TextoEditable`.
           title={`Ir a ${causa}, que es de donde sale este paso`}
           onClick={() => enfocarCausa(causa)}
-          className={`${clase} text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+          // Desbordes (2026-09-13, E-DB-10): `flex-1 min-w-0` — sin `min-w-0`, este hijo de un
+          // `flex` no encoge por debajo de su propio ancho de contenido (el mínimo por defecto
+          // de un ítem flexible es `auto`, no `0`). `flex-1` le da el ancho que le sobra a la
+          // cifra (`shrink-0` de abajo). **`break-normal`, no `break-words`** (ronda 3): partir
+          // la palabra a mitad («Bonific/icador») cupo en 6rem pero no es "envolver", es
+          // tipografía rota — ahora es la CASILLA la que crece cuando la traza está abierta
+          // (`Casilla.tsx`, hasta `max-w-[14rem]`), así que el rótulo tiene sitio de sobra para
+          // partir solo por espacios; si algún día un rótulo no cupiera ni así, se vería una
+          // única palabra larga saliéndose en vez de partida — preferible, y no ha ocurrido con
+          // ningún texto real de este dominio.
+          className={`${clase} min-w-0 flex-1 break-normal text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
         >
           {contenido}
         </button>
       ) : (
-        <span className={clase} data-untranslated={conocida ? undefined : "true"}>
+        <span
+          className={`${clase} min-w-0 flex-1 break-normal`}
+          data-untranslated={conocida ? undefined : "true"}
+        >
           {contenido}
         </span>
       )}
-      <span className="font-data text-chrome-xs text-text">
+      <span className="shrink-0 font-data text-chrome-xs text-text">
         {/* La columna numérica sí se queda en «= N» para CUALQUIER `override`, DM o no: la
             revisión (hallazgo 2) confirma que esa mitad del cambio ya era correcta — un paso
             `override` sustituye el total, así que "=" describe mejor lo que pasó que "+"/"−". */}

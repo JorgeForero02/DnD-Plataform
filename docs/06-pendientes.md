@@ -102,7 +102,9 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-13** (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
+Última revisión: **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
+y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
+a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
 anexo del autor pasados uno a uno, las fichas menores que la revisión final dejó abiertas, y una
 regla candidata de proceso, todo en la sección de abajo). Antes, el mismo día, la ronda de
 revisión de la tarea 11 del pulido (C4 #15: un follow-up de e2e, más abajo). Antes, **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
@@ -125,6 +127,21 @@ archivadas, 59 fechas corregidas y la ficha de la copia de seguridad cerrada com
 fecha de esta línea se actualiza al añadir una sección** — se quedó en el 2026-09-02 con tres
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
+
+## Encontrado por el autor en producción y decidido con el controlador (2026-09-13, tarde)
+
+## XP: no existe; se sube por hito (2026-09-13)
+
+**Abierta, decidida para la tanda «puerta de efectos».** No hay columna de experiencia, tabla de
+umbrales (*Character Advancement*: 300, 900, 2 700 … 355 000) ni XP por VD (*Experience Points by
+Challenge Rating*; el VD ya está en cada statblock). Hoy subir de nivel es por hito: lo pulsa el DM
+(D-CF-66). Alcance: `Character.xp`, «dar XP» a uno o varios desde la mesa, la hoja enseña
+«1 250 / 2 700» y **avisa** que toca subir sin subir sola (avisar y dejar), y una regla de la mesa
+`HITO` / `XP`. Dos preguntas para los cuatro pasos antes de planificar: (1) ¿reparto automático de la
+suma de VD al terminar un combate, o siempre a mano? (2) ¿XP también para PNJ jugables? Cabe en
+puerta de efectos porque comparte `character-sheet.service`, la mesa, el hilo y el fin de combate
+(`encounters.service`), y no toca el catálogo del paso 3. Se añade a la spec de puerta de efectos
+antes de escribir su plan.
 
 ## Dejado por «reglas de la mesa» (2026-09-13) — cerrada en rama, sin fusionar
 

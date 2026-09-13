@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { IconoMenu } from "./Iconos";
+import { PanelFlotante } from "./PanelFlotante";
 
 /**
  * **El menú «…» de una fila** (pulido 2026-09-12, C2: anexo #1). La regla de
@@ -58,7 +59,6 @@ export function MenuDeAcciones({
   // ni segundo render.
   const activo = Math.min(activoPedido, Math.max(acciones.length - 1, 0));
   const botonRef = useRef<HTMLButtonElement>(null);
-  const contenedorRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const id = useId();
 
@@ -91,17 +91,10 @@ export function MenuDeAcciones({
     if (abierto) itemsRef.current[activo]?.focus();
   }, [abierto, activo]);
 
-  useEffect(() => {
-    if (!abierto) return;
-    const fuera = (e: MouseEvent) => {
-      if (!(e.target instanceof Node) || !contenedorRef.current?.contains(e.target)) {
-        cerrar(false);
-      }
-    };
-    document.addEventListener("mousedown", fuera);
-    return () => document.removeEventListener("mousedown", fuera);
-  }, [abierto]);
-
+  // El clic fuera, el reposicionamiento en scroll/resize y el portal al `body` los da
+  // `PanelFlotante` (desbordes, E-DB-1..5): el `ul[role="menu"]` ya no vive dentro de este
+  // `<div>` una vez montado, así que un `contenedorRef.current?.contains(e.target)` de aquí
+  // dejaría de ver sus propios ítems y se cerraría solo en cuanto alguien tocara el menú.
   const alTeclear = (e: React.KeyboardEvent) => {
     const n = acciones.length;
     if (e.key === "Escape") {
@@ -135,7 +128,7 @@ export function MenuDeAcciones({
   };
 
   return (
-    <div ref={contenedorRef} className="relative inline-block">
+    <div className="inline-block">
       <button
         ref={botonRef}
         type="button"
@@ -148,7 +141,18 @@ export function MenuDeAcciones({
       >
         <IconoMenu className="h-4 w-4" />
       </button>
-      {abierto && (
+      <PanelFlotante
+        abierto={abierto}
+        disparador={botonRef}
+        // Sin rol propio (más abajo): el `ul[role="menu"]` de aquí es el único nodo accesible;
+        // el `div` del portal solo aporta posición y mecánica.
+        sinRol
+        etiqueta={etiqueta}
+        // El clic fuera ya cierra sin devolver el foco (como antes); Escape lo maneja
+        // `alTeclear` sobre el propio `ul` (con `stopPropagation`), así que este `onCerrar` solo
+        // se ve invocado por el clic fuera.
+        onCerrar={() => cerrar(false)}
+      >
         <ul
           id={`${id}-menu`}
           role="menu"
@@ -156,7 +160,7 @@ export function MenuDeAcciones({
           data-direccion={direccion}
           onKeyDown={alTeclear}
           className={[
-            "absolute right-0 z-30 min-w-[11rem] rounded-radius-sm border border-muted bg-surface py-1 shadow-lg",
+            "min-w-[11rem] rounded-radius-sm border border-muted bg-surface py-1 shadow-lg",
             direccion === "arriba" ? "bottom-full mb-1" : "top-full mt-1",
           ].join(" ")}
         >
@@ -211,7 +215,7 @@ export function MenuDeAcciones({
             );
           })}
         </ul>
-      )}
+      </PanelFlotante>
     </div>
   );
 }

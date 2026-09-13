@@ -356,6 +356,14 @@ patrón (`resolver`, `service`, `schema`), infraestructura y las claves de traza
 
 ### Reglas de interfaz que salieron del reseño (2026-09-02) — vinculantes
 
+> **Añadida el 2026-09-13 (desbordes, D-CF-67):** **todo desplegable propio vive en
+> `apps/web/src/ui/PanelFlotante.tsx`** —un portal al `body` con posición fija calculada desde su
+> disparador, `Escape`, clic fuera y devolución del foco—. **Un `absolute` dentro de un contenedor con
+> `overflow` distinto de `visible` no es una opción**: recorta en los dos ejes aunque solo se pidiera
+> uno, y así estuvo escondida la lista de objetivos al atacar con toda la suite unitaria en verde. Y **un
+> texto que no cabe hace crecer su caja o envuelve en los espacios, nunca se sale ni parte palabras**
+> (`Casilla` crece con la traza abierta). Lo mide `apps/web/e2e/desbordes.spec.ts`.
+
 Cada una nació de un defecto real, encontrado en producción o señalado por el autor. Se
 escriben aquí porque **volvieron a aparecer más de una vez**: una regla que solo vive en la
 cabeza de quien arregló el fallo se paga otra vez al mes siguiente.

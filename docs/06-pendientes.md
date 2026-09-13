@@ -102,9 +102,9 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-13, tarde** (dos fichas nuevas en la sección de abajo: el desborde que esconde la
-lista de objetivos al atacar, reproducido en producción por el controlador con la sesión del DM, y la
-experiencia, que no existe y va a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
+Última revisión: **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
+y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
+a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
 anexo del autor pasados uno a uno, las fichas menores que la revisión final dejó abiertas, y una
 regla candidata de proceso, todo en la sección de abajo). Antes, el mismo día, la ronda de
 revisión de la tarea 11 del pulido (C4 #15: un follow-up de e2e, más abajo). Antes, **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
@@ -129,22 +129,6 @@ secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con
 dentro. Las dos las cazó una auditoría, no una revisión.
 
 ## Encontrado por el autor en producción y decidido con el controlador (2026-09-13, tarde)
-
-## Desbordes: lo que se despliega no se ve entero (2026-09-13, reproducido en producción)
-
-**Abierta, grave para el DM.** En producción (`6d2b2ca`), con la sesión del DM, hoja de un PNJ →
-Ataques → «Atacar» con encuentro `ACTIVE`: el botón sabe que hay combate (`aria-expanded` → `true`) y
-la lista de objetivos **existe** (`[aria-label^="Objetivo del ataque"]`, tres combatientes), pero el
-panel (`TirarAtaqueBoton.tsx:286`, `absolute z-30`, 740 px) vive dentro del envoltorio de la tabla
-(`AtaquesYLanzamiento.tsx:192`, `overflow-x-auto`, **68 px de alto de cliente**): el envoltorio hace
-scroll interno (`scrollTop` 733) y por la casilla asoma solo «Tirar daño». El DM no puede elegir
-objetivo y el ataque sale suelto, sin comparar con la CA. Mismo mecanismo en las casillas de la
-cabecera (CA/INIC./VEL./PG/COMP.): la traza envuelve fuera del borde. `jsdom` no maqueta; 1 601
-unitarias en verde no lo ven. **Servidor y lógica de combate funcionan.** Spec:
-`superpowers/specs/2026-09-13-desbordes-design.md` (auditoría en navegador + un componente de panel
-flotante en portal + una prueba Playwright genérica «nada se sale de su padre»; proceso: solo
-pruebas gráficas y `verify`, enmienda a D-CF-65 pedida por el autor). Orden: tras reglas de la
-mesa, antes de puerta de efectos.
 
 ## XP: no existe; se sube por hito (2026-09-13)
 

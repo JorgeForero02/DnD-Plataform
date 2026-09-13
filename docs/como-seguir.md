@@ -73,8 +73,13 @@ el bloque de Ajustes y la hoja que obedece. **Primera tanda bajo D-CF-65** (proc
 tarea, riguroso al cierre): la revisión de la rama entera cazó cuatro importantes que ninguna tarea
 vio, y dos olas los cerraron. **Sin fusionar ni desplegar: la fusión la decide el autor.** Lo que
 dejó abierto está en [06-pendientes.md](./06-pendientes.md), «Dejado por reglas de la mesa» (RM-1 la
-decidió el mismo día: **el nivel es del DM**, D-CF-66). **Lo siguiente es la «puerta de efectos»**, también bajo D-CF-65, con su plan
-por `writing-plans` cuando el autor lo pida. El orden previo, que ya no manda, sigue debajo:
+decidió el mismo día: **el nivel es del DM**, D-CF-66). **Después, «desbordes» (2026-09-13), cerrada en la rama
+`desbordes/antes-del-paso-3` sobre la anterior** ([07-historial.md](./07-historial.md), «Desbordes»):
+`ui/PanelFlotante` en portal para el panel de ataque y el menú del elenco, la traza de «Comp.»
+dentro de su casilla, y `desbordes.spec.ts` con captura por caso; recortada por el autor a «solo
+arreglo + reconocimiento visual» (D-CF-67). **Tampoco fusionada ni desplegada.** **Lo siguiente es
+la «puerta de efectos»**, bajo D-CF-65 tal cual, con su plan por `writing-plans` cuando el autor lo
+pida. El orden previo, que ya no manda, sigue debajo:
 
 Antes → la tanda **«puerta de efectos»**
 ([spec](./superpowers/specs/2026-09-12-la-puerta-de-efectos-design.md): curar a otro, daño de

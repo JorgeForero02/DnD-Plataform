@@ -8,6 +8,12 @@
 
 **Tech Stack:** React 18 (`createPortal`), Tailwind, Playwright (Chromium), la semilla `scripts/seed-demo.mjs`.
 
+> **Recortado por el autor el 2026-09-13, con la Tarea 1 en vuelo:** la tanda pasó a «solo arreglo
+> + reconocimiento visual de lo arreglado». T1 quedó acotada a los tres casos de la auditoría (sin
+> recorrido genérico ni segunda ventana); T2 migró solo `TirarAtaqueBoton` y `MenuDeAcciones`; T4 se
+> hizo sin suite entera ni revisión. Lo ejecutado está en `07-historial.md`, «Desbordes». El texto
+> de abajo se conserva tal cual: es lo que se planificó, no lo que se hizo.
+
 **Spec:** [docs/superpowers/specs/2026-09-13-desbordes-design.md](../specs/2026-09-13-desbordes-design.md), aprobada por el autor. La evidencia de producción está en su §2.1 y **no se re-verifica**. Proceso: **D-CF-65 enmendada por D-CF-67** (`docs/decisiones.md`, `docs/04-convenciones.md`).
 
 ## Global Constraints

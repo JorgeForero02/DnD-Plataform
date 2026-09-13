@@ -311,6 +311,11 @@ test("escribir una expresión inválida no cambia el alto de la tarjeta de tirar
   // ANTES de la primera medida, no solo antes de escribir.
   await page.evaluate(() => document.fonts.ready);
   await expect(campo).toBeVisible();
+  // Fix round 5 (controlador) — «Tirada nueva» comparte fila con «Pedir una tirada»
+  // (`PedirTirada.tsx`, `useGuiaDeCd`) en `grid items-stretch`: si la guía de CD del hermano
+  // llega tarde, `items-stretch` reparte su alto a esta tarjeta también. Se busca en la página,
+  // no en `tarjeta`, porque el botón vive en el hermano.
+  await expect(page.getByRole("button", { name: /Muy fácil/ })).toBeVisible();
   const antes = await tarjeta.boundingBox();
   expect(antes).not.toBeNull();
 

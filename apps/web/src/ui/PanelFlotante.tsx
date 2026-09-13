@@ -87,7 +87,12 @@ export function PanelFlotante({
 
   useEffect(() => {
     if (!abierto) return;
-    caja.current?.focus();
+    // Un consumidor que ya movió el foco a un hijo suyo al abrir (`MenuDeAcciones`, al primer
+    // `menuitem`) manda: robárselo para dárselo al propio contenedor es la regresión que
+    // `e2e/teclado.spec.ts` cazó — Enter abría el menú, pero el foco real quedaba en el `div`
+    // del portal, no en «Condición». Solo se enfoca el contenedor cuando el foco NO está ya
+    // dentro (el caso de `TirarAtaqueBoton`, que no mueve el foco por su cuenta).
+    if (!caja.current?.contains(document.activeElement)) caja.current?.focus();
     const onScroll = () => colocar();
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     window.addEventListener("resize", onScroll);

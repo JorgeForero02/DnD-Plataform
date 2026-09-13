@@ -186,6 +186,12 @@ test("el menú «Más acciones sobre …» del elenco, con teclado: Tab, Enter, 
   await page.getByLabel("Nombre").fill(nombrePersonaje);
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+  // Fix round 1 (controlador) — **se cierra el cajón, no se navega**: «Personajes» abre un
+  // diálogo (`Dialog title="Personajes"`) que se queda ENCIMA de la pestaña «Sesiones» si no se
+  // cierra; sin este clic, `getByRole("tab", { name: "Sesiones" })` existe en el DOM pero no es
+  // visible (tapado), y el clic siguiente se queda esperando para siempre. Mismo gesto que
+  // `e2e/dar-a-un-pnj.spec.ts`.
+  await page.getByRole("button", { name: "Cerrar (Escape)" }).click();
 
   await page.getByRole("tab", { name: "Sesiones" }).click();
   await page.getByRole("button", { name: "Nueva sesión" }).click();

@@ -346,9 +346,12 @@ test("la hoja dentro del cajón: la tira fija no se come su cuerpo, y la bolsa c
   await expect(barra).toBeVisible({ timeout: 10_000 });
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
 
+  // Fix round 1 (controlador, tarea 8 del pulido) — el ojo dejó de ser un botón de la fila:
+  // «Su hoja» es ahora un ítem del menú «…» (`MenuDeAcciones`), junto a «Condición» y «Dar…».
   await page
-    .getByRole("button", { name: "Abrir la ficha de Borin Barbaférrea" })
+    .getByRole("button", { name: "Más acciones sobre Borin Barbaférrea" })
     .click({ timeout: 20_000 });
+  await page.getByRole("menuitem", { name: "Su hoja" }).click();
 
   // 1 · La tira fija y el cuerpo de la hoja son HERMANOS: el borde de abajo de una no puede
   //     pasarse del borde de arriba del otro. Con el defecto había 72px de solape; sin él, aire.
@@ -735,6 +738,13 @@ test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", asy
     elenco.getByRole("button", { name: /puntos de golpe a Sirella/ }).first(),
   ).toBeVisible();
   await expect(elenco.getByRole("button", { name: /puntos de golpe a Borin/ })).toHaveCount(0);
+  // Fix round 1 (controlador) — la regla del título («sobre el de otro NO hay mandos») cubre
+  // también «Daño» y el disparador del menú «…» (tarea 8 del pulido: «Condición»/«Dar…»/«Su
+  // hoja» se plegaron ahí, así que el disparador es «Más acciones sobre …», no ya un ojo
+  // suelto), no solo los ±5: los tres son mandos del DM, y ninguno debe aparecer sobre la
+  // tarjeta de un personaje ajeno en la vista de una jugadora.
+  await expect(elenco.getByRole("button", { name: "Daño a Borin" })).toHaveCount(0);
+  await expect(elenco.getByRole("button", { name: "Más acciones sobre Borin" })).toHaveCount(0);
 
   // --- Y lo que ve el DM: la parrilla de todos, con mandos sobre cada uno ---
   // Y el DM recarga por lo mismo: su lista se pidió antes de que la jugadora creara el suyo.
@@ -751,7 +761,9 @@ test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", asy
   // cuáles son los mandos: ya no los ±5, sino los tres de la maqueta.
   await expect(elencoDm.getByRole("button", { name: "Daño a Borin" })).toBeVisible();
   await expect(elencoDm.getByRole("button", { name: "Daño a Sirella" })).toBeVisible();
-  await expect(elencoDm.getByRole("button", { name: "Abrir la ficha de Sirella" })).toBeVisible();
+  // Fix round 1 (controlador, tarea 8 del pulido) — el ojo dejó de ser un botón de la fila:
+  // «Su hoja» vive ahora en el menú «…», junto a «Condición» y «Dar…».
+  await expect(elencoDm.getByRole("button", { name: "Más acciones sobre Sirella" })).toBeVisible();
   // El DM no tiene «su» personaje destacado: maneja a muchos, que es la situación de BG3.
   await expect(elencoDm.getByText("Tu personaje")).toHaveCount(0);
 

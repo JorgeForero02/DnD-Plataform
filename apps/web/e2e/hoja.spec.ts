@@ -1092,9 +1092,12 @@ test("dentro del cajón «Su hoja» la banda va a ras y sobre fondo opaco (anexo
   await expect(barra).toBeVisible({ timeout: 10_000 });
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
 
+  // Fix round 1 (controlador, tarea 8 del pulido) — el ojo dejó de ser un botón de la fila:
+  // «Su hoja» es ahora un ítem del menú «…» (`MenuDeAcciones`), junto a «Condición» y «Dar…».
   await page
-    .getByRole("button", { name: `Abrir la ficha de ${nombrePersonaje}` })
+    .getByRole("button", { name: `Más acciones sobre ${nombrePersonaje}` })
     .click({ timeout: 20_000 });
+  await page.getByRole("menuitem", { name: "Su hoja" }).click();
 
   const dialogo = page.getByRole("dialog", { name: "Su hoja" });
   await expect(dialogo).toBeVisible();

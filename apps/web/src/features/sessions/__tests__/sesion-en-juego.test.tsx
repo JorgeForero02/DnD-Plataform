@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BarraDeSesion } from "../BarraDeSesion";
+import { BandaDeMesa } from "../BandaDeMesa";
 import { ControlesDeSesion } from "../ControlesDeSesion";
 import { lineaDeLog } from "../linea-de-log";
 import { duracionDesde, nombreSello } from "../vocabulario";
@@ -308,5 +309,48 @@ describe("el log se lee en prosa, nunca en claves", () => {
     const ahora = new Date("2026-09-02T21:47:00.000Z").getTime();
     expect(duracionDesde(inicio, ahora)).toBe("1h 47m");
     expect(duracionDesde(null, ahora)).toBe("");
+  });
+});
+
+// Anexo #18 — «salir de la mesa» volvía a TODAS las crónicas, no a la campaña que se estaba
+// jugando: la primera miga de la banda era «Tus crónicas», un salto de vuelta a cero. Ahora la
+// flecha va con la campaña (a su pestaña Sesiones) y «Tus crónicas» pasa a miga secundaria.
+describe("la banda de la mesa (anexo #18)", () => {
+  function wrapper({ children }: { children: React.ReactNode }) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return (
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/campaigns/c1"]}>
+          <Routes>
+            <Route path="/campaigns/:id" element={<>{children}</>} />
+            <Route path="*" element={<>{children}</>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(members, "useMembers").mockReturnValue({ data: [] } as never);
+  });
+
+  it("la primera miga de la mesa vuelve a la campaña, pestaña Sesiones; «Tus crónicas» va después (anexo #18)", () => {
+    render(
+      <BandaDeMesa
+        campaignId="c1"
+        nombreDeCampana="La mesa"
+        sesion={null}
+        esDm
+        comoUsuario=""
+        onComoUsuario={() => {}}
+      />,
+      { wrapper },
+    );
+
+    const enlaces = screen.getAllByRole("link");
+    expect(enlaces[0]).toHaveAttribute("href", "/campaigns/c1?seccion=sessions");
+    expect(enlaces[0]).toHaveTextContent("La mesa");
+    expect(screen.getByRole("link", { name: "Tus crónicas" })).toHaveAttribute("href", "/");
   });
 });

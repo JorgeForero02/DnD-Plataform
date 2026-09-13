@@ -60,6 +60,9 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-08-start-devuelve-por-get.md`](./_archivo/historial-2026-09-08-start-devuelve-por-get.md) | **`start()` devuelve por `get()`, como sus tres hermanos** (ficha P3), movida entera el 2026-09-13 al escribir la línea de la Task 10 del pulido: el fichero estaba en 999 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-08-advanceturn-setinitiative.md`](./_archivo/historial-2026-09-08-advanceturn-setinitiative.md) | **`advanceTurn()` y `setInitiative()` devuelven por `get()` también**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el primer archivado. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-08-el-reconocimiento.md`](./_archivo/historial-2026-09-08-el-reconocimiento.md) | **El reconocimiento: dieciocho fichas que el código desmentía**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los dos primeros archivados. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-ronda-arreglo-tarea-7.md`](./_archivo/historial-2026-09-12-ronda-arreglo-tarea-7.md) | **La ronda de arreglo de la tarea 7 del pulido** —un solo d20, la navegación entra en el barrido—, movida entera el 2026-09-13 al insertar las tareas 12–14 del pulido: el fichero quedaba en 1074 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-7-seis-dados.md`](./_archivo/historial-2026-09-12-tarea-7-seis-dados.md) | **La tarea 7 del pulido, seis dados dibujados y el barrido de iconos**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía en 1038 de 1000 tras el primer archivado. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-8-menu-de-acciones.md`](./_archivo/historial-2026-09-12-tarea-8-menu-de-acciones.md) | **La tarea 8 del pulido, `MenuDeAcciones` y la fila del elenco**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía en 1002 de 1000 tras los dos primeros archivados. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-10-la-poda-treinta-y-nueve-bloques.md`](./_archivo/historial-2026-09-10-la-poda-treinta-y-nueve-bloques.md) | **La poda: treinta y nueve bloques fuera del tablero**, movida entera el 2026-09-13 al escribir la ronda de arreglo de la Task 10 del pulido (round 1): el fichero volvía a pasarse de 1000. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-11-hoja-a-pagina-spec-y-plan.md`](./_archivo/historial-2026-09-11-hoja-a-pagina-spec-y-plan.md) | **La hoja a página completa: spec aprobada y plan escrito, sin código**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-12-paso-3-cierre-primera-parte.md`](./_archivo/historial-2026-09-12-paso-3-cierre-primera-parte.md) | **El paso 3 se convierte en el cierre de la primera parte**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
@@ -80,6 +83,89 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Tarea 12 del pulido: salir de la mesa vuelve a la campaña (2026-09-13, anexo #18)
+
+Qué — la primera miga de `BandaDeMesa.tsx` era «Tus crónicas» y llevaba a `/`, la lista entera de
+campañas: salir de una mesa en juego mandaba a cero en vez de a la campaña que se estaba jugando.
+Ahora la flecha va con el nombre de la campaña a `/campaigns/:id?seccion=sessions` —el mismo
+enlace que `MesaDeSesion.tsx` ya usaba para «Entrar a la mesa», que `CampaignDetailPage.tsx`
+resuelve a la pestaña Sesiones— y «Tus crónicas» pasa a miga secundaria, detrás de un filete, sin
+perder su enlace a `/`.
+
+Por qué — el anexo #18 lo pedía tal cual: el gesto de «salir» de una pantalla anidada debe volver
+al contenedor inmediato, no saltar todos los niveles.
+
+Evidencia — unitaria nueva en `sesion-en-juego.test.tsx` (describe «la banda de la mesa (anexo
+#18)»): la primera miga tiene `href="/campaigns/c1?seccion=sessions"` y texto «La mesa», y «Tus
+crónicas» sigue apuntando a `/` (15/15 del fichero). e2e nuevo en `sesion.spec.ts`: desde una mesa
+en reposo, pulsar el primer enlace de la banda deja la pestaña Sesiones seleccionada (no corrido
+en esta sesión, a cargo del orquestador junto a `mesa-mide.spec.ts`). Mutación: devolver `to="/"`
+al primer enlace hace fallar la unitaria nueva (restaurado con `cp`). Los recorridos que ya
+pulsaban «Tus crónicas» desde la mesa (`campana.spec.ts:590`) siguen valiendo: el enlace existe,
+solo cambió su orden.
+
+**Revertir:** en `BandaDeMesa.tsx`, devolver el primer `Link` a `to="/"` con el texto «Tus
+crónicas» y el segundo a `to={`/campaigns/${campaignId}`}` con el nombre de la campaña; quitar la
+unitaria y el e2e nuevos.
+
+---
+
+## Tarea 13 del pulido: PG temporales del bestiario — la pregunta solo tras pulsar (2026-09-13, anexo #20)
+
+Qué — en `DarTemporales.tsx`, `hayConflicto = actuales > 0 && nuevos > 0` se evaluaba con
+`cuantos` ya en su valor por defecto ("5"), así que en cuanto un PNJ tenía algún PG temporal el
+`alertdialog` estaba **siempre** puesto y el botón «Dárselos» desaparecía — parecía que la
+pantalla no hacía nada. Y «Dejar los N que tenía» mandaba `tempHpEleccion: "mayor"`, que el
+servidor resuelve con `Math.max`: si los nuevos eran más que los que tenía, «dejar los que tenía»
+cambiaba igualmente el PG temporal. Ahora `preguntando` es estado explícito que solo se pone a
+`true` al pulsar «Dárselos» con temporales previos; «Quedarse con los N nuevos» manda
+`tempHpEleccion: "los-nuevos"`; y «Dejar los N que tenía» **no manda ninguna petición** — solo
+cierra la pregunta. `hayConflicto` se quita.
+
+Por qué — SRD 5.1, *Temporary Hit Points*: *"you decide whether to keep the ones you have or to
+gain the new ones"*. Conservar es no cambiar nada; mandar `"mayor"` (que el servidor traduce a
+`Math.max`) era la elección equivocada cuando los nuevos eran mayores que los que ya tenía el PNJ.
+
+Evidencia — unitarias nuevas en `DarTemporales.test.tsx`: con temporales previos el `alertdialog`
+no está hasta pulsar «Dárselos»; «Dejar los que tenía» no llama a `fijar.mutate` y cierra la
+pregunta; «Quedarse con los nuevos» manda `tempHpEleccion: "los-nuevos"` y cierra al resolver.
+e2e nuevo en `bestiario.spec.ts` (no corrido en esta sesión, a cargo del orquestador). Mutación:
+hacer que «Dejar los que tenía» llame a `mandar("mayor")` hace fallar la unitaria «no manda nada»
+(restaurado con `cp`).
+
+**Revertir:** en `DarTemporales.tsx`, devolver `hayConflicto` y pintar el `alertdialog` con esa
+condición en vez de `preguntando`; hacer que «Dejar los que tenía» llame a `mandar("mayor")`;
+quitar las unitarias y el e2e nuevos.
+
+---
+
+## Tarea 14 del pulido: filtros del catálogo de objetos (2026-09-13, anexo #21)
+
+Qué — `CampaignItemsCatalogPage.tsx` solo filtraba por el texto del buscador; con un catálogo
+mixto (objetos propios de la campaña + SRD) no había forma de acotar por tipo de objeto ni por
+origen, a diferencia del bestiario, que ya tiene sus chips. Dos filas nuevas de `FilterChip`
+dentro de `Toolbar` (`ui/Collection.tsx`, igual que `PanelDeBestiario.tsx`): una por `ItemKind`
+—«Todos» + `TIPOS_DE_OBJETO.map(...)` con `NOMBRE_TIPO`— y otra por origen —«De todas partes» /
+«Del catálogo» / «De la campaña», con `esDelSrd(id)` decidiendo el segundo grupo. El filtrado es
+de cliente, nunca control de acceso: la lista que llega ya viene filtrada por `canView` en el
+servidor. El `EmptyState` de «ningún objeto se llama así» pasa a nombrar también los filtros
+cuando hay alguno activo.
+
+Por qué — el anexo #21 lo pedía por paridad con el bestiario, que ya resolvió el mismo problema
+con el mismo patrón de chips.
+
+Evidencia — unitaria nueva (anexo #21): con 1 objeto propio + 2 del SRD, pulsar «Arma» deja 2
+filas y pulsar además «De la campaña» deja 1 («Daga de la casa»). e2e: en el recorrido del
+catálogo, pulsar «Armadura» dejar sin «Daga» y con «Cota de mallas» (no corrido en esta sesión, a
+cargo del orquestador). Mutación: ignorar `tipo` en el filtro hace fallar la unitaria nueva
+(restaurado con `cp`).
+
+**Revertir:** en `CampaignItemsCatalogPage.tsx`, quitar los dos `useState` de `tipo`/`origen`, sus
+condiciones en el filtro y los dos `<Toolbar>` de `FilterChip`; devolver el `EmptyState` a su
+texto sin mencionar filtros; quitar la unitaria y el e2e nuevos.
 
 ---
 
@@ -298,173 +384,35 @@ nada que ya exista, así que revertir no tiene trampa de datos que limpiar.
 
 ---
 
-## Tarea 8 del pulido: `MenuDeAcciones` y la fila del elenco (2026-09-12, C2 #1)
+## Tarea 8 del pulido: `MenuDeAcciones` y la fila del elenco (2026-09-12, C2 #1) — archivada
 
-Qué — `ui/MenuDeAcciones.tsx`, nuevo: el menú «…» genérico que la regla de
-`docs/04-convenciones.md` ya nombraba (`ACCIONES_VISIBLES` = 2, D-CF-59). Consume `IconoMenu`
-(Tarea 7); `<AccionDeMenu>` trae `id`, `rotulo`, `icono?`, `onSelect`, `disabled?`, `motivo?`
-(leído por `aria-describedby`) y `tono?`. Teclado completo: flechas mueven el foco entre ítems
-con vuelta al principio/final, Home/End al primero/último, Enter/Espacio seleccionan, Escape
-cierra y devuelve el foco al botón, Tab lo cierra sin devolverlo, y un clic fuera también lo
-cierra. Se abre hacia donde mide que hay sitio (`medirSitio`, costura de prueba documentada en
-la firma — no una prop de producto).
-
-`MandosDeCombatiente.tsx` (siete controles antes, hasta salirse de la tarjeta — anexo #1): solo
-«Daño» y «Curar» quedan como botones; «Condición», «Dar…» y «Su hoja» pasan al menú, y
-`accionesDeBando` (prop nueva, `AccionDeMenu[]`, `[]` por defecto) se añade al final. `DarObjeto`
-gana `controlado?: { abierto; onCerrar }`: con él no pinta su propio botón «Dar» —el ítem del
-menú ya lo abre y lo cierra—; sin él (`ResultadoDeTabla.tsx`, botín de una tabla del DM) se
-comporta exactamente como antes. `CorregirBando.tsx` gana `useAccionesDeBando(p)`, que devuelve
-los mismos tres ítems que su variante de fila usando el mismo `useSetSide`/`BANDOS` — no una
-segunda implementación. La fila quedó sustituida por el menú: sus aserciones se movieron a los
-`menuitem` con su razón escrita en cada prueba, y el componente de fila, sin consumidor ni
-prueba propia, se borró en la ronda de arreglo 3 (abajo). *(Esta frase decía «se queda
-intacta, para no borrar su prueba» hasta esa ronda; era falsa: la prueba ya se había movido.)*
-`FichaDeElenco`/`FichaDePnj` dejan de montar `<CorregirBando />` aparte y llaman al hook siempre
-(valores de repuesto cuando falta encuentro/bando/sesión, por la regla de los hooks), pasando la
-lista real al menú solo cuando la misma puerta que antes decidía montar la fila —`conMandos`/
-`esDm` + `enCombate` + `bando` + `sessionId` + `encounterId` + `combatanteId`— sigue abierta.
-
-Pruebas — TDD: `MenuDeAcciones.test.tsx` (5), `fireEvent` en vez de `userEvent` porque
-`@testing-library/user-event` no es dependencia del paquete (comprobado antes de escribir, no
-se añadió). `FichaDeElenco.test.tsx`, `ColumnaElenco.test.tsx` y `DarObjeto.test.tsx`: las
-aserciones que buscaban el `group`/botón de fila **cambiaron de camino** (abrir el menú, mirar
-sus `menuitem`) y **no se borró ninguna** — dos de ellas necesitaron `findByRole` en vez de
-`getByRole` porque los ítems de bando llegan por una consulta más (`useCurrentEncounter`) que
-puede resolver después de que el menú ya esté abierto. `DarObjeto.test.tsx` suma tres casos del
-modo `controlado`. Mutación: quitar la rama `Escape` de `MenuDeAcciones.tsx` (`cp` de por medio)
-puso roja la unitaria del foco; restaurado con `cp`. Unitarias en verde, ninguna desactivada
-(el conteo lo escribe el bloque generado de [00-INDEX.md](./00-INDEX.md), no esta línea).
-
-e2e (editados, no corridos por el implementador — los corre el orquestador):
-`teclado.spec.ts` gana un recorrido nuevo, el menú por teclado entero (Tab hasta «Más acciones
-sobre …», Enter abre y mueve el foco al primer ítem, ArrowDown al segundo, Escape cierra y
-devuelve el foco, Enter+Enter selecciona y abre «Condición»). `combate.spec.ts` no citaba
-«Condición»/«Dar»/el ojo — no necesitó cambios. `dar-a-un-pnj.spec.ts`: el clic en «Dar» de la
-fila pasó a abrir «Más acciones sobre Borin Barbaférrea» y elegir el `menuitem` «Dar…».
-`espacios.spec.ts` gana la medida del anexo #1: la fila de mandos de una tarjeta no se sale de
-su rectángulo, a 1280×800. `tokens-contrast.spec.ts` gana una superficie: el menú abierto sobre
-un combatiente real, en los tres temas.
-
-Documentación — 04 ya nombraba el componente (Tarea 0); se le añadió la línea de qué se plegó
-y cuándo. 08: fila nueva `teclado` (no tenía fila propia pese a existir desde antes) y se
-corrigió una frase que decía que Playwright no cubría teclado, cuando `teclado.spec.ts` ya
-existía; `espacios`, `dar-a-un-pnj` y `tokens-contrast` ganan una frase cada una sobre su
-medida/camino nuevos.
-
-Ronda de arreglo 3 (revisión de `1c30fe8..6b54aa4`) — cuatro hallazgos. (1) La medida de
-`espacios.spec.ts` era **vacía**: medía el `<div>` de la fila, caja de bloque que nunca sobresale
-de su tarjeta; lo que se salía en el anexo #1 eran sus hijos. Ahora mide cada hijo directo contra
-el borde de la tarjeta (±1px) y `scrollWidth ≤ clientWidth` en la fila. (2) `useAccionesDeBando`
-**tragaba el error** que la fila pintaba con `role="alert"`: devuelve `{ acciones, error }` y
-`MandosDeCombatiente` (prop `errorDeBando`) lo pinta bajo la fila; RTL con `setSide` rechazando.
-(3) El componente de fila `CorregirBando` **se borró** (sin consumidor ni prueba). (4) «Neutral»
-**perdió su frase**: `AccionDeMenu` gana `descripcion?`, leída por `aria-describedby` aparte de
-`motivo` (con los dos, se enlazan los dos ids) y pintada FUERA del botón para no entrar en su
-nombre; el hook la pone en NEUTRAL. Menores: `activo` se acota si la lista encoge; Escape hace
-`stopPropagation` para no cerrar un `Dialog` que lo contenga (D-CF-50). Mutación: sin `error` ni
-`descripcion` en el hook, dos unitarias en rojo; restaurado.
-
-Ronda de arreglo 4 (controlador): el arreglo 2 de `espacios.spec.ts` («…La mesa tira», anexo #8)
-decía que la carrera era una tipografía tardía de Google Fonts; era falso — la guía de CD
-(`useGuiaDeCd`, solo en `PanelDeDadosDeLaMesa.tsx`) llega del servidor después del primer pintado y
-suma 33.5 px si la medida se toma antes, así que esa prueba espera ahora a que su primer botón
-(«Muy fácil…») esté visible; la de la pantalla «Dados» no monta esa guía y se queda igual.
+**Movida entera** a [`_archivo/historial-2026-09-12-tarea-8-menu-de-acciones.md`](./_archivo/historial-2026-09-12-tarea-8-menu-de-acciones.md)
+el 2026-09-13, al insertar las entradas de las tareas 12–14 del pulido: el fichero seguía en 1002
+de 1000 tras los dos primeros archivados del mismo corte, y esta era la entrada completa más
+antigua. En una línea: `ui/MenuDeAcciones.tsx` plegó cinco controles de la fila del elenco a un
+menú de dos, con teclado completo, y sus cuatro rondas de arreglo destaparon una medida vacía en
+`espacios.spec.ts` y un error que la fila tragaba en silencio.
 
 ---
 
-## Tarea 7 del pulido: seis dados dibujados y el barrido de iconos (2026-09-12, C3 #12 y #22)
+## Tarea 7 del pulido: seis dados dibujados y el barrido de iconos (2026-09-12, C3 #12 y #22) — archivada
 
-Qué — `ui/Iconos.tsx` gana `IconoDado({ caras })` —seis siluetas, «un dado, una forma»
-(D-CF-62): tetraedro, cubo, octaedro, trapezoedro (compartido por d10 y d100), dodecaedro,
-icosaedro— e `IconoMenu` (los tres puntos de una fila, para la Tarea 8). `features/rolls/
-DadoDibujado.tsx` deja de dibujar su propio icosaedro y pasa a delegar en `IconoDado caras={20}`;
-**su `data-icono` cambia de `"dado"` a `"d20"`**, y las dos aserciones que lo buscaban
-(`ResultadoDeTirada.test.tsx`, `e2e/tirada.spec.ts`) se actualizaron con ese motivo. Los atajos de
-`PanelDeDados.tsx` y `features/rolls/panel/PanelDeDadosDeLaMesa.tsx` pintan `IconoDado caras={caras}` —antes
-siempre dibujaban el icosaedro aunque el atajo fuera «d4»—.
+**Movida entera** a [`_archivo/historial-2026-09-12-tarea-7-seis-dados.md`](./_archivo/historial-2026-09-12-tarea-7-seis-dados.md)
+el 2026-09-13, al insertar las entradas de las tareas 12–14 del pulido: el fichero quedaba en 1038
+de 1000 tras el primer archivado del mismo corte, y esta era la entrada completa más antigua. En
+una línea: `IconoDado({ caras })` puso «un dado, una forma» de verdad (seis siluetas, D-CF-62), y
+un barrido nuevo de botones encontró 15 culpables sin icono dibujado o con un «+» de fuente.
 
-Y el barrido nuevo, `ui/__tests__/botones-con-icono.test.tsx`: todo `<Button>` primario de página
-cuyo texto **contiene** «Crear», «Escribir», «Nueva», «Nuevo» o «Añadir» (el regex es
-`\b(...)\b` sin anclar al principio, así que un botón cuyo texto lleve la palabra en medio
-también cuenta) lleva un icono dibujado dentro, y ningún botón empieza por un «+» de fuente —eso
-sí está anclado, y correctamente. El primer barrido encontró **15 culpables**
-(`features/world-state/PanelDeEstadoDelMundo.tsx`, `features/rules/PanelDeReglas.tsx`,
-`features/links/LinksPanel.tsx`, `features/dm-tables/PanelDeTablas.tsx` «Crear tabla»,
-`features/character-sheet/RecursosYDescansos.tsx` «Crear»,
-`features/campaigns/CreateCampaignModal.tsx`, `features/campaigns/Cronicas.tsx`,
-`features/campaign-items/CampaignItemsCatalogPage.tsx` «+ Crear objeto»,
-`features/campaign-items/EffectsEditor.tsx` «Añadir»,
-`features/bestiario/PanelDeBestiario.tsx` «Escribir una criatura», dos botones de
-`pages/CampaignDetailPage.tsx` («Nueva sesión», «Nuevo personaje»), `pages/DesignTokensPage.tsx`,
-`pages/EntityDetailPage.tsx` «Escribir» y `pages/RegisterPage.tsx` «Crear cuenta»): todos
-llevan ahora `IconoMas`, salvo los dos de «escribir» (bestiario y `EntityDetailPage`), que llevan
-`IconoPluma` — el mismo dibujo para el mismo concepto, sin inventar uno nuevo. «+ Crear objeto»
-pasó a «Crear objeto» con `IconoMas` delante: el `+` era un glifo de fuente haciendo de icono, la
-misma infracción que la regla de iconos ya prohibía para los sueltos.
+---
 
-Por qué — anexo #12 (C3): «un dado, una forma» estaba declarado en `04-convenciones.md` sin que
-`IconoDado` existiera; anexo #22: «Escribir una criatura» iba sin icono y «+ Crear objeto» llevaba
-un `+` de fuente, y ninguna prueba lo impedía porque `iconos-sin-duplicados.test.ts` sólo barre
-ficheros de iconos, no botones.
+## Ronda de arreglo de la tarea 7: un solo d20, la navegación entra en el barrido (2026-09-12) — archivada
 
-Evidencia — unitarias: `Iconos.test.tsx` (el nuevo caso de `IconoDado`, siete dados, seis dibujos
-distintos y el d100 igual al d10; el conteo de exports sube de 29 a 30 porque `IconoDado` queda
-fuera del bucle genérico —exige `caras`— e `IconoMenu` entra en él) y
-`botones-con-icono.test.tsx` (dos pruebas, ambas en verde tras arreglar los 15 culpables) — suite
-completa: 160 ficheros, 1493 pruebas, verde. Mutación: `cp` de respaldo de `Iconos.tsx`, el trazo
-del d8 sustituido por el del d6, la prueba «seis dibujos distintos» pasa a detectar solo 5;
-restaurado con `cp`. `pnpm verify` en verde. Orquestador: `e2e/dados.spec.ts` y
-`e2e/bestiario.spec.ts`.
-
-**Revertir:** un commit. Quitar `IconoDado`/`IconoMenu` de `ui/Iconos.tsx`, devolver
-`DadoDibujado.tsx` a su dibujo propio, los atajos a `<DadoDibujado />`, deshacer los 15 icono/
-texto de botón y borrar `botones-con-icono.test.tsx`.
-
-## Ronda de arreglo de la tarea 7: un solo d20, la navegación entra en el barrido (2026-09-12)
-
-Qué — la revisión (ronda 1) encontró que `IconoD20` (el de arriba, ya existente antes de la
-Tarea 7) dibujaba **su propio** icosaedro con el mismo `data-icono="d20"` que `IconoDado
-caras={20}`: dos siluetas para un dado, la misma infracción que «un dado, una forma» existe para
-impedir. `IconoD20` pasa a delegar (`return <IconoDado caras={20} className={className} />`);
-sus tres consumidores (`features/sessions/RailDePaneles.tsx`,
-`features/sessions/hilo/TiradaIncrustada.tsx`, `features/sessions/taller/PrepararSesion.tsx`) no
-cambian una línea. Ninguna prueba comprobaba el trazo
-propio de `IconoD20` (grep confirmado: solo `data-icono="d20"`, que sigue igual), así que no hizo
-falta actualizar ninguna aserción.
-
-`docs/04-convenciones.md` afirmaba que la prueba también cubría «toda entrada de navegación», y
-no era cierto: `botones-con-icono.test.tsx` solo miraba `<Button>`. Gana una tercera prueba que
-barre las entradas de `CampaignDetailPage.tsx` — no son un array literal (`TABS.map` arma cada
-`TabItem` en su propio `if`), así que la prueba extrae el cuerpo de la función contando llaves
-(balanceo real, no regex) y comprueba, por cada `id: "…"`, que el tramo hasta el siguiente `id:`
-lleva su `icon:`.
-
-Pulido a los dados que la revisión pidió: el d4 dibujaba dos segmentos que **retrazaban su
-propia base** (ya cerrada) en vez del tetraedro — ahora es el contorno más un rayo del centroide
-a cada vértice. El d8 retrazaba dos aristas del contorno (vértice superior a los laterales) — ahora
-es el contorno, el ecuador y el eje vertical, ninguna línea repite una arista. Y los tres
-comentarios que citaban «un dado, una forma» como si viviera en `04-convenciones.md` pasan a citar
-`docs/decisiones.md` D-CF-62 (con la regla de texto en 04, de la Tarea 0) — el docstring de
-`IconoDado`/`IconoD20` en `Iconos.tsx` y los dos comentarios de atajo en `PanelDeDados.tsx` y
-`PanelDeDadosDeLaMesa.tsx`.
-
-Y de paso, la deuda de redacción de este mismo fichero: la frase de más arriba decía que el
-barrido de botones actúa sobre texto que «empieza por» Crear/Escribir/Nueva/Nuevo/Añadir; el
-regex real (`\b(...)\b`) no ancla al principio, así que la palabra puede ir en medio del texto —
-la frase pasa a decir «contiene», y el comentario del propio `botones-con-icono.test.tsx` se
-corrigió igual.
-
-Por qué — revisión de ronda 1 sobre `ea28fff..c1677f3`, dos hallazgos «Important» (dos siluetas
-para un dado; una frase de 04 sin prueba que la sostenga) y pulido acompañante.
-
-Evidencia — `Iconos.test.tsx` y `botones-con-icono.test.tsx` (ahora tres pruebas) en verde;
-`pnpm --filter @dnd/web test -- src/ui src/features/rolls src/features/sessions` y `pnpm verify`
-en verde (detalle en el commit de esta ronda). Sin Playwright — el orquestador corre
-`tirada`, `inventario`, `objeto-sin-identificar` y `nervio-en-vivo`.
-
-**Revertir:** un commit. Devolver `IconoD20` a su dibujo propio, quitar la tercera prueba de
-`botones-con-icono.test.tsx`, revertir los dos dados y las tres citas de D-CF-62.
+**Movida entera** a [`_archivo/historial-2026-09-12-ronda-arreglo-tarea-7.md`](./_archivo/historial-2026-09-12-ronda-arreglo-tarea-7.md)
+el 2026-09-13, al insertar las entradas de las tareas 12–14 del pulido: el fichero quedaba en 1074
+de 1000 y esta era la entrada completa más antigua. En una línea: `IconoD20` pasó a delegar en
+`IconoDado caras={20}` (dos siluetas para un dado eran una), una tercera prueba cubrió por fin
+«toda entrada de navegación» tal y como decía `04-convenciones.md`, y los dados d4/d8 dejaron de
+retrazar aristas ya dibujadas.
 
 ---
 

@@ -637,6 +637,30 @@ test("se llega a la mesa desde la campaña sin sesión abierta, y no es un carte
   await expect(page.getByRole("dialog")).toContainText("Consulta del mundo");
 });
 
+// Anexo #18 — «salir de la mesa» volvía a TODAS las crónicas, no a la campaña que se estaba
+// jugando. La flecha de la banda va ahora con la campaña, a su pestaña Sesiones.
+test("desde una mesa en reposo, el primer enlace de la banda lleva a la campaña con la pestaña Sesiones seleccionada", async ({
+  page,
+}) => {
+  await registrarse(page);
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("Campaña en reposo");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "Campaña en reposo" }).click();
+  await expect(page.getByRole("heading", { name: "Campaña en reposo" })).toBeVisible();
+
+  await page.getByRole("link", { name: /^Entrar a la mesa/ }).click();
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible();
+
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await banda.getByRole("link", { name: "Campaña en reposo" }).click();
+  await expect(page.getByRole("heading", { name: "Campaña en reposo" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Sesiones" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
+
 // Y con sesión en curso la misma cabecera dice de qué sesión se trata y quién está. Es la mitad
 // que convierte una columna de texto en un sitio: *un hilo a secas es un tablón, no un escenario.*
 test("en sesión, la cabecera de escena nombra la sesión y a quien está en la mesa", async ({

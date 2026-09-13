@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CreateRuleInput, RuleStatus, RuleTrigger } from "@dnd/shared";
 import { Button, Tabs } from "../../ui";
+import { IconoMas } from "../../ui/Iconos";
 import { useAllEntities } from "../entities/hooks";
 import { useMyRole } from "../campaigns/members";
 import type { RuleRow } from "./api";
@@ -153,6 +154,7 @@ export function PanelDeReglas({ campaignId }: { campaignId: string }) {
           aquello, <strong>entonces</strong> haz esto otro.
         </p>
         <Button type="button" onClick={() => setEditando({})}>
+          <IconoMas />
           Nueva regla
         </Button>
       </div>

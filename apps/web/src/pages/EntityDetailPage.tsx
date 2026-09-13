@@ -16,6 +16,7 @@ import { AppShell, AppHeader, PageHeader } from "../ui/AppShell";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/Collection";
+import { IconoPluma } from "../ui/Iconos";
 import { OrnamentRule } from "../ui/Ornament";
 
 // Reseño 2026-09-02 — the reading view this product never had.
@@ -208,6 +209,7 @@ export function EntityDetailPage() {
               action={
                 puedeEditar ? (
                   <Button variant="primary" onClick={() => setEditing(true)}>
+                    <IconoPluma />
                     Escribir
                   </Button>
                 ) : undefined

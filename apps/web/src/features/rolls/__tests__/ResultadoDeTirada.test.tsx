@@ -120,7 +120,60 @@ describe("ResultadoDeTirada", () => {
 
   it("el dado se dibuja: SVG, nunca un emoji de dado", () => {
     const { container } = render(<ResultadoDeTirada resultado={tirada()} etiqueta="Percepción" />);
-    expect(container.querySelectorAll('svg[data-icono="dado"]')).toHaveLength(2);
+    // Tarea 7 — `data-icono` pasó de "dado" a "d20": DadoDibujado ahora delega en
+    // IconoDado caras={20}, que es el mismo dibujo con el nombre de la familia de seis dados.
+    // Sin `dice[]` (este resultado no lo trae) se cae al d20 de siempre para las dos posiciones.
+    expect(container.querySelectorAll('svg[data-icono="d20"]')).toHaveLength(2);
+  });
+
+  it("Task 10 — con dice[], cada dado se dibuja con SU forma, no siempre el icosaedro", () => {
+    const { container } = render(
+      <ResultadoDeTirada
+        resultado={tirada({
+          expression: "2d6+1d20",
+          rolls: [3, 5, 17],
+          kept: [3, 5, 17],
+          dropped: [],
+          total: 25,
+          dice: [
+            { sides: 6, value: 3, kept: true },
+            { sides: 6, value: 5, kept: true },
+            { sides: 20, value: 17, kept: true },
+          ],
+        })}
+        etiqueta="Daño"
+      />,
+    );
+    expect(container.querySelectorAll('svg[data-icono="d6"]')).toHaveLength(2);
+    expect(container.querySelectorAll('svg[data-icono="d20"]')).toHaveLength(1);
+  });
+
+  // Revisión final de la rama (2026-09-13). El servidor admite hasta 1000 caras (`maxSides`), y
+  // «Modo avanzado» deja escribir `2d7` o `1d3`. `IconoDado` solo dibuja las siete caras de la
+  // mesa: con 7 pintaba un `<svg data-icono="d7">` VACÍO — ni forma ni nombre. «Un dado, una
+  // forma» (D-CF-62) prohíbe también lo contrario, disfrazarlo de d20: un dado de caras
+  // desconocidas se nombra en texto, `d7`, y no se dibuja.
+  it("un dado de caras desconocidas se nombra en texto (d7) y no se dibuja ningún icono vacío", () => {
+    const { container } = render(
+      <ResultadoDeTirada
+        resultado={tirada({
+          expression: "2d7",
+          rolls: [2, 6],
+          kept: [2, 6],
+          dropped: [],
+          modifier: 0,
+          total: 8,
+          dice: [
+            { sides: 7, value: 2, kept: true },
+            { sides: 7, value: 6, kept: true },
+          ],
+        })}
+        etiqueta="Daño"
+      />,
+    );
+    expect(container.querySelectorAll('svg[data-icono="d7"]')).toHaveLength(0);
+    expect(container.querySelectorAll('svg[data-icono="d20"]')).toHaveLength(0);
+    expect(screen.getAllByText("d7")).toHaveLength(2);
   });
 });
 

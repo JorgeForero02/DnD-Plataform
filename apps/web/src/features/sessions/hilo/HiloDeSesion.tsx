@@ -9,11 +9,15 @@ import { PanelDeMesa } from "../PanelDeMesa";
 import { useMembers } from "../../campaigns/members";
 import { useCharacters } from "../../characters/hooks";
 import type { Character } from "../../characters/api";
+import type { NpcEnLaMesa } from "../../bestiario/api";
 import type { ConColor } from "../../../dominio/voces";
 import type { Member } from "../../campaigns/members";
 import { Button } from "../../../ui/Button";
 import { MensajeDelHilo } from "./MensajeDelHilo";
 import { IconoPluma } from "../../../ui/Iconos";
+import { lineaDeLog } from "../linea-de-log";
+import { nombresDelHilo } from "../nombres-del-hilo";
+import { tipoDeMensaje } from "./tipo-de-mensaje";
 
 // **El hilo de la sesión: los cinco tipos de mensaje de la maqueta, no una lista plana.**
 //
@@ -102,11 +106,18 @@ export function HiloDeSesion({
   eventos,
   esDm,
   comoUsuario,
+  pnjs = [],
 }: {
   campaignId: string;
   eventos: GameEventRow[];
   esDm: boolean;
   comoUsuario: string;
+  /**
+   * Tarea 11 del pulido (C4, #15). **Prop, no una segunda consulta.** `MesaDeSesion` ya pide
+   * `useNpcs` para el orden de turnos y el diálogo de combate (comentario de ese fichero); pasarlo
+   * aquí es lo que ya hace con `ColumnaElenco`, no una excepción para el hilo.
+   */
+  pnjs?: NpcEnLaMesa[];
 }) {
   const { data: miembros } = useMembers(campaignId);
   const sellar = useStampNote(campaignId);
@@ -129,7 +140,15 @@ export function HiloDeSesion({
   // Los archivados cuentan para el punto 1 —un suceso viejo sigue siendo de ese personaje— y no
   // para el 2, donde lo que se busca es «con quién está jugando ahora».
   const { data: personajes } = useCharacters(campaignId);
-  const personajePorId = new Map((personajes ?? []).map((p: Character) => [p.id, p]));
+  // Ronda de revisión (tarea 11): **también los PNJ, o su cabecera sale con el nombre de quien
+  // los mueve.** Esta tabla solo tenía `personajes` (`useCharacters`), así que un suceso SOBRE un
+  // PNJ —«Klarg pierde 7 PG»— no encontraba nada en el punto 1 de abajo y caía al 2 o al 3: la
+  // cabecera terminaba enseñando el personaje del DM, o su propio nombre de usuario, nunca
+  // «Klarg». `NpcEnLaMesa` y `Character` comparten `id`/`name`/`color`/`ownerId` — lo que `ConColor`
+  // pide —, así que entran en el mismo mapa sin adaptador.
+  const personajePorId = new Map<string, ConColor & { name: string }>();
+  for (const p of personajes ?? []) personajePorId.set(p.id, p);
+  for (const n of pnjs) personajePorId.set(n.id, n);
   const unicoDe = new Map<string, Character>();
   const ambiguos = new Set<string>();
   for (const p of personajes ?? []) {
@@ -137,7 +156,7 @@ export function HiloDeSesion({
     if (unicoDe.has(p.ownerId)) ambiguos.add(p.ownerId);
     else unicoDe.set(p.ownerId, p);
   }
-  const vozDe = (e: GameEventRow): ConColor => {
+  const vozDe = (e: GameEventRow): ConColor & { name?: string } => {
     if (e.subjectType === "character") {
       const suyo = personajePorId.get(e.subjectId);
       if (suyo) return suyo;
@@ -148,6 +167,41 @@ export function HiloDeSesion({
     }
     return { id: e.actorUserId };
   };
+  // Ronda de revisión (tarea 11): **exactamente cuándo la cabecera va a decir este mismo nombre**
+  // — cuando el punto 1 de `vozDe` resolvió de verdad, contra el `subjectId` del propio suceso,
+  // **y** el suceso se pinta con la forma «personaje» (`tipo-de-mensaje.ts`), que es la única de
+  // las cinco que pone ese nombre en una cabecera. Los puntos 2 y 3 de `vozDe` (el único personaje
+  // del actor, o su huella) NO cuentan: ahí la cabecera muestra a alguien que no es el sujeto de
+  // la frase.
+  //
+  // **Por qué entra `tipoDeMensaje` y no basta con «vozDe resolvió contra subjectId».**
+  // `ATTACK_RESOLVED` es forma «tirada» (`tipo-de-mensaje.ts`), y esa forma NUNCA pinta una
+  // cabecera de personaje — solo la frase y la firma de quien tiró. Su `subjectId` es el
+  // OBJETIVO del ataque (`character-sheet.service.ts#resolveAttack`), así que sin este filtro
+  // `sujetoEnCabecera` saldría `true` cada vez que el objetivo es un personaje visible, y
+  // `lineaDeLog` omitiría al ATACANTE de la frase creyendo que su cabecera ya lo dijo — cuando lo
+  // que esa cabecera (inexistente) habría mostrado, si existiera, es al objetivo, no al atacante.
+  // El resultado sería un suceso que no dice quién atacó, en ningún sitio de la pantalla. La
+  // capacidad de omitirlo existe en `lineaDeLog` (y su prueba unitaria la ejercita), para el día
+  // en que `ATTACK_RESOLVED` gane su propia cabecera; hoy no la tiene, así que aquí se queda en
+  // `false`.
+  const sujetoEnCabecera = (e: GameEventRow): boolean =>
+    tipoDeMensaje(e.payload) === "personaje" &&
+    e.subjectType === "character" &&
+    personajePorId.has(e.subjectId);
+
+  // Tarea 11 del pulido (C4, #15). **Quién es quién, para que la frase lo diga en vez de un id.**
+  // Personajes y PNJ juntos: los dos son la misma fila de `Character` por debajo (fase 2D), y los
+  // dos pueden ser el origen citado a mano o el atacante de una tirada.
+  const nombres = nombresDelHilo(
+    [...(personajes ?? []), ...pnjs].map((c) => ({ id: c.id, name: c.name })),
+    eventos,
+  );
+  // El sujeto de la frase: quien recibe el suceso, si es un personaje y este visor lo tiene en
+  // sus listas filtradas por `canView`. `null` en cualquier otro caso, y `lineaDeLog` cae a la
+  // frase de siempre — nunca inventa un nombre para un suceso que no es de un personaje.
+  const nombreDelSujeto = (e: GameEventRow): string | null =>
+    e.subjectType === "character" ? nombres.personaje(e.subjectId) : null;
 
   // **La marca se congela al montar, a propósito.** Si se releyera en cada sondeo, la franja
   // desaparecería a los quince segundos —justo cuando alguien vuelve a la mesa y todavía no ha
@@ -325,6 +379,11 @@ export function HiloDeSesion({
                   personaje={vozDe(e)}
                   ligada={tiradaLigada(e.payload)}
                   nuevo={esNuevo(e.createdAt)}
+                  linea={lineaDeLog(e.payload, {
+                    sujeto: nombreDelSujeto(e),
+                    sujetoEnCabecera: sujetoEnCabecera(e),
+                    nombres,
+                  })}
                 />
               </Fragment>
             );

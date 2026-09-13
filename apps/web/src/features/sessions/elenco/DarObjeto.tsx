@@ -68,6 +68,11 @@ export interface EntregaFija {
   monedas?: Partial<Record<CoinKey, number>>;
 }
 
+export interface ControladoDesdeFuera {
+  abierto: boolean;
+  onCerrar: () => void;
+}
+
 export function DarObjeto({
   campaignId,
   soyDm,
@@ -75,6 +80,7 @@ export function DarObjeto({
   entregaFija,
   disabled = false,
   motivoDeshabilitado,
+  controlado,
 }: {
   campaignId: string;
   soyDm: boolean;
@@ -85,8 +91,18 @@ export function DarObjeto({
   disabled?: boolean;
   /** Por qué no hay nada que dar, si `disabled` es `true`. */
   motivoDeshabilitado?: string;
+  /**
+   * **Tarea 8 del pulido (C2: #1).** Con `controlado`, quien lo abre y lo cierra es el que
+   * llama —`MandosDeCombatiente`, desde el ítem «Dar…» de `MenuDeAcciones`— y este componente
+   * no pinta su propio botón disparador: el gesto de abrir ya vive en el menú, y un segundo
+   * botón aquí sería la fila de siete botones que esta misma tarea vino a deshacer. Sin
+   * `controlado` (el modo de `ResultadoDeTabla.tsx`, botín de una tabla del DM) se comporta
+   * exactamente como antes, con su propio botón «Dar».
+   */
+  controlado?: ControladoDesdeFuera;
 }) {
-  const [abierto, setAbierto] = useState(false);
+  const [abiertoPropio, setAbiertoPropio] = useState(false);
+  const abierto = controlado?.abierto ?? abiertoPropio;
   const [destinatario, setDestinatario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +155,8 @@ export function DarObjeto({
   const darMonedas = useChangeMoney(campaignId, destinatario);
 
   function cerrar() {
-    setAbierto(false);
+    if (controlado) controlado.onCerrar();
+    else setAbiertoPropio(false);
     setDestinatario("");
     setError(null);
     setEntregadosAntesDelFallo(0);
@@ -176,6 +193,10 @@ export function DarObjeto({
     error !== null && entregadosAntesDelFallo > 0 && entregadosAntesDelFallo < objetosDeEntregaFija;
 
   if (!abierto) {
+    // **Controlado: ningún botón propio** (tarea 8 del pulido). Quien llama ya decidió cómo se
+    // abre —el ítem «Dar…» de `MenuDeAcciones`—, y pintar un segundo disparador aquí sería
+    // exactamente la fila de botones que esta tarea vino a plegar en un menú.
+    if (controlado) return null;
     // **`disabled` quita el botón, no lo apaga** (ver la nota de cabecera): un botón muerto y
     // ningún botón no son lo mismo para el foco de teclado, y la regla de `docs/04-
     // convenciones.md` es sobre eso, no solo sobre el contraste.
@@ -187,7 +208,7 @@ export function DarObjeto({
     return (
       <button
         type="button"
-        onClick={() => setAbierto(true)}
+        onClick={() => setAbiertoPropio(true)}
         className="inline-flex items-center justify-center gap-1 rounded-radius-sm border border-muted bg-surface px-3 py-1.5 font-chrome text-chrome-sm font-semibold text-text hover:border-accent"
       >
         <IconoMochila className="h-4 w-4" /> Dar

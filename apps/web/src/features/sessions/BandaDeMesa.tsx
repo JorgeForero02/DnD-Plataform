@@ -53,19 +53,23 @@ export function BandaDeMesa({
       aria-label="Estado de la mesa"
       className="flex shrink-0 flex-wrap items-center gap-x-s3 gap-y-s2 border-b border-muted bg-surface px-s4 py-s2"
     >
+      {/* Anexo #18 — salir de la mesa vuelve a la CAMPAÑA que se estaba jugando, a su pestaña
+          Sesiones, no a la lista entera: «Tus crónicas» era la primera miga y mandaba a cero.
+          `?seccion=sessions` es el mismo enlace que ya usa `MesaDeSesion.tsx` para «Entrar a la
+          mesa» — `CampaignDetailPage.tsx` lo resuelve a esa pestaña. */}
       <Link
-        to="/"
-        className="inline-flex items-center gap-s1 font-chrome text-chrome-sm text-muted transition-colors hover:text-text"
+        to={`/campaigns/${campaignId}?seccion=sessions`}
+        className="inline-flex min-w-0 items-center gap-s1 font-title text-chrome-md text-text transition-colors hover:text-accent-text"
       >
-        <IconoFlechaIzquierda className="h-4 w-4" />
-        Tus crónicas
+        <IconoFlechaIzquierda className="h-4 w-4 shrink-0 text-muted" />
+        <span className="truncate">{nombreDeCampana ?? "Campaña"}</span>
       </Link>
       <span aria-hidden="true" className="h-4 w-px bg-muted/40" />
       <Link
-        to={`/campaigns/${campaignId}`}
-        className="min-w-0 truncate font-title text-chrome-md text-text transition-colors hover:text-accent-text"
+        to="/"
+        className="font-chrome text-chrome-sm text-muted transition-colors hover:text-text"
       >
-        {nombreDeCampana ?? "Campaña"}
+        Tus crónicas
       </Link>
 
       {sesion ? (

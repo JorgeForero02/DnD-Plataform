@@ -136,6 +136,11 @@ describe("qué cuenta como natural, y qué no", () => {
     expect(r.kept).toEqual([20]);
     // Lo descartado **no se pierde**: se enseña.
     expect(r.dropped).toEqual([3]);
+    // C5: cada dado dice sus caras y si cuenta, en el orden en que cayó.
+    expect(r.dice).toEqual([
+      { sides: 20, value: 20, kept: true },
+      { sides: 20, value: 3, kept: false },
+    ]);
   });
 
   it("con desventaja, un 20 descartado NO es un 20 natural", async () => {

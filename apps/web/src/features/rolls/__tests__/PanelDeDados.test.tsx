@@ -6,6 +6,10 @@ import { PanelDeDados } from "../PanelDeDados";
 import * as rollsApi from "../api";
 import type { FilaDeTirada, PaginaDeTiradas } from "../api";
 import * as rollRequestsApi from "../../roll-requests/api";
+import * as membersApi from "../../campaigns/members";
+import * as clockApi from "../../game-clock/api";
+import * as charactersApi from "../../characters/api";
+import { useAuthStore } from "../../../store/auth.store";
 import { ApiError } from "../../../lib/api";
 
 // Tarea 2C.2 — la pantalla de dados. Se prueba **lo que puede romperse en silencio**:
@@ -68,6 +72,9 @@ describe("PanelDeDados — tirar", () => {
 
     pintar();
 
+    // Task 10 — «Qué se tira» vive ahora bajo «Modo avanzado», plegado por defecto: se abre
+    // antes de escribir en él. El camino cambia; la aserción de qué se manda, no.
+    fireEvent.click(screen.getByText("Modo avanzado"));
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20+3" } });
     fireEvent.click(screen.getByRole("radio", { name: "Ventaja" }));
     fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
@@ -154,6 +161,8 @@ describe("PanelDeDados — tirar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
     await screen.findByText("17 = 17 dado");
 
+    // Task 10 — mismo motivo que arriba: se abre «Modo avanzado» antes de escribir encima.
+    fireEvent.click(screen.getByText("Modo avanzado"));
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20++" } });
     fireEvent.click(screen.getByRole("button", { name: "Tirar" }));
 
@@ -170,17 +179,74 @@ describe("PanelDeDados — tirar", () => {
     expect(document.querySelectorAll("[data-dado]")).toHaveLength(0);
   });
 
-  it("un atajo de dado compone la expresión: vacía da 1d6, y otro atajo lo suma", () => {
+  it("Task 10 — un dado de la bandeja compone la expresión, agrupando por caras", () => {
     pintar();
-
+    // La bandeja empieza con un d20 (el «1d20» de siempre): se abre el modo avanzado para ver
+    // la expresión compuesta sin escribir nada en el campo.
+    fireEvent.click(screen.getByText("Modo avanzado"));
     const campo = screen.getByLabelText("Qué se tira");
-    fireEvent.change(campo, { target: { value: "" } });
+    expect(campo).toHaveValue("1d20");
 
     fireEvent.click(screen.getByRole("button", { name: "Añadir un d6" }));
-    expect(campo).toHaveValue("1d6");
+    expect(campo).toHaveValue("1d20+1d6");
 
+    // Un segundo d20 se agrupa con el primero, no se suma como término aparte.
     fireEvent.click(screen.getByRole("button", { name: "Añadir un d20" }));
-    expect(campo).toHaveValue("1d6+1d20");
+    expect(campo).toHaveValue("2d20+1d6");
+  });
+
+  // Round 2 de revisión (anexo #8) — **el defecto de verdad, reproducido.** La primera versión
+  // de esta ronda desmontaba el radiogroup de ventaja letra a letra mientras se escribía una
+  // expresión que no empieza por `d20`, y la tarjeta de «Tirada nueva» se encogía 28px con cada
+  // tecla — jsdom no maqueta, así que ninguna prueba de aquí lo había medido; lo midió Playwright
+  // (`espacios.spec.ts`). Esta prueba no mide alto (eso sigue siendo del navegador): comprueba
+  // el porqué, en el DOM — que ni el radiogroup ni el botón «Tirar» se muevan del árbol mientras
+  // se escribe, montados los dos antes y después.
+  it("Round 2 — escribir una expresión inválida no desmonta el radio de ventaja ni «Tirar»", () => {
+    pintar();
+    fireEvent.click(screen.getByText("Modo avanzado"));
+
+    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "4d" } });
+
+    // El elemento que se desmontaba con el defecto: el radiogroup de ventaja (`SelectorDeVentaja`
+    // dentro de `BandejaDeDados.tsx`), condicionado antes a `ofreceVentaja &&`. Ahora se queda,
+    // apagado y con su motivo — ni el radiogroup ni el botón «Tirar» salen del documento.
+    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
+  });
+});
+
+// Revisión final de la rama (2026-09-13). **«Tirar» nunca se deshabilita por bandeja vacía**
+// (docs/04-convenciones.md, «el botón de guardar nunca se deshabilita: deshabilitado no recibe
+// foco de teclado y tiene mal contraste»), igual que resolvió T5 «Guardar la sala»: se pulsa,
+// el rechazo se explica en línea junto al campo, y no sale ninguna petición. La única razón
+// de apagarlo que queda es `isPending`, como en el resto de la aplicación.
+describe("PanelDeDados — Tirar con la bandeja vacía", () => {
+  it("sigue habilitado, explica en línea qué falta y no manda nada", async () => {
+    const crear = vi.spyOn(rollsApi, "createRoll");
+    pintar();
+
+    // La bandeja empieza con un d20; se quita para dejarla vacía.
+    fireEvent.click(screen.getByRole("button", { name: "Quitar el d20 (posición 1)" }));
+    const tirar = screen.getByRole("button", { name: "Tirar" });
+    expect(tirar).not.toHaveAttribute("aria-disabled");
+
+    fireEvent.click(tirar);
+
+    // El motivo, en línea y junto al campo «Qué se tira» (que se abre solo con el error).
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(
+      "Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.",
+    );
+    expect(screen.getByLabelText("Qué se tira")).toHaveAttribute("aria-invalid", "true");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(crear).not.toHaveBeenCalled();
   });
 });
 
@@ -291,5 +357,44 @@ describe("RegistroDeTiradas", () => {
     const leer = vi.spyOn(rollsApi, "fetchRolls").mockResolvedValue(REGISTRO_VACIO);
     pintar();
     await waitFor(() => expect(leer).toHaveBeenCalledWith(CAMPANA, {}));
+  });
+});
+
+describe("PanelDeDados — la rejilla del DM (anexo #16)", () => {
+  it("con rol DM, el reloj, pedir y tirar están los tres", async () => {
+    useAuthStore.setState({ user: { id: "u-dm", email: "dm@x.y", displayName: "DM" } as never });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "u-dm", displayName: "DM", role: "DM" },
+    ]);
+    vi.spyOn(clockApi, "fetchClock").mockResolvedValue({ seconds: 0 } as never);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+
+    pintar();
+
+    expect(await screen.findByRole("heading", { name: "El reloj" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pedir una tirada" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Tirada nueva" })).toBeInTheDocument();
+  });
+
+  it("con rol PLAYER no hay «pedir», pero el reloj y la tirada siguen con su hueco", async () => {
+    useAuthStore.setState({
+      user: { id: "u-jugador", email: "j@x.y", displayName: "Jugador" } as never,
+    });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "u-jugador", displayName: "Jugador", role: "PLAYER" },
+    ]);
+    vi.spyOn(clockApi, "fetchClock").mockResolvedValue({ seconds: 0 } as never);
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
+
+    pintar();
+
+    const tiradaNueva = await screen.findByRole("region", { name: "Tirada nueva" });
+    expect(screen.queryByRole("heading", { name: "Pedir una tirada" })).not.toBeInTheDocument();
+    // Sin rol DM no hay rejilla de dos columnas, pero el hueco entre el reloj y la tirada tiene
+    // que seguir existiendo: antes de esta revisión el envoltorio se quedaba sin clase alguna
+    // (`undefined`) y el reloj y la tarjeta de tirar quedaban pegados, sin el margen que traía
+    // el `mb-s5` de antes de la rejilla. `tiradaNueva` es la propia sección con `aria-label`, así
+    // que su padre directo es el envoltorio de la rejilla.
+    expect(tiradaNueva.parentElement).toHaveClass("gap-s5");
   });
 });

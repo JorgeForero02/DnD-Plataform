@@ -161,6 +161,43 @@ test("bajar una criatura a la mesa, de punta a punta, y avisa de que solo la ve 
   await expect(page.getByTestId("pnj-en-la-mesa")).toContainText("59 PG");
 });
 
+// Anexo #20 — la pregunta del SRD solo sale al pulsar «Dárselos», y «Dejar los que tenía» no
+// manda ninguna petición: conservar es no cambiar nada (SRD 5.1, Temporary Hit Points).
+test("un PNJ con 5 temporales: Dárselos con 3 abre la pregunta; «Dejar los 5 que tenía» la cierra y la cabecera sigue en 5; «Quedarse con los 3 nuevos» deja 3", async ({
+  page,
+}) => {
+  await abrirBestiario(page);
+  await page.getByPlaceholder("Buscar una criatura").fill("Ogro");
+  const ogro = page.getByTestId("ficha-de-criatura").first();
+  await ogro.getByRole("button", { name: /Bajar a la mesa/i }).click();
+
+  const fila = page.getByTestId("pnj-en-la-mesa").filter({ hasText: "Ogro" });
+  await expect(fila).toBeVisible();
+
+  // Los 5 primeros: sin temporales previos, «Dárselos» no pregunta nada.
+  await fila.getByLabel("PG temporales").fill("5");
+  await fila.getByRole("button", { name: "Dárselos" }).click();
+  await expect(fila).toContainText("+5 temporales");
+
+  // Con 3 nuevos y 5 previos, «Dárselos» abre la pregunta del SRD.
+  await fila.getByLabel("PG temporales").fill("3");
+  await fila.getByRole("button", { name: "Dárselos" }).click();
+  const pregunta = page.getByRole("alertdialog", { name: "Ya tiene PG temporales" });
+  await expect(pregunta).toBeVisible();
+  await expect(pregunta).toContainText("ya tiene 5");
+
+  // «Dejar los 5 que tenía» no manda nada: la cabecera sigue en 5, y la pregunta se cierra.
+  await pregunta.getByRole("button", { name: "Dejar los 5 que tenía" }).click();
+  await expect(pregunta).toBeHidden();
+  await expect(fila).toContainText("+5 temporales");
+
+  // Repetir con los mismos 3, y esta vez quedarse con los nuevos: la cabecera baja a 3.
+  await fila.getByRole("button", { name: "Dárselos" }).click();
+  await page.getByRole("button", { name: "Quedarse con los 3 nuevos" }).click();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
+  await expect(fila).toContainText("+3 temporales");
+});
+
 test("el botón dice lo que hace, y no promete un combate que no existe", async ({ page }) => {
   await abrirBestiario(page);
   await expect(page.getByRole("button", { name: /Bajar a la mesa/i }).first()).toBeVisible();

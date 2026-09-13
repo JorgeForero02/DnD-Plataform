@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { Retrato } from "../sessions/elenco/FichaDeElenco";
 import { descriptorDePersonaje } from "../characters/descriptor";
 import { ValorDerivado } from "./Traza";
@@ -7,7 +8,7 @@ import { EleccionesPendientes } from "./EleccionesPendientes";
 import { AvisoDeDm } from "./AvisoDeDm";
 import { useEsVistaDeDm } from "./hooks";
 import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
-import { ROTULO_DE_CASILLA } from "./Tarjeta";
+import { Casilla } from "./Casilla";
 import type { PropsDePestana } from "./pestanas/tipos";
 
 // Tarea 3 (spec 2026-09-11, «la hoja a página completa») — la cabecera fija de la hoja: lo que
@@ -25,8 +26,35 @@ export function Cabecera({
   data,
   puedeEditar,
   disposicion,
-}: PropsDePestana) {
+  onAlto,
+}: PropsDePestana & {
+  /**
+   * Anexo #6/#17 — el alto REAL de la banda, en píxeles, para quien fije un `sticky` debajo de
+   * ella (`DetalleDeObjeto.tsx`). La medida encontró que `--tira-fija-top` (el escalón de
+   * `AppShell`) no basta: la banda mide más que ese escalón, y un sticky que solo sumara el
+   * escalón se metía 60px bajo ella. Se reporta con `ResizeObserver` porque el alto cambia con
+   * los avisos activos, la envoltura de la fila y el tamaño de fuente — nunca es una constante.
+   */
+  onAlto?: (px: number) => void;
+}) {
   const { sheet, hp, character } = data;
+  const bandaRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = bandaRef.current;
+    if (!el || !onAlto) return;
+    onAlto(el.getBoundingClientRect().height);
+    // jsdom no trae `ResizeObserver`: sin esta guarda, cada prueba de RTL que monta la cabecera
+    // lanzaría un `ReferenceError` antes de llegar a su propia aserción.
+    if (typeof ResizeObserver === "undefined") return;
+    // `getBoundingClientRect` y no `entry.contentRect`: la banda lleva `border-b` y padding, y
+    // el consumidor (el `top` del sticky de al lado) necesita el alto de caja completa, el mismo
+    // que ya se reportó en la llamada inicial de arriba.
+    const observador = new ResizeObserver(() => {
+      onAlto(el.getBoundingClientRect().height);
+    });
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [onAlto]);
   // La velocidad de la cabecera es la **efectiva** —la que ya tiene en cuenta las condiciones—,
   // que calcula el servidor. Si la respuesta no la trae (una mutación, que no la manda), se pinta
   // la base sin traza en vez de recalcular aquí una regla del juego que vive en la API.
@@ -50,8 +78,9 @@ export function Cabecera({
           cosas y las variables valen **cero**: escribir `top-16` aquí hacía que la tira se
           parase 64px por debajo del borde del cajón y **se solapase 72px con su propio cuerpo**. */}
       <section
+        ref={bandaRef}
         aria-label="resumen de combate"
-        className="sticky top-[var(--tira-fija-top,0px)] z-20 -mx-s2 mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--chrome-veil)] px-s2 py-s2 backdrop-blur"
+        className="sticky top-[var(--tira-fija-top,0px)] z-20 mx-[var(--tira-fija-mx,0px)] mt-[var(--tira-fija-pull,0px)] border-b border-muted bg-[color:var(--tira-fija-bg,var(--chrome-veil))] px-s2 py-s2 backdrop-blur"
       >
         <div className="flex flex-wrap items-start gap-s3">
           <Retrato personaje={character} />
@@ -72,24 +101,23 @@ export function Cabecera({
               etiquetaLarga="Iniciativa"
               valor={sheet.derived.initiative}
             />
+            {/* Ronda de arreglo (2026-09-12): «Vel. (pies)» partía línea a 4,75rem (el ancho de
+              casilla que se abandonó por eso); 6rem es la corrección, no el problema. La unidad
+              baja a la tercera línea de la casilla —la misma que reserva «+N temporales»— en vez
+              de vivir pegada al rótulo. */}
             <ValorDerivado
               variante="compacta"
-              etiqueta="Vel. (pies)"
+              etiqueta="Vel."
               etiquetaLarga="Velocidad efectiva en pies"
+              nota="pies"
               valor={{ key: "speed.walk", total: velocidad.total, steps: velocidad.steps }}
             />
             {/* Los PG de la cabecera son **solo lectura**: el delta —recibo daño, me curo— se
               aplica en su tarjeta, que es donde está la acción. Repetir aquí el control sería el
               mismo dato en dos sitios, que es como se acaba con uno de los dos mintiendo. */}
-            <div className="min-w-[4.75rem] rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center">
-              <p className={`${ROTULO_DE_CASILLA} leading-tight`}>PG</p>
-              <p className="font-data text-chrome-lg leading-none text-text">
-                {hp.current ?? "—"} / {hp.max ?? "—"}
-              </p>
-              {hp.temp > 0 && (
-                <p className="font-chrome text-chrome-xs text-accent-text">+{hp.temp} temporales</p>
-              )}
-            </div>
+            <Casilla rotulo="PG" nota={hp.temp > 0 ? `+${hp.temp} temporales` : undefined}>
+              {hp.current ?? "—"} / {hp.max ?? "—"}
+            </Casilla>
             {sheet.derived.proficiencyBonus && (
               <ValorDerivado
                 variante="compacta"

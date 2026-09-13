@@ -2,6 +2,7 @@ import { z } from "zod";
 import { roleSchema, visibilitySchema } from "./visibility.schema";
 import { damageTypeSchema } from "./item.schema";
 import { costeSchema } from "./action-economy.schema";
+import { dieRolledSchema } from "./roll.schema";
 
 // Tarea 2A.5 — el log de partida.
 //
@@ -229,6 +230,13 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
      * un ajuste manual del DM (sin tirada de por medio) sigue sin tener uno.
      */
     rollEventId: z.string().min(1).optional(),
+    /**
+     * Pulido 2026-09-12 (anexo #15). **De quién viene**, cuando el daño se pone a mano desde el
+     * elenco y no cuelga de una tirada: el hilo dice «← Klarg». Opcional; con `rollEventId` el
+     * origen se recupera de la tirada y este campo sobra. Es un id como `ATTACK_RESOLVED.attackerId`:
+     * el nombre lo resuelve quien lee, con lo que `canView` le manda.
+     */
+    sourceCharacterId: z.string().min(1).optional(),
     reason,
   }),
   z.object({
@@ -277,6 +285,11 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     rolls: z.array(z.number().int()).max(100),
     kept: z.array(z.number().int()).max(100),
     dropped: z.array(z.number().int()).max(100),
+    /**
+     * Cada dado, en el orden en que cayó, con sus caras y si cuenta (C5). **Opcional**: el
+     * historial ya escrito antes de esta tarea no lo trae.
+     */
+    dice: z.array(dieRolledSchema).max(100).optional(),
     modifier: z.number().int(),
     total: z.number().int(),
     dc: z.number().int().optional(),

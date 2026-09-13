@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Visibility } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { DeleteButton } from "../../components/DeleteButton";
+import { TarjetaDeHoja } from "../character-sheet/Tarjeta";
 import { BotonArchivar } from "./BotonArchivar";
 import { SelectorDeColor } from "./SelectorDeColor";
 import { VisibilityChooser } from "../entities/VisibilityChooser";
@@ -136,8 +137,56 @@ export function AjustesDePersonaje({
     }
   };
 
+  // **El pie no existe cuando no hay nada que ponerle** (revisión de la Tarea 3). Un personaje
+  // ARCHIVADO no ofrece ni archivar ni borrar, y sin ninguno de los dos errores tampoco hay nada
+  // que decir: si `pie` fuera siempre el mismo `<div>`, `TarjetaDeHoja` pintaría igual su filete
+  // y su relleno vacíos, justo debajo del aviso de «Devolver a la mesa» — una tira sin contenido
+  // que nadie pidió. `pie={undefined}` es lo que `TarjetaDeHoja` interpreta como «sin pie»
+  // (`Tarjeta.tsx`: `{pie && <footer>…</footer>}`).
+  const hayAlgoQuePieDecir = !estaArchivado || Boolean(errorAlArchivar) || Boolean(errorAlBorrar);
+
   return (
-    <div className="space-y-s4">
+    <TarjetaDeHoja
+      titulo="Ajustes"
+      etiqueta="ajustes del personaje"
+      cuerpo="p-s3 space-y-s4"
+      pie={
+        hayAlgoQuePieDecir ? (
+          // Archivar va **antes** que borrar y con menos peso visual: es el camino que casi
+          // siempre se quiere. Un personaje que ya no juega no es un personaje que haya que
+          // perder. Y lo destructivo va en el pie de la tarjeta (anexo #9): separado del cuerpo
+          // por su propio filete, para que no se lea como una opción más de la lista.
+          <div className="flex flex-wrap items-center gap-s2">
+            {puedeArchivar && !estaArchivado && (
+              <BotonArchivar
+                message={mensajeDeArchivado}
+                onConfirm={onConfirmarArchivado}
+                pending={archivar.isPending}
+                disabled={!puedeEditar}
+                disabledReason={motivo}
+              />
+            )}
+            {!estaArchivado && (
+              <DeleteButton
+                message={mensajeDeBorrado}
+                onConfirm={onConfirmarBorrado}
+                pending={borrar.isPending}
+                disabled={!puedeEditar}
+                disabledReason={motivo}
+              />
+            )}
+            {errorAlArchivar && (
+              <p className="w-full font-chrome text-chrome-xs text-danger-text">
+                {errorAlArchivar}
+              </p>
+            )}
+            {errorAlBorrar && (
+              <p className="w-full font-chrome text-chrome-xs text-danger-text">{errorAlBorrar}</p>
+            )}
+          </div>
+        ) : undefined
+      }
+    >
       {/* El color va antes que la visibilidad: es lo primero que un jugador quiere tocar de su
           personaje, y no tiene consecuencias que haya que pensarse. */}
       <SelectorDeColor
@@ -192,38 +241,6 @@ export function AjustesDePersonaje({
           )}
         </div>
       )}
-
-      {/* Archivar va **antes** que borrar y con menos peso visual: es el camino que casi siempre
-          se quiere. Un personaje que ya no juega no es un personaje que haya que perder. */}
-      {puedeArchivar && (
-        <div className="flex flex-col items-start gap-s2">
-          <BotonArchivar
-            message={mensajeDeArchivado}
-            onConfirm={onConfirmarArchivado}
-            pending={archivar.isPending}
-            disabled={!puedeEditar}
-            disabledReason={motivo}
-          />
-          {errorAlArchivar && (
-            <p className="font-chrome text-chrome-sm text-danger-text">{errorAlArchivar}</p>
-          )}
-        </div>
-      )}
-
-      {!estaArchivado && (
-        <div className="flex flex-col items-start gap-s2">
-          <DeleteButton
-            message={mensajeDeBorrado}
-            onConfirm={onConfirmarBorrado}
-            pending={borrar.isPending}
-            disabled={!puedeEditar}
-            disabledReason={motivo}
-          />
-          {errorAlBorrar && (
-            <p className="font-chrome text-chrome-sm text-danger-text">{errorAlBorrar}</p>
-          )}
-        </div>
-      )}
-    </div>
+    </TarjetaDeHoja>
   );
 }

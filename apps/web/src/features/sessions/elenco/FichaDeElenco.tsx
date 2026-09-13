@@ -14,7 +14,7 @@ import { describirRestante } from "../../character-sheet/duraciones";
 import { IconoEscudo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
-import { CorregirBando } from "./CorregirBando";
+import { useAccionesDeBando } from "./CorregirBando";
 
 /**
  * Un personaje en la mesa: retrato, quién lo lleva, puntos de golpe, condiciones y —solo para el
@@ -53,11 +53,16 @@ import { CorregirBando } from "./CorregirBando";
  * que en la práctica coincide, pero la puerta real es más estrecha que la del resto de esta ficha.
  *
  * **No son radios con su frase**, a diferencia de los de `EmpezarCombate.tsx`: allí se explica
- * una decisión que se toma una vez y con calma; aquí es una corrección rápida en la fila más
- * estrecha de la ficha, junto a dos botones más. Sigue siendo «elegir entre los tres bandos, y
- * visibles» —nada se esconde en un desplegable—, pero es el gesto «marcar como», y por eso el
- * bando actual tiene que verse: su botón queda desactivado y lo dice en su propio rótulo, no en
+ * una decisión que se toma una vez y con calma; aquí es una corrección rápida, y por eso el
+ * bando actual tiene que verse: su ítem queda desactivado y lo dice en su propio rótulo, no en
  * un color aparte.
+ *
+ * **Desde la tarea 8 del pulido (C2: #1), el bando ya no es una fila propia**: sus tres ítems
+ * (`useAccionesDeBando`, `CorregirBando.tsx`) se añaden al final del menú «…» de
+ * `MandosDeCombatiente`, junto a «Condición», «Dar…» y «Su hoja» — la fila de mandos llegó a
+ * tener siete controles y se salía de la tarjeta (anexo #1). Sigue siendo «elegir entre los tres
+ * bandos, y visibles dentro del menú» —nada se esconde en un desplegable—, solo cambió el sitio
+ * donde vive.
  */
 export function FichaDeElenco({
   campaignId,
@@ -124,6 +129,23 @@ export function FichaDeElenco({
   const maximo = hoja?.hp.max ?? null;
   const ca = hoja?.sheet?.derived.ac?.total ?? null;
   const descriptor = descriptorDePersonaje(personaje);
+
+  // **Los ítems del bando, para el menú de `MandosDeCombatiente`** (tarea 8 del pulido). Los
+  // hooks no pueden llamarse condicionalmente, así que `useAccionesDeBando` se llama siempre —
+  // con valores de repuesto cuando falta alguno— y es la lista que se le PASA al menú la que
+  // queda vacía sin encuentro/bando: exactamente la misma puerta que antes decidía si se
+  // montaba `<CorregirBando />` aparte.
+  const hayBandoQueCorregir = Boolean(
+    conMandos && enCombate && bando && sessionId && encounterId && combatanteId,
+  );
+  const { acciones: accionesDeBando, error: errorDeBando } = useAccionesDeBando({
+    campaignId,
+    sessionId: sessionId ?? "",
+    encounterId: encounterId ?? "",
+    combatanteId: combatanteId ?? "",
+    bando: bando ?? "ALLY",
+    nombre: personaje.name,
+  });
 
   return (
     <li
@@ -237,22 +259,14 @@ export function FichaDeElenco({
           // el comentario de arriba sobre el mando de bando) — así que es el mismo valor, no uno
           // inventado para esta llamada.
           soyDm={conMandos}
-        />
-      )}
-
-      {/* **Corregir el bando, solo con el combate en marcha.** Sin encuentro no hay de qué
-          bando hablar —el bando vive en el `Combatant`, no en el personaje— y por eso, además
-          de `conMandos`, hace falta `bando`/`sessionId`/`encounterId`/`combatanteId`: los cuatro
-          juntos son «este personaje combate ahora mismo», lo mismo que ya exige `PonerCondicion`
-          con su `enCombate` para contar asaltos. */}
-      {conMandos && enCombate && bando && sessionId && encounterId && combatanteId && (
-        <CorregirBando
-          campaignId={campaignId}
-          sessionId={sessionId}
-          encounterId={encounterId}
-          combatanteId={combatanteId}
-          bando={bando}
-          nombre={personaje.name}
+          // **El bando, dentro del menú y no como fila aparte** (tarea 8 del pulido): sin
+          // encuentro no hay de qué bando hablar —el bando vive en el `Combatant`, no en el
+          // personaje—, y por eso, además de `conMandos`, hace falta `bando`/`sessionId`/
+          // `encounterId`/`combatanteId`: los cuatro juntos son «este personaje combate ahora
+          // mismo», lo mismo que ya exige `PonerCondicion` con su `enCombate` para contar
+          // asaltos.
+          accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
+          errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
         />
       )}
     </li>

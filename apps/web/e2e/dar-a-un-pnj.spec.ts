@@ -92,7 +92,11 @@ test("el PNJ que está en la mesa aparece entre los destinatarios de «Dar…»"
   // --- Y la medida: abrir «Dar…» y encontrar al Ogro entre los destinatarios ---
   const elenco = page.getByRole("region", { name: "En la mesa" });
   await expect(elenco.getByText("Borin Barbaférrea").first()).toBeVisible({ timeout: 15_000 });
-  await elenco.getByRole("button", { name: "Dar" }).first().click();
+  // Tarea 8 del pulido (C2: #1) — «Dar…» dejó de ser un botón de la fila: ahora es un ítem del
+  // menú «…», `MenuDeAcciones.tsx`. Se abre «Más acciones sobre Borin Barbaférrea» y se elige
+  // «Dar…» dentro.
+  await elenco.getByRole("button", { name: "Más acciones sobre Borin Barbaférrea" }).click();
+  await page.getByRole("menuitem", { name: "Dar…" }).click();
 
   const cajon = page.getByRole("dialog", { name: "Dar…" });
   await expect(cajon).toBeVisible();

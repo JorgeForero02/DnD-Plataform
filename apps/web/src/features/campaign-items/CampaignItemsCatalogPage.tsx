@@ -1,13 +1,18 @@
 import { useState } from "react";
+import type { ItemKind } from "@dnd/shared";
 import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
 import { CHECKING_PERMISSIONS, RetryPermissions } from "../campaigns/PermissionStatus";
 import { useMyRole } from "../campaigns/members";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
-import { EmptyState } from "../../ui/Collection";
+import { EmptyState, Toolbar } from "../../ui/Collection";
+import { FilterChip } from "../../ui/FilterChip";
+import { IconoMas } from "../../ui/Iconos";
 import { CampaignItemEditor } from "./CampaignItemEditor";
 import { FilaDeObjeto } from "./FilaDeObjeto";
 import { ItemDetail } from "./ItemDetail";
+import { IconoDeObjeto } from "./iconos";
+import { TIPOS_DE_OBJETO, NOMBRE_TIPO } from "./vocabulario";
 import { useSrdItems, useCampaignItems } from "./hooks";
 import type { CampaignItem } from "./api";
 
@@ -41,22 +46,32 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<"nuevo" | CampaignItem | null>(null);
+  // Anexo #21 — filtros por tipo de objeto y por origen, con chips, como el bestiario
+  // (`PanelDeBestiario.tsx`). Estado de cliente, nunca control de acceso: la lista ya llega
+  // filtrada por `canView`, así que esto solo puede quitar de la vista filas que quien mira ya
+  // tenía derecho a ver.
+  const [tipo, setTipo] = useState<ItemKind | "todos">("todos");
+  const [origen, setOrigen] = useState<"todos" | "SRD" | "CAMPAIGN">("todos");
 
   const propios = items.data ?? [];
   const delSrd = srd.data ?? [];
   const todas = [...propios, ...delSrd].sort((a, b) => a.name.localeCompare(b.name, "es"));
-  // **Filtro de cliente, y nunca control de acceso** (regla de `docs/04-convenciones.md`): opera
-  // sobre una lista que el servidor ya filtró por `canView`, así que solo puede quitar de la
-  // vista filas que quien mira ya tenía derecho a ver. Con sesenta y cinco objetos del SRD, una
-  // lista sin buscador es una lista que nadie recorre.
-  const filas = busqueda.trim()
-    ? todas.filter((i) => i.name.toLowerCase().includes(busqueda.trim().toLowerCase()))
-    : todas;
-  const objetoSeleccionado = filas.find((i) => i.id === seleccionado);
   // Un objeto del SRD **no se edita ni se borra**: es contenido de la obra, no de la campaña.
   // Quien quiera una espada larga distinta se crea la suya, que es justo para lo que existe el
   // homebrew (`NOTICE.md`: lo que trae el producto de serie es solo SRD).
   const esDelSrd = (id: string) => id.startsWith("SRD:");
+  // **Filtro de cliente, y nunca control de acceso** (regla de `docs/04-convenciones.md`): opera
+  // sobre una lista que el servidor ya filtró por `canView`, así que solo puede quitar de la
+  // vista filas que quien mira ya tenía derecho a ver. Con sesenta y cinco objetos del SRD, una
+  // lista sin buscador —y sin poder acotar por tipo u origen— es una lista que nadie recorre.
+  const filas = todas.filter(
+    (i) =>
+      (busqueda.trim() === "" || i.name.toLowerCase().includes(busqueda.trim().toLowerCase())) &&
+      (tipo === "todos" || i.kind === tipo) &&
+      (origen === "todos" || (origen === "SRD") === esDelSrd(i.id)),
+  );
+  const hayFiltrosActivos = tipo !== "todos" || origen !== "todos";
+  const objetoSeleccionado = filas.find((i) => i.id === seleccionado);
 
   if (items.isLoading || srd.isLoading || cargandoRol) {
     return <p className="font-chrome text-chrome-sm text-muted">Cargando el catálogo…</p>;
@@ -105,7 +120,10 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
         accion={
           esDM ? (
             <Button type="button" onClick={() => setEditando("nuevo")}>
-              + Crear objeto
+              {/* Anexo #22 — el `+` era un glifo de fuente haciendo de icono, y la regla de
+                  iconos ya lo prohíbe (docs/04-convenciones.md): se dibuja, no se teclea. */}
+              <IconoMas />
+              Crear objeto
             </Button>
           ) : errorDeRol ? (
             // "Todavía no sé", no "no eres DM" — un fallo al cargar el papel no se trata como
@@ -129,9 +147,53 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
         />
       </label>
 
-      {filas.length === 0 && busqueda.trim() ? (
-        <EmptyState title={`Ningún objeto se llama así.`}>
-          Prueba con otra palabra, o crea uno propio si lo que buscas no está en el catálogo.
+      <Toolbar
+        filters={
+          <>
+            <FilterChip active={tipo === "todos"} onClick={() => setTipo("todos")}>
+              Todos
+            </FilterChip>
+            {TIPOS_DE_OBJETO.map((k) => (
+              <FilterChip
+                key={k}
+                active={tipo === k}
+                onClick={() => setTipo(k)}
+                icon={<IconoDeObjeto kind={k} />}
+              >
+                {NOMBRE_TIPO[k]}
+              </FilterChip>
+            ))}
+          </>
+        }
+      />
+      <Toolbar
+        filters={
+          <>
+            <FilterChip active={origen === "todos"} onClick={() => setOrigen("todos")}>
+              De todas partes
+            </FilterChip>
+            <FilterChip active={origen === "SRD"} onClick={() => setOrigen("SRD")}>
+              Del catálogo
+            </FilterChip>
+            <FilterChip active={origen === "CAMPAIGN"} onClick={() => setOrigen("CAMPAIGN")}>
+              De la campaña
+            </FilterChip>
+          </>
+        }
+      />
+
+      {filas.length === 0 && (busqueda.trim() || hayFiltrosActivos) ? (
+        <EmptyState
+          title={
+            busqueda.trim() && hayFiltrosActivos
+              ? "Ningún objeto se llama así con esos filtros."
+              : busqueda.trim()
+                ? "Ningún objeto se llama así."
+                : "Ningún objeto queda con esos filtros."
+          }
+        >
+          Prueba con otra palabra o cambia los filtros, o crea uno propio si lo que buscas no está
+          en el catálogo.
         </EmptyState>
       ) : filas.length === 0 ? (
         <EmptyState title="No hay ningún objeto que mirar.">

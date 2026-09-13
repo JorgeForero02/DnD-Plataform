@@ -28,8 +28,8 @@ describe("dadosDeLaTirada", () => {
   it("conserva el orden en que cayeron y marca el descartado", () => {
     const dados = dadosDeLaTirada({ rolls: [8, 17], dropped: [8] });
     expect(dados).toEqual([
-      { valor: 8, conservado: false },
-      { valor: 17, conservado: true },
+      { valor: 8, conservado: false, caras: null },
+      { valor: 17, conservado: true, caras: null },
     ]);
   });
 
@@ -44,7 +44,33 @@ describe("dadosDeLaTirada", () => {
 
   it("sin descartes, todos cuentan", () => {
     expect(dadosDeLaTirada({ rolls: [12], dropped: [] })).toEqual([
-      { valor: 12, conservado: true },
+      { valor: 12, conservado: true, caras: null },
+    ]);
+  });
+
+  // Task 10 — con `dice[]` (Tarea 9), cada dado ya sabe sus caras y no hace falta emparejar.
+  it("con dice[], cada dado sale con sus caras y su conservado tal cual dice el servidor", () => {
+    expect(
+      dadosDeLaTirada({
+        rolls: [3, 5],
+        dropped: [3],
+        dice: [
+          { sides: 6, value: 3, kept: false },
+          { sides: 20, value: 5, kept: true },
+        ],
+      }),
+    ).toEqual([
+      { valor: 3, conservado: false, caras: 6 },
+      { valor: 5, conservado: true, caras: 20 },
+    ]);
+  });
+
+  it("sin dice[] (suceso viejo), empareja como antes y deja caras en null", () => {
+    // El orden exacto es el del emparejamiento de siempre (arriba): el primer 8 que aparece
+    // consume el `dropped`, así que es el que se marca descartado.
+    expect(dadosDeLaTirada({ rolls: [8, 8], dropped: [8] })).toEqual([
+      { valor: 8, conservado: false, caras: null },
+      { valor: 8, conservado: true, caras: null },
     ]);
   });
 });

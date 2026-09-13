@@ -86,6 +86,25 @@ describe("Tiradas (e2e)", () => {
     expect(evento.payload).toMatchObject({ expression: "1d20+3", reason: "Percepción", dc: 12 });
   });
 
+  it("2d6+1d20 devuelve dice con tres entradas, caras [6, 6, 20] en orden, y el suceso lo trae igual (C5)", async () => {
+    const s = app.getHttpServer();
+    const tirada = await request(s)
+      .post(`/campaigns/${campaignId}/rolls`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ expression: "2d6+1d20", audience: "PUBLIC" });
+
+    expect(tirada.status).toBe(201);
+    expect(tirada.body.dice).toHaveLength(3);
+    expect(tirada.body.dice.map((d: { sides: number }) => d.sides)).toEqual([6, 6, 20]);
+    expect(tirada.body.dice.every((d: { kept: boolean }) => d.kept === true)).toBe(true);
+
+    const log = await request(s)
+      .get(`/campaigns/${campaignId}/events`)
+      .set("Authorization", `Bearer ${tokenDM}`);
+    const evento = log.body.events.find((e: { id: string }) => e.id === tirada.body.eventId);
+    expect(evento.payload.dice).toEqual(tirada.body.dice);
+  });
+
   it("una tirada a ciegas no aparece en el GET del jugador, y sí en el del DM", async () => {
     const s = app.getHttpServer();
     const oculta = await request(s)

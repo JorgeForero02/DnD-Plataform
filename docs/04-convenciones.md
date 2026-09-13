@@ -383,9 +383,14 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   resto de la interfaz. SVG en trazo, heredando `currentColor`. `ui/Iconos.tsx` es
   la casa **común**, y `ui/Logo.tsx` / `ui/Ornament.tsx` la marca y el ornamento; además **cada
   módulo grande dibuja los suyos** cuando solo los usa él (`features/rules/iconos.tsx`,
-  `features/sessions/iconos.tsx`, `features/level-up/IconoAscenso.tsx`,
-  `features/rolls/DadoDibujado.tsx`). Lo que la regla exige es que sean **dibujados**, no que
-  vivan en un único fichero; enumerar tres sitios cuando había siete fue una lista que caducó. Un icono que vive
+  `features/sessions/iconos.tsx`, `features/level-up/IconoAscenso.tsx`). Lo que la regla exige es
+  que sean **dibujados**, no que vivan en un único fichero; enumerar tres sitios cuando había
+  siete fue una lista que caducó. **Tarea 7 (C3 #12, #22, 2026-09-12):** `features/rolls/DadoDibujado.tsx`
+  pasó de dibujar su propio icosaedro a delegar en `IconoDado caras={20}` de `ui/Iconos.tsx` — el
+  dado dejó de ser un dibujo aparte para ser uno de los seis. Y **todo botón primario de página y
+  toda entrada de navegación llevan icono**; lo comprueba `ui/__tests__/botones-con-icono.test.tsx`,
+  el barrido que encontró «+ Crear objeto» (un `+` de fuente, la misma infracción que esta regla
+  ya prohibía para los glifos sueltos) y «Escribir una criatura» sin ninguno. Un icono que vive
   **dentro de una línea de texto** se dimensiona en `1em`, no en píxeles, para que escale con
   ella. Una auditoría del 2026-09-02 encontró **seis infracciones**, y una de ellas era el
   `✓` que esta misma regla nombra como prohibido: escribir la regla no la aplica, hace falta
@@ -471,6 +476,54 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   para no cometer. La búsqueda por texto dentro del cuerpo es el ejemplo ya resuelto: se hace
   **en el servidor**, filtrada por `canView` antes que por el texto (ficha U3, 2026-09-05/06), y
   no ampliando este filtro de cliente para que reciba más de lo que debería.
+
+- **Reparto interno de tarjeta (pulido 2026-09-12).** Cabecera · cuerpo · pie, con un solo
+  relleno (`p-s3`); los números alineados a una rejilla de columnas; **una tarjeta no crece para
+  llenar un hueco: la rejilla la coloca** (`items-start`, y alturas iguales por fila solo donde
+  haga falta con `grid-rows`). Lo mide `e2e/espacios.spec.ts`<!-- docs-lint-ignore -->: ningún
+  hueco vertical entre tarjetas hermanas mayor de **48 px** (`HUECO_MAX_PX`), ninguna tarjeta más
+  baja que su vecina de fila en más de **24 px** (`DESNIVEL_MAX_PX`) salvo la última. Las cinco
+  casillas de la cabecera (PG, CA, Iniciativa, Velocidad, Competencia) pasan a un ancho y alto
+  fijos de **6rem** (`ANCHO_CASILLA_REM`) por **3.75rem** (`ALTO_CASILLA_REM`), en vez del
+  `min-w` asimétrico de hoy, con `whitespace-nowrap` en rótulo, cifra y nota — números salidos de
+  la [nota de diseño](./superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md) y **corregidos
+  el 2026-09-12** (4.75rem partía «VEL. (PIES)», «13 / 13» y «+5 temporales» en dos líneas, medido
+  en el navegador por `e2e/hoja.spec.ts`).
+
+- **Acciones de una fila: hasta 2 visibles (`ACCIONES_VISIBLES`), el resto en un menú «…»
+  dibujado.** Nunca una fila de cinco botones (anexo #1). El menú es `ui/MenuDeAcciones.tsx`: se
+  abre hacia donde hay sitio, flechas y `Escape`, y devuelve el foco. **Desde la tarea 8 del
+  pulido (2026-09-12)**, la fila de mandos del elenco es su primer consumidor: «Daño» y «Curar»
+  se quedan visibles, y «Condición», «Dar…», «Su hoja» y el bando (`useAccionesDeBando`,
+  `CorregirBando.tsx`) se pliegan en él. La fila de bando que existía antes quedó sustituida por
+  el menú y se borró en la ronda de arreglo 3: sus aserciones se movieron a los `menuitem` con
+  la razón escrita en cada prueba. Un ítem que necesite explicarse lleva `descripcion` (leída
+  por `aria-describedby`), aparte del `motivo` de por qué está apagado.
+
+- **Espacio reservado.** Lo que puede cambiar de tamaño al escribir —la línea de error de un
+  campo, un contador, un aviso— reserva su alto (`min-height`) para que la tarjeta no salte
+  (anexo #8). `Field` lo hace con `reservaEspacio`.
+
+- **Sticky con escalón.** Todo lo pegado respeta `--tira-fija-top`, y dentro de un cajón las
+  variables `--tira-fija-*` valen lo que el cajón declara. Se mide con `boundingBox` (anexo #6).
+
+- **Un dado, una forma.** Seis dibujos (`IconoDado`, `ui/Iconos.tsx`): d4 tetraedro, d6 cubo,
+  d8 octaedro, d10/d100 trapezoedro, d12 dodecaedro, d20 icosaedro. Un resultado enseña **cada
+  dado** con su forma y su cara; los descartados tachados (anexo #11, #12).
+
+- **Un árbol enseña un padre; los demás hilos van en la ficha** (Task 14 bis, D-CF-64). El
+  desglose del mundo cuelga cada ficha de la de destino de un hilo cuyo rótulo está en
+  `ROTULOS_DE_JERARQUIA` (`apps/web/src/features/links/relaciones.ts`, la lista única: «vive en», «se encuentra en»,
+  «forma parte de», «ocurrió en», «pertenece a» — **contención**, nada más; «custodia» salió en la
+  ronda 1 porque custodiar es lateral); todo lo demás —«es aliado de», «custodia», «menciona»,
+  «protege a»— es lateral y se lee en el detalle de la ficha, no en el árbol. Dos padres se
+  enseñan en los dos, marcados «también en …»; un mismo par con dos rótulos de jerarquía cuelga
+  UNA vez, por el primero de la lista; un ciclo se corta y se marca, y de un ciclo sin raíz se
+  levanta una sola ficha —la primera por nombre de las que están en el ciclo—, nunca una que
+  cuelgue de él. Un rótulo
+  de jerarquía tiene que existir como `desde` de `RELACIONES`: un padre que nadie puede elegir
+  desde el selector sería un padre secreto. Y los desplegables de «hacia qué ficha» y «rótulo»
+  son datos, no opciones con significado: por eso son listas con buscador y no radios.
 
 ## Los tokens de color se declaran por CANALES (B0, 2026-09-04)
 
@@ -671,6 +724,14 @@ de Playwright por fichero es uno solo y vive en [08-pruebas.md](./08-pruebas.md)
 (D-CF-44): la otra forma corrió la suite entera una vez. Y **los implementadores corren `pnpm verify`
 en primer plano**, nunca con `run_in_background`: dos se quedaron parados esperando una notificación
 que no llegó, y el encargo lo dice desde entonces.
+
+**Todo Bash de un agente que pueda pasar de 120 s lleva `timeout` explícito (600000): el harness
+lo manda al fondo si no, y el agente se queda esperando una notificación que no llega — ~40 min
+perdidos en la tanda del pulido (2026-09-12/13).** No es la misma regla que la de arriba (esa dice
+«no uses `run_in_background`»; esta dice «si no lo usas, dile igualmente al harness cuánto vas a
+tardar»): un `pnpm verify` o un `git commit` con gancho de pre-commit sin `timeout` en la llamada
+pasa a segundo plano por su cuenta pasados los 120 s por defecto, y el agente no se entera. El
+`timeout` va como **parámetro de la herramienta**, no como prefijo de comando de shell.
 
 **Techo de cinco agentes.** Por encima, las compilaciones se comen la máquina y el cuello deja de
 ser el modelo. La recomendación general es 3-5; cinco es sostenible en un equipo con 32 GB.

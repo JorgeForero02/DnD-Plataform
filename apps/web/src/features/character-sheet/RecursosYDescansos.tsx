@@ -13,6 +13,7 @@ import { RegalarInspiracion } from "./RegalarInspiracion";
 const CLAVE_INSPIRACION = "inspiration";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
+import { IconoMas } from "../../ui/Iconos";
 import { EXPLICACION_RESET_RECURSO, NOMBRE_RESET_RECURSO } from "./vocabulario";
 import type { ResourceReset } from "@dnd/shared";
 import { PROSA_DE_HOJA } from "./Tarjeta";
@@ -251,7 +252,10 @@ export function RecursosYDescansos({
 
             <div className="flex gap-s2">
               {/* **El botón de guardar nunca se deshabilita** (`docs/04-convenciones.md`). */}
-              <Button type="submit">Crear</Button>
+              <Button type="submit">
+                <IconoMas />
+                Crear
+              </Button>
               <Button type="button" variant="ghost" onClick={() => setCreando(false)}>
                 Cancelar
               </Button>

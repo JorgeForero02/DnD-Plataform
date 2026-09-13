@@ -32,15 +32,21 @@ dominio (200).
 > que el autor desplegó ese mismo día: `git diff --name-only 6d2b2ca..HEAD -- apps packages` está
 > vacío, así que no queda nada sin desplegar.
 
-**`main` y producción coinciden en `6d2b2ca`.** Empujar a GitHub **no despliega nada** — el CI solo
-prueba, y el despliegue es manual por decisión del autor: ver
-[03-despliegue.md](./03-despliegue.md).
+**`main` sigue en `6d2b2ca`, lo mismo que producción — hasta que esta rama se fusione.** Empujar a
+GitHub **no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión del autor:
+ver [03-despliegue.md](./03-despliegue.md). La rama `pulido/antes-del-paso-3` (43 commits sobre
+`0ebdd9f`, cerrada el 2026-09-13 por la Tarea 15) **todavía no está fusionada**: en cuanto el autor
+la fusione, `main` quedará por delante de producción hasta que él mismo la despliegue a mano — la
+misma regla de siempre, no una excepción.
 
 **Los quince planes del 2026-09-05 están cerrados**, uno por fichero, en
 [superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md), y lo que
 decidieron mientras se ejecutaban está en [decisiones.md](./decisiones.md). **Lo que queda por hacer
-no es un plan, es jugar**: la partida de prueba con dos cuentas de jugador (D-OP-3), y ahora sí en
-producción, con el despliegue del 2026-09-12 ya hecho.
+ya no es «jugar y ya»: son tres tandas más antes del paso 3** (D-CF-52, enmendada por D-CF-64) —
+**reglas de la mesa** → **puerta de efectos** → **paso 3**, con el **mapa de historia del DM
+aplazado** por el autor tras ver cuatro maquetas (su spec se queda escrita, sin fecha). Cada tanda
+espera su propio plan y el OK del autor; ninguna arranca sola. Y sigue pendiente la partida de
+prueba con dos cuentas de jugador (D-OP-3), en producción desde el 2026-09-02.
 
 
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
@@ -118,12 +124,12 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `a15811e` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `0a8689e` **(rama `pulido/antes-del-paso-3`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
 >   necesariamente solo uno — sin que `check:estado` lo detecte.
-> - **Declaraciones de prueba unitaria:** 2755 (shared 192, api 1354, web 1209). **Es una cota inferior, no lo
+> - **Declaraciones de prueba unitaria:** 2882 (shared 192, api 1357, web 1333). **Es una cota inferior, no lo
 >   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no
 >   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número
 >   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice

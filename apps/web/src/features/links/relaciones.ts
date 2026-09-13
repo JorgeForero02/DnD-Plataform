@@ -82,6 +82,37 @@ export const RELACIONES: Relacion[] = [
   { desde: "menciona", hacia: "está mencionado en", origen: ["DOCUMENT"], destino: TODOS },
 ];
 
+/**
+ * **Los rótulos que cuelgan una ficha de su padre en el desglose del mundo** (Task 14 bis,
+ * D-CF-64). Es la lista ÚNICA: `taller/mundo/arbolDelMundo.ts` la cruza con cada hilo y cuelga la
+ * ficha de ORIGEN bajo la de DESTINO cuando el rótulo está aquí; todo lo demás es lateral y no
+ * mueve nada (regla de `docs/04-convenciones.md`: «un árbol enseña un padre; los demás hilos van
+ * en la ficha»).
+ *
+ * Los cinco son `desde` de `RELACIONES` —lo comprueba `relaciones.test.ts`— y no se inventa
+ * ninguno: un rótulo que cuelga y que nadie puede escribir desde el selector sería un padre
+ * secreto. **El árbol enseña CONTENCIÓN** —vivir en, estar en, formar parte de, pertenecer a,
+ * ocurrir en—; «custodia» estuvo en la lista hasta la ronda 1 de la Task 14 bis y se quitó por
+ * decisión del orquestador: custodiar es una relación lateral (quien custodia no está DENTRO de
+ * lo custodiado), y colgaba al guardián bajo el cofre, al revés de los otros cinco.
+ *
+ * **El orden importa:** cuando un mismo par de fichas tiene dos hilos de jerarquía, el árbol
+ * cuelga la hija UNA vez, por el primero de esta lista (`arbolDelMundo.ts`).
+ */
+export const ROTULOS_DE_JERARQUIA: readonly string[] = [
+  "vive en",
+  "se encuentra en",
+  "forma parte de",
+  "ocurrió en",
+  "pertenece a",
+] as const;
+
+/** Si un rótulo, tal y como lo escribió el DM, cuelga la ficha de su padre. */
+export function esRotuloDeJerarquia(label: string | null | undefined): boolean {
+  const texto = label?.trim().toLowerCase();
+  return Boolean(texto) && ROTULOS_DE_JERARQUIA.includes(texto as string);
+}
+
 /** Las relaciones con sentido para un par de tipos concreto. */
 export function relacionesSugeridas(origen: EntityType, destino: EntityType): Relacion[] {
   return RELACIONES.filter((r) => r.origen.includes(origen) && r.destino.includes(destino));

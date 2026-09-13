@@ -259,6 +259,10 @@ export function AppShell({
               {
                 "--tira-fija-top": "4rem",
                 "--tira-fija-pull": "-1.5rem",
+                // Pulido 2026-09-12 (anexo #3): a página la tira se sale medio paso a cada lado y
+                // lleva el velo translúcido; dentro de un cajón (Dialog) ninguna de las dos cosas.
+                "--tira-fija-mx": "calc(var(--space-2) * -1)",
+                "--tira-fija-bg": "var(--chrome-veil)",
               } as CSSProperties
             }
           >

@@ -98,7 +98,11 @@ import {
 } from "../character-state/concentration/concentration";
 import { rollSuggestionsFor } from "../character-state/roll-mode/suggested-roll-mode";
 import { canView, loVeLaMesa, Viewer } from "../common/visibility";
-import { viewerFor, viewerForCharacterOwner } from "../common/character-viewer";
+import {
+  requireVisibleCharacter,
+  viewerFor,
+  viewerForCharacterOwner,
+} from "../common/character-viewer";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
 //
@@ -1456,6 +1460,23 @@ export class CharacterSheetService {
       }
     }
 
+    // Pulido 2026-09-12 (anexo #15). **El origen puesto a mano**, cuando el daño no cuelga de
+    // ninguna tirada: el mismo `requireVisibleCharacter` que ya exige `activities`,
+    // `conditions`, `resources`, `rest`, `temporary-modifiers` e `inventory` para citar a
+    // alguien sin reimplementar «existe y se ve» una vez más. 404 tanto si no existe como si
+    // existe pero este actor no lo ve — no hay diferencia observable entre las dos, y esa es la
+    // regla que el helper ya impone en todos los demás sitios.
+    if (input.sourceCharacterId) {
+      await requireVisibleCharacter(
+        this.prisma,
+        this.membership,
+        userId,
+        campaignId,
+        input.sourceCharacterId,
+        tx,
+      );
+    }
+
     if (input.delta < 0) {
       // Al recibir daño se gastan primero los PG temporales: no se suman a los actuales.
       let danio = -input.delta;
@@ -1634,6 +1655,9 @@ export class CharacterSheetService {
           ...(massive ? { massive: true } : {}),
           // Tarea 2.5.4 — de qué tirada salió, ya comprobada arriba contra la base.
           ...(input.rollEventId ? { rollEventId: input.rollEventId } : {}),
+          // Pulido 2026-09-12 (anexo #15) — de quién viene, ya comprobado arriba: visible y en
+          // esta campaña.
+          ...(input.sourceCharacterId ? { sourceCharacterId: input.sourceCharacterId } : {}),
           reason: input.reason,
         },
       },

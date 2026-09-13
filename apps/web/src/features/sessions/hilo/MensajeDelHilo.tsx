@@ -90,6 +90,7 @@ export function MensajeDelHilo({
   personaje,
   ligada,
   nuevo,
+  linea,
 }: {
   evento: GameEventRow;
   /** El nombre de quien lo hizo. El hilo manda «Alguien» si no conoce a ese miembro. */
@@ -102,16 +103,26 @@ export function MensajeDelHilo({
    * compositor manda el propio `actorUserId` como identificador de la huella: sigue habiendo un
    * color estable, lo que no hay es un color **elegido**. Quién lo resuelve y con qué reglas está
    * en `HiloDeSesion.tsx`; aquí solo se pinta.
+   *
+   * **Tarea 11 (C4, #15): también puede traer `name`.** Cuando `personaje` es de verdad un
+   * `Character`/`NpcEnLaMesa` —`vozDe` resolvió uno real, no cayó al `actorUserId` suelto—, su
+   * nombre es lo que la cabecera pinta delante de la línea; el autor pasa a la firma, debajo.
    */
-  personaje: ConColor;
+  personaje: ConColor & { name?: string };
   /** La tirada de la que cuelga un ataque, si está en la ventana del registro. */
   ligada?: GameEventPayload | null;
   /** Llegó después de que se abriera la pantalla: entra con `surge`. */
   nuevo: boolean;
+  /**
+   * **La frase, ya compuesta.** Tarea 11 del pulido (C4, #15): `lineaDeLog` necesita el sujeto y
+   * los nombres resueltos (`ContextoDeLinea`) para decir «Sylas pierde… ← Klarg», y ese contexto
+   * solo lo tiene `HiloDeSesion` — este componente ya no llama a `lineaDeLog(p)` por su cuenta
+   * más que para el título de un sello (`tituloDeSello`, que nunca lleva sujeto).
+   */
+  linea: string;
 }) {
   const p = evento.payload;
   const tipo = tipoDeMensaje(p);
-  const linea = lineaDeLog(p);
   const hora = horaDe(evento.createdAt);
 
   // Lo que envuelve a cualquiera de las cinco formas: `shrink-0` para que la línea no se encoja
@@ -182,22 +193,38 @@ export function MensajeDelHilo({
     );
   }
 
-  // Personaje: la voz de quien actuó, con su color. El nombre va delante y en el mismo párrafo,
-  // como en la maqueta; **la hora va detrás y en la misma línea**, no debajo. Una firma por
-  // mensaje partía en dos cada intervención y devolvía al hilo el aspecto de lista que esto
-  // viene a quitar. La insignia solo aparece si el suceso no es de la mesa entera.
+  // Personaje: la voz de quien actuó, con su color. **La cabecera dice EL PERSONAJE cuando `vozDe`
+  // resolvió uno real** (tarea 11 del pulido, C4 #15) — el hueco #15 pedía justo esto: hasta aquí
+  // el hilo decía «Ada pierde 7 PG», el nombre de quien está delante de la pantalla, no el de a
+  // quién le pasó. La PERSONA no desaparece: baja a la firma, con su hora, igual que en las otras
+  // cuatro formas de mensaje — es `vozDePersonaje` quien decide el color, y sigue siendo del
+  // PERSONAJE y no del usuario, así que el nombre de la cabecera y el color siempre son la misma
+  // entidad. **Sin personaje resuelto, como siempre**: la persona en la cabecera, la hora detrás,
+  // sin firma aparte — no hay dos nombres que decir.
   const voz = vozDePersonaje(personaje);
+  const nombrePersonaje = personaje.name;
   return (
     <li data-suceso={evento.id} className={contenedor}>
       <p className="my-s1 max-w-[62ch] font-world text-world-base">
-        <span className={`font-chrome text-chrome-sm font-semibold ${voz}`}>{autor}</span>{" "}
-        <span className={voz}>{linea}</span>{" "}
-        <span className="font-data text-chrome-xs text-muted">{hora}</span>
+        <span className={`font-chrome text-chrome-sm font-semibold ${voz}`}>
+          {nombrePersonaje ?? autor}
+        </span>{" "}
+        <span className={voz}>{linea}</span>
+        {!nombrePersonaje && (
+          <>
+            {" "}
+            <span className="font-data text-chrome-xs text-muted">{hora}</span>
+          </>
+        )}
       </p>
-      {evento.visibility !== "PLAYERS" && (
-        <p className="mt-0.5">
-          <Badge visibility={evento.visibility} />
-        </p>
+      {nombrePersonaje ? (
+        <Firma autor={autor} hora={hora} visibility={evento.visibility} />
+      ) : (
+        evento.visibility !== "PLAYERS" && (
+          <p className="mt-0.5">
+            <Badge visibility={evento.visibility} />
+          </p>
+        )
       )}
     </li>
   );

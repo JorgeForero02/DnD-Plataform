@@ -12,6 +12,12 @@ export interface FieldProps {
   label: string;
   error?: string;
   hint?: string;
+  /**
+   * Anexo #8 — cuando es `true`, la línea de pista/error se pinta siempre con `min-h-[1.125rem]`
+   * (vacía si no hay nada que decir), para que el control no salte de alto al aparecer o
+   * desaparecer un error de validación en vivo (p.ej. el evaluador de expresiones de dados).
+   */
+  reservaEspacio?: boolean;
   children: ReactElement<FieldControlProps>;
 }
 
@@ -38,7 +44,7 @@ export const fieldControlClass =
 // id (matching the label's htmlFor), aria-describedby pointing at the hint and/or error, and
 // aria-invalid when there is an error. Revert the cloneElement wiring below and
 // Field.test.tsx's aria assertions fail even though the label and error text still render.
-export function Field({ label, error, hint, children }: FieldProps) {
+export function Field({ label, error, hint, reservaEspacio, children }: FieldProps) {
   const generatedId = useId();
   const controlId = children.props.id ?? generatedId;
   const hintId = hint ? `${controlId}-hint` : undefined;
@@ -58,9 +64,22 @@ export function Field({ label, error, hint, children }: FieldProps) {
       </label>
       {control}
       {hint && !error && (
-        <p id={hintId} className="font-chrome text-chrome-xs text-muted">
+        <p
+          id={hintId}
+          data-testid={reservaEspacio ? "field-linea" : undefined}
+          className={[
+            "font-chrome text-chrome-xs text-muted",
+            reservaEspacio ? "min-h-[1.125rem]" : "",
+          ].join(" ")}
+        >
           {hint}
         </p>
+      )}
+      {!hint && !error && reservaEspacio && (
+        // Anexo #8 — sin pista ni error, se reserva igualmente el alto de la línea para que el
+        // control no salte cuando el evaluador de la expresión hace aparecer/desaparecer el
+        // error mientras se escribe.
+        <p data-testid="field-linea" className="font-chrome text-chrome-xs min-h-[1.125rem]" />
       )}
       {error && (
         // Fix round 1, Important 4: the first version of this put the message in --text and
@@ -76,7 +95,15 @@ export function Field({ label, error, hint, children }: FieldProps) {
         // Q1: el aviso era un triángulo de fuente y ahora se dibuja (ui/Iconos.tsx). Sigue delante
         // del
         // texto porque la forma es la parte de la señal que no depende de distinguir el color.
-        <p id={errorId} role="alert" className="font-chrome text-chrome-xs text-danger-text">
+        <p
+          id={errorId}
+          role="alert"
+          data-testid={reservaEspacio ? "field-linea" : undefined}
+          className={[
+            "font-chrome text-chrome-xs text-danger-text",
+            reservaEspacio ? "min-h-[1.125rem]" : "",
+          ].join(" ")}
+        >
           <IconoAviso className="mr-1" />
           {error}
         </p>

@@ -49,9 +49,17 @@ async function abrirDados(page: Page) {
   await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
 }
 
+// Task 10 — «Qué se tira» vive ahora bajo «Modo avanzado» (`BandejaDeDados.tsx`), plegado por
+// defecto: los recorridos que escribían la expresión a mano siguen valiendo tal cual —el campo
+// sigue siendo el que manda—, pero hay que abrir el `<details>` antes de escribir en él.
+async function abrirModoAvanzado(page: Page) {
+  await tarjeta(page).getByText("Modo avanzado").click();
+}
+
 test("se tira una expresión libre y se ve el desglose, no solo el total", async ({ page }) => {
   await abrirDados(page);
 
+  await abrirModoAvanzado(page);
   await page.getByLabel("Qué se tira").fill("2d6+3");
   await page.getByLabel("Motivo (opcional)").fill("Daño de la maza");
   await page.getByRole("button", { name: "Tirar" }).click();
@@ -69,12 +77,47 @@ test("se tira una expresión libre y se ve el desglose, no solo el total", async
   expect(primerDado).toBeLessThanOrEqual(6);
 });
 
+// Task 10 — **la bandeja de dados, contra la API real.** Pulsar d6, d6 y d20, subir el
+// modificador a 3, y tirar sin escribir ni una letra: el resultado enseña los tres dados con SU
+// forma (`data-icono`) y el total, que es exactamente lo que ninguna unitaria con espías puede
+// demostrar — que la expresión que compuso la bandeja es la que de verdad llegó al servidor.
+test("la bandeja compone la tirada a golpes: d6, d6, d20 y el modificador a 3", async ({
+  page,
+}) => {
+  await abrirDados(page);
+
+  // La bandeja empieza con un d20 (el «1d20» de siempre): se quita antes de componer la de esta
+  // prueba, para que el total no dependa de un cuarto dado que nadie pidió.
+  await tarjeta(page)
+    .getByRole("button", { name: "Quitar el d20 (posición 1)", exact: true })
+    .click();
+  await tarjeta(page).getByRole("button", { name: "Añadir un d6", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Añadir un d6", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Añadir un d20", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Subir el modificador", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Subir el modificador", exact: true }).click();
+  await tarjeta(page).getByRole("button", { name: "Subir el modificador", exact: true }).click();
+
+  await tarjeta(page).getByRole("button", { name: "Tirar" }).click();
+
+  const resultado = tarjeta(page).getByRole("status");
+  await expect(resultado).toBeVisible();
+  // Los tres dados, cada uno con su forma — no los tres icosaedros de antes de la Tarea 9.
+  await expect(resultado.locator('[data-icono="d6"]')).toHaveCount(2);
+  await expect(resultado.locator('[data-icono="d20"]')).toHaveCount(1);
+  // El total: entre los tres dados (mínimo 3, máximo 32) más el +3 del modificador.
+  const total = Number(await tarjeta(page).locator("p.text-chrome-2xl").innerText());
+  expect(total).toBeGreaterThanOrEqual(6);
+  expect(total).toBeLessThanOrEqual(35);
+});
+
 test("**el dado descartado se pinta tachado** — y eso solo se puede medir en un navegador", async ({
   page,
 }) => {
   await abrirDados(page);
 
   // Con ventaja, el servidor convierte el d20 en `2d20kh1`: caen dos dados y uno se descarta.
+  await abrirModoAvanzado(page);
   await page.getByLabel("Qué se tira").fill("1d20");
   // **Acotado a la tarjeta.** Desde 2C.5 el DM también tiene «Pedir una tirada» en esta pantalla,
   // con su propio control de ventaja: sin acotar, «Ventaja» resuelve a dos radios y la prueba se
@@ -98,6 +141,7 @@ test("una expresión inválida se rechaza **con el motivo del evaluador de verda
 }) => {
   await abrirDados(page);
 
+  await abrirModoAvanzado(page);
   await page.getByLabel("Qué se tira").fill("4d");
   await page.getByRole("button", { name: "Tirar" }).click();
 
@@ -112,6 +156,7 @@ test("un modificador absurdo también se rechaza legible: el tope de la ficha P2
 }) => {
   await abrirDados(page);
 
+  await abrirModoAvanzado(page);
   await page.getByLabel("Qué se tira").fill("1d20+999999999");
   await page.getByRole("button", { name: "Tirar" }).click();
 
@@ -149,6 +194,7 @@ test("**a ciegas, el total no viaja al jugador**: se mide sobre la respuesta HTT
   await page.getByRole("tab", { name: "Dados" }).click();
   await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
 
+  await abrirModoAvanzado(page);
   await page.getByLabel("Qué se tira").fill("1d20+5");
   await tarjeta(page)
     .getByRole("radio", { name: /a ciegas/i })
@@ -176,6 +222,7 @@ test("**a ciegas, el total no viaja al jugador**: se mide sobre la respuesta HTT
 test("las tiradas aparecen en el registro de la campaña, debajo", async ({ page }) => {
   await abrirDados(page);
 
+  await abrirModoAvanzado(page);
   await page.getByLabel("Qué se tira").fill("1d100");
   await page.getByLabel("Motivo (opcional)").fill("A ver qué sale");
   await page.getByRole("button", { name: "Tirar" }).click();

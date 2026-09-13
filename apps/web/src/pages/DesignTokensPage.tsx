@@ -6,6 +6,7 @@ import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
 import { Panel } from "../ui/Panel";
 import { Badge } from "../ui/Badge";
+import { IconoMas } from "../ui/Iconos";
 import { Dialog } from "../ui/Dialog";
 import { Tabs } from "../ui/Tabs";
 import { setTheme, type Theme } from "../ui/theme";
@@ -153,6 +154,7 @@ export function DesignTokensPage() {
         <Button variant="ghost">Ver más</Button>
         <Button variant="danger">Borrar</Button>
         <Button variant="primary" disabled title="Solo el DM puede crear.">
+          <IconoMas />
           Nuevo
         </Button>
         <Button variant="danger" disabled title="Solo el DM o quien lo creó puede editarlo.">

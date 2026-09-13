@@ -4,7 +4,7 @@ import type { CreateDmTableInput, EntregaInput, TableTrigger, Visibility } from 
 import { Badge } from "../../ui/Badge";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
-import { IconoAviso, IconoQuitar } from "../../ui/Iconos";
+import { IconoAviso, IconoMas, IconoQuitar } from "../../ui/Iconos";
 import { VisibilityChooser } from "../entities/VisibilityChooser";
 // El grupo de radios genérico de B2. Su propio comentario lo declara reutilizable, y duplicarlo
 // aquí habría sido una segunda forma de pintar la misma decisión.
@@ -389,6 +389,7 @@ function CrearTabla({ campaignId }: { campaignId: string }) {
           setAbierto(true);
         }}
       >
+        <IconoMas />
         Crear tabla
       </Button>
     );

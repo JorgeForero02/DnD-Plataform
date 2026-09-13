@@ -1,5 +1,6 @@
 import {
   rollExpression,
+  dadosTirados,
   DiceExpressionError,
   DICE_LIMITS,
   defaultRoller,
@@ -299,5 +300,29 @@ describe("el término constante tiene tope (ficha P2)", () => {
     } catch (e) {
       expect((e as DiceExpressionError).code).toBe("CONSTANTE_DEMASIADO_GRANDE");
     }
+  });
+});
+
+describe("dadosTirados", () => {
+  it("empareja cada dado con sus caras y marca los descartados de kh/kl y los relanzados", () => {
+    const r = rollExpression("4d6kh3+1d4", tirador([3, 5, 1, 6, 2, 4]));
+    expect(dadosTirados(r.terms)).toEqual([
+      { sides: 6, value: 3, kept: true },
+      { sides: 6, value: 5, kept: true },
+      { sides: 6, value: 1, kept: false },
+      { sides: 6, value: 6, kept: true },
+      { sides: 4, value: 2, kept: true },
+    ]);
+  });
+
+  it("con 2d6 iguales y un descartado, tacha uno y no los dos", () => {
+    const r = rollExpression("2d6kh1", tirador([4, 4]));
+    expect(dadosTirados(r.terms).filter((d: { kept: boolean }) => !d.kept)).toHaveLength(1);
+  });
+
+  it("una constante no es un dado", () => {
+    expect(dadosTirados(rollExpression("1d8+3", tirador([5])).terms)).toEqual([
+      { sides: 8, value: 5, kept: true },
+    ]);
   });
 });

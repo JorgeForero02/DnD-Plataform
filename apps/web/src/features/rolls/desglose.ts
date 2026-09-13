@@ -19,25 +19,41 @@ import { traducirLabelKey } from "../character-sheet/vocabulario";
 export interface DadoDeLaTirada {
   valor: number;
   conservado: boolean;
+  /**
+   * Task 10 — sus caras, para dibujarlo con su forma (`IconoDado caras={…}`). `null` cuando el
+   * servidor no mandó `dice[]` — un suceso escrito antes de la Tarea 9 no lo trae, y no se
+   * reescribe; quien pinte esto se cae al d20 de siempre (docs/06-pendientes.md no lo lista
+   * porque no es una regresión: es un campo que no existía).
+   */
+  caras: number | null;
 }
 
 /**
- * Los dados **en el orden en que salieron**, marcando cuál se descartó.
+ * Los dados **en el orden en que salieron**, marcando cuál se descartó y, si el servidor lo
+ * manda, sus caras.
  *
- * El servidor devuelve `rolls` (todos, en orden), `kept` y `dropped` (sin orden útil), así que
- * el emparejamiento se hace consumiendo `dropped` como multiconjunto: con `rolls: [8, 8]` y
- * `dropped: [8]` hay que tachar **uno** de los dos ochos, no los dos. Cotejar por valor sin
- * consumir es el fallo obvio y silencioso de esta función.
+ * **Con `dice[]` (Tarea 9, C5), cada dado ya trae su propio `sides`, `value` y `kept` — no hay
+ * nada que emparejar.** Es la rama nueva y la buena: un dado sabe de sí mismo.
+ *
+ * **Sin `dice[]` (un suceso escrito antes de esa tarea), se cae al emparejamiento de siempre**:
+ * el servidor solo da `rolls` (todos, en orden) y `kept`/`dropped` (sin orden útil), así que se
+ * consume `dropped` como multiconjunto — con `rolls: [8, 8]` y `dropped: [8]` hay que tachar
+ * **uno** de los dos ochos, no los dos. Cotejar por valor sin consumir es el fallo obvio y
+ * silencioso de esta rama, y en ella no hay forma de saber las caras: quien lo pinte se cae al
+ * d20 de siempre.
  */
 export function dadosDeLaTirada(
-  resultado: Pick<RollResultRevealed, "rolls" | "dropped">,
+  resultado: Pick<RollResultRevealed, "rolls" | "dropped" | "dice">,
 ): DadoDeLaTirada[] {
+  if (resultado.dice) {
+    return resultado.dice.map((d) => ({ valor: d.value, conservado: d.kept, caras: d.sides }));
+  }
   const pendientes = [...resultado.dropped];
   return resultado.rolls.map((valor) => {
     const i = pendientes.indexOf(valor);
-    if (i === -1) return { valor, conservado: true };
+    if (i === -1) return { valor, conservado: true, caras: null };
     pendientes.splice(i, 1);
-    return { valor, conservado: false };
+    return { valor, conservado: false, caras: null };
   });
 }
 

@@ -205,6 +205,53 @@ describe("El daño, con su traza (e2e)", () => {
     expect(deBram.length).toBe(2);
   });
 
+  it("el DM pone daño a mano citando de quién viene, y el HP_CHANGED lo lleva", async () => {
+    const s = app.getHttpServer();
+    // Un segundo PNJ, el origen del golpe: el hilo dirá «← Klarg» sin que haya tirada de por
+    // medio — el mismo dato que trae `ATTACK_RESOLVED.attackerId`, pero puesto a mano.
+    const klarg = await request(s)
+      .post(npcs())
+      .set("Authorization", auth(tokenDM))
+      .send({ ref: "SRD:goblin" });
+    const klargId = klarg.body[0].id;
+
+    const golpe = await request(s)
+      .post(`${ficha(tumularioId)}/hp`)
+      .set("Authorization", auth(tokenDM))
+      .send({ delta: -7, damageType: "SLASHING", sourceCharacterId: klargId });
+    expect(golpe.status).toBe(201);
+
+    const log = await request(s).get(eventos()).set("Authorization", auth(tokenDM));
+    const hp = log.body.events.find(
+      (e: { subjectId: string; payload: { type: string } }) =>
+        e.subjectId === tumularioId && e.payload.type === "HP_CHANGED",
+    );
+    expect(hp).toBeDefined();
+    expect(hp.payload.sourceCharacterId).toBe(klargId);
+  });
+
+  it("un origen que no existe en la campaña es 404, y no se escribe nada", async () => {
+    const s = app.getHttpServer();
+    const antes = (
+      await request(s)
+        .get(`${ficha(tumularioId)}/sheet`)
+        .set("Authorization", auth(tokenDM))
+    ).body.hp.current;
+
+    const r = await request(s)
+      .post(`${ficha(tumularioId)}/hp`)
+      .set("Authorization", auth(tokenDM))
+      .send({ delta: -1, sourceCharacterId: "no-existe" });
+    expect(r.status).toBe(404);
+
+    const despues = (
+      await request(s)
+        .get(`${ficha(tumularioId)}/sheet`)
+        .set("Authorization", auth(tokenDM))
+    ).body.hp.current;
+    expect(despues).toBe(antes);
+  });
+
   it("un jugador que no es dueño ni DM no puede aplicar daño con un rollEventId ajeno", async () => {
     const r = await request(app.getHttpServer())
       .post(`${ficha(tumularioId)}/hp`)

@@ -58,7 +58,12 @@ export function DetalleDeObjeto({
   return (
     <aside
       aria-label="detalle del objeto"
-      className="rounded-radius-sm border border-muted bg-surface p-s4 lg:sticky lg:top-s4"
+      // Anexo #6/#17, medido (`e2e/espacios.spec.ts`): `--tira-fija-top` es el escalón que
+      // declara `AppShell` (el alto de SU cabecera), no el de la banda de combate que vive
+      // encima de este panel — sumar solo el escalón dejaba el panel 60px metido bajo la banda.
+      // `--banda-fija-alto` es el alto REAL de esa banda, medido por `Cabecera.tsx` con
+      // `ResizeObserver` y publicado por `HojaCalculada.tsx`.
+      className="rounded-radius-sm border border-muted bg-surface p-s4 lg:sticky lg:top-[calc(var(--tira-fija-top,0px)+var(--banda-fija-alto,0px)+var(--space-4))]"
     >
       {row === null ? (
         <EmptyState title="Elige un objeto">

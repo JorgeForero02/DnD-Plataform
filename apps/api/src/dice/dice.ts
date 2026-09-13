@@ -326,3 +326,28 @@ function condicionDeRelanzar(
 function suma(valores: number[]): number {
   return valores.reduce((a, b) => a + b, 0);
 }
+
+/** Un dado como cayó, con sus caras y si cuenta. Es lo que la pantalla pinta uno a uno (C5). */
+export interface DieRolled {
+  sides: number;
+  value: number;
+  kept: boolean;
+}
+
+/**
+ * Los dados de todos los términos, en orden, con sus caras. `dropped` se consume como
+ * multiconjunto —igual que `dadosDeLaTirada` en la web— para que `[4, 4]` con un descartado
+ * tache uno y no los dos. Las constantes no son dados.
+ */
+export function dadosTirados(terms: DiceTermResult[]): DieRolled[] {
+  return terms.flatMap((t) => {
+    if (t.sides === 0) return [];
+    const pendientes = [...t.dropped];
+    return t.rolled.map((value) => {
+      const i = pendientes.indexOf(value);
+      if (i === -1) return { sides: t.sides, value, kept: true };
+      pendientes.splice(i, 1);
+      return { sides: t.sides, value, kept: false };
+    });
+  });
+}

@@ -5,7 +5,7 @@ import { citasDelTexto, resolverCitas } from "../wikilinks";
 // Qué defiende este fichero: **que `[[nombre]]` no se trague media ficha, no invente enlaces y no
 // se calle lo que no encontró.**
 //
-// Es el otro módulo puro del taller, y por la misma razón que `posiciones.ts` merece pruebas de
+// Es un módulo puro del taller, y por la misma razón que `mundo/arbolDelMundo.ts` merece pruebas de
 // verdad: se puede ejecutar entero en `node`, sin navegador ni servidor, así que no hay excusa
 // para dejar su comportamiento escrito solo en un comentario.
 

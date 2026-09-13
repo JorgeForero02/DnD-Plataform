@@ -1,5 +1,6 @@
 import type { DerivedValue, RollResultRevealed } from "@dnd/shared";
-import { DadoDibujado } from "./DadoDibujado";
+import { IconoDado } from "../../ui/Iconos";
+import { esCaraConocida } from "./bandeja";
 import { dadosDeLaTirada, lineaDeDesglose, sumandosDeLaTirada } from "./desglose";
 import { fraseDeResultado, palabraDeNatural, rotuloDeConservacion } from "./vocabulario";
 
@@ -36,6 +37,9 @@ export type DesgloseDeTirada = Pick<
   | "rolls"
   | "kept"
   | "dropped"
+  // Task 10 (C5) — opcional, como en el contrato: un suceso escrito antes de la Tarea 9 no lo
+  // trae, y `dadosDeLaTirada` se cae al d20 de siempre cuando falta.
+  | "dice"
   | "modifier"
   | "total"
   | "dc"
@@ -86,26 +90,47 @@ export function ResultadoDeTirada({
       role="status"
       className="mt-1 rounded-radius-sm border border-muted bg-surface px-s2 py-1.5 text-left"
     >
-      <p className="flex flex-wrap items-baseline gap-s2">
-        {dados.map((dado, i) => (
-          <span
-            key={i}
-            data-dado={dado.conservado ? "conservado" : "descartado"}
-            className={[
-              "inline-flex items-baseline gap-1 font-data text-chrome-sm",
-              dado.conservado
-                ? "text-text"
-                : // Tachado y **a la vista**, no escondido. El `line-through` es maquetación, y
-                  // jsdom no maqueta: quien comprueba que la raya se pinta de verdad es la
-                  // prueba de navegador, leyendo el estilo calculado.
-                  "text-muted line-through decoration-[1.5px]",
-            ].join(" ")}
-          >
-            <DadoDibujado />
-            {dado.valor}
-            {!dado.conservado && <span className="sr-only"> (descartado)</span>}
-          </span>
-        ))}
+      {/* Round 1 de revisión (extra pedido) — **cada dado es una ficha, no un número pegado al
+          icono**: más grande, con su propio borde, y las fichas se envuelven (`flex-wrap`) en
+          vez de apretarse en una sola línea cuando son muchas — el caso que el autor pidió ver
+          (4, 6, 9, 10 dados mezclados). El icono a `h-5 w-5` y el valor en `text-chrome-md` son
+          los dos que se leen de un vistazo; `data-icono` y `data-dado` no cambian, así que las
+          pruebas que cuentan uno u otro siguen valiendo. */}
+      <p className="flex flex-wrap items-center gap-2">
+        {dados.map((dado, i) => {
+          const caras = dado.caras ?? 20;
+          return (
+            <span
+              key={i}
+              data-dado={dado.conservado ? "conservado" : "descartado"}
+              className={[
+                "inline-flex items-center gap-1 rounded-radius-sm border px-1.5 py-0.5",
+                dado.conservado
+                  ? "border-muted text-text"
+                  : // Tachado y **a la vista**, no escondido. El `line-through` es maquetación, y
+                    // jsdom no maqueta: quien comprueba que la raya se pinta de verdad es la
+                    // prueba de navegador, leyendo el estilo calculado.
+                    "border-muted text-muted line-through decoration-[1.5px]",
+              ].join(" ")}
+            >
+              {/* Task 10 — **cada dado con su forma**, no siempre el icosaedro: `dado.caras` sale
+                de `dice[]` (Tarea 9) cuando el servidor lo manda, y se cae al d20 de siempre
+                —el dibujo de antes— cuando el suceso es viejo y no lo trae.
+                Revisión final de la rama (2026-09-13): **una cara que la mesa no dibuja se
+                nombra, no se dibuja.** El servidor admite `2d7` o `1d1000` desde «Modo
+                avanzado», y `IconoDado` solo tiene siete formas: aquí había un `as Caras` que
+                le colaba el 7 y pintaba un SVG vacío. Ni vacío ni un d20 disfrazado («un dado,
+                una forma», D-CF-62): la etiqueta `d7` en `font-data`, que dice la verdad. */}
+              {esCaraConocida(caras) ? (
+                <IconoDado caras={caras} className="h-5 w-5" />
+              ) : (
+                <span className="font-data text-chrome-xs text-muted">d{caras}</span>
+              )}
+              <span className="font-data text-chrome-md">{dado.valor}</span>
+              {!dado.conservado && <span className="sr-only"> (descartado)</span>}
+            </span>
+          );
+        })}
         {rotulo && <span className="font-chrome text-chrome-xs text-muted">{rotulo}</span>}
       </p>
 

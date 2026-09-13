@@ -29,6 +29,14 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
      días si no eliges otra cosa.
 4. **Prepara tus monstruos**, si los vas a necesitar. La pestaña «Bestiario» trae criaturas del
    manual básico y admite las tuyas.
+5. **Pega la sala del tablero, si usáis mapa.** En Ajustes → «Sala del tablero», pega la
+   dirección de vuestra partida en PlanarAlly (`https://tablero.supportive.pro/game/…`, la que
+   ves al abrir o crear vuestra partida allí). Con la dirección guardada, la mesa enmarca el
+   tablero en el centro y el registro en vivo pasa a un cajón inferior plegable, con un contador
+   de cuántas líneas nuevas llegaron mientras estaba plegado (D-CF-63). **Cada jugador inicia
+   sesión en PlanarAlly dentro de ese marco**, con su propia cuenta, una vez por navegador — el
+   marco lo dice siempre, debajo del mapa. Sin sala guardada, la mesa es la de siempre: el hilo
+   ocupa el centro y no hay marco.
 
 ## Los cinco niveles de visibilidad
 
@@ -152,9 +160,13 @@ merece la pena contar.
 
 ## Durante la partida
 
-- **Tirar.** Desde la hoja, para lo que sea tuyo; o desde la pantalla de dados, escribiendo la
-  expresión que quieras. El desglose se ve entero, con los dados descartados tachados. **El azar
-  lo hace el servidor**, no tu navegador.
+- **Tirar.** Desde la hoja, para lo que sea tuyo; o desde la pantalla de dados y el cajón de la
+  mesa, **pulsando los dados de la bandeja** (d4 … d100) en vez de escribir `1d6` a mano — cada
+  uno se añade a una pila que se ve con su forma, y se quita con un clic en el mismo dado de la
+  pila. Quien prefiera escribir la expresión sigue pudiendo: el «Modo avanzado» tiene el campo
+  libre de siempre (`1d20`, `2d6+3`, `4d6kh3`), y lo que se escriba ahí manda sobre la bandeja
+  hasta el próximo dado que se pulse. El desglose se ve entero, con cada dado dibujado con su
+  forma y los descartados tachados. **El azar lo hace el servidor**, no tu navegador.
 - **Ventaja y desventaja** son una elección al tirar, no algo que haya que escribir a mano.
 - **Ayudar cuesta tu acción del turno.** Es la regla del manual —Ayudar es una acción— y desde el
   2026-09-07 la mesa la cobra: se descuenta y se anuncia. **Fuera de combate no cuesta nada**,

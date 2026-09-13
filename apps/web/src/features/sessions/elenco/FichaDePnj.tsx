@@ -5,7 +5,7 @@ import { IconoEscudo } from "../../../ui/Iconos";
 import { NOMBRE_BANDO } from "../../../dominio/combate";
 import { Retrato, BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
-import { CorregirBando } from "./CorregirBando";
+import { useAccionesDeBando } from "./CorregirBando";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -45,8 +45,9 @@ import { CorregirBando } from "./CorregirBando";
  * **El bando también se corrige aquí (C-1, misma ronda).** El caso principal del bando es el
  * enemigo, y el enemigo casi siempre es un PNJ: sin este mando, el DM podía convertir a un
  * personaje de jugador en enemigo pero no podía tocar el bando del goblin — la funcionalidad
- * nacía coja. `CorregirBando` es el mismo componente que usa `FichaDeElenco`, no una segunda
- * copia (ver I-3 de esta misma ronda).
+ * nacía coja. **Desde la tarea 8 del pulido**, sus ítems viven en el menú «…» del mando
+ * (`useAccionesDeBando`, `CorregirBando.tsx`) y no en una fila propia — mismo `useSetSide`, no
+ * una segunda implementación (ver I-3 de esta misma ronda para la razón original de compartir).
  */
 export function FichaDePnj({
   campaignId,
@@ -96,6 +97,23 @@ export function FichaDePnj({
   // enseñarlo, y esconderle a alguien uno que sí puede usar es la otra mitad del mismo defecto.
   const puedeManejarlo = esDm || (miId !== undefined && pnj.ownerId === miId);
 
+  // **Los ítems del bando, para el menú de `MandosDeCombatiente`** (tarea 8 del pulido). Mismo
+  // motivo que en `FichaDeElenco`: el hook se llama siempre (con valores de repuesto si falta
+  // alguno) y es la lista que se pasa al menú la que queda vacía. **El bando sigue siendo solo
+  // del DM** —`esDm`, no `puedeManejarlo`— porque corregirlo es una decisión de mesa y no del
+  // dueño del PNJ cedido, la misma puerta más estrecha que ya tenía `<CorregirBando />` aquí.
+  const hayBandoQueCorregir = Boolean(
+    esDm && enCombate && sessionId && encounterId && combatanteId,
+  );
+  const { acciones: accionesDeBando, error: errorDeBando } = useAccionesDeBando({
+    campaignId,
+    sessionId: sessionId ?? "",
+    encounterId: encounterId ?? "",
+    combatanteId: combatanteId ?? "",
+    bando,
+    nombre: pnj.name,
+  });
+
   return (
     <li
       className={[
@@ -144,17 +162,11 @@ export function FichaDePnj({
           // un PNJ cedido maneja este panel sin ser el DM, y con `puedeManejarlo` —o peor, con un
           // `true` fijo— ese jugador vería «Dar» con todo el elenco como destinatarios.
           soyDm={esDm}
-        />
-      )}
-
-      {esDm && enCombate && sessionId && encounterId && combatanteId && (
-        <CorregirBando
-          campaignId={campaignId}
-          sessionId={sessionId}
-          encounterId={encounterId}
-          combatanteId={combatanteId}
-          bando={bando}
-          nombre={pnj.name}
+          // **El bando, dentro del menú y no como fila aparte** (tarea 8 del pulido): sigue
+          // siendo solo del DM (`esDm`, no `puedeManejarlo`) — la misma puerta más estrecha que
+          // ya tenía `<CorregirBando />` cuando vivía aparte.
+          accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
+          errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
         />
       )}
     </li>

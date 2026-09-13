@@ -2,8 +2,9 @@ import { useId, useState } from "react";
 import type { DamageType } from "@dnd/shared";
 import { HojaCalculada } from "../../character-sheet/HojaCalculada";
 import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
-import { IconoCorazon, IconoEspada, IconoOjo } from "../../../ui/Iconos";
+import { IconoAviso, IconoCorazon, IconoEspada, IconoMochila, IconoOjo } from "../../../ui/Iconos";
 import { Dialog } from "../../../ui/Dialog";
+import { MenuDeAcciones, type AccionDeMenu } from "../../../ui/MenuDeAcciones";
 import { DarObjeto } from "./DarObjeto";
 import { PonerCondicion } from "./PonerCondicion";
 import { Curar, PonerDano } from "./PonerDano";
@@ -39,6 +40,15 @@ import { Curar, PonerDano } from "./PonerDano";
  * destinatarios y un botón que el servidor le iba a rechazar con 403 — exactamente lo que la
  * regla del proyecto prohíbe («no se le ofrece a un jugador un botón que el servidor va a
  * rechazar»). Por eso `soyDm` ahora es un prop de verdad, que cada ficha pasa con su rol real.
+ *
+ * **Solo «Daño» y «Curar» quedan como botones visibles** (tarea 8 del pulido, C2: #1 — anexo
+ * #1 de la nota de diseño): son las dos acciones que se repiten treinta veces por sesión,
+ * `ACCIONES_VISIBLES` de `docs/04-convenciones.md`. «Condición», «Dar…», «Su hoja» y el bando
+ * —hasta siete controles en la versión vieja, que se salía de la tarjeta— se pliegan en
+ * `ui/MenuDeAcciones.tsx`. El icono del bando no es un mando más de esta ficha: sus ítems
+ * (`AccionDeMenu[]`) llegan ya construidos por prop, desde `useAccionesDeBando`
+ * (`CorregirBando.tsx`), porque solo `FichaDeElenco`/`FichaDePnj` saben si hay encuentro y bando
+ * que corregir.
  */
 export function MandosDeCombatiente({
   campaignId,
@@ -46,6 +56,8 @@ export function MandosDeCombatiente({
   nombre,
   enCombate,
   soyDm,
+  accionesDeBando = [],
+  errorDeBando = null,
 }: {
   campaignId: string;
   characterId: string;
@@ -59,8 +71,20 @@ export function MandosDeCombatiente({
    * sin ser el DM.
    */
   soyDm: boolean;
+  /**
+   * Los ítems del bando, ya resueltos por `useAccionesDeBando` — vacío cuando no hay encuentro
+   * o este combatiente no combate ahora mismo, que es cuando la fila de bando tampoco se
+   * pintaba antes de esta tarea.
+   */
+  accionesDeBando?: AccionDeMenu[];
+  /**
+   * Lo que dijo el servidor al rechazar un cambio de bando, del mismo `useAccionesDeBando`. La
+   * fila vieja lo pintaba con `role="alert"`; el menú se cierra al elegir, así que el aviso va
+   * aquí, bajo la fila de mandos, donde sigue a la vista (fix round 3 de la tarea 8).
+   */
+  errorDeBando?: string | null;
 }) {
-  const [panel, setPanel] = useState<"dano" | "curar" | "condicion" | "hoja" | null>(null);
+  const [panel, setPanel] = useState<"dano" | "curar" | "condicion" | "dar" | "hoja" | null>(null);
   // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
   // `Dialog` cerrado y lo que hace falta es poder LIMPIARLO al cerrar: el estado que sobrevive a
   // un cierre es exactamente el que hizo que la hoja mandara una causa falsa (ver `PonerDano`).
@@ -88,30 +112,46 @@ export function MandosDeCombatiente({
           Curar
           <span className="sr-only"> a {nombre}</span>
         </button>
-        <button
-          type="button"
-          onClick={() => setPanel("condicion")}
-          className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-warning px-1 py-1 font-chrome text-chrome-xs text-warning-text hover:bg-[color:var(--warning-tint)]"
-        >
-          Condición
-          <span className="sr-only"> a {nombre}</span>
-        </button>
-        {/* «Dar» abre su propio cajón (`DarObjeto`), no uno de los tres de aquí arriba: no
-            reparte NADA para {nombre} en particular — el destinatario se elige dentro, entre todo
-            el elenco. Vive en esta fila por comodidad de la mesa, no porque el gesto sea del
-            personaje sobre el que está montada. */}
-        <DarObjeto campaignId={campaignId} soyDm={soyDm} miPersonajeId={characterId} />
-        <button
-          type="button"
-          onClick={() => setPanel("hoja")}
-          aria-label={`Abrir la ficha de ${nombre}`}
-          className="rounded-radius-sm border border-muted p-1 text-muted hover:text-text"
-        >
-          <IconoOjo className="h-4 w-4" />
-        </button>
+        {/* **El resto va al menú** (tarea 8 del pulido): «Condición», «Dar…» y «Su hoja» son
+            del mando de este combatiente, y `accionesDeBando` se añade al final cuando hay
+            encuentro y bando que corregir — el mismo orden que llevaba la fila vieja. */}
+        <MenuDeAcciones
+          etiqueta={`Más acciones sobre ${nombre}`}
+          acciones={[
+            {
+              id: "condicion",
+              rotulo: "Condición",
+              icono: <IconoAviso />,
+              onSelect: () => setPanel("condicion"),
+            },
+            { id: "dar", rotulo: "Dar…", icono: <IconoMochila />, onSelect: () => setPanel("dar") },
+            {
+              id: "hoja",
+              rotulo: "Su hoja",
+              icono: <IconoOjo />,
+              onSelect: () => setPanel("hoja"),
+            },
+            ...accionesDeBando,
+          ]}
+        />
       </div>
+      {errorDeBando && (
+        <p role="alert" className="mt-s1 font-chrome text-chrome-xs text-danger-text">
+          {errorDeBando}
+        </p>
+      )}
 
-      {/* Los tres cajones del mando. **Uno a la vez**, como el estrato superpuesto del reseño:
+      {/* «Dar…» no reparte NADA para {nombre} en particular — el destinatario se elige dentro,
+          entre todo el elenco. Vive controlado desde el menú de arriba: `DarObjeto` no pinta su
+          propio disparador porque ya lo hizo el ítem «Dar…». */}
+      <DarObjeto
+        campaignId={campaignId}
+        soyDm={soyDm}
+        miPersonajeId={characterId}
+        controlado={{ abierto: panel === "dar", onCerrar: () => setPanel(null) }}
+      />
+
+      {/* Los cajones del mando. **Uno a la vez**, como el estrato superpuesto del reseño:
           `panel` es un solo estado, así que abrir «Condición» cierra «Daño». */}
       <PonerDano
         campaignId={campaignId}

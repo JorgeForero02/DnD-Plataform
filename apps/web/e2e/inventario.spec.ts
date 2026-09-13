@@ -314,4 +314,12 @@ test("el catálogo de objetos de la campaña crea un objeto propio y se distingu
   // dónde salió.
   await expect(page.getByText("Farol de marea")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("de la campaña").first()).toBeVisible();
+
+  // Anexo #21 — filtros del catálogo por tipo de objeto, con chips como el bestiario. «Daga»
+  // es del SRD (arma) y «Cota de malla» también (armadura): pulsar «Armadura» deja la segunda y
+  // quita la primera.
+  await expect(page.getByRole("button", { name: "Daga" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Armadura", exact: true }).click();
+  await expect(page.getByText("Cota de malla", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Daga" })).toHaveCount(0);
 });

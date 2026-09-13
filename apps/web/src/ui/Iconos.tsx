@@ -14,6 +14,8 @@
 // descuadra en cuanto el texto cambia de escala. `align` con un descenso pequeño los sienta
 // sobre la línea base, que es donde el glifo que sustituyen estaba.
 
+import type { Caras } from "../features/rolls/bandeja";
+
 interface IconoProps {
   className?: string;
 }
@@ -228,14 +230,18 @@ export function IconoCorazon({ className }: IconoProps) {
   );
 }
 
-/** D20: la tirada. El dado de veinte caras visto de frente. */
+/**
+ * D20: la tirada. El dado de veinte caras visto de frente.
+ *
+ * Revisión de la Tarea 7 (ronda 1): esto dibujaba **su propio** icosaedro, con un `data-icono`
+ * idéntico al de `IconoDado caras={20}` — dos siluetas para un mismo dado, justo lo que «un
+ * dado, una forma» prohíbe (`docs/decisiones.md`, D-CF-62; la regla de texto en
+ * `04-convenciones.md`, Task 0). Pasa a delegar: el rail de sesiones y «pedir tirada» siguen
+ * importando `IconoD20` sin cambiar una línea, y ahora comparten trazo con el resto de la
+ * familia de seis.
+ */
 export function IconoD20({ className }: IconoProps) {
-  return (
-    <Marco className={className} data-icono="d20">
-      <path d="M12 3l8 5v8l-8 5-8-5V8l8-5z" />
-      <path d="M12 3v18M4 8l8 5 8-5M12 3l-8 5m8-5l8 5" />
-    </Marco>
-  );
+  return <IconoDado caras={20} className={className} />;
 }
 
 /** Ojo: visible, revelado, «la mesa lo sabe». */
@@ -327,6 +333,19 @@ export function IconoMas({ className }: IconoProps) {
   );
 }
 
+/**
+ * Menos: quitar uno, bajar. Revisión final de la rama (2026-09-13): el «−» de fuente del
+ * modificador de `BandejaDeDados` sobrevivió al barrido de la Tarea 7 por un `=>` en el regex;
+ * es la misma barra horizontal de `IconoMas`, sin la vertical, para que los dos hagan pareja.
+ */
+export function IconoMenos({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="menos">
+      <path d="M5 12h14" />
+    </Marco>
+  );
+}
+
 /** Megáfono: narrar, anunciar a la mesa. */
 export function IconoMegafono({ className }: IconoProps) {
   return (
@@ -401,6 +420,91 @@ export function IconoPluma({ className }: IconoProps) {
   return (
     <Marco className={className} data-icono="pluma">
       <path d="M20 4C10 6 6 12 5 20M20 4c-1 8-6 12-13 13M20 4l-5 1M8 15l-3 5" />
+    </Marco>
+  );
+}
+
+/**
+ * Tarea 7 (C3 #12, #22) — los seis dados, un dibujo por forma, y el menú de tres puntos.
+ *
+ * `IconoD20` de arriba **delega aquí** (`caras={20}`) desde la revisión de ronda 1: dibujaba su
+ * propio icosaedro para el rail de sesiones y «pedir tirada», y ese segundo dibujo era la misma
+ * infracción que esta regla existe para impedir — dos siluetas para un `data-icono="d20"`. Este
+ * componente es **un dado concreto entre siete valores** (`caras`), para el atajo «añade un dX»
+ * de `PanelDeDados`/`PanelDeDadosDeLaMesa` y para `DadoDibujado`, que también pasa a delegar
+ * aquí. Vivía duplicado en `features/rolls/DadoDibujado.tsx` porque `ui/Iconos.tsx` era de otro
+ * carril cuando se escribió (comentario de F3, ahí mismo) — la mudanza que ese comentario
+ * prometía.
+ *
+ * **Un dado, una forma** (`docs/decisiones.md`, D-CF-62; la regla de texto en
+ * `04-convenciones.md`, Task 0): tetraedro (d4), cubo (d6), octaedro (d8), trapezoedro (d10 y
+ * d100 — el d100 se lee como «d10 de decenas» y comparte silueta con el d10, no dibuja un
+ * segundo dado), dodecaedro (d12) e icosaedro (d20 — la misma silueta que traía `DadoDibujado`
+ * e `IconoD20` antes de delegar, para que ninguno de los dos cambiara de dibujo al mudarse).
+ */
+export function IconoDado({ caras, className }: IconoProps & { caras: Caras }) {
+  const forma = caras === 100 ? 10 : caras;
+  return (
+    <Marco className={className} data-icono={`d${caras}`}>
+      {forma === 4 && (
+        <>
+          <path d="M12 3l9 16H3z" />
+          {/* Revisión ronda 1: eran dos segmentos del vértice inferior que **retrazaban la
+              base** (ya cerrada por el `z` de arriba) en vez de dibujar el tetraedro. Un
+              tetraedro de frente se ve así: el contorno y, desde el centroide, un rayo a cada
+              vértice. */}
+          <path d="M12 13.7 12 3M12 13.7 21 19M12 13.7 3 19" />
+        </>
+      )}
+      {forma === 6 && (
+        <>
+          <path d="M4 8l8-4 8 4v8l-8 4-8-4z" />
+          <path d="M4 8l8 4 8-4M12 12v8" />
+        </>
+      )}
+      {forma === 8 && (
+        <>
+          <path d="M12 2l8 10-8 10L4 12z" />
+          {/* Revisión ronda 1: los dos segmentos del vértice superior a los vértices
+              izquierdo/derecho **retrazaban el contorno** (ya cerrado por el `z` de arriba).
+              El octaedro se ve de frente como el rombo con su ecuador y el eje vertical que
+              conecta los dos vértices que faltan por el centro — ninguna de las dos líneas
+              repite una arista del contorno. */}
+          <path d="M4 12h16M12 2v20" />
+        </>
+      )}
+      {forma === 10 && (
+        <>
+          <path d="M12 2l9 8-9 12-9-12z" />
+          <path d="M3 10l9 4 9-4M12 14v8M7.5 7l4.5 7 4.5-7" />
+        </>
+      )}
+      {forma === 12 && (
+        <>
+          <path d="M12 2l7 5 3 8-4 7H6l-4-7 3-8z" />
+          <path d="M12 8l4 3-1.5 5h-5L8 11z" />
+          <path d="M12 2v6M19 7l-3 4M22 15l-6.5 1M2 15l6.5 1M5 7l3 4" />
+        </>
+      )}
+      {forma === 20 && (
+        <>
+          <path d="M12 2.2 21 7.3v9.4L12 21.8 3 16.7V7.3z" />
+          <path d="M12 2.2 7 10.6h10z" />
+          <path d="M7 10.6 12 21.8l5-11.2" />
+          <path d="M3 7.3 7 10.6M21 7.3 17 10.6" />
+        </>
+      )}
+    </Marco>
+  );
+}
+
+/** El menú «…» de una fila: tres puntos, dibujados. */
+export function IconoMenu({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="menu">
+      <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
     </Marco>
   );
 }

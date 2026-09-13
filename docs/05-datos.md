@@ -187,6 +187,11 @@ documento. Lo que **quitaron**, y por eso ya no aparece en ninguna:
   la referencia real del objeto y no por el nombre, que ahora puede cambiar entre el ataque y el
   daño; es interna —no sale a quien no es DM— y los sucesos anteriores, sin ella, siguen casando
   por nombre.
+- **`Campaign.boardRoomUrl`** (`String?`, pulido 2026-09-12, C1 bis, spec del tablero § 2 ter): la
+  URL de la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`) que la mesa enmarca.
+  Texto libre validado en el contrato —`http(s)` únicamente, ≤ 500 caracteres—, porque el valor va
+  a un `src` de `<iframe>` y `javascript:` no es una sala. La escribe el DM con
+  `PATCH /campaigns/:id`, igual que `encumbranceVariant`; `null` la quita, ausente no la toca.
 - **`Campaign.encumbranceVariant`** (D-CF-16, 2026-09-11): la sobrecarga del SRD como variante,
   apagada por defecto y solo del DM. Encendida, el motor resta 10/20 pies por encima de 5×/10×
   Fuerza de peso llevado, ignora la columna de Fuerza de la armadura (lo manda la variante) y
@@ -507,6 +512,28 @@ que `effective-speed.ts`— que reduce un daño bruto por esos modificadores y d
 Se engancha al `POST .../hp` existente: con `damageType` en el cuerpo, reduce antes de aplicar;
 sin él, el comportamiento no cambia.
 
+## `sourceCharacterId`: de quién viene un golpe puesto a mano (tarea 11 del pulido, C4 #15)
+
+**`changeHpSchema.sourceCharacterId`** y **`HP_CHANGED.sourceCharacterId`** (`z.string().min(1)`,
+opcional, sin migración: viven en el `payload Json` como `rollEventId`, no en columna — no hay
+consulta declarada que necesite promoverlo). Es el mismo patrón que `ATTACK_RESOLVED.attackerId`:
+un id, nunca un nombre; quien lee resuelve el nombre contra `canView` (`nombres-del-hilo.ts`,
+`apps/web`), nunca el servidor.
+
+Se manda cuando el DM pone daño a mano desde el elenco y **no** cuelga de ninguna tirada — con
+`rollEventId`, el origen se recupera de ahí y este campo sobra. **`character-sheet.service.ts`
+escribe `sourceCharacterId` siempre que viaje** — el esquema no exige que venga solo: si algún
+cliente mandara los dos a la vez, `changeHp` los escribe los dos, y **que no acompañe a
+`rollEventId` es responsabilidad de quien manda la petición**, no una regla que el servidor
+imponga. `PonerDano.tsx` (el único cliente que hoy manda `sourceCharacterId`) no ofrece un
+`rollEventId` — así que el caso no se da desde la interfaz —, y `lineaDeLog` (`apps/web`) resuelve
+el orden si algún día sí conviven: `sourceCharacterId` manda cuando se ve; si no se ve, cae al
+atacante de la tirada citada por `rollEventId`; si ninguno se puede nombrar pero se citó alguno de
+los dos, «Alguien» y no silencio. El servicio valida el que llegó con
+`requireVisibleCharacter` (`apps/api/src/common/character-viewer.ts`) antes de escribirlo: 404 si
+el id no existe en la campaña **o** si existe pero el actor no lo ve — el mismo 404 uniforme que
+ya usa `sePuedeApuntar`, para no delatar por la forma del error cuál de los dos casos era.
+
 ## `ENTITY_REVEALED` también nace de subir la visibilidad a mano (2026-09-04, ficha P1)
 
 Hasta ahora el único sitio que emitía `ENTITY_REVEALED` era el motor de reglas (efecto
@@ -688,6 +715,17 @@ Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**
 2C.1 el `POST` **devolvía el resultado a quien lo pedía**, así que su autor lo leía en su propia
 respuesta. La tirada a ciegas se completa preguntando a `canView` si quien acaba de tirar puede
 ver lo que tiró; si no, la respuesta omite el desglose.
+
+**El desglose trae, además de `rolls`/`kept`/`dropped`, un `dice[]` por dado (C5).** Cada entrada
+es `{ sides, value, kept }`: las caras del dado, lo que salió y si cuenta en el total —lo mismo
+para un dado descartado por `kh`/`kl` que para el valor original de uno relanzado—, en el orden
+en que cayó. Lo calcula `dadosTirados` (`apps/api/src/dice/dice.ts`), a partir de los mismos
+`DiceTermResult` que ya conocía `rolls`/`kept`/`dropped`; no es un dato nuevo, es el mismo
+desglose emparejado dado a dado para que la pantalla lo pinte uno a uno sin tener que rehacer el
+emparejamiento a mano (`apps/web/src/features/rolls/desglose.ts` ya lo hacía por su cuenta contra
+`rolled`/`dropped`). Vive en `rollResultSchema` (rama `revealed: true`) y en el payload
+`ABILITY_ROLL` del suceso, y es **opcional en los dos**: el historial escrito antes de esta tarea
+no lo trae, y no se reescribe.
 
 **El cuarto modo de la industria no cabe en esta tabla**, y está declarado: ver la ficha **C2C-1**
 de [06-pendientes.md](./06-pendientes.md).

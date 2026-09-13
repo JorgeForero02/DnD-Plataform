@@ -20,7 +20,9 @@ y las **dieciocho que el reconocimiento del 2026-09-08 encontró falsas** —cua
 diez con un barrido o una cita de línea dentro— en
 [`_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md`](./_archivo/pendientes-cerrados-2026-09-08-reconocimiento.md),
 y los **39 bloques de la poda del 2026-09-10** —falsas, tachadas y decididas— en
-[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md).
+[`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md),
+y **el anexo #16 de la bandeja compacta**, cerrado por la Task 10 del pulido, en
+[`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -100,7 +102,10 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+Última revisión: **2026-09-13** (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
+anexo del autor pasados uno a uno, las fichas menores que la revisión final dejó abiertas, y una
+regla candidata de proceso, todo en la sección de abajo). Antes, el mismo día, la ronda de
+revisión de la tarea 11 del pulido (C4 #15: un follow-up de e2e, más abajo). Antes, **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
 código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
 cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
 entero en
@@ -121,6 +126,117 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
+## Cierre de la tanda del pulido antes del paso 3 (2026-09-13, Tarea 15)
+
+Rama `pulido/antes-del-paso-3`, 43 commits sobre `0ebdd9f`, sin fusionar todavía. Lo que sigue son
+los 24 puntos del anexo del autor uno a uno, las fichas menores que la revisión final dejó
+abiertas a propósito, y una regla candidata de proceso.
+
+### Los 24 puntos del anexo (`superpowers/specs/2026-09-12-pulido-anexo-lista-del-autor.md`), uno a uno
+
+| # | Qué pedía | Estado |
+|---|---|---|
+| 1 | Acciones de la fila del elenco se salen de la tarjeta | **Cerrado** — `ui/MenuDeAcciones.tsx`, Tarea 8 (`e61b865`…`6b54aa4`, cuatro rondas) |
+| 2 | Hoja como «tablas y tarjetas», poco legible | **Parcial.** C1 (Tareas 1–4) rehizo casillas, espacios y rejillas; **si tras esto el autor la sigue viendo como tablas, lo mide el autor en producción** — no hay más maquetación a ciegas sin su lectura sobre el resultado desplegado |
+| 3 | Casillas de los cinco números no simétricas | **Cerrado** — `Casilla` a `6rem` con `nowrap`, Tarea 1 (`cae172f`…`2bce0e0`, cinco rondas) |
+| 4 | PG con «+5 temporales» más ancho que las demás | **Cerrado** — misma `Casilla`, Tarea 1 |
+| 5 | Falta reparto/tirada de características al crear personaje | **En otra spec** — `superpowers/specs/2026-09-12-reglas-de-la-mesa-design.md`, respuesta del autor bajo la lista del anexo; segunda tanda tras esta (D-CF-52) |
+| 6 | Sticky del detalle de Objetos se corta bajo la banda fija | **Cerrado** — `--banda-fija-alto` vía `ResizeObserver`, Tarea 4 (`a3ec1bf`…`ee4eaa6`) |
+| 7 | Huecos en Ficha/Rasgos y aptitudes/Personalidad | **Cerrado** — sub-rejilla en `Rasgos.tsx` (Tarea 2, `6253b2f`) + medida de toda tarjeta en `espacios.spec.ts` (Tarea 4) |
+| 8 | *Tearing* al escribir (la tarjeta cambia de tamaño) | **Cerrado** — `Field.reservaEspacio` (Tarea 2) + `SelectorDeVentaja` siempre montado (Tarea 10, ronda 2, `fb72ed0`) + guía de CD de `PedirTirada` esperada en la medida (Tarea 8, rondas 4–5) |
+| 9 | «Su color»/visibilidad/Archivar-Borrar desordenados | **Cerrado** — `AjustesDePersonaje` a `TarjetaDeHoja` con pie, Tarea 3 (`9933b5e`, `2bf1a85`) |
+| 10 | Formulario de dados poco intuitivo | **Cerrado** — bandeja de dados, Tarea 10 (`430e703`…`fb72ed0`, dos rondas) |
+| 11 | El resultado de varios dados da un solo valor | **Cerrado** — `dice[]` por dado, Tarea 9 (`12af590`) + pintado por dado en `ResultadoDeTirada`, Tarea 10 |
+| 12 | Los atajos de dado comparten el mismo glifo | **Cerrado** — `IconoDado({caras})`, seis siluetas, Tarea 7 (`c1677f3`) |
+| 13 | Dados 3D con física de verdad | **Aplazado por el autor** — ficha con referencia (`dice-box`) en la sección «#13 · Dados en 3D…» de este documento |
+| 14 | Cajón «La mesa tira» mal distribuido | **Cerrado** — rejilla del reloj, Tarea 3 (`9933b5e`) + bandeja compacta, Tarea 10 |
+| 15 | El hilo no nombra sujeto ni objetivo | **Cerrado** — `sourceCharacterId` + `nombres-del-hilo.ts`, Tarea 11 (`64330ac`, `cdf8d00`) |
+| 16 | «Dados» de campaña: reloj y formularios mal repartidos | **Cerrado** — misma rejilla de la 14, Tareas 3 y 10 |
+| 17 | «Espacios perdidos» en varias pantallas | **Cerrado** — `medirHermanas` audita toda tarjeta de cada pestaña, Tarea 4 (`a3ec1bf`…`ee4eaa6`) |
+| 18 | Salir de la mesa lleva a todas las campañas | **Cerrado** — `BandaDeMesa.tsx`, Tarea 12 (`aabd016`) |
+| 19 | Faltan ajustes del DM antes de la hoja de cada jugador | **En otra spec** — `reglas-de-la-mesa-design.md`, bloque completo por la respuesta del autor bajo el anexo |
+| 20 | Botones de PG temporales del bestiario parecen no hacer nada | **Cerrado** — `preguntando` explícito, Tarea 13 (`28e4afb`, `3dd2786`) |
+| 21 | Catálogo de objetos sin filtros | **Cerrado** — `FilterChip` por tipo y origen, Tarea 14 (`df15c30`) |
+| 22 | Botones primarios sin icono | **Cerrado** — barrido de botones, Tarea 7 (`c1677f3`…`1c30fe8`) |
+| 23 | El grafo del mundo poco intuitivo | **Cerrado** — el mundo como árbol + detalle sustituye al tablero telaraña, Tarea 14 bis (`f38823b`…`a69d069`, D-CF-64) |
+| 24 | Falta la línea de tiempo comentada | **En otra spec, y aplazada** — no era la crónica: es el mapa de historia del DM (`mapa-de-historia-del-dm-design.md`), y el autor lo aplazó el 2026-09-12 tras ver cuatro maquetas (D-CF-64) |
+
+Ninguno de los 24 queda sin fila. Los tres que no cierran en esta rama (#5, #19, #24) tienen su
+spec ya escrita; el pulido no los toca porque cambiarían de tanda a mitad de ejecución.
+
+### Fichas menores dejadas por la revisión final de la rama (2026-09-13)
+
+La revisión final (`0ebdd9f..a69d069`) y las revisiones de cada tarea diferieron minors «al cierre
+de la tanda» en vez de abrir una ficha por cada uno a mitad de una tarea ajena (regla de los
+cuatro pasos, `04-convenciones.md`). Los que siguen sin código son estos, agrupados por área; los
+ya corregidos en la ola de arreglo final (`0a8689e`) no están aquí. Lo descartado como ruido —
+citas de una nota fechada, con coste nulo si envejecen mal— se dice con su motivo al final.
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Hoja / Casilla | Comentario «ancho mínimo» caducado (la anchura ya es fija) | `apps/web/e2e/hoja.spec.ts:92` |
+| Hoja / Casilla | El rótulo «Vel.» se repite en varios test como literal, sin motivo en el fichero de por qué es ese y no «Vel. (pies)» | `hoja.spec.ts:72,87`; `Cabecera.test.tsx:73,96` |
+| Hoja / Casilla | Aserción `>= 4` en vez de `toBe(5)` para el número de casillas | `hoja.spec.ts:160` |
+| Hoja / Casilla | Selector de Playwright `[class*='w-[6rem]']` es frágil a un cambio de clase; un `data-casilla` sería estable | `hoja.spec.ts` |
+| Hoja | `Dialog` fija `--tira-fija-bg=surface` también sobre pergamino, sin que nada lo consuma hoy | `apps/web/src/ui/Dialog.tsx` |
+| Hoja | `Field.reservaEspacio` reserva el alto con el `line-height` por defecto del navegador, no un valor explícito — depende del *preflight* de Tailwind | `apps/web/src/ui/Field.tsx` |
+| Hoja | `campaignId` se parsea dos veces en la misma pantalla | `apps/web/src/pages/CampaignDetailPage.tsx` (leer antes de tocar) |
+| Hoja | `HojaCalculada.test` fija la variable `--banda-fija-alto` con una regex de «0px» que no prueba que el `ResizeObserver` esté enlazado de verdad | `apps/web/src/features/character-sheet/__tests__/HojaCalculada.test.tsx` |
+| Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
+| Ajustes del personaje | El tamaño del texto de error difiere entre el bloque archivado (`sm`) y el pie (`xs`) | `apps/web/src/features/characters/AjustesDePersonaje.tsx` |
+| Ajustes del personaje | `PanelDeDados.test.tsx` no fija las clases de la rejilla del reloj, así que un cambio de rejilla no lo detecta | `apps/web/src/features/rolls/__tests__/PanelDeDados.test.tsx` |
+| Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
+| Mesa / tablero | **Revisión final, #7**: dos implementaciones del mismo *chevron* — `Punta.tsx` (privado del árbol) e `IconoFlechaIzquierda` rotada en el cajón del registro, que además queda invertido al plegarse hacia abajo. Un `IconoPunta` único en `ui/Iconos.tsx` cierra las dos | `apps/web/src/features/sessions/taller/mundo/Punta.tsx`; `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx:78-82` |
+| Mesa / tablero | Plegar el cajón antes de que cargue el registro deja el contador de líneas nuevas en 0 | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
+| Elenco / menú | Sin `preventDefault` en Tab dentro del menú de acciones; Espacio activa por `keydown` y por `click` a la vez (doble disparo posible) | `apps/web/src/ui/MenuDeAcciones.tsx` |
+| Elenco / menú | `FichaDeElenco.test.tsx` perdió su `queryByRole` de «enemigo» al reescribir el test de la fila | `apps/web/src/features/sessions/elenco/__tests__/FichaDeElenco.test.tsx` |
+| Elenco / menú | `hoja.spec.ts` y `sesion.spec.ts` usan timeouts desiguales para el mismo tipo de espera | `apps/web/e2e/hoja.spec.ts`, `apps/web/e2e/sesion.spec.ts` |
+| Dados | Con dos dados de igual valor, el evaluador puede resolver «cuál se descarta» por posición en vez de por una regla explícita — ambigüedad, no bug observado | `apps/api/src/rules-engine/` (leer antes de tocar el evaluador) |
+| Dados | `100d6r1` supera `rolls.max(100)` — preexistente a esta rama, no la introdujo, pero sigue sin fila propia | `apps/api/src/rules-engine/` (leer antes de tocar el evaluador) |
+| Dados | `SelectorDeVentaja` usa `disabled` nativo: los radios apagados no son alcanzables por teclado, y la línea de motivo no está enlazada por `aria-describedby` — candidato ya señalado por la propia revisión de la Tarea 10 | `apps/web/src/features/rolls/BandejaDeDados.tsx` |
+| Dados | El `<details>`/`<summary>` de «Modo avanzado» muestra el error de la expresión aunque esté plegado | `apps/web/src/features/rolls/PanelDeDados.tsx` |
+| Dados | **Revisión final, #6**: `resumenAudienciaYCd` es una tercera traducción de `RollAudience` fuera de `apps/web/src/features/rolls/vocabulario.ts` — mover como campo `resumen` del vocabulario en vez de reescribirla en el componente | `apps/web/src/features/rolls/panel/PanelDeDadosDeLaMesa.tsx:85-98` |
+| Dados | **Revisión final, #8**: `DadoDibujado.tsx` e `IconoD20` son dos envoltorios idénticos de `IconoDado caras={20}` — unificar en uno | `apps/web/src/features/rolls/DadoDibujado.tsx`; `apps/web/src/ui/Iconos.tsx` (líneas de `IconoD20`) |
+| Dados | **Revisión final, #10**: `conDadoAnadido` (`apps/web/src/features/rolls/expresion.ts`) no tiene ningún consumidor en `src/` — retirarla cuando se confirme que el modo avanzado no la echa de menos | `apps/web/src/features/rolls/expresion.ts` |
+| Hilo | **Revisión final, #5**: la frase con sujeto resuelto (`HP_CHANGED` con `ctx.sujeto`) pierde el `(from → to)` que sí lleva la frase sin sujeto — considerar «Sylas pierde 7 PG (20 → 13) ← Klarg» | `apps/web/src/features/sessions/linea-de-log.ts:196-201` |
+| Elenco / menú | **Revisión final, #11**: `apps/web/src/features/sessions/elenco/CorregirBando.tsx` ya no tiene componente de fila (se borró en la Tarea 8) y solo exporta `useAccionesDeBando` — renombrar el fichero a `accionesDeBando.ts` la próxima vez que se toque | `apps/web/src/features/sessions/elenco/CorregirBando.tsx` |
+| Bestiario | `DarTemporales`: `preguntando` no se resetea si la petición falla, así que un reintento tras error puede arrancar con el diálogo ya abierto | `apps/web/src/features/bestiario/DarTemporales.tsx` |
+| Catálogo de objetos | Los `FilterChip` de tipo y origen no llevan `aria-pressed` | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
+| Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
+| Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
+| Mundo (árbol) | **Revisión final, #9**: `normalizar()` (pliega tildes para comparar) está copiada una sexta vez entre `DesgloseDelMundo.tsx` y `EditorDeHilos.tsx` — extraer a una lib compartida | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx:42`; `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx:50` |
+| Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
+| Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
+| Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+| Mundo (árbol) | Borrar un hilo no invalida la consulta del otro extremo del enlace, así que su ficha puede quedar con el hilo fantasma hasta recargar | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+| Mundo (árbol) | Las raíces sin hijos se abren desplegadas por defecto en vez de plegadas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
+| Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+
+**Descartado como ruido, con motivo** (no entra como ficha): la cita de Epip «resolver functions»
+en la nota de diseño y el hilo de Steam sin etiquetar como fuente débil (Tarea 0) — son citas de
+una nota fechada que no se reescribe, sin efecto sobre código ni interfaz; la asimetría de
+`docs-lint-ignore` entre D-CF-58 y D-CF-59 (Tarea 0) — cosmético del propio control de estilo de
+los documentos; el «+» semánticamente raro en «Crear cuenta» (Tarea 7) — nomenclatura preexistente
+fuera del alcance del barrido de iconos; `PonerDano` consultando personajes por su cuenta en vez
+de recibirlos por prop (Tarea 11) — TanStack Query los deduplica, así que no hay petición de más
+en la red, y forzar la prop sería refactor sin beneficio medible; `DieRolled` definido dos veces
+(evaluador y `@dnd/shared`, Tarea 9) — frontera consciente, declarada en el propio código; y el
+**#12 de la revisión final** —«Dárselos»/«Quedarse con los N nuevos» de `DarTemporales` parecían
+poder deshabilitarse— **ya está cerrado**: la ola de arreglo final (`0a8689e`) los dejó siempre
+habilitados con error en línea, la misma regla que el resto de botones de esta tanda; no abre
+ficha.
+
+### Regla candidata: `timeout` explícito en cada Bash de los agentes
+
+**De la tabla de observabilidad de esta tanda** (`.superpowers/sdd/2026-09-12-pulido-antes-del-paso-3/progress.md`,
+lectura 3): el harness manda al fondo cualquier `Bash` de más de 120 segundos si el agente no pasa
+`timeout: 600000` como **parámetro de la herramienta** — no es desobediencia del agente, es un
+límite del arnés que ningún brief mencionaba hasta que costó **~40 minutos** repartidos en
+esperas ciegas a lo largo de la tanda (Tareas 1, 4, 8 y 9). Ya se añadió la regla a
+`04-convenciones.md` § *Trabajo con varios agentes a la vez* en este mismo commit; esta ficha
+queda como recordatorio de que **la regla nueva no se ha probado en una tanda completa todavía** —
+cierra sola cuando la siguiente tanda (reglas de la mesa) no repita el patrón.
+
 > ## Decidido el 2026-09-10 y todavía abierto — el trabajo que queda, con su decisión tomada
 >
 > El autor aprobó las recomendaciones de la sesión de cerrar fichas (`D-CF-2` a `D-CF-21` en
@@ -140,6 +256,17 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > reciente a lo más viejo» y no es cierto: hay bloques del 2026-09-04 y del 05 incrustados en medio
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
+
+## Dejado por la tarea 11 del pulido (C4, #15), ronda de revisión (2026-09-13)
+
+**e2e: un dueño citando un PNJ `DM_ONLY` como `sourceCharacterId` es 404.** `changeHp`
+(`apps/api/src/characters/character-sheet.service.ts`) valida el origen con
+`requireVisibleCharacter`, y `dano-con-su-traza.e2e-spec.ts` cubre el caso «no existe en la
+campaña» — falta el caso «existe, pero este actor concreto no lo ve» (un PNJ que el DM bajó
+`DM_ONLY`, citado por un jugador que no es su dueño ni el DM). El mismo 404 uniforme que ya
+prueba `ataque-comparado-en-el-servidor` para `sePuedeApuntar`; se deja anotado y no se añadió
+en la ronda de revisión por no ensuciar un fix con un caso nuevo — Después de esta rama, con
+código.
 
 ## Dejado por la hoja a página completa (2026-09-12)
 
@@ -186,6 +313,37 @@ rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24
 **Orden: después del paso 3** (D-CF-37 → D-CF-47): la mitad del catálogo mágico concede conjuros y
 sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o
 también resistencias y ventajas? ¿descanso corto real (el de 2C, con su hora de reloj) o un clic?
+
+## El mapa de historia del DM — aplazado por el autor (2026-09-12); el #23 se cerró con el árbol
+
+**El #23 del anexo («grafo del mundo poco intuitivo») está cerrado** por la Task 14 bis del pulido
+(D-CF-64): el tablero telaraña se retiró (D4) y en su sitio va el mundo como **desglose + detalle**
+(`apps/web/src/features/sessions/taller/mundo/`). Lo que queda abierto es **el mapa de historia**
+—D-CF-52 lo ponía como cuarta tanda, D-CF-54 fijó su forma— que **el autor aplazó el 2026-09-12**
+tras ver cuatro maquetas. Su spec, [`superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md`](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md),
+**se queda tal cual, sin fecha**: no se reescribe ni se borra, y no se abre plan hasta que el autor
+lo pida. Si se retoma, el árbol no lo estorba: el mapa lo dibuja el DM (D-CF-54) y no se genera de
+los hilos, así que los dos pueden convivir.
+
+## #13 · Dados en 3D con física de verdad (aplazado, de la nota de Task 0)
+
+**Coste investigado, no se hace.** La nota de diseño del pulido
+(`docs/superpowers/notes/2026-09-12-nota-de-diseno-ui-de-juegos.md` § 6) mira `dice-box`
+(MIT, BabylonJS + AmmoJS, acepta notación simple y devuelve el resultado por dado:
+<https://github.com/3d-dice/dice-box>) y `dddice-js` (SDK de un servicio en la nube, no
+autoalojable, coste de integración mayor). Lo que hoy pinta el dado en la mesa es
+`DadoTridimensional.tsx` — un cubo CSS que rueda hacia el total, no una física de dados de
+verdad — y Task 10 no lo toca: pinta la bandeja de composición (`BandejaDeDados.tsx`), no la
+animación del resultado. Si algún día se retoma: `dice-box` es la opción autoalojable y la que
+no ata la mesa a un servicio de terceros; el coste es el peso de BabylonJS/AmmoJS y reescribir
+`DadoTridimensional.tsx` sobre su API en vez del CSS actual.
+
+## Tablero: sandbox del iframe (2026-09-12, ronda de revisión de la Tarea 6)
+
+`MarcoDelTablero.tsx` monta el `<iframe>` de PlanarAlly sin `sandbox` (solo `referrerPolicy` y
+`allow`). Aplazado a propósito, no un olvido: hay que medir contra `tablero.supportive.pro` de
+verdad —qué necesita el `sandbox` de PlanarAlly (popups de su propio login, almacenamiento,
+formularios) antes de escribirlo a ciegas y romper la sesión del jugador dentro del marco.
 
 ## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
 

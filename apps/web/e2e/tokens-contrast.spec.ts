@@ -616,6 +616,80 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Tarea 8 del pulido (C2: #1) — **el menú «…» del elenco, medido abierto.** La fila de mandos
+// plegó «Condición», «Dar…», «Su hoja» y el bando en `ui/MenuDeAcciones.tsx`; es una superficie
+// nueva (`bg-surface` flotante sobre la tarjeta del elenco) que ninguna medida anterior cubría.
+// Real screen, no /design-tokens: se navega hasta la mesa, se abre el menú de un combatiente de
+// verdad y se mide su texto y su borde, en los tres temas.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en el menú de acciones del elenco (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuentaContraste();
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+    await page.getByLabel("Nombre").fill("Campaña del menú");
+    await page.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("link", { name: "Campaña del menú" }).click();
+    await expect(page.getByRole("heading", { name: "Campaña del menú" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Personajes" }).click();
+    await page.getByRole("button", { name: "Nuevo personaje" }).click();
+    await page.getByLabel("Nombre").fill("Ren Sombrafiel");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+    // Fix round 2 (controlador) — **se cierra el cajón, no se navega**: «Personajes» abre un
+    // diálogo que se queda ENCIMA de la pestaña «Sesiones» si no se cierra; sin este clic, la
+    // pestaña existe en el DOM pero no es visible, y el clic siguiente se queda esperando para
+    // siempre. Mismo gesto que `e2e/dar-a-un-pnj.spec.ts` (y el mismo arreglo de la ronda 1
+    // sobre `teclado.spec.ts`/`espacios.spec.ts`).
+    await page.getByRole("button", { name: "Cerrar (Escape)" }).click();
+
+    await page.getByRole("tab", { name: "Sesiones" }).click();
+    await page.getByRole("button", { name: "Nueva sesión" }).click();
+    await page.getByLabel("Título").fill("La sesión del menú");
+    await page.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+    await page.getByRole("button", { name: "Empezar" }).click();
+    await page.getByLabel(cuenta.displayName).check();
+    await page
+      .getByLabel(`Personaje de ${cuenta.displayName}`)
+      .selectOption({ label: "Ren Sombrafiel" });
+    await page.getByRole("button", { name: "Empezar la sesión" }).click();
+
+    const barra = page.getByRole("status", { name: "Sesión en curso" });
+    await expect(barra).toBeVisible({ timeout: 10_000 });
+    await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+    const elenco = page.getByRole("region", { name: "En la mesa" });
+    await expect(elenco.getByText("Ren Sombrafiel", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await elenco.getByRole("button", { name: "Más acciones sobre Ren Sombrafiel" }).click();
+    const menu = page.getByRole("menu", { name: "Más acciones sobre Ren Sombrafiel" });
+    await expect(menu).toBeVisible();
+
+    {
+      const item = menu.getByRole("menuitem", { name: "Condición" });
+      const { color, bg } = await effectiveTextColours(item);
+      record(theme, "menú de acciones: ítem texto", contrastRatio(color, bg), 4.5);
+    }
+    {
+      const { border, bg } = await borderColourAgainstBg(menu);
+      record(theme, "menú de acciones: borde del panel", contrastRatio(border, bg), 3);
+    }
+
+    await page.keyboard.press("Escape");
+  });
+}
+
 // Task 1.18b — the two new screens (hallazgo 6 + the account screen), measured the same
 // disciplined way: real navigation, real computed colours, both themes.
 function nuevaCuentaCuenta() {
@@ -1086,6 +1160,264 @@ for (const theme of ["dark", "light", "reading"] as const) {
         contrastRatio(border, fondo),
         3,
       );
+    }
+  });
+}
+
+// Tarea 6 (spec 2026-09-12, «el tablero dentro de la mesa», C1 bis) — **el botón del cajón del
+// registro**, la única superficie nueva de esa tarea. Se mide plegado (con su contador de
+// líneas nuevas, `bg-accent`/`text-bg`) y desplegado, en los tres temas — el mismo patrón que el
+// resto del fichero: `boardRoomUrl` se escribe por API para no repetir el recorrido de Ajustes,
+// y lo que se mide son colores reales, no la maquetación.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en el botón del cajón del registro (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuenta("cajon-contraste");
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+    const headers = { Authorization: `Bearer ${token}` };
+    const campana = await page.request.post("/api/campaigns", {
+      headers,
+      data: { name: "Campaña de contraste (cajón)" },
+    });
+    expect(campana.ok()).toBe(true);
+    const campaignId: string = (await campana.json()).id;
+    const sala = await page.request.patch(`/api/campaigns/${campaignId}`, {
+      headers,
+      data: { boardRoomUrl: `${new URL(page.url()).origin}/acerca-de` },
+    });
+    expect(sala.ok()).toBe(true);
+    const sesion = await page.request.post(`/api/campaigns/${campaignId}/sessions`, {
+      headers,
+      data: { title: "El almacén cuatro" },
+    });
+    expect(sesion.ok()).toBe(true);
+    const sessionId: string = (await sesion.json()).id;
+    const iniciada = await page.request.post(
+      `/api/campaigns/${campaignId}/sessions/${sessionId}/start`,
+      { headers, data: {} },
+    );
+    expect(iniciada.ok()).toBe(true);
+
+    await page.goto(`/campaigns/${campaignId}/sesion`);
+    const plegar = page.getByRole("button", { name: "Plegar el registro" });
+    await expect(plegar).toBeVisible();
+    {
+      const { color, bg } = await effectiveTextColours(plegar);
+      record(theme, "cajón del registro: botón plegado texto", contrastRatio(color, bg), 4.5);
+    }
+    await plegar.click();
+    const desplegar = page.getByRole("button", { name: "Desplegar el registro" });
+    await expect(desplegar).toBeVisible();
+    {
+      const { color, bg } = await effectiveTextColours(desplegar);
+      record(theme, "cajón del registro: botón desplegado texto", contrastRatio(color, bg), 4.5);
+    }
+  });
+}
+
+// Task 10 (pulido, C5 web) — **la bandeja de dados y el `<details>` abierto**, medidos como el
+// resto del fichero: pantalla real, colores reales, en los tres temas. La bandeja pinta un botón
+// por dado (secundario, como «Guardar»/«Cancelar» de arriba) y su pila; el `<details>` «Modo
+// avanzado» aporta una superficie que ninguna medida anterior cubría — el propio `<summary>`, en
+// `--muted`, y el campo «Qué se tira» una vez abierto.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en la bandeja de dados (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuenta("bandeja-contraste");
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+    await page.getByLabel("Nombre").fill("Campaña de contraste (bandeja)");
+    await page.getByRole("button", { name: "Crear" }).click();
+    await page.getByRole("link", { name: "Campaña de contraste (bandeja)" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Campaña de contraste (bandeja)" }),
+    ).toBeVisible();
+    await page.getByRole("tab", { name: "Dados" }).click();
+    await expect(page.getByRole("heading", { name: "Dados", exact: true })).toBeVisible();
+
+    const tarjeta = page.getByRole("region", { name: "Tirada nueva" });
+
+    {
+      const boton = tarjeta.getByRole("button", { name: "Añadir un d6", exact: true });
+      const { color, bg } = await effectiveTextColours(boton);
+      record(theme, "bandeja: botón de dado texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(boton);
+      record(theme, "bandeja: botón de dado borde", contrastRatio(border, borderBg), 3);
+    }
+
+    // La bandeja empieza con un d20 (el «1d20» de siempre); el d6 que se añade aquí entra en la
+    // segunda posición de la pila. Round 1 de revisión (anexo #10): la pila pinta en superficie
+    // de cobre, distinta del contorno de los atajos — se mide aparte y no se confunde con el
+    // botón de arriba.
+    await tarjeta.getByRole("button", { name: "Añadir un d6", exact: true }).click();
+    {
+      const pila = tarjeta.getByRole("button", { name: "Quitar el d6 (posición 2)", exact: true });
+      const { color, bg } = await effectiveTextColours(pila);
+      record(theme, "bandeja: botón de la pila texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(pila);
+      record(theme, "bandeja: botón de la pila borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const rotuloPila = tarjeta.getByText("En la bandeja · 2 dados");
+      const { color, bg } = await effectiveTextColours(rotuloPila);
+      record(theme, "bandeja: rótulo «En la bandeja» texto", contrastRatio(color, bg), 4.5);
+    }
+
+    {
+      const summary = tarjeta.getByText("Modo avanzado");
+      const { color, bg } = await effectiveTextColours(summary);
+      record(theme, "bandeja: rótulo «Modo avanzado» texto", contrastRatio(color, bg), 4.5);
+    }
+
+    await tarjeta.getByText("Modo avanzado").click();
+    {
+      const campo = tarjeta.getByLabel("Qué se tira");
+      const { border, bg } = await borderColourAgainstBg(campo);
+      record(theme, "bandeja: campo «Qué se tira» abierto, borde", contrastRatio(border, bg), 3);
+    }
+  });
+}
+
+// Task 14 bis (pulido, D-CF-64) — **el mundo como árbol con detalle**, en el taller del DM, medido
+// como el resto del fichero: pantalla real, colores reales, en los tres temas. Lo que esta pantalla
+// pinta y ninguna medida anterior cubría: la raíz de tipo en cobre con su contador, la fila elegida
+// del árbol (`--accent-text` sobre `--accent-tint`), el rótulo en gris de una ficha que cuelga, el
+// enlace «Abrir ficha», un vecino del anillo (texto y borde) y la fila del editor de hilos. Se
+// monta por API —campaña, lugar, PNJ y el hilo «vive en»— para no repetir el recorrido de
+// `mundo-arbol.spec.ts`, que es quien demuestra que el gesto funciona.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en el mundo como árbol con detalle (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuenta("mundo-contraste");
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+    const headers = { Authorization: `Bearer ${token}` };
+    const campana = await page.request.post("/api/campaigns", {
+      headers,
+      data: { name: "Campaña de contraste (mundo)" },
+    });
+    expect(campana.ok()).toBe(true);
+    const campaignId: string = (await campana.json()).id;
+    const torre = await page.request.post(`/api/campaigns/${campaignId}/entities`, {
+      headers,
+      data: { type: "LOCATION", name: "Torre Gris" },
+    });
+    expect(torre.ok()).toBe(true);
+    const torreId: string = (await torre.json()).id;
+    const corvin = await page.request.post(`/api/campaigns/${campaignId}/entities`, {
+      headers,
+      data: { type: "NPC", name: "Corvin" },
+    });
+    expect(corvin.ok()).toBe(true);
+    const corvinId: string = (await corvin.json()).id;
+    const hilo = await page.request.post(`/api/entities/${corvinId}/links`, {
+      headers,
+      data: { toId: torreId, label: "vive en" },
+    });
+    expect(hilo.ok()).toBe(true);
+
+    await page.goto(`/campaigns/${campaignId}/sesion`);
+    const mundo = page.getByRole("region", { name: "El mundo" });
+    const arbol = mundo.getByRole("tree", { name: "El mundo" });
+    const lugares = arbol.getByRole("treeitem", { name: "Lugares" });
+    await expect(lugares).toBeVisible();
+
+    {
+      const rotuloDeRaiz = lugares.getByText("Lugares", { exact: true });
+      const { color, bg } = await effectiveTextColours(rotuloDeRaiz);
+      record(theme, "mundo: raíz de tipo en cobre", contrastRatio(color, bg), 4.5);
+      const contador = lugares.getByText("1", { exact: true }).first();
+      const medida = await effectiveTextColours(contador);
+      record(theme, "mundo: contador de la raíz", contrastRatio(medida.color, medida.bg), 4.5);
+    }
+
+    const torreItem = arbol.getByRole("treeitem", { name: "Torre Gris", exact: true });
+    await torreItem.getByRole("button", { name: "Desplegar Torre Gris" }).click();
+    const corvinItem = arbol.getByRole("treeitem", { name: "Corvin", exact: true });
+    await expect(corvinItem).toBeVisible();
+    {
+      const nombre = corvinItem.getByText("Corvin", { exact: true });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "mundo: ficha del árbol, texto", contrastRatio(color, bg), 4.5);
+      const rotulo = corvinItem.getByText("vive en", { exact: true });
+      const medida = await effectiveTextColours(rotulo);
+      record(
+        theme,
+        "mundo: rótulo de jerarquía en gris",
+        contrastRatio(medida.color, medida.bg),
+        4.5,
+      );
+    }
+
+    // La fila elegida cambia de fondo (`--accent-tint`) y de texto (`--accent-text`).
+    await corvinItem.click();
+    await expect(corvinItem).toHaveAttribute("aria-selected", "true");
+    {
+      const nombre = corvinItem.getByText("Corvin", { exact: true });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "mundo: ficha elegida del árbol, texto", contrastRatio(color, bg), 4.5);
+    }
+
+    const detalle = mundo.getByRole("article", { name: "Detalle de Corvin" });
+    {
+      const abrir = detalle.getByRole("link", { name: "Abrir ficha" });
+      const { color, bg } = await effectiveTextColours(abrir);
+      record(theme, "mundo: enlace «Abrir ficha» texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(abrir);
+      record(theme, "mundo: enlace «Abrir ficha» borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const vecino = detalle
+        .getByRole("group", { name: "Vecinos de Corvin" })
+        .getByRole("button", { name: "vive en Torre Gris" });
+      const nombre = vecino.getByText("Torre Gris", { exact: true });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "mundo: vecino del anillo, texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(vecino);
+      record(theme, "mundo: vecino del anillo, borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const fila = detalle.getByRole("list", { name: "Hilos de Corvin" }).getByRole("listitem");
+      const rotulo = fila.getByText("vive en", { exact: true });
+      const { color, bg } = await effectiveTextColours(rotulo);
+      record(theme, "mundo: rótulo de la fila de hilos, cobre", contrastRatio(color, bg), 4.5);
+      const tipo = fila.getByText("Lugar", { exact: true });
+      const medida = await effectiveTextColours(tipo);
+      record(
+        theme,
+        "mundo: tipo legible de la fila de hilos",
+        contrastRatio(medida.color, medida.bg),
+        4.5,
+      );
+    }
+    {
+      const chip = mundo.getByRole("button", { name: "Sin hilos" });
+      const { color, bg } = await effectiveTextColours(chip);
+      record(theme, "mundo: chip «Sin hilos» en reposo, texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(chip);
+      record(theme, "mundo: chip «Sin hilos» en reposo, borde", contrastRatio(border, borderBg), 3);
     }
   });
 }

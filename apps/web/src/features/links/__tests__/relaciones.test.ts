@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { RELACIONES, lecturaEntrante, lecturaSaliente, relacionesSugeridas } from "../relaciones";
+import {
+  RELACIONES,
+  ROTULOS_DE_JERARQUIA,
+  esRotuloDeJerarquia,
+  lecturaEntrante,
+  lecturaSaliente,
+  relacionesSugeridas,
+} from "../relaciones";
 
 describe("relaciones", () => {
   it("sugiere según el par de tipos, no según uno solo", () => {
@@ -66,5 +73,28 @@ describe("relaciones", () => {
     expect(lecturaSaliente("   ")).toEqual({ relacion: "enlaza con" });
     expect(lecturaEntrante(null)).toEqual({ relacion: "recibe un enlace de" });
     expect(lecturaEntrante("   ")).toEqual({ relacion: "recibe un enlace de" });
+  });
+});
+
+// Task 14 bis (D-CF-64) — los rótulos que cuelgan una ficha de su padre en el desglose del mundo
+// son un SUBCONJUNTO del catálogo: uno que no se pueda elegir desde el selector sería un padre
+// que nadie puede poner a propósito.
+describe("ROTULOS_DE_JERARQUIA", () => {
+  it("cada rótulo de jerarquía existe como `desde` en RELACIONES", () => {
+    const desdes = new Set(RELACIONES.map((r) => r.desde));
+    for (const rotulo of ROTULOS_DE_JERARQUIA) expect(desdes.has(rotulo), rotulo).toBe(true);
+    expect(ROTULOS_DE_JERARQUIA.length).toBeGreaterThan(0);
+  });
+
+  it("el árbol enseña contención: «custodia» es lateral y no cuelga nada (ronda 1, Task 14 bis)", () => {
+    expect(ROTULOS_DE_JERARQUIA).not.toContain("custodia");
+    expect(esRotuloDeJerarquia("custodia")).toBe(false);
+  });
+
+  it("esRotuloDeJerarquia ignora mayúsculas y espacios, y lo lateral no cuenta", () => {
+    expect(esRotuloDeJerarquia("  Vive En ")).toBe(true);
+    expect(esRotuloDeJerarquia("es aliado de")).toBe(false);
+    expect(esRotuloDeJerarquia(null)).toBe(false);
+    expect(esRotuloDeJerarquia("")).toBe(false);
   });
 });

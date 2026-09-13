@@ -189,6 +189,73 @@ describe("CampaignItemsCatalogPage — lista", () => {
   });
 });
 
+// Anexo #21 — filtros del catálogo por tipo de objeto y por origen, con chips, como el
+// bestiario. La lista que llega ya viene filtrada por `canView`: el filtro de aquí es de
+// cliente, nunca control de acceso.
+describe("CampaignItemsCatalogPage — filtros (anexo #21)", () => {
+  const dagaDeLaCasa: CampaignItem = {
+    ...objetoDelCatalogo,
+    id: "c1item",
+    name: "Daga de la casa",
+    kind: "WEAPON",
+  };
+  const dagaDelSrd = {
+    ...objetoDelSrd,
+    ref: "SRD:daga",
+    name: "Daga",
+    kind: "WEAPON" as const,
+  };
+  const cotaDeMallasDelSrd = {
+    ...objetoDelSrd,
+    ref: "SRD:cota",
+    name: "Cota de mallas",
+    kind: "ARMOR" as const,
+    weapon: undefined,
+    armor: { category: "HEAVY" as const, baseAc: 16 },
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@b.com", displayName: "DM", isAdmin: false },
+    });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+    ]);
+  });
+
+  it("filtra por tipo y por origen con chips, como el bestiario (anexo #21)", async () => {
+    vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([dagaDeLaCasa]);
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([
+      cotaDeMallasDelSrd,
+      dagaDelSrd,
+    ] as never);
+    renderPage();
+
+    expect(await screen.findAllByRole("button", { name: /^(Daga|Cota)/ })).toHaveLength(3);
+
+    await fireEvent.click(screen.getByRole("button", { name: "Arma" }));
+    expect(screen.getAllByRole("button", { name: /^(Daga|Cota)/ })).toHaveLength(2);
+    expect(screen.queryByText("Cota de mallas")).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole("button", { name: "De la campaña" }));
+    expect(screen.getAllByRole("button", { name: /^Daga/ })).toHaveLength(1);
+    expect(screen.getByText("Daga de la casa")).toBeInTheDocument();
+  });
+
+  it("el vacío nombra los filtros cuando hay alguno activo, no solo la búsqueda", async () => {
+    vi.spyOn(campaignItemsApi, "fetchCampaignItems").mockResolvedValue([dagaDeLaCasa]);
+    vi.spyOn(campaignItemsApi, "fetchSrdItems").mockResolvedValue([]);
+    renderPage();
+
+    await screen.findByText("Daga de la casa");
+    fireEvent.click(screen.getByRole("button", { name: "Armadura" }));
+
+    expect(screen.queryByText("Daga de la casa")).not.toBeInTheDocument();
+    expect(screen.getByText(/con esos filtros/i)).toBeInTheDocument();
+  });
+});
+
 describe("CampaignItemsCatalogPage — crear un arma", () => {
   beforeEach(() => {
     vi.restoreAllMocks();

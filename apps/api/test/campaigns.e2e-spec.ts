@@ -196,6 +196,75 @@ describe("Campaigns (e2e)", () => {
 
       await prisma.campaign.deleteMany({ where: { id: res.body.id } });
     });
+
+    // Revisión de fichas, IMPORTANT #2: mismo defecto que MEDIA-2 pero con `boardRoomUrl` —
+    // `createCampaignSchema` la acepta y el servicio la tiraba en silencio.
+    it("POST /campaigns con boardRoomUrl válida la escribe, no la tira", async () => {
+      const server = app.getHttpServer();
+      const res = await request(server)
+        .post("/campaigns")
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          name: "Con la sala ya puesta",
+          boardRoomUrl: "https://tablero.supportive.pro/game/desde-el-alta",
+        });
+      expect(res.status).toBe(201);
+      expect(res.body.boardRoomUrl).toBe("https://tablero.supportive.pro/game/desde-el-alta");
+
+      const read = await request(server)
+        .get(`/campaigns/${res.body.id}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.body.boardRoomUrl).toBe("https://tablero.supportive.pro/game/desde-el-alta");
+
+      await prisma.campaign.deleteMany({ where: { id: res.body.id } });
+    });
+  });
+
+  // Pulido 2026-09-12, C1 bis (spec del tablero § 2 ter): la partida de PlanarAlly que la mesa
+  // enmarca. Mismo endpoint que el nombre y la sobrecarga (`PATCH /campaigns/:id`); tokenA es el
+  // DM, tokenC un jugador ya miembro de esta misma campaña (aceptó una invitación más arriba).
+  describe("PATCH /campaigns/:id — boardRoomUrl (pulido, C1 bis)", () => {
+    it("el DM guarda la partida del tablero y la ve al leer la campaña; un jugador no puede", async () => {
+      const server = app.getHttpServer();
+      const patch = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ boardRoomUrl: "https://tablero.supportive.pro/game/abc" });
+      expect(patch.status).toBe(200);
+
+      const read = await request(server)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.status).toBe(200);
+      expect(read.body.boardRoomUrl).toBe("https://tablero.supportive.pro/game/abc");
+
+      const asPlayer = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenC}`)
+        .send({ boardRoomUrl: "https://x.example" });
+      expect(asPlayer.status).toBe(403);
+    });
+
+    it("rechaza una URL que no sea http(s) y acepta null para quitarla", async () => {
+      const server = app.getHttpServer();
+      const rejected = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ boardRoomUrl: "javascript:alert(1)" });
+      expect(rejected.status).toBe(400);
+
+      const cleared = await request(server)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ boardRoomUrl: null });
+      expect(cleared.status).toBe(200);
+
+      const read = await request(server)
+        .get(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(read.status).toBe(200);
+      expect(read.body.boardRoomUrl).toBeNull();
+    });
   });
 
   describe("DELETE /campaigns/:id", () => {

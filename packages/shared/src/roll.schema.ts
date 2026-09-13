@@ -158,6 +158,18 @@ export const rollNaturalSchema = z.enum(["NONE", "ONE", "TWENTY"]);
 export const rollOutcomeSchema = z.enum(["NO_DC", "SUCCESS", "FAILURE"]);
 
 /**
+ * Un dado, tal como cayó: sus caras, el número que salió y si cuenta en el total. `kept` en
+ * `false` es lo mismo para un dado descartado por `kh`/`kl` que para el valor original de un
+ * dado relanzado (C5 — `dadosTirados`, `apps/api/src/dice/dice.ts`, es quien lo sabe).
+ */
+export const dieRolledSchema = z.object({
+  sides: z.number().int().positive(),
+  value: z.number().int().positive(),
+  kept: z.boolean(),
+});
+export type DieRolled = z.infer<typeof dieRolledSchema>;
+
+/**
  * El desglose. **Nunca un número suelto**: un total sin los dados que lo produjeron no se puede
  * discutir en una mesa, y discutir una tirada es la mitad de la gracia.
  */
@@ -167,6 +179,11 @@ const desglose = {
   /** Los que cuentan, y los que descartó un `kh`/`kl`. **Lo descartado no se pierde.** */
   kept: z.array(z.number().int()),
   dropped: z.array(z.number().int()),
+  /**
+   * Cada dado, en el orden en que cayó, con sus caras y si cuenta (C5). **Opcional**: el
+   * historial ya escrito antes de esta tarea no lo trae, y no se reescribe.
+   */
+  dice: z.array(dieRolledSchema).max(100).optional(),
   /** La parte que no son dados: el `+3` de `1d8+3`. */
   modifier: z.number().int(),
   total: z.number().int(),

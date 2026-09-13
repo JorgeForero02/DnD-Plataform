@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import * as Iconos from "../Iconos";
+import { IconoDado } from "../Iconos";
 import { Field } from "../Field";
 import { OrnamentRule } from "../Ornament";
 
@@ -86,16 +87,37 @@ describe("Iconos — la regla de que los iconos se dibujan", () => {
   // con 28 no, y la prueba habría seguido en verde comprobando el 11% del fichero mientras los
   // 22 dibujos nuevos entraban sin que nadie mirase su marco. Es la misma corrección que ya se
   // hizo arriba con el barrido de glifos: una lista a mano de algo que crece caduca sola.
-  const TODOS = Object.entries(Iconos).filter(([nombre]) => nombre.startsWith("Icono")) as [
-    string,
-    ComponentType<{ className?: string }>,
-  ][];
+  // `IconoDado` queda fuera de este barrido genérico: a diferencia de los demás, exige `caras`
+  // (no tiene sentido dibujarlo sin saber qué dado es) y por eso lleva su propia prueba, más
+  // abajo, en vez de que este bucle lo renderice sin props y falle por vacío.
+  const TODOS = Object.entries(Iconos).filter(
+    ([nombre]) => nombre.startsWith("Icono") && nombre !== "IconoDado",
+  ) as [string, ComponentType<{ className?: string }>][];
 
   it("el fichero exporta los 23 conceptos de la maqueta, y ninguno se ha perdido por el camino", () => {
     // «Flechas» son dos dibujos —derecha e izquierda—, así que 23 conceptos son 24 componentes,
     // más los cuatro del chrome que ya vivían aquí antes de la maqueta, más **la campana** de la
-    // bandeja de avisos (plan 12 · 12.2).
-    expect(TODOS).toHaveLength(29);
+    // bandeja de avisos (plan 12 · 12.2), más **el menú de tres puntos** de la Tarea 7, más **el
+    // menos** del modificador (revisión final de la rama, 2026-09-13: el «−» de fuente que el
+    // barrido no había visto). `IconoDado` no cuenta aquí porque no entra en este bucle (ver
+    // arriba).
+    expect(TODOS).toHaveLength(31);
+  });
+
+  it("IconoDado dibuja una forma distinta por dado y el d100 comparte la del d10", () => {
+    const { container } = render(
+      <>
+        {[4, 6, 8, 10, 12, 20, 100].map((c) => (
+          <IconoDado key={c} caras={c as 4} />
+        ))}
+      </>,
+    );
+    const svgs = container.querySelectorAll("svg");
+    expect(svgs).toHaveLength(7);
+    const trazos = [...svgs].map((s) => s.innerHTML);
+    expect(new Set(trazos.slice(0, 6)).size).toBe(6); // d4…d20: seis dibujos distintos
+    expect(trazos[6]).toBe(trazos[3]); // d100 = trapezoedro del d10
+    expect(svgs[6]).toHaveAttribute("data-icono", "d100");
   });
 
   it.each(TODOS)(

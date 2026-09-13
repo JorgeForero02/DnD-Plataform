@@ -137,7 +137,9 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
   // El dado se **dibuja**: SVG, nunca un emoji ni un glifo de fuente. Se cuenta dentro del
   // resultado y no en la fila entera, porque desde el rediseño el disparador de la tirada es
   // **otro** dado dibujado — contar tres aquí y llamarlo «los dos dados» sería medir mal.
-  await expect(fila.getByRole("status").locator('svg[data-icono="dado"]')).toHaveCount(2);
+  // Tarea 7 — `data-icono` pasó de "dado" a "d20": DadoDibujado ahora delega en
+  // IconoDado caras={20}, que es el mismo dibujo con el nombre de la familia de seis dados.
+  await expect(fila.getByRole("status").locator('svg[data-icono="d20"]')).toHaveCount(2);
 
   // --- Ninguna enumeración del servidor llega a la pantalla. ---
   const cuerpo = await page.locator("body").innerText();
@@ -306,4 +308,68 @@ test("Task 26 — el DM tira un ataque con un PNJ «A ciegas» y el jugador no l
 
   await dmContext.close();
   await playerContext.close();
+});
+
+// Task 10 — **la bandeja compacta del cajón «La mesa tira», a 17rem de ancho.** El autor quiere
+// ver muchos dados a la vez (docs/06-pendientes.md, anexo #16); esta prueba mide justo lo que
+// una unitaria no puede — que la fila de siete dados y la pila de verdad envuelven en vez de
+// desbordar cuando el cajón es angosto. `boundingBox` del cajón contra el de su contenido: el
+// cajón nunca es más estrecho que lo que pinta dentro.
+test("el cajón «La mesa tira» compacto cabe en 17rem de ancho sin desbordar", async ({ page }) => {
+  await registrarse(page);
+  await page.getByRole("button", { name: "Nueva campaña" }).first().click();
+  await page.getByLabel("Nombre").fill("La mesa angosta de verdad");
+  await page.getByRole("button", { name: "Crear" }).click();
+  await page.getByRole("link", { name: "La mesa angosta de verdad" }).click();
+  await expect(page.getByRole("heading", { name: "La mesa angosta de verdad" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Nueva sesión" }).click();
+  await page.getByLabel("Título").fill("La sesión angosta de verdad");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  await expect(page.getByRole("status", { name: "Sesión en curso" })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const campaignId = page.url().split("/campaigns/")[1].split(/[/?]/)[0];
+  await page.goto(`/campaigns/${campaignId}/sesion`);
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  // 17rem a 16px/rem = 272px. Más angosto que el móvil más estrecho que este proyecto declara
+  // soportar (~400px, docs/04-convenciones.md), a propósito: es el caso que de verdad ejercita
+  // el `flex-wrap` de la bandeja en vez de dejarla con sitio de sobra.
+  await page.setViewportSize({ width: 272, height: 700 });
+
+  await page.getByRole("button", { name: /^Dados/ }).click();
+  const panel = page.getByRole("region", { name: "Tirada" });
+  await expect(panel).toBeVisible();
+
+  const cajaPanel = await panel.boundingBox();
+  expect(cajaPanel).not.toBeNull();
+  // El cajón no desborda la ventana: cabe en los 272px de ancho.
+  expect(cajaPanel!.width).toBeLessThanOrEqual(272 + 1);
+
+  // Los siete dados de la bandeja, envueltos en su fila — ninguno se sale del cajón.
+  const dados = panel.getByRole("button", { name: /^Añadir un d/ });
+  await expect(dados).toHaveCount(7);
+  for (let i = 0; i < 7; i++) {
+    const caja = await dados.nth(i).boundingBox();
+    expect(caja).not.toBeNull();
+    expect(caja!.x).toBeGreaterThanOrEqual(cajaPanel!.x - 1);
+    expect(caja!.x + caja!.width).toBeLessThanOrEqual(cajaPanel!.x + cajaPanel!.width + 1);
+  }
+
+  // La pila: se añade un d20 y un d100 (los dos extremos de la fila) y ninguno desborda tampoco.
+  await panel.getByRole("button", { name: "Añadir un d20", exact: true }).click();
+  await panel.getByRole("button", { name: "Añadir un d100", exact: true }).click();
+  const pila = panel.getByRole("list", { name: "Dados en la bandeja" });
+  await expect(pila).toBeVisible();
+  const cajaPila = await pila.boundingBox();
+  expect(cajaPila).not.toBeNull();
+  expect(cajaPila!.x + cajaPila!.width).toBeLessThanOrEqual(cajaPanel!.x + cajaPanel!.width + 1);
 });

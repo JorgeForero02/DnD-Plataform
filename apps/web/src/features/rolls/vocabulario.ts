@@ -1,4 +1,5 @@
 import type { RollAudience, RollMode, RollResultRevealed } from "@dnd/shared";
+import type { Caras } from "./bandeja";
 
 // Tarea F3 — el vocabulario de una tirada.
 //
@@ -130,4 +131,4 @@ export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
  * tablas de la 5.ª edición, y el d3 y el d2 no, porque en el SRD se tiran como mitades de otro
  * dado y ofrecerlos invitaría a escribir expresiones que el evaluador rechaza.
  */
-export const DADOS_DE_ATAJO: readonly number[] = [4, 6, 8, 10, 12, 20, 100];
+export const DADOS_DE_ATAJO: readonly Caras[] = [4, 6, 8, 10, 12, 20, 100];

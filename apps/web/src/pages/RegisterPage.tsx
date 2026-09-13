@@ -9,6 +9,7 @@ import { traducirErrorDeAcceso } from "../features/auth/errores";
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import { Field, fieldControlClass } from "../ui/Field";
+import { IconoMas } from "../ui/Iconos";
 import { AuthLayout } from "../features/auth/AuthLayout";
 
 export function RegisterPage() {
@@ -84,6 +85,7 @@ export function RegisterPage() {
           </p>
         )}
         <Button type="submit" className="w-full">
+          <IconoMas />
           Crear cuenta
         </Button>
       </form>

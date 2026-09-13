@@ -5,6 +5,7 @@ import { tiempoRelativo } from "./tiempoRelativo";
 import { IconoPersonajes, IconoSesiones } from "./iconosDeSeccion";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/Collection";
+import { IconoMas } from "../../ui/Iconos";
 import { useCurrentSession } from "../sessions/hooks";
 import { IconoEnJuego } from "../sessions/iconos";
 
@@ -50,6 +51,7 @@ export function Cronicas({ onCrear }: { onCrear: () => void }) {
         Una campaña guarda su mundo, sus sesiones y sus personajes, con sus propios secretos.
         <span className="mt-s3 block">
           <Button variant="primary" onClick={onCrear}>
+            <IconoMas />
             Nueva campaña
           </Button>
         </span>

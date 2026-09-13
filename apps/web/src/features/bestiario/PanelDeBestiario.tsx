@@ -26,7 +26,7 @@ import {
   useUpdateStatblock,
 } from "./hooks";
 import { EditorDeStatblock } from "./EditorDeStatblock";
-import { IconoEscudo } from "../../ui/Iconos";
+import { IconoEscudo, IconoPluma } from "../../ui/Iconos";
 import { descriptorDeCriatura, NOMBRE_ORIGEN } from "./vocabulario";
 
 // Fase 2D — **el bestiario**.
@@ -366,7 +366,12 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
 
         {esDM ? (
           <div className="flex flex-wrap items-center gap-s2">
-            <Button onClick={() => setEditando({})}>Escribir una criatura</Button>
+            <Button onClick={() => setEditando({})}>
+              {/* Anexo #22 — este botón no llevaba icono. `IconoPluma` es el mismo dibujo que
+                  `EntityDetailPage` usa para «escribir» una ficha del mundo: un concepto, un icono. */}
+              <IconoPluma />
+              Escribir una criatura
+            </Button>
             {borrar.isError ? (
               <p role="alert" className="font-chrome text-chrome-sm text-danger-text">
                 {/* El rechazo del servidor se pinta tal cual: un 409 al borrar una criatura que

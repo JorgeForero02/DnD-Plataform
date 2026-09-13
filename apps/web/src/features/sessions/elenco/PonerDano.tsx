@@ -6,6 +6,8 @@ import { Button } from "../../../ui/Button";
 import { fieldControlClass } from "../../../ui/Field";
 import { useChangeHp } from "../../character-sheet/hooks";
 import { AvisoDeConcentracion, TrazaDeDano } from "../../character-sheet/AplicarDano";
+import { useCharacters } from "../../characters/hooks";
+import { useNpcs } from "../../bestiario/hooks";
 
 // **El mando «Daño» del elenco** (maqueta: `prototipo/src/features/FichaDeElenco.tsx:120-143`).
 //
@@ -73,6 +75,30 @@ import { AvisoDeConcentracion, TrazaDeDano } from "../../character-sheet/Aplicar
 // creature's hit points can't exceed its hit point maximum, so any hit points regained in excess
 // of this number are lost."* El tope lo aplica el servidor (`clamp(before + input.delta, 0,
 // maxHp)`); esta pantalla no recorta nada, solo enseña lo que el servidor devuelve.
+//
+// ## Tarea 11 del pulido (C4, #15) — «¿De quién viene?»
+//
+// Golpear a mano no colgaba de ninguna tirada, así que el hilo no podía decir «← Klarg»: solo
+// sabía decirlo cuando el daño venía de un ataque resuelto por el servidor (`rollEventId`). Este
+// selector manda `sourceCharacterId` cuando el DM SÍ sabe de quién viene el golpe aunque lo esté
+// tecleando a mano — un PNJ que muerde sin tirada modelada, un rasgo del bestiario que no pasa por
+// `AtaquesYLanzamiento`.
+//
+// **Es un `<select>` nativo con `<option value="">Sin decir</option>`, y no la regla de los
+// radios con explicación.** Esa regla (`docs/04-convenciones.md`) es para una OPCIÓN CON
+// SIGNIFICADO —una elección del servidor entre alternativas cerradas—; esto es una lista de
+// **datos**: quiénes hay en la campaña, la misma clase de contenido que ya llena un `<select>` en
+// esta misma pantalla (`SelectorDeTipoDeDano` es la excepción de opciones con significado; el
+// elenco de personajes no lo es). `SelectorDeObjeto` tiene el patrón con buscador para listas
+// largas; con el tamaño típico de un elenco de mesa (cinco a diez fichas) un `<select>` nativo
+// basta y no añade un cajón más encima del que ya está abierto.
+//
+// **Solo con daño, igual que «Crítico» y el tipo de daño**: citar de dónde viene un ajuste de
+// curación no tiene el mismo sentido narrativo, y el servidor no lo prohíbe pero tampoco lo pide
+// el spec de esta tarea.
+//
+// **Se manda solo si se elige.** Sin selección, `changeHp` no recibe `sourceCharacterId` y el
+// comportamiento es exactamente el de antes de esta tarea.
 
 type Modo = "dano" | "curar";
 
@@ -104,11 +130,20 @@ function Gesto({
   // elenco: hoy el velo impide abrir dos a la vez, pero los `id` duplicados ya están en el
   // documento y `getByLabel` se vuelve ambiguo en cuanto alguien mire.
   const idCantidad = useId();
+  const idOrigen = useId();
   const [cantidad, setCantidad] = useState("5");
   // Un crítico suma **dos** fracasos de salvación de muerte a quien ya está a 0, no uno: es una
   // regla que el servidor aplica y que sin esta casilla no se podía declarar desde la mesa.
   // Solo tiene sentido con daño: el servidor lo ignora del todo en la rama de curar.
   const [critico, setCritico] = useState(false);
+  // Tarea 11 del pulido (C4, #15). «» vacío es «sin decir», y así viaja: `changeHp` no recibe
+  // `sourceCharacterId` si esto se queda vacío, el mismo comportamiento que antes de esta tarea.
+  const [origenId, setOrigenId] = useState("");
+  // Los personajes y los PNJ de la campaña: la misma lista que ya usa `HiloDeSesion` para nombrar
+  // a alguien citado por id, no una tercera consulta con su propia forma.
+  const { data: personajes } = useCharacters(campaignId);
+  const { data: pnjs } = useNpcs(campaignId);
+  const origenes = [...(personajes ?? []), ...(pnjs ?? [])].filter((c) => c.id !== characterId);
 
   const n = Number(cantidad);
   const valida = Number.isInteger(n) && n >= 1 && n <= 9999;
@@ -122,6 +157,7 @@ function Gesto({
     // marcado declara un crítico que nadie ha declarado.
     setCantidad("5");
     setCritico(false);
+    setOrigenId("");
     onCerrar();
   }
 
@@ -161,6 +197,7 @@ function Gesto({
                     delta: esDano ? -n : n,
                     ...(esDano && critico ? { critical: true } : {}),
                     ...(esDano && tipoDeDano ? { damageType: tipoDeDano } : {}),
+                    ...(esDano && origenId ? { sourceCharacterId: origenId } : {}),
                   },
                   {
                     onSuccess: (respuesta) => {
@@ -213,6 +250,31 @@ function Gesto({
             </span>
           </span>
         </label>
+      )}
+
+      {esDano && (
+        <div className="mt-s3 flex items-center gap-s2">
+          <label className="font-chrome text-chrome-sm text-text" htmlFor={idOrigen}>
+            ¿De quién viene?
+          </label>
+          {/* Es una lista de personajes y PNJ de la campaña — DATOS, no una opción con
+              significado —, así que un `<select>` nativo con «Sin decir» de por medio es
+              correcto aquí y no una desviación de la regla de los radios con explicación (esa
+              regla es para elegir entre alternativas del servidor, no para citar A QUIÉN). */}
+          <select
+            id={idOrigen}
+            className={fieldControlClass}
+            value={origenId}
+            onChange={(e) => setOrigenId(e.target.value)}
+          >
+            <option value="">Sin decir</option>
+            {origenes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       {/* **De dónde sale el daño.** Los pasos son los del servidor, no un cálculo de esta

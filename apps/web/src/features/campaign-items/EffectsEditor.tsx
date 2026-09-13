@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AbilityKey, ItemEffect, Movement, ProficiencyLevel, SkillKey } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
+import { IconoMas } from "../../ui/Iconos";
 import { RadioGroup } from "./RadioGroup";
 import {
   CARACTERISTICAS,
@@ -313,6 +314,7 @@ export function EffectsEditor({
               Cancelar
             </Button>
             <Button type="button" onClick={confirmarAnadido}>
+              <IconoMas />
               Añadir
             </Button>
           </div>

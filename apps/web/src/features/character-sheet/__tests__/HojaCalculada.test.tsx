@@ -291,6 +291,17 @@ describe("H3 — la cabecera fija y las dos columnas", () => {
     // pantalla: el inventario titula con `<h2>` porque la hoja ya puso el suyo.
     expect(inventario.querySelector("h1")).toBeNull();
   });
+
+  // Anexo #6/#17 (ronda de arreglo, 2026-09-12) — el envoltorio que contiene la cabecera y el
+  // cuerpo publica el alto real de la banda como variable CSS, para que un sticky de una
+  // pestaña (`DetalleDeObjeto.tsx`) la lea sin que esta pantalla conozca a sus hijos. La medida
+  // exacta la prueba `Cabecera.test.tsx`; aquí solo se comprueba que el envoltorio la lleva.
+  it("el envoltorio publica `--banda-fija-alto` como variable CSS", async () => {
+    pintarHoja();
+    const resumen = await screen.findByRole("region", { name: "resumen de combate" });
+    const envoltorio = resumen.parentElement!;
+    expect(envoltorio.style.getPropertyValue("--banda-fija-alto")).toMatch(/^\d+px$/);
+  });
 });
 
 describe("H5 — cada paso de la traza lleva a su causa editable", () => {

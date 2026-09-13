@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { Cabecera } from "../Cabecera";
@@ -38,10 +38,12 @@ function renderCabecera({
   disposicion,
   puedeEditar = false,
   data = sheetResponse,
+  onAlto,
 }: {
   disposicion: Disposicion;
   puedeEditar?: boolean;
   data?: typeof sheetResponse;
+  onAlto?: (px: number) => void;
 }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -51,6 +53,7 @@ function renderCabecera({
       data={data}
       puedeEditar={puedeEditar}
       disposicion={disposicion}
+      onAlto={onAlto}
     />,
     { wrapper: wrapper(qc) },
   );
@@ -71,10 +74,20 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     });
   });
 
+  // Minor 7 (ronda de arreglo 3) — `vi.stubGlobal` no lo deshace `vi.restoreAllMocks()` (son
+  // dos mecanismos de vitest distintos): sin este `afterEach`, un `ResizeObserver` falso
+  // filtraría a la prueba siguiente del fichero. Se centraliza aquí —junto al `restoreAllMocks`
+  // que hasta ahora solo se llamaba manualmente al final de una prueba— para que ninguna prueba
+  // tenga que acordarse de limpiar a mano.
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   it("reúne los cinco números, las condiciones como chips y el aviso de elección pendiente", async () => {
     renderCabecera({ disposicion: "pagina" });
     const resumen = await screen.findByRole("region", { name: "resumen de combate" });
-    for (const etiqueta of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+    for (const etiqueta of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
       expect(within(resumen).getByText(etiqueta)).toBeInTheDocument();
     }
     // Los chips cuelgan de `useConditions`, una consulta propia (igual que en el resto de la
@@ -129,7 +142,7 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     // quepan en una fila, y el nombre entero viaja en un `sr-only` hermano — abreviar en
     // pantalla sin decir el nombre completo en alguna parte sería cambiar densidad por
     // accesibilidad. Se comprueban los dos, o la abreviatura podría quedarse sola.
-    for (const rotulo of ["CA", "Inic.", "Vel. (pies)", "PG", "Comp."]) {
+    for (const rotulo of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
       expect(texto.includes(rotulo), `«${rotulo}» tiene que estar en la cabecera`).toBe(true);
     }
     for (const largo of ["Iniciativa", "Velocidad efectiva en pies", "Competencia"]) {
@@ -209,5 +222,49 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     const aviso = await screen.findByRole("region", { name: "vista de DM" });
     expect(resumen.nextElementSibling).not.toBeNull();
     expect(resumen.nextElementSibling!.contains(aviso)).toBe(true);
+  });
+
+  // Anexo #6/#17 (ronda de arreglo, 2026-09-12) — `e2e/espacios.spec.ts` midió el panel de
+  // detalle de Objetos metido 60px bajo la banda: `--tira-fija-top` es el escalón de `AppShell`,
+  // no el alto real de esta banda. `Cabecera` reporta ese alto con `ResizeObserver`, y esta
+  // prueba es la que demuestra que el hook lo hace, sin montar toda la hoja.
+  it("reporta su alto real por `onAlto`, al montar y en cada cambio de tamaño, y se desconecta al desmontar", async () => {
+    const onAlto = vi.fn();
+    const alDesconectar = vi.fn();
+    let callback: ResizeObserverCallback | null = null;
+    class FakeResizeObserver implements ResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        callback = cb;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect = alDesconectar;
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    const medida = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue({ height: 123 } as DOMRect);
+
+    const { unmount } = renderCabecera({ disposicion: "pagina", onAlto });
+    await screen.findByRole("region", { name: "resumen de combate" });
+
+    // 1. Al montar, sin esperar a ningún resize: `jsdom` no dispara `ResizeObserver` solo, así
+    //    que sin esta llamada inicial una hoja que nunca cambia de tamaño nunca reportaría nada.
+    expect(onAlto).toHaveBeenCalledWith(123);
+
+    // 2. Y en un cambio de tamaño real: el alto se vuelve a leer del propio elemento (no del
+    //    `contentRect` del observador), porque el consumidor necesita la caja completa —con
+    //    borde y relleno— y no solo el contenido.
+    onAlto.mockClear();
+    medida.mockReturnValue({ height: 200 } as DOMRect);
+    callback!([], {} as ResizeObserver);
+    expect(onAlto).toHaveBeenCalledWith(200);
+
+    // 3. Minor 7 — y al desmontar, el observador se desconecta. Sin la función de limpieza del
+    //    `useLayoutEffect`, cada navegación que sale de la hoja dejaría un `ResizeObserver`
+    //    vivo observando un `<section>` que ya no existe.
+    expect(alDesconectar).not.toHaveBeenCalled();
+    unmount();
+    expect(alDesconectar).toHaveBeenCalledTimes(1);
   });
 });

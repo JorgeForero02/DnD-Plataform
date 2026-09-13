@@ -364,8 +364,8 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("DADOS: con un intento ya elegido, cambiar una característica sin attemptId es 400 «se fijaron con dados»", async () => {
-    const { service, prisma, characters } = montar();
+  it("DADOS: con un intento ya elegido, cambiar una característica sin attemptId es 400 «se fijaron con dados» para el dueño", async () => {
+    const { service, prisma, characters, membership } = montar();
     prep(prisma, characters, {
       abilities: { metodo: "DADOS", expresion: "3d6", intentos: 1, asignacionLibre: true },
     });
@@ -373,16 +373,39 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
       id: "a1",
       chosen: true,
     });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
 
     await expect(
       service.updateSheet("pl", "c1", "ch1", {
         abilities: { str: 18, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
       }),
-    ).rejects.toThrow(/fijaron con dados/);
+    ).rejects.toThrow(/fijaron con dados; solo el DM puede cambiarlas/);
     // Y la raza sí se puede seguir cambiando: la fijación es de las seis, no de la hoja.
     await expect(
       service.updateSheet("pl", "c1", "ch1", { race: { source: "SRD", key: "elf" } }),
     ).resolves.toBeDefined();
+  });
+
+  it("DADOS: con un intento ya elegido, el DM SÍ puede cambiar las seis juntas sin attemptId (E-RM-13)", async () => {
+    const { service, prisma, characters, membership } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 1, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(
+      service.updateSheet("dm", "c1", "ch1", {
+        abilities: { str: 20, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+      }),
+    ).resolves.toBeDefined();
+    const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
+    expect(data).toMatchObject({ str: 20, dex: 14, con: 12, int: 11, wis: 10, cha: 9 });
+    // Arbitraje, no una tirada más: ningún intento se toca.
+    expect(prisma.abilityRollAttempt.update).not.toHaveBeenCalled();
   });
 
   it("permitidos: una clase fuera de la lista es 400 con su nombre legible; la lista vacía deja todo", async () => {

@@ -209,13 +209,24 @@ describe("Reglas de la mesa (e2e)", () => {
     expect(despues.status).toBe(400);
     expect(despues.body.message).toMatch(/fijaron con dados/);
 
-    // El DM sigue pudiendo anular (la puerta que ya existe) — sobre una clave anulable de verdad
-    // (`ability.*` no existe en `OVERRIDABLE_KEYS`; `maxHp` sí).
-    const anula = await request(s)
-      .put(`/campaigns/${campaignId}/characters/${id}/overrides/maxHp`)
+    // Reglas de la mesa (E-RM-13, ronda 1): `overrides` no cubre `ability.*` — `maxHp` sí está en
+    // `OVERRIDABLE_KEYS`, pero ninguna clave de característica lo está —, así que «el DM arbitra
+    // con overrides» era una puerta que no existía. La puerta real es esta misma ruta: el DM
+    // manda las seis juntas, sin `attemptId`, y se guardan sin comprobarlas contra el intento.
+    const arbitra = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${id}/sheet`)
       .set(auth(tokenDM))
-      .send({ value: 20, reason: "Bendición" });
-    expect([200, 201]).toContain(anula.status);
+      .send({ abilities: { str: 20, dex, con, int, wis, cha } });
+    expect(arbitra.status).toBe(200);
+    expect(arbitra.body.character.str).toBe(20);
+
+    // Y el dueño sigue sin poder, incluso después del arbitraje del DM.
+    const siguesinpoder = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${id}/sheet`)
+      .set(auth(tokenPL))
+      .send({ abilities: { str: 20, dex, con, int, wis, cha } });
+    expect(siguesinpoder.status).toBe(400);
+    expect(siguesinpoder.body.message).toMatch(/fijaron con dados/);
 
     // Los intentos se listan para dueño y DM, y el elegido va marcado.
     const lista = await request(s)

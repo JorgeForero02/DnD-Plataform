@@ -873,16 +873,25 @@ export class CharacterSheetService {
         (k) => input.abilities![k] !== undefined,
       );
       if (regla.abilities.metodo !== "LIBRE") {
-        // Con dados y un intento ya elegido, las seis están fijadas: solo `overrides` del DM las
-        // mueve a partir de ahí (la puerta que ya existe en `setOverride`).
+        // Reglas de la mesa (E-RM-13, ronda 1 de arreglos): con dados y un intento ya elegido,
+        // las seis están fijadas — y `OVERRIDABLE_KEYS` **no tiene `ability.*`**, así que
+        // «el DM arbitra con `overrides`» era una puerta que no existía: el DM se topaba con el
+        // mismo 400 que el dueño. La puerta real es esta misma ruta: sin `attemptId` y sin
+        // comprobar contra el intento —es arbitraje, no una tirada más—, pero las seis siguen
+        // yendo juntas (la regla de «se fijan juntas» no se releja para nadie).
+        let arbitrajeDelDM = false;
         if (regla.abilities.metodo === "DADOS" && !input.attemptId) {
           const elegido = await this.prisma.abilityRollAttempt.findFirst({
             where: { characterId, chosen: true },
           });
           if (elegido) {
-            throw new BadRequestException(
-              "Las características se fijaron con dados; el DM puede anularlas desde la hoja.",
-            );
+            const membresia = await this.membership.getMembership(campaignId, userId);
+            if (membresia?.role !== "DM") {
+              throw new BadRequestException(
+                "Las características se fijaron con dados; solo el DM puede cambiarlas.",
+              );
+            }
+            arbitrajeDelDM = true;
           }
         }
         if (seisEnviadas.length !== 6) {
@@ -890,19 +899,21 @@ export class CharacterSheetService {
             "Con esta regla las seis características se fijan juntas: manda las seis a la vez.",
           );
         }
-        const seis = Object.fromEntries(
-          ORDEN_DE_CARACTERISTICAS.map((k) => [k, input.abilities![k]!]),
-        ) as Record<AbilityKey, number>;
-        const intento = input.attemptId
-          ? await this.abilityRolls.requireAttempt(characterId, input.attemptId)
-          : undefined;
-        if (intento?.chosen) throw new BadRequestException("Ese intento ya se eligió.");
-        validarCaracteristicas(
-          regla.abilities,
-          seis,
-          intento ? { values: intento.values as number[] } : undefined,
-        );
-        if (intento) intentoAFijar = intento.id;
+        if (!arbitrajeDelDM) {
+          const seis = Object.fromEntries(
+            ORDEN_DE_CARACTERISTICAS.map((k) => [k, input.abilities![k]!]),
+          ) as Record<AbilityKey, number>;
+          const intento = input.attemptId
+            ? await this.abilityRolls.requireAttempt(characterId, input.attemptId)
+            : undefined;
+          if (intento?.chosen) throw new BadRequestException("Ese intento ya se eligió.");
+          validarCaracteristicas(
+            regla.abilities,
+            seis,
+            intento ? { values: intento.values as number[] } : undefined,
+          );
+          if (intento) intentoAFijar = intento.id;
+        }
       }
       for (const clave of ORDEN_DE_CARACTERISTICAS) {
         const valor = input.abilities[clave];

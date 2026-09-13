@@ -162,18 +162,21 @@ function PasoDeTraza({ paso, total }: { paso: TraceStep; total: number }) {
           onClick={() => enfocarCausa(causa)}
           // Desbordes (2026-09-13, E-DB-10): `flex-1 min-w-0` — sin `min-w-0`, este hijo de un
           // `flex` no encoge por debajo de su propio ancho de contenido (el mínimo por defecto
-          // de un ítem flexible es `auto`, no `0`) — en la casilla «Comp.», pegada al borde
-          // derecho de la tira sin margen de sobra, la palabra más larga del rótulo
-          // («Bonificador») más la columna numérica de al lado sumaban 8 px más que los 6rem de
-          // la casilla. `flex-1` le da el ancho que le sobra a la cifra (`shrink-0` de abajo), y
-          // `break-words` rompe la propia palabra si ni una línea entera le basta.
-          className={`${clase} min-w-0 flex-1 break-words text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+          // de un ítem flexible es `auto`, no `0`). `flex-1` le da el ancho que le sobra a la
+          // cifra (`shrink-0` de abajo). **`break-normal`, no `break-words`** (ronda 3): partir
+          // la palabra a mitad («Bonific/icador») cupo en 6rem pero no es "envolver", es
+          // tipografía rota — ahora es la CASILLA la que crece cuando la traza está abierta
+          // (`Casilla.tsx`, hasta `max-w-[14rem]`), así que el rótulo tiene sitio de sobra para
+          // partir solo por espacios; si algún día un rótulo no cupiera ni así, se vería una
+          // única palabra larga saliéndose en vez de partida — preferible, y no ha ocurrido con
+          // ningún texto real de este dominio.
+          className={`${clase} min-w-0 flex-1 break-normal text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
         >
           {contenido}
         </button>
       ) : (
         <span
-          className={`${clase} min-w-0 flex-1 break-words`}
+          className={`${clase} min-w-0 flex-1 break-normal`}
           data-untranslated={conocida ? undefined : "true"}
         >
           {contenido}

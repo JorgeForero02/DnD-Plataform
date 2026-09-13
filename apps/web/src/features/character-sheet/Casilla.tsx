@@ -49,18 +49,20 @@ export function Casilla({
   return (
     <div
       className={[
-        ANCHO_CASILLA,
+        // Desbordes, ronda 3 (2026-09-13, E-DB-10 — «la caja crece», la otra mitad de la
+        // regla): forzar el rótulo a envolver DENTRO de los 6rem fijos partía palabras a mitad
+        // («Bonific/icador») para que cupieran — legible, pero no es lo que E-DB-10 pedía. Con
+        // la traza ABIERTA la casilla puede crecer en su lugar: `min-w-[6rem] w-auto` deja que
+        // el ancho lo decida el contenido (nunca por debajo de las 6rem de las demás), y
+        // `max-w-[14rem]` la frena antes de invadir la casilla vecina o salirse de la ventana —
+        // a partir de ahí, el rótulo sí envuelve, pero por espacios (`break-normal` en
+        // `PasoDeTraza`, `Traza.tsx`), nunca a mitad de palabra. CERRADA sigue midiendo
+        // `ANCHO_CASILLA` fijo, sin cambio: las aserciones de `hoja.spec.ts` sobre las cinco
+        // casillas en reposo no dependen de esta rama.
+        desplegable ? "min-w-[6rem] w-auto max-w-[14rem]" : ANCHO_CASILLA,
         ALTO_CASILLA,
         desplegable ? "grid-rows-[auto_1fr_auto_auto]" : "grid-rows-[auto_1fr_auto]",
-        // Desbordes (2026-09-13, E-DB-10): la tira de cabecera es un `flex` (`Cabecera.tsx`,
-        // `ml-auto flex flex-wrap ...`), y un ítem de `flex` sin `min-w-0` no puede encoger por
-        // debajo del tamaño mínimo de SU CONTENIDO — el ancho explícito (`w-[6rem]`) deja de
-        // mandar en cuanto la traza abierta mete un texto cuyo mínimo por palabra pesa más que
-        // eso, y la caja entera crece hacia la derecha. En «Comp.», la última casilla, sin
-        // margen de sobra, ese crecimiento se salía 8 px de la ventana. `min-w-0` deja que el
-        // ancho declarado vuelva a mandar; el texto de dentro rompe línea en su lugar (ver el
-        // `min-w-0` de `PasoDeTraza`, `Traza.tsx`).
-        "grid min-w-0 rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
+        "grid rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
         className,
       ].join(" ")}
     >
@@ -84,12 +86,12 @@ export function Casilla({
       {desplegable && (
         <div
           data-testid="casilla-desplegable"
-          // `min-w-0`: esta fila es también un ÍTEM de la rejilla (`grid-rows-…` de arriba), y
-          // sin él su pista de columna implícita crece para acomodar el contenido más ancho
-          // (`Bonificador de competencia` en una sola línea) por encima de las 6rem del propio
-          // contenedor — la caja exterior no cambia de ancho, pero esta fila se pinta por fuera
-          // de ella. `min-w-0` deja que la columna vuelva a medir 6rem y el texto de dentro
-          // rompa línea en su lugar (el `min-w-0` de `PasoDeTraza`, `Traza.tsx`).
+          // `min-w-0`: esta fila es también un ÍTEM de la rejilla (`grid-rows-…` de arriba); sin
+          // él, su pista de columna implícita crecería para acomodar el contenido más ancho por
+          // encima del `max-w-[14rem]` del contenedor (de arriba) en vez de respetarlo. Con
+          // `min-w-0` la columna se ciñe al ancho que el contenedor haya resuelto —entre 6 y
+          // 14rem— y el texto envuelve por espacios en su lugar (`break-normal` en
+          // `PasoDeTraza`, `Traza.tsx`).
           className="min-w-0 whitespace-normal text-left leading-normal"
         >
           {desplegable}

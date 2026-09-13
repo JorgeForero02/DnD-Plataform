@@ -150,6 +150,27 @@ export class RollRequestsService {
   }
 
   /**
+   * Spec puerta de efectos §3.2: `crearEnTransaccion` con la comprobación de personajes pero sin
+   * `requireDM`. Los `characterIds` ya pasaron `canView` en `ActivitiesService.usar`; aquí solo se
+   * repite lo barato: en la campaña y no archivados. **Exige `tx` y no tiene ruta.**
+   */
+  async createFromEffect(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    campaignId: string,
+    input: CreateRollRequestInput,
+  ) {
+    const personajes = await tx.character.findMany({
+      where: { id: { in: input.characterIds }, campaignId, archivedAt: null },
+      select: { id: true },
+    });
+    if (personajes.length !== input.characterIds.length) {
+      throw new NotFoundException("Alguno de esos personajes no está en esta campaña.");
+    }
+    return this.crearEnTransaccion(tx, actorUserId, campaignId, input);
+  }
+
+  /**
    * Lo que te han pedido. El DM ve las de la campaña; un jugador, las de sus personajes.
    *
    * **Pendientes por defecto**, que es lo que sondea una pantalla: pedirlo todo cada treinta

@@ -154,6 +154,75 @@ describe("RollRequestsService", () => {
     });
   });
 
+  describe("createFromEffect (segunda puerta, spec §3.2)", () => {
+    it("sin requireDM: un jugador crea la petición si los personajes están en la campaña y no archivados", async () => {
+      const tx = {
+        character: { findMany: jest.fn().mockResolvedValue([{ id: "b" }]) },
+        campaignMember: { findUnique: jest.fn() },
+        rollRequest: {
+          create: jest.fn().mockResolvedValue({ id: "r1" }),
+        },
+      };
+
+      const r = await service.createFromEffect(tx as never, "jugador-a", "c1", {
+        characterIds: ["b"],
+        key: "save.dex",
+        label: "Salvación",
+        dc: 15,
+        mode: "NORMAL",
+        audience: "PUBLIC",
+      });
+
+      expect(r).toHaveLength(1);
+      expect(tx.campaignMember.findUnique).not.toHaveBeenCalled();
+      expect(tx.rollRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ requestedById: "jugador-a" }) }),
+      );
+    });
+
+    it("404 si algún personaje no está en la campaña o está archivado", async () => {
+      const tx = {
+        character: { findMany: jest.fn().mockResolvedValue([]) },
+        campaignMember: { findUnique: jest.fn() },
+        rollRequest: { create: jest.fn() },
+      };
+
+      await expect(
+        service.createFromEffect(tx as never, "a", "c1", {
+          characterIds: ["zz"],
+          key: "save.dex",
+          label: "S",
+          mode: "NORMAL",
+          audience: "PUBLIC",
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(tx.rollRequest.create).not.toHaveBeenCalled();
+    });
+
+    // Mutación (informe de la tarea 1): `personajes.length === 0` en vez de
+    // `personajes.length !== input.characterIds.length` deja pasar el caso de arriba igual —
+    // `[]` también tiene longitud 0 —, así que hace falta un caso donde SE ENCUENTRE ALGO pero no
+    // TODO, o el mutante sobrevive sin que ninguna prueba lo note.
+    it("404 también si se encuentra ALGUNO pero no TODOS los personajes pedidos", async () => {
+      const tx = {
+        character: { findMany: jest.fn().mockResolvedValue([{ id: "b" }]) },
+        campaignMember: { findUnique: jest.fn() },
+        rollRequest: { create: jest.fn() },
+      };
+
+      await expect(
+        service.createFromEffect(tx as never, "a", "c1", {
+          characterIds: ["b", "zz"],
+          key: "save.dex",
+          label: "S",
+          mode: "NORMAL",
+          audience: "PUBLIC",
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(tx.rollRequest.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe("listar", () => {
     it("el DM ve las de la campaña entera", async () => {
       membership.requireMember.mockResolvedValue({ role: "DM" });

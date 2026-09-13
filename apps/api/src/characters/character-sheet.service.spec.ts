@@ -1231,6 +1231,59 @@ describe("ficha P2-8 — con `tx`, redactar la respuesta también va por ESE cli
   });
 });
 
+describe("changeHpFromEffect (segunda puerta, spec §3.1)", () => {
+  it("no autoriza: un jugador que NO es dueño ni DM cambia los PG de otro si viene con tx", async () => {
+    const { service, prisma, events } = montar();
+    // `currentHp: 5` en vez del `10` literal del brief: con el build de ejemplo (enano
+    // guerrero nivel 1), `maxHp` cae en 14 — pedir 10 + 5 se habría topado con el máximo y la
+    // prueba habría medido el `clamp`, no la autorización, que es lo que este bloque comprueba.
+    const fila = personaje({ id: "b", ownerId: "otro", currentHp: 5, tempHp: 0 });
+    const tx = montarTransaccion(prisma, fila);
+    (tx as unknown as { campaignMember: { findUnique: jest.Mock } }).campaignMember = {
+      findUnique: jest.fn().mockResolvedValue({ role: "PLAYER" }),
+    };
+
+    const r = await service.changeHpFromEffect(tx as never, "jugador-a", "c1", "b", {
+      delta: 5,
+      reason: "Actividad: cure-wounds",
+    });
+
+    expect(r.hp.current).toBe(10);
+    // El suceso HP_CHANGED lo firma quien usó la actividad.
+    expect(events.record).toHaveBeenCalledWith(
+      "jugador-a",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ type: "HP_CHANGED", delta: 5 }),
+      }),
+      tx,
+    );
+  });
+
+  it("changeHp con tx pasa por el MISMO cuerpo (no hay dos mecánicas)", async () => {
+    const { service, prisma } = montar();
+    const espia = jest.spyOn(service as never, "changeHpEnTransaccion");
+    const fila = personaje({ id: "b", ownerId: "jugador-a", currentHp: 10, tempHp: 0 });
+    const tx = montarTransaccion(prisma, fila);
+    (tx as unknown as { campaignMember: { findUnique: jest.Mock } }).campaignMember = {
+      findUnique: jest.fn().mockResolvedValue({ role: "PLAYER" }),
+    };
+    // `changeHp` con `tx` (a diferencia de `changeHpFromEffect`) sí llama a
+    // `autorizarEdicionConCliente`, que necesita `character.findFirst` en ESE cliente.
+    (tx.character as unknown as { findFirst: jest.Mock }).findFirst = jest
+      .fn()
+      .mockResolvedValue(fila);
+
+    await service.changeHp("jugador-a", "c1", "b", { delta: 1, reason: "x" }, tx as never);
+    await service.changeHpFromEffect(tx as never, "jugador-a", "c1", "b", {
+      delta: 1,
+      reason: "x",
+    });
+
+    expect(espia).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("la siembra de recursos al terminar la ficha", () => {
   // Este agujero estuvo abierto desde 2A.8: `seedResourcesFor` tenía su prueba y **no lo
   // llamaba nadie**, así que ningún personaje tenía dados de golpe ni espacios de conjuro y el

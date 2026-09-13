@@ -80,6 +80,14 @@ export class ActivitiesService {
    * objetivos en orden inverso (`["X","Y"]` y `["Y","X"]`) tomarían esos candados cruzados —
    * interbloqueo de Postgres. `destinatariosOrdenados` es el único sitio que decide ese orden, y
    * lo usan tanto `dados` como `effects[]`.
+   *
+   * **Puerta de efectos (spec 2026-09-13, §3) — `changeHpFromEffect` y `createFromEffect` la
+   * aceptan sin repetir la suya.** Aquí arriba ya se comprobó `canView` sobre cada objetivo
+   * (`requireVisibleCharacter`) y `requireOwnerOrDM` sobre el actor: eso ES la autorización de
+   * este efecto, y las dos puertas de abajo no la vuelven a pedir — antes llamaban a `create` y
+   * `changeHp`, que sí la piden, y con eso un clérigo no podía curar a otro jugador (`create`
+   * exige DM y `changeHp` exige dueño-o-DM sobre el objetivo). Las dos puertas nuevas son
+   * privadas por transacción: exigen `tx` y ningún controlador las importa.
    */
   async usar(
     userId: string,
@@ -171,19 +179,14 @@ export class ActivitiesService {
           traza.push(resuelto.paso);
           cd = resuelto.valor;
           if (objetivos.length > 0) {
-            await this.rollRequests.create(
-              userId,
-              campaignId,
-              {
-                characterIds: destinatarios.map((o) => o.id),
-                key: `save.${actividad.salvacion.ability}`,
-                label: `Salvación de ${actividad.salvacion.ability} — ${actividadKey}`,
-                dc: resuelto.valor,
-                mode: "NORMAL",
-                audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
-              },
-              tx,
-            );
+            await this.rollRequests.createFromEffect(tx, userId, campaignId, {
+              characterIds: destinatarios.map((o) => o.id),
+              key: `save.${actividad.salvacion.ability}`,
+              label: `Salvación de ${actividad.salvacion.ability} — ${actividadKey}`,
+              dc: resuelto.valor,
+              mode: "NORMAL",
+              audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+            });
           }
           // **I5 (vuelta de arreglo 1).** Una salvación con `dados` promete daño o curación —
           // `siSalva` decide si la mitad o nada— y esta tarea NO lo aplica: hacerlo exige saber
@@ -204,19 +207,13 @@ export class ActivitiesService {
           traza.push(...pasos);
           const delta = actividad.dados.signo * total;
           for (const destino of destinatarios) {
-            await this.characterSheet.changeHp(
-              userId,
-              campaignId,
-              destino.id,
-              {
-                delta,
-                reason: `Actividad: ${actividadKey}`,
-                ...(delta < 0 && actividad.dados.tipoDeDano
-                  ? { damageType: actividad.dados.tipoDeDano }
-                  : {}),
-              },
-              tx,
-            );
+            await this.characterSheet.changeHpFromEffect(tx, userId, campaignId, destino.id, {
+              delta,
+              reason: `Actividad: ${actividadKey}`,
+              ...(delta < 0 && actividad.dados.tipoDeDano
+                ? { damageType: actividad.dados.tipoDeDano }
+                : {}),
+            });
           }
           break;
         }

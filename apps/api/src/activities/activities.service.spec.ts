@@ -13,8 +13,9 @@ import { DICE_ROLLER } from "../rolls/rolls.service";
 
 // Tarea A7 (paso 2) — pegamento, no mecánica. Estas pruebas no comprueban una regla de D&D
 // nueva: comprueban que `usar()` gasta lo que la actividad cuesta, aplica su efecto por las
-// puertas que ya existen (`CharacterSheetService.changeHp`, `RollRequestsService.create`,
-// `EncountersService.gastar`) y que ninguna de esas tres cosas se cuela con la mitad hecha.
+// puertas que ya existen (`CharacterSheetService.changeHpFromEffect`,
+// `RollRequestsService.createFromEffect`, `EncountersService.gastar`) y que ninguna de esas tres
+// cosas se cuela con la mitad hecha.
 //
 // **`CharacterSheetService`, `RollRequestsService` y `EncountersService` van MOCKEADOS**, no
 // instanciados de verdad: cada uno tiene su propia suite (`encounters.service.spec.ts`,
@@ -22,6 +23,10 @@ import { DICE_ROLLER } from "../rolls/rolls.service";
 // `ActivitiesService` los llame con los argumentos correctos, en el orden correcto y —la lección
 // de A2— con el `tx` de la MISMA transacción, comprobado por identidad y no por
 // `expect.anything()`.
+//
+// Spec puerta de efectos §3 (tarea 1): desde que `usar` pasa por `changeHpFromEffect` y
+// `createFromEffect`, el `tx` va PRIMERO — las dos puertas nuevas lo exigen como primer
+// argumento, al revés que `changeHp`/`create`, que lo llevaban al final por ser opcional.
 
 describe("ActivitiesService", () => {
   let service: ActivitiesService;
@@ -92,8 +97,8 @@ describe("ActivitiesService", () => {
     getMembership: jest.fn(),
   };
   const events = { record: jest.fn() };
-  const characterSheet = { changeHp: jest.fn(), getSheet: jest.fn() };
-  const rollRequests = { create: jest.fn() };
+  const characterSheet = { changeHpFromEffect: jest.fn(), getSheet: jest.fn() };
+  const rollRequests = { createFromEffect: jest.fn() };
   const encounters = { gastar: jest.fn() };
   const conditions = { apply: jest.fn() };
   const roller = () => 5; // 1d8 → 5, siempre: el bono lo pone la característica, no el azar.
@@ -278,9 +283,8 @@ describe("ActivitiesService", () => {
       cha: 10,
     });
     // El clérigo es el dueño de su propio personaje Y de la maga (una mesa donde un jugador lleva
-    // dos personajes): así `changeHp` — que exige dueño-o-DM del OBJETIVO, y esa autorización no
-    // se toca en esta tarea — autoriza legítimamente curar a un aliado sin inventar una puerta
-    // nueva de "quién puede curar a quién por una actividad".
+    // dos personajes): un caso de curación entre personajes del mismo dueño, además del caso de
+    // dueños distintos que la puerta de efectos (tarea 1, spec §3) existe para permitir.
     crearCharacter({
       id: clerigoPersonajeId,
       campaignId,
@@ -417,42 +421,38 @@ describe("ActivitiesService", () => {
 
     events.record.mockResolvedValue({ id: "ev1" });
 
-    // **Duda (a)/I6 (vuelta de arreglo 1) — el mock replica la autorización REAL de `changeHp`:
-    // dueño-o-DM del OBJETIVO.** Sin esto, la prueba «un jugador no puede curar al personaje de
-    // otro jugador» no podría demostrar el 403 que hoy sufre de verdad — estaría probando una
-    // puerta más permisiva que la real.
-    characterSheet.changeHp.mockImplementation(
+    // **Puerta de efectos (tarea 1, spec §3) — el mock replica el cuerpo REAL de
+    // `changeHpFromEffect`, que ya NO autoriza.** Hasta esta tarea, el mock reproducía la
+    // autorización de `changeHp` (dueño-o-DM del objetivo) porque `usar()` llamaba a `changeHp` de
+    // verdad y esa autorización rechazaba a un clérigo curando a otro jugador — el propio fallo
+    // que esta tarea corrige. `changeHpFromEffect` confía en que `usar()` ya comprobó `canView`
+    // sobre el objetivo y `requireOwnerOrDM` sobre el actor, así que el mock ya no repite ninguna
+    // autorización — repetirla mentiría sobre la puerta real.
+    characterSheet.changeHpFromEffect.mockImplementation(
       async (
-        userId: string,
-        campaignId2: string,
+        _tx: unknown,
+        _actorUserId: string,
+        _campaignId2: string,
         characterId: string,
         input: { delta: number },
       ) => {
-        const objetivo = characters.get(characterId);
-        const miembro = await membership.getMembership(campaignId2, userId);
-        if (objetivo && miembro?.role !== "DM" && objetivo.ownerId !== userId) {
-          throw new ForbiddenException("Only the DM or the owner can modify this");
-        }
         pgStore.set(characterId, pg(characterId) + input.delta);
         return { hp: { current: pg(characterId) } };
       },
     );
     characterSheet.getSheet.mockResolvedValue({ sheet: null });
 
-    // **I6 (vuelta de arreglo 1) — el mock replica la autorización REAL de `create()`, no solo su
-    // escritura.** `RollRequestsService.create` empieza por `requireDM`; si el mock se saltara
-    // esa comprobación, la prueba de I6 no podría demostrar el 403 que hoy sufre un jugador que
-    // usa una actividad de salvación — estaría probando un servicio más permisivo que el real.
-    rollRequests.create.mockImplementation(
+    // **Puerta de efectos (tarea 1, spec §3) — el mock replica el cuerpo REAL de
+    // `createFromEffect`, sin `requireDM`.** Hasta esta tarea, el mock reproducía la autorización
+    // de `create()` (solo el DM) porque `usar()` llamaba a `create()` de verdad; ahora llama a
+    // `createFromEffect`, que no la exige — los `characterIds` ya pasaron `canView` en `usar()`.
+    rollRequests.createFromEffect.mockImplementation(
       async (
-        userId: string,
-        campaignId2: string,
+        _tx: unknown,
+        _actorUserId: string,
+        _campaignId2: string,
         input: { characterIds: string[]; key: string; dc?: number },
       ) => {
-        const miembro = await membership.getMembership(campaignId2, userId);
-        if (miembro?.role !== "DM") {
-          throw new ForbiddenException("DM role required");
-        }
         const creadas = input.characterIds.map((characterId) => ({
           characterId,
           key: input.key,
@@ -583,8 +583,12 @@ describe("ActivitiesService", () => {
     expect(peticion.key).toBe("save.dex");
     expect(r.cd).toBe(15);
     // Menor: `dc` es justo el dato que esta tarea añade a `create()` — se fija explícitamente,
-    // no solo se infiere de `r.cd`.
-    expect(rollRequests.create.mock.calls[0][2]).toMatchObject({ dc: 15, key: "save.dex" });
+    // no solo se infiere de `r.cd`. `input` es el cuarto argumento de `createFromEffect`
+    // (`tx`, `actorUserId`, `campaignId`, `input`).
+    expect(rollRequests.createFromEffect.mock.calls[0][3]).toMatchObject({
+      dc: 15,
+      key: "save.dex",
+    });
   });
 
   // **I5 (vuelta de arreglo 1).** `aliento-de-fuego` trae `dados` (8d6 de fuego, `siSalva:
@@ -615,14 +619,16 @@ describe("ActivitiesService", () => {
   // primero con `magaId`. Con el orden fijo por `id`, siempre es al revés — el mismo orden pase
   // lo que pase en la petición, que es justo lo que evita el interbloqueo entre dos peticiones
   // concurrentes con los mismos objetivos en orden inverso.
-  it("con varios objetivos, changeHp se llama en un orden fijo por id — no en el orden del cliente", async () => {
+  it("con varios objetivos, changeHpFromEffect se llama en un orden fijo por id — no en el orden del cliente", async () => {
     await service.usar(clerigoId, campaignId, clerigoPersonajeId, "curar-heridas", {
       objetivos: [magaId, clerigoPersonajeId], // orden invertido a propósito
     });
 
-    expect(characterSheet.changeHp).toHaveBeenCalledTimes(2);
-    expect(characterSheet.changeHp.mock.calls[0][2]).toBe(clerigoPersonajeId);
-    expect(characterSheet.changeHp.mock.calls[1][2]).toBe(magaId);
+    // `targetCharacterId` es el cuarto argumento de `changeHpFromEffect` (`tx`, `actorUserId`,
+    // `campaignId`, `targetCharacterId`, `input`).
+    expect(characterSheet.changeHpFromEffect).toHaveBeenCalledTimes(2);
+    expect(characterSheet.changeHpFromEffect.mock.calls[0][3]).toBe(clerigoPersonajeId);
+    expect(characterSheet.changeHpFromEffect.mock.calls[1][3]).toBe(magaId);
   });
 
   // **I7 (vuelta de arreglo 1) — el guardián de `signo` que faltaba.** La única prueba de
@@ -649,16 +655,22 @@ describe("ActivitiesService", () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  // **Duda (a), corregida (vuelta de arreglo 1).** La versión anterior de esta prueba se llamaba
-  // «un clérigo cura a la maga» y usaba dos personajes del MISMO dueño: no medía lo que su
-  // título prometía, medía «un jugador se cura con dos fichas». Esta SÍ tiene dueños distintos,
-  // y el título dice lo que de verdad pasa hoy: 403.
-  it("HOY, un jugador NO puede curar al personaje de OTRO jugador con una actividad (403) — ficha I6/(a)", async () => {
-    await expect(
-      service.usar(clerigoId, campaignId, clerigoPersonajeId, "curar-heridas", {
-        objetivos: [magaAjenaId],
-      }),
-    ).rejects.toThrow(ForbiddenException);
+  // **Puerta de efectos (tarea 1, spec §3) — el fallo que esta tarea corrige.** Hasta esta
+  // tarea, esta misma prueba se llamaba «HOY, un jugador NO puede curar al personaje de OTRO
+  // jugador con una actividad (403) — ficha I6/(a)» y esperaba `ForbiddenException`: `usar()`
+  // llamaba a `changeHp`, que exige dueño-o-DM del OBJETIVO, así que un clérigo no podía curar a
+  // la maga de otro jugador aunque `usar()` ya hubiera comprobado que la ve (`canView`) y que
+  // puede usar SU actividad (`requireOwnerOrDM` sobre el actor). Con `changeHpFromEffect` —que
+  // no repite esa autorización— la curación entre jugadores distintos ya funciona, que es
+  // justamente lo que la spec de la puerta de efectos exige.
+  it("un jugador SÍ puede curar al personaje de OTRO jugador con una actividad — puerta de efectos, tarea 1", async () => {
+    const antes = pg(magaAjenaId);
+
+    await service.usar(clerigoId, campaignId, clerigoPersonajeId, "curar-heridas", {
+      objetivos: [magaAjenaId],
+    });
+
+    expect(pg(magaAjenaId)).toBeGreaterThan(antes);
   });
 
   it("una actividad que gasta un espacio de conjuro lo descuenta del recurso que le corresponde", async () => {
@@ -745,16 +757,18 @@ describe("ActivitiesService", () => {
     // reservas es que `usar()` propaga el fallo en vez de tragárselo.
   });
 
-  // **La lección de A2, aplicada aquí.** `rollRequests.create` y `characterSheet.changeHp` no
-  // solo se llaman: se llaman con el `tx` que la propia transacción de `usar()` abrió, comparado
-  // por identidad. `expect.anything()` habría dejado pasar `this.prisma` a secas.
+  // **La lección de A2, aplicada aquí.** `rollRequests.createFromEffect` y
+  // `characterSheet.changeHpFromEffect` no solo se llaman: se llaman con el `tx` que la propia
+  // transacción de `usar()` abrió, comparado por identidad. `expect.anything()` habría dejado
+  // pasar `this.prisma` a secas. Con las dos puertas nuevas, `tx` es el PRIMER argumento (índice
+  // 0), al revés que `create`/`changeHp`, que lo llevaban al final por ser opcional.
   it("la salvación y la curación usan el MISMO tx que abrió la transacción de usar()", async () => {
     await service.usar(dmId, campaignId, pnjId, "aliento-de-fuego", { objetivos: [magaId] });
-    expect(rollRequests.create.mock.calls[0][3]).toBe(ultimoTx);
+    expect(rollRequests.createFromEffect.mock.calls[0][0]).toBe(ultimoTx);
 
     await service.usar(clerigoId, campaignId, clerigoPersonajeId, "curar-heridas", {
       objetivos: [magaId],
     });
-    expect(characterSheet.changeHp.mock.calls[0][4]).toBe(ultimoTx);
+    expect(characterSheet.changeHpFromEffect.mock.calls[0][0]).toBe(ultimoTx);
   });
 });

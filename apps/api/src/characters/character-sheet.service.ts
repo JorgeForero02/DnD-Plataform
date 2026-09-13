@@ -1924,6 +1924,25 @@ export class CharacterSheetService {
     };
   }
 
+  /**
+   * **La segunda puerta** (spec puerta de efectos §3.1, D-P2-11): «vengo de un efecto ya
+   * autorizado». Quien llama —hoy solo `ActivitiesService.usar` y `RollRequestsService.answer`—
+   * ya comprobó con `canView` que el actor ve al objetivo y con `requireOwnerOrDM` que puede usar
+   * la actividad; aquí NO se vuelve a autorizar. **Exige `tx`**: sin transacción ajena no hay
+   * forma de llamarla, y eso es lo que impide que un controlador la pulse. Ningún controlador la
+   * importa (`__tests__/puertas-sin-ruta.spec.ts`). El `HP_CHANGED` lo firma `actorUserId`, quien
+   * usó la actividad: la crónica dice quién causó el cambio, no quién pulsó.
+   */
+  async changeHpFromEffect(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    campaignId: string,
+    targetCharacterId: string,
+    input: ChangeHpInput,
+  ) {
+    return this.changeHpEnTransaccion(tx, actorUserId, campaignId, targetCharacterId, input);
+  }
+
   async setHp(userId: string, campaignId: string, characterId: string, input: SetHpInput) {
     // Solo el DM: es la corrección absoluta, no el gasto de la mesa.
     await this.membership.requireDM(campaignId, userId);

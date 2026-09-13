@@ -521,13 +521,18 @@ un id, nunca un nombre; quien lee resuelve el nombre contra `canView` (`nombres-
 `apps/web`), nunca el servidor.
 
 Se manda cuando el DM pone daño a mano desde el elenco y **no** cuelga de ninguna tirada — con
-`rollEventId`, el origen se recupera de ahí y este campo sobra (`character-sheet.service.ts`
-escribe `sourceCharacterId` solo si viajó, y nunca junto a un `rollEventId` que ya lo explique por
-su cuenta, aunque el esquema no lo impida: es decisión de quien manda la petición). El servicio lo
-valida con `requireVisibleCharacter` (`apps/api/src/common/character-viewer.ts`) antes de
-escribirlo: 404 si el id no existe en la campaña **o** si existe pero el actor no lo ve — el mismo
-404 uniforme que ya usa `sePuedeApuntar`, para no delatar por la forma del error cuál de los dos
-casos era.
+`rollEventId`, el origen se recupera de ahí y este campo sobra. **`character-sheet.service.ts`
+escribe `sourceCharacterId` siempre que viaje** — el esquema no exige que venga solo: si algún
+cliente mandara los dos a la vez, `changeHp` los escribe los dos, y **que no acompañe a
+`rollEventId` es responsabilidad de quien manda la petición**, no una regla que el servidor
+imponga. `PonerDano.tsx` (el único cliente que hoy manda `sourceCharacterId`) no ofrece un
+`rollEventId` — así que el caso no se da desde la interfaz —, y `lineaDeLog` (`apps/web`) resuelve
+el orden si algún día sí conviven: `sourceCharacterId` manda cuando se ve; si no se ve, cae al
+atacante de la tirada citada por `rollEventId`; si ninguno se puede nombrar pero se citó alguno de
+los dos, «Alguien» y no silencio. El servicio valida el que llegó con
+`requireVisibleCharacter` (`apps/api/src/common/character-viewer.ts`) antes de escribirlo: 404 si
+el id no existe en la campaña **o** si existe pero el actor no lo ve — el mismo 404 uniforme que
+ya usa `sePuedeApuntar`, para no delatar por la forma del error cuál de los dos casos era.
 
 ## `ENTITY_REVEALED` también nace de subir la visibilidad a mano (2026-09-04, ficha P1)
 

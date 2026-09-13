@@ -131,7 +131,48 @@ const RESULTADO_MUERTE: Record<string, string> = {
 export interface ContextoDeLinea {
   /** El nombre de quien sufre este suceso, si el hilo pudo resolverlo. `null`/ausente: como hoy. */
   sujeto?: string | null;
+  /**
+   * Ronda de revisión (tarea 11): **el sujeto sale a la cabecera del mensaje, y la línea no lo
+   * repite.** `MensajeDelHilo` pinta el nombre del personaje delante (cuando `vozDe` resolvió
+   * uno real) y, debajo, esta misma frase — así que si la frase también empezara con el nombre,
+   * el hilo diría «Sylas Sylas pierde 7 PG…». Con `sujetoEnCabecera: true`, `HP_CHANGED` y
+   * `ATTACK_RESOLVED` omiten el nombre que YA se muestra en la cabecera y la frase arranca por el
+   * verbo: «pierde 7 PG… ← Klarg», «ataca a Sylas con Cimitarra: impacta» (aquí lo que se omite es
+   * el ATACANTE, que es el sujeto gramatical de esta frase en concreto — ver el comentario del
+   * `case "ATTACK_RESOLVED"`, más abajo, para por qué es un sujeto distinto del de `ctx.sujeto`).
+   * `false`/ausente: la frase entera, con el nombre delante, que es la que se lee fuera de la
+   * mesa (la crónica) o donde no hay cabecera que lo diga ya.
+   */
+  sujetoEnCabecera?: boolean;
   nombres?: NombresDelHilo;
+}
+
+/**
+ * Ronda de revisión (tarea 11). **De dónde vino un `HP_CHANGED` puesto a mano, con su orden de
+ * preferencia y su caída.**
+ *
+ *  1. **`sourceCharacterId`, si se ve.** Es lo que el DM citó a mano, y manda sobre la tirada
+ *     aunque las dos vengan juntas — no debería pasar (`PonerDano` no ofrece las dos a la vez;
+ *     ver su comentario), pero si algún día un cliente manda las dos, la cita explícita es la
+ *     que se declaró a propósito, no la que se dedujo de una tirada.
+ *  2. **Si `sourceCharacterId` vino pero este espectador no lo ve** (o no vino ninguno) **y hay
+ *     `rollEventId`**, el atacante de esa tirada — con el prefijo «ataque de», que es lo que
+ *     distingue una cita directa de una recuperada por deducción.
+ *  3. **Si se citó un origen —cualquiera de los dos campos— y ninguno se pudo nombrar**, «Alguien»
+ *     y no silencio: se sabe que hubo un origen, solo que este espectador no lo ve, y callarlo
+ *     sería mentir por omisión — el mismo criterio que ya usa `ATTACK_RESOLVED` con su atacante.
+ *  4. **Sin ningún campo citado**, nada: un ajuste sin origen declarado no inventa uno.
+ */
+function origenDeGolpe(
+  p: Extract<GameEventPayload, { type: "HP_CHANGED" }>,
+  nombres?: NombresDelHilo,
+): string {
+  const origenCitado = Boolean(p.sourceCharacterId) || Boolean(p.rollEventId);
+  if (!origenCitado) return "";
+  const directo = p.sourceCharacterId ? (nombres?.personaje(p.sourceCharacterId) ?? null) : null;
+  if (directo) return ` ← ${directo}`;
+  const deTirada = p.rollEventId ? (nombres?.atacanteDeLaTirada(p.rollEventId) ?? null) : null;
+  return deTirada ? ` ← ataque de ${deTirada}` : " ← Alguien";
 }
 
 export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
@@ -155,21 +196,11 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
         const verbo = p.delta < 0 ? "pierde" : "recupera";
         const tipo = p.damageType ? ` (${NOMBRE_TIPO_DANO[p.damageType]})` : "";
         const critico = p.critical ? ", crítico" : "";
-        const origenDirecto = p.sourceCharacterId
-          ? (ctx.nombres?.personaje(p.sourceCharacterId) ?? null)
-          : null;
-        // `sourceCharacterId` manda cuando viene: es lo que el DM citó a mano. Sin él, se
-        // recupera el atacante de la tirada que produjo este daño, si la hay.
-        const deTirada = !p.sourceCharacterId && p.rollEventId ? p.rollEventId : null;
-        const origenDeTirada = deTirada
-          ? (ctx.nombres?.atacanteDeLaTirada(deTirada) ?? null)
-          : null;
-        const origen = origenDirecto
-          ? ` ← ${origenDirecto}`
-          : origenDeTirada
-            ? ` ← ataque de ${origenDeTirada}`
-            : "";
-        return `${ctx.sujeto} ${verbo} ${Math.abs(p.delta)} PG${tipo}${critico}${origen}${motivo}`;
+        const origen = origenDeGolpe(p, ctx.nombres);
+        // **La cabecera ya dijo quién es**, así que la frase no repite el nombre y arranca por
+        // el verbo — ver el comentario de `ContextoDeLinea.sujetoEnCabecera`.
+        const sujetoDeLaFrase = ctx.sujetoEnCabecera ? "" : `${ctx.sujeto} `;
+        return `${sujetoDeLaFrase}${verbo} ${Math.abs(p.delta)} PG${tipo}${critico}${origen}${motivo}`;
       }
       const verbo = p.delta < 0 ? "Pierde" : "Recupera";
       const critico = p.critical ? ", crítico" : "";
@@ -360,16 +391,27 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
       return `Muere ${p.name} — ${CAUSA_DE_MUERTE[p.cause]}`;
 
     // --- 2.5.3: el ataque comparado en el servidor ---
-    case "ATTACK_RESOLVED":
+    case "ATTACK_RESOLVED": {
       // **Sin CA, con o sin nombres.** El número contra el que se tiró no sale nunca, ni con
       // contexto ni sin él. El OBJETIVO sí se nombra cuando hay `ctx.sujeto` — y no es un desliz:
       // este suceso se escribe a la visibilidad del objetivo (ficha #15, resolución del
       // controlador), así que quien lo lee ya lo ve por definición; ocultar su nombre aquí no
       // protegía nada que `canView` no protegiera ya. El ATACANTE se resuelve por `attackerId`
       // contra `useCharacters`/`useNpcs`, y «Alguien» si este espectador no lo ve.
-      return ctx?.sujeto
-        ? `${ctx.nombres?.personaje(p.attackerId) ?? "Alguien"} ataca a ${ctx.sujeto} con ${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`
-        : `${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`;
+      if (!ctx?.sujeto) return `${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`;
+      const atacante = ctx.nombres?.personaje(p.attackerId) ?? "Alguien";
+      // **`sujetoEnCabecera` omite aquí el ATACANTE, no el objetivo** — son dos sujetos
+      // distintos, y el que puede repetirse en la cabecera es el que trae `ctx.sujeto`
+      // (`HiloDeSesion.nombreDelSujeto` lo resuelve del `subjectId` del suceso, que en
+      // `ATTACK_RESOLVED` es el OBJETIVO, no quien ataca — `character-sheet.service.ts`,
+      // `resolveAttack`). Hoy este suceso se pinta como «tirada» (`tipo-de-mensaje.ts`), que no
+      // lleva cabecera de personaje, así que `HiloDeSesion` nunca manda `sujetoEnCabecera: true`
+      // para este tipo — la rama de abajo existe para cuando eso cambie, y la prueba unitaria la
+      // ejercita ya, sin esperar a que la pantalla la use.
+      return ctx.sujetoEnCabecera
+        ? `ataca a ${ctx.sujeto} con ${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`
+        : `${atacante} ataca a ${ctx.sujeto} con ${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`;
+    }
 
     // --- 2.5.8: archivar en vez de borrar ---
     case "CHARACTER_ARCHIVED":

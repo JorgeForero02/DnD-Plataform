@@ -102,7 +102,8 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
+Última revisión: **2026-09-13** (ronda de revisión de la tarea 11 del pulido, C4 #15: un
+follow-up de e2e, arriba). Antes, **2026-09-12** (la hoja a página completa dejó ocho fichas menores, en su sección de abajo — eran HP-1..8; la revisión final del plan cerró HP-2 con código, la ronda de cierre del mismo día cerró HP-3 a HP-7 y la ronda de cierre 2 cerró HP-1 y HP-8 con la decisión del autor, las ocho enteras en [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md); HP-9 —objetos mágicos con efecto— se partió en dos: HP-9a «sintonizar cuenta» **se cerró el 2026-09-12 en tres tareas** (D-CF-48, entera en el mismo archivo) y HP-9b espera **después del paso 3** (D-CF-47); al cerrar HP-9a se abrió HP-10 (la fila solo ponía cifra al efecto `ac`; los otros ocho tipos llevaban la marca sin nada tachado) y **se cerró el mismo 2026-09-12 en una tarea** (entera en el mismo archivo); antes, el 2026-09-11, la sesión de cerrar fichas: cada ficha cerrada con código va entera a [`_archivo/pendientes-cerrados-2026-09-10.md`](./_archivo/pendientes-cerrados-2026-09-10.md) con su medición; y el día anterior, la **poda**: 39 bloques fuera —dieciséis fichas o mitades que el
 código desmentía, doce tachadas que seguían aquí contra la regla de la cabecera, y once que los
 cuatro pasos de `04-convenciones.md` convirtieron en decisión declarada o en «no es ficha»—, todo
 entero en
@@ -142,6 +143,17 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 > reciente a lo más viejo» y no es cierto: hay bloques del 2026-09-04 y del 05 incrustados en medio
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
+
+## Dejado por la tarea 11 del pulido (C4, #15), ronda de revisión (2026-09-13)
+
+**e2e: un dueño citando un PNJ `DM_ONLY` como `sourceCharacterId` es 404.** `changeHp`
+(`apps/api/src/characters/character-sheet.service.ts`) valida el origen con
+`requireVisibleCharacter`, y `dano-con-su-traza.e2e-spec.ts` cubre el caso «no existe en la
+campaña» — falta el caso «existe, pero este actor concreto no lo ve» (un PNJ que el DM bajó
+`DM_ONLY`, citado por un jugador que no es su dueño ni el DM). El mismo 404 uniforme que ya
+prueba `ataque-comparado-en-el-servidor` para `sePuedeApuntar`; se deja anotado y no se añadió
+en la ronda de revisión por no ensuciar un fix con un caso nuevo — Después de esta rama, con
+código.
 
 ## Dejado por la hoja a página completa (2026-09-12)
 

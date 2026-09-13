@@ -12,6 +12,7 @@ const nombres = nombresDelHilo(
   [
     { id: "k", name: "Klarg" },
     { id: "s", name: "Sylas" },
+    { id: "m", name: "Marta" },
   ],
   [
     {
@@ -31,6 +32,27 @@ const nombres = nombresDelHilo(
       subjectId: "s",
       visibility: "PLAYERS",
       createdAt: "2026-09-12T20:00:00.000Z",
+    } as GameEventRow,
+    // Segundo ataque, de otra atacante: para probar que `sourceCharacterId` manda sobre
+    // `rollEventId` cuando los dos vienen — si el origen saliera de la tirada por error, esta
+    // frase diría «Marta» y no «Klarg».
+    {
+      id: "ev-atk-2",
+      campaignId: "c1",
+      sessionId: "s1",
+      actorUserId: "u-dm",
+      type: "ATTACK_RESOLVED",
+      payload: {
+        type: "ATTACK_RESOLVED",
+        attackerId: "m",
+        attackName: "Daga",
+        verdict: "HIT",
+        rollEventId: "roll-2",
+      },
+      subjectType: "character",
+      subjectId: "s",
+      visibility: "PLAYERS",
+      createdAt: "2026-09-12T20:01:00.000Z",
     } as GameEventRow,
   ],
 );
@@ -101,5 +123,81 @@ describe("el hilo, con nombres", () => {
     expect(
       lineaDeLog({ type: "HP_CHANGED", delta: 5, from: 10, to: 15 }, { sujeto: "Sylas", nombres }),
     ).toBe("Sylas recupera 5 PG");
+  });
+
+  describe("de dónde viene, con las dos citas y sus caídas", () => {
+    it("con los dos campos, sourceCharacterId manda — no la tirada", () => {
+      expect(
+        lineaDeLog(
+          {
+            type: "HP_CHANGED",
+            delta: -7,
+            from: 20,
+            to: 13,
+            sourceCharacterId: "k",
+            rollEventId: "roll-2", // de Marta — si esto ganara, diría «Marta»
+          },
+          { sujeto: "Sylas", nombres },
+        ),
+      ).toBe("Sylas pierde 7 PG ← Klarg");
+    });
+
+    it("sourceCharacterId no visible: cae al atacante de la tirada citada", () => {
+      expect(
+        lineaDeLog(
+          {
+            type: "HP_CHANGED",
+            delta: -7,
+            from: 20,
+            to: 13,
+            sourceCharacterId: "oculto",
+            rollEventId: "roll-1",
+          },
+          { sujeto: "Sylas", nombres },
+        ),
+      ).toBe("Sylas pierde 7 PG ← ataque de Klarg");
+    });
+
+    it("se citó un origen y ninguno de los dos se puede nombrar: «Alguien», no silencio", () => {
+      expect(
+        lineaDeLog(
+          { type: "HP_CHANGED", delta: -7, from: 20, to: 13, sourceCharacterId: "oculto" },
+          { sujeto: "Sylas", nombres },
+        ),
+      ).toBe("Sylas pierde 7 PG ← Alguien");
+    });
+  });
+
+  describe("sujetoEnCabecera: la cabecera ya dijo el nombre, la frase no lo repite", () => {
+    it("HP_CHANGED omite el sujeto y arranca por el verbo", () => {
+      expect(
+        lineaDeLog(
+          {
+            type: "HP_CHANGED",
+            delta: -7,
+            from: 20,
+            to: 13,
+            damageType: "SLASHING",
+            sourceCharacterId: "k",
+          },
+          { sujeto: "Sylas", sujetoEnCabecera: true, nombres },
+        ),
+      ).toBe("pierde 7 PG (cortante) ← Klarg");
+    });
+
+    it("ATTACK_RESOLVED omite al atacante y conserva a quién ataca", () => {
+      expect(
+        lineaDeLog(
+          {
+            type: "ATTACK_RESOLVED",
+            attackerId: "k",
+            attackName: "Cimitarra",
+            verdict: "HIT",
+            rollEventId: "roll-1",
+          },
+          { sujeto: "Sylas", sujetoEnCabecera: true, nombres },
+        ),
+      ).toBe("ataca a Sylas con Cimitarra: impacta");
+    });
   });
 });

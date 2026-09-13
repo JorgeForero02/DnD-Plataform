@@ -45,12 +45,20 @@ export function nombresDelHilo(
 ): NombresDelHilo {
   const nombrePorId = new Map(personajes.map((p) => [p.id, p.name]));
   const personaje = (id: string): string | null => nombrePorId.get(id) ?? null;
+  // Ronda de revisión (tarea 11): **una pasada, no un `.find` por línea.** La primera versión
+  // recorría `eventos` entero cada vez que `lineaDeLog` preguntaba «¿quién tiró esto?» — con un
+  // hilo largo (`mesa-mide.spec.ts` usa doce anotaciones a propósito, y una sesión real acumula
+  // muchas más) eso es O(n) por CADA `HP_CHANGED` con `rollEventId`, o sea O(n²) para pintar el
+  // hilo entero. El mapa se construye una vez, aquí, al montar `nombresDelHilo`.
+  const atacantePorTirada = new Map<string, string>();
+  for (const e of eventos) {
+    if (e.payload.type === "ATTACK_RESOLVED") {
+      atacantePorTirada.set(e.payload.rollEventId, e.payload.attackerId);
+    }
+  }
   const atacanteDeLaTirada = (rollEventId: string): string | null => {
-    const ataque = eventos.find(
-      (e) => e.payload.type === "ATTACK_RESOLVED" && e.payload.rollEventId === rollEventId,
-    );
-    if (!ataque || ataque.payload.type !== "ATTACK_RESOLVED") return null;
-    return personaje(ataque.payload.attackerId);
+    const attackerId = atacantePorTirada.get(rollEventId);
+    return attackerId ? personaje(attackerId) : null;
   };
   return { personaje, atacanteDeLaTirada };
 }

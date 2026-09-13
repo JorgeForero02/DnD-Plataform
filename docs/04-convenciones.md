@@ -98,6 +98,14 @@ cierre, donde el árbol entero hace que un fallo signifique algo. El paso 3 no h
 sus propias reglas cuando llegue. Más abajo, § *Trabajo con varios agentes a la vez*, están las dos
 guardas que cada brief lleva a cambio.
 
+**Enmienda D-CF-67 (2026-09-13), solo para la tanda «desbordes»:** ahí **no hay unitarias ni
+mutación por tarea**, porque lo que se arregla —un panel recortado por un `overflow`, un texto que
+se sale de su casilla— solo existe maquetado y `jsdom` no maqueta. Cada tarea cierra con
+`pnpm verify` limpio y con la prueba gráfica desbordes.spec.ts (en `apps/web/e2e/`) en verde sobre lo que
+tocó, **corrida por el propio implementador** (solo ese fichero, un agente a la vez). El cierre es
+el de D-CF-65 sin la revisión de rama entera: suite de navegador entera una vez y revisión acotada
+al componente nuevo y a los dos ficheros más tocados. Puerta de efectos vuelve a D-CF-65.
+
 **Fuera de N1, a propósito:** los e2e de API y los de navegador (ambos existen desde
 `c6fa899`; ambos necesitan Docker, y los de navegador además dos servidores vivos).
 Encadenarlos al gancho lo haría inservible. **No por eso son opcionales** — corren en su

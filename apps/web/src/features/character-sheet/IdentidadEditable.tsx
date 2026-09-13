@@ -215,11 +215,13 @@ export function Caracteristicas({
   sheet: CalculatedSheet | null;
   puedeEditar: boolean;
   /**
-   * Reglas de la mesa (Task 6, D-CF-53). **Solo el DM conserva la llave tras elegir con dados**
-   * (E-RM-13): con una regla distinta de `LIBRE`, el jugador ve las casillas bloqueadas y el
-   * bloque de abajo para fijarlas; el DM sigue editando las seis directamente, como siempre.
-   * `false` por defecto: quien no sabe el rol de quien mira se queda con el trato de jugador,
-   * que es el más restrictivo.
+   * Reglas de la mesa (Task 6, D-CF-53; ola de arreglos 1, I-2). Con una regla distinta de
+   * `LIBRE` el servidor exige las seis juntas **a todo el mundo**, así que las casillas de una en
+   * una se apagan para el dueño y para el DM, cada uno con su motivo, y el bloque de abajo se
+   * pinta para los dos (spec §7, «dueño o DM»). Hasta este arreglo el DM conservaba las casillas
+   * abiertas y cada una devolvía 400 al soltar. **Solo el DM conserva la llave tras elegir con
+   * dados** (E-RM-13), y la usa desde el bloque, con las seis juntas. `false` por defecto: quien no
+   * sabe el rol de quien mira se queda con el trato de jugador, que es el más restrictivo.
    */
   esDM?: boolean;
 }) {
@@ -227,8 +229,12 @@ export function Caracteristicas({
   const motivo = "Solo el dueño del personaje o el DM pueden editarlo.";
   const { data: campaign } = useCampaign(campaignId);
   const regla = reglasCompletas(campaign?.tableRules).abilities;
-  const fijaLaMesa = regla.metodo !== "LIBRE" && !esDM;
-  const motivoBloqueo = "Las características las fija la regla de la mesa";
+  const fijaLaMesa = regla.metodo !== "LIBRE";
+  // Una casilla apagada siempre dice por qué (`docs/04-convenciones.md`): al jugador, que la
+  // regla de la mesa las fija; al DM, que bajo esta regla no se cambian de una en una.
+  const motivoBloqueo = esDM
+    ? "Bajo esta regla las seis se cambian juntas, abajo"
+    : "Las características las fija la regla de la mesa";
 
   return (
     <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
@@ -286,6 +292,8 @@ export function Caracteristicas({
             characterId={characterId}
             regla={regla}
             puedeEditar={puedeEditar}
+            esDM={esDM}
+            character={character}
           />
         </div>
       )}

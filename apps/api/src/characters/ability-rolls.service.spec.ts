@@ -35,6 +35,9 @@ function montar(roller: Roller = dadoFijo(4)) {
       findMany: jest.fn().mockResolvedValue([]),
     },
     gameEvent: { findMany: jest.fn().mockResolvedValue([]) },
+    // Ola de arreglos 1 (M-1): la transacción empieza tomando el candado de la fila del
+    // personaje (`SELECT … FOR UPDATE`), como `level-up.service.ts`.
+    $queryRaw: jest.fn().mockResolvedValue([{ id: "ch1" }]),
     transaction: jest.fn((fn) => fn(prisma)),
   };
   const membership = { requireMember: jest.fn().mockResolvedValue({ role: "PLAYER" }) };
@@ -86,6 +89,29 @@ describe("AbilityRollsService", () => {
           chosen: false,
         }),
       }),
+    );
+  });
+
+  it("M-1: toma el candado de la fila del personaje ANTES de contar los intentos, dentro de la transacción", async () => {
+    const { service, prisma } = montar();
+
+    await service.roll("pl", "c1", "ch1");
+
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const [sql, ...valores] = (prisma.$queryRaw as jest.Mock).mock.calls[0] as [
+      string[],
+      ...unknown[],
+    ];
+    expect(sql.join("?")).toMatch(/SELECT id FROM "Character" WHERE id = \? FOR UPDATE/);
+    expect(valores).toEqual(["ch1"]);
+    // El candado va primero: dos POST a la vez se ponen en fila antes de que ninguno cuente, y
+    // el segundo ve el intento del primero (Postgres corre en READ COMMITTED).
+    expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.abilityRollAttempt.count.mock.invocationCallOrder[0],
+    );
+    // Y dentro de la transacción, no fuera de ella.
+    expect(prisma.transaction.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.$queryRaw.mock.invocationCallOrder[0],
     );
   });
 

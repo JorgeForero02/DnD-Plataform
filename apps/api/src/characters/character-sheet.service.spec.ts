@@ -110,7 +110,14 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     },
     // Reglas de la mesa (Tarea 4): un intento de dados elegido bloquea volver a mandar
     // características sin `attemptId`. Sin ninguno elegido por defecto.
-    abilityRollAttempt: { findFirst: jest.fn().mockResolvedValue(null), update: jest.fn() },
+    // Ola de arreglos 1 (M-2): fijar un intento va bajo candado (`SELECT … FOR UPDATE` sobre la
+    // fila del personaje) y marca con `updateMany({ where: { id, chosen: false } })`, que devuelve
+    // `count: 1` cuando nadie se adelantó — el valor por defecto aquí.
+    abilityRollAttempt: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
+    $queryRaw: jest.fn().mockResolvedValue([{ id: "ch1" }]),
     user: { findUnique: jest.fn() },
     // Tarea 2.5.4: `rollAttack` lee el `natural` de una tirada de ataque real fuera de
     // transacción (`esCriticoDesdeLaTirada`); por defecto no existe, así que el camino sin
@@ -353,15 +360,125 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
         attemptId: "a1",
       }),
     ).resolves.toBeDefined();
-    expect(prisma.abilityRollAttempt.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "a1" }, data: { chosen: true } }),
+    // M-2: se marca solo si sigue sin elegir (`chosen: false` en el `where`), y bajo el candado
+    // de la fila del personaje, que se toma ANTES de escribir nada.
+    expect(prisma.abilityRollAttempt.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "a1", chosen: false }, data: { chosen: true } }),
     );
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const sql = (prisma.$queryRaw as jest.Mock).mock.calls[0][0] as string[];
+    expect(sql.join("?")).toMatch(/FROM "Character" WHERE id = \? FOR UPDATE/);
+    const ordenDeLlamadas = [
+      prisma.$queryRaw.mock.invocationCallOrder[0],
+      prisma.character.update.mock.invocationCallOrder[0],
+      prisma.abilityRollAttempt.updateMany.mock.invocationCallOrder[0],
+    ];
+    expect(ordenDeLlamadas).toEqual([...ordenDeLlamadas].sort((a, b) => a - b));
 
     await expect(
       service.updateSheet("pl", "c1", "ch1", {
         abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("DADOS (M-2): si al marcar el intento otro ya lo eligió (count 0), es 409 ATTEMPT_ALREADY_CHOSEN y no se guarda", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a1",
+      characterId: "ch1",
+      values: [12, 9, 15, 10, 14, 11],
+      chosen: false,
+    });
+    // Fuera de la transacción nadie había elegido; DENTRO, tras el candado, el `updateMany`
+    // no encuentra la fila con `chosen: false` — la otra pestaña llegó antes.
+    (prisma.abilityRollAttempt.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+        attemptId: "a1",
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: "ATTEMPT_ALREADY_CHOSEN" }),
+    });
+  });
+
+  it("DADOS (M-2): si dentro de la transacción ya hay OTRO intento elegido, es 409 ATTEMPT_ALREADY_CHOSEN", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a1",
+      characterId: "ch1",
+      values: [12, 9, 15, 10, 14, 11],
+      chosen: false,
+    });
+    // Primera lectura (antes de la transacción): ninguno elegido. Segunda (bajo candado): a2.
+    (prisma.abilityRollAttempt.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "a2", chosen: true });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        abilities: { str: 15, dex: 14, con: 12, int: 11, wis: 10, cha: 9 },
+        attemptId: "a1",
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: "ATTEMPT_ALREADY_CHOSEN" }),
+    });
+    expect(prisma.abilityRollAttempt.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("DADOS (I-1): con un intento ya elegido, el dueño NO puede elegir OTRO mandando su attemptId — 400 «se fijaron con dados»", async () => {
+    const { service, prisma, characters, membership, abilityRolls } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    abilityRolls.requireAttempt.mockResolvedValue({
+      id: "a2",
+      characterId: "ch1",
+      values: [18, 17, 16, 15, 14, 13],
+      chosen: false,
+    });
+
+    await expect(
+      service.updateSheet("pl", "c1", "ch1", {
+        attemptId: "a2",
+        abilities: { str: 18, dex: 17, con: 16, int: 15, wis: 14, cha: 13 },
+      }),
+    ).rejects.toThrow(/fijaron con dados; solo el DM puede cambiarlas/);
+    expect(prisma.character.update).not.toHaveBeenCalled();
+    expect(prisma.abilityRollAttempt.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("DADOS (I-1): con un intento ya elegido, el DM que manda attemptId recibe 400 — el arbitraje va sin intento", async () => {
+    const { service, prisma, characters, membership } = montar();
+    prep(prisma, characters, {
+      abilities: { metodo: "DADOS", expresion: "3d6", intentos: 2, asignacionLibre: true },
+    });
+    (prisma.abilityRollAttempt.findFirst as jest.Mock).mockResolvedValue({
+      id: "a1",
+      chosen: true,
+    });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(
+      service.updateSheet("dm", "c1", "ch1", {
+        attemptId: "a2",
+        abilities: { str: 18, dex: 17, con: 16, int: 15, wis: 14, cha: 13 },
+      }),
+    ).rejects.toThrow(/sin attemptId/);
+    expect(prisma.character.update).not.toHaveBeenCalled();
   });
 
   it("DADOS: con un intento ya elegido, cambiar una característica sin attemptId es 400 «se fijaron con dados» para el dueño", async () => {
@@ -405,7 +522,7 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
     const data = (prisma.character.update as jest.Mock).mock.calls[0][0].data;
     expect(data).toMatchObject({ str: 20, dex: 14, con: 12, int: 11, wis: 10, cha: 9 });
     // Arbitraje, no una tirada más: ningún intento se toca.
-    expect(prisma.abilityRollAttempt.update).not.toHaveBeenCalled();
+    expect(prisma.abilityRollAttempt.updateMany).not.toHaveBeenCalled();
   });
 
   it("permitidos: una clase fuera de la lista es 400 con su nombre legible; la lista vacía deja todo", async () => {

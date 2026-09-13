@@ -879,8 +879,14 @@ export class CharacterSheetService {
         // mismo 400 que el dueño. La puerta real es esta misma ruta: sin `attemptId` y sin
         // comprobar contra el intento —es arbitraje, no una tirada más—, pero las seis siguen
         // yendo juntas (la regla de «se fijan juntas» no se releja para nadie).
+        //
+        // Ola de arreglos 1 (I-1): el intento elegido se busca **siempre** que la regla sea DADOS
+        // y lleguen características, con o sin `attemptId`. Hasta este arreglo la comprobación
+        // solo corría sin `attemptId`, así que con `intentos ≥ 2` el dueño elegía el 1 y luego
+        // mandaba el id del 2: `requireAttempt` lo encontraba libre, los valores encajaban, y las
+        // seis se sobrescribían — «quedan fijados» era mentira, y pisaba el arbitraje del DM.
         let arbitrajeDelDM = false;
-        if (regla.abilities.metodo === "DADOS" && !input.attemptId) {
+        if (regla.abilities.metodo === "DADOS") {
           const elegido = await this.prisma.abilityRollAttempt.findFirst({
             where: { characterId, chosen: true },
           });
@@ -889,6 +895,13 @@ export class CharacterSheetService {
             if (membresia?.role !== "DM") {
               throw new BadRequestException(
                 "Las características se fijaron con dados; solo el DM puede cambiarlas.",
+              );
+            }
+            // El arbitraje es corregir las seis, no elegir otro intento: con uno ya elegido, un
+            // `attemptId` no tiene ningún significado que el servidor pueda honrar.
+            if (input.attemptId) {
+              throw new BadRequestException(
+                "Ya hay un intento elegido: para corregir las seis, mándalas sin attemptId.",
               );
             }
             arbitrajeDelDM = true;
@@ -1071,13 +1084,42 @@ export class CharacterSheetService {
     // `chosen` y los sucesos de nacimiento son un solo gesto de mesa — a medias sería un personaje
     // con las características guardadas y el intento libre para volver a tirarse, o con oro sin
     // su línea en el registro.
+    //
+    // Ola de arreglos 1 (M-2): **fijar un intento va bajo el candado de la fila del personaje**
+    // (`SELECT … FOR UPDATE`, la misma forma que `level-up.service.ts`), y la marca exige
+    // `chosen: false` en el `where`. Sin el candado, dos pestañas eligiendo dos intentos distintos
+    // leían «ninguno elegido» fuera de la transacción (Postgres corre en READ COMMITTED) y las dos
+    // escribían: dos `chosen: true` para el mismo personaje. El candado pone a la segunda en fila
+    // detrás de la primera; la relectura de abajo, ya bajo candado, ve lo que la primera dejó.
+    // `AbilityRollsService.roll` toma el mismo candado (M-1), así que tirar y fijar también se
+    // serializan entre sí. Los `values` del intento no se releen: una fila de intento no cambia
+    // nunca salvo en `chosen`, y eso es justo lo que se vuelve a mirar aquí.
     const actualizado = await this.prisma.transaction(async (tx) => {
+      if (intentoAFijar) {
+        await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
+        const yaElegido = await tx.abilityRollAttempt.findFirst({
+          where: { characterId, chosen: true },
+          select: { id: true },
+        });
+        if (yaElegido) {
+          throw new ConflictException({
+            code: "ATTEMPT_ALREADY_CHOSEN",
+            message: "Ya se eligió un intento para este personaje.",
+          });
+        }
+      }
       const fila = await tx.character.update({ where: { id: characterId }, data });
       if (intentoAFijar) {
-        await tx.abilityRollAttempt.update({
-          where: { id: intentoAFijar },
+        const marcado = await tx.abilityRollAttempt.updateMany({
+          where: { id: intentoAFijar, chosen: false },
           data: { chosen: true },
         });
+        if (marcado.count !== 1) {
+          throw new ConflictException({
+            code: "ATTEMPT_ALREADY_CHOSEN",
+            message: "Ese intento ya se eligió.",
+          });
+        }
       }
       for (const suceso of sucesosDeNacimiento) {
         await this.events.record(userId, campaignId, suceso, tx);

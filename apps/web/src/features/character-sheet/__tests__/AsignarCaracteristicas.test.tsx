@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { AbilitiesRule, AbilityRollAttemptDto } from "@dnd/shared";
+import type { AbilitiesRule, AbilityKey, AbilityRollAttemptDto } from "@dnd/shared";
 import { AsignarCaracteristicas } from "../AsignarCaracteristicas";
 import * as characterSheetApi from "../api";
 
@@ -12,7 +12,15 @@ import * as characterSheetApi from "../api";
 // `HojaCalculada.test.tsx` — `QueryClientProvider` de verdad, así que la invalidación tras
 // «Quedarme con este» y tras «Tirar características» se comprueba de verdad, no se simula.
 
-function renderAsignar(regla: AbilitiesRule, puedeEditar = true) {
+/** Las seis del personaje tal y como las manda el servidor; `null` = todavía sin fijar. */
+type Seis = Record<AbilityKey, number | null>;
+const SIN_FIJAR: Seis = { str: null, dex: null, con: null, int: null, wis: null, cha: null };
+
+function renderAsignar(
+  regla: AbilitiesRule,
+  puedeEditar = true,
+  { esDM = false, character = SIN_FIJAR }: { esDM?: boolean; character?: Seis } = {},
+) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
@@ -21,6 +29,8 @@ function renderAsignar(regla: AbilitiesRule, puedeEditar = true) {
         characterId="ch1"
         regla={regla as Exclude<AbilitiesRule, { metodo: "LIBRE" }>}
         puedeEditar={puedeEditar}
+        esDM={esDM}
+        character={character}
       />
     </QueryClientProvider>,
   );
@@ -157,7 +167,7 @@ describe("AsignarCaracteristicas", () => {
     expect(screen.getByText(/Carisma 8/)).toBeInTheDocument();
   });
 
-  it("con un intento ya elegido enseña «Fijadas con dados» y no hay botón de tirar", async () => {
+  it("con un intento ya elegido, el dueño ve «Fijadas con dados», sin botón de tirar y sin formulario de corrección", async () => {
     const attempt = intentoDePrueba({ values: [15, 14, 13, 12, 10, 8], chosen: true, of: 1 });
     vi.spyOn(characterSheetApi, "fetchAbilityRolls").mockResolvedValue([attempt]);
 
@@ -165,6 +175,141 @@ describe("AsignarCaracteristicas", () => {
 
     expect(await screen.findByText("Fijadas con dados")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tirar características" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Corregir las seis")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar las seis" })).not.toBeInTheDocument();
+  });
+
+  // Ola de arreglos 1 (I-2, E-RM-13): el DM conserva la llave tras elegir, pero el servidor exige
+  // las seis juntas — así que su puerta es este formulario, no las casillas de una en una.
+  it("DADOS con intento elegido: el DM ve «Corregir las seis», sembradas con las del personaje, y «Guardar las seis» manda las seis SIN attemptId", async () => {
+    const attempt = intentoDePrueba({ values: [15, 14, 13, 12, 10, 8], chosen: true, of: 1 });
+    vi.spyOn(characterSheetApi, "fetchAbilityRolls").mockResolvedValue([attempt]);
+    const patchSpy = vi.spyOn(characterSheetApi, "updateSheet").mockResolvedValue({} as never);
+
+    renderAsignar(
+      { metodo: "DADOS", expresion: "4d6kh3", intentos: 1, asignacionLibre: true },
+      true,
+      { esDM: true, character: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } },
+    );
+
+    expect(await screen.findByText("Fijadas con dados")).toBeInTheDocument();
+    expect(screen.getByText("Corregir las seis")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fuerza")).toHaveValue(15);
+    expect(screen.getByLabelText("Carisma")).toHaveValue(8);
+
+    fireEvent.change(screen.getByLabelText("Fuerza"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar las seis" }));
+
+    await waitFor(() => expect(patchSpy).toHaveBeenCalledTimes(1));
+    expect(patchSpy.mock.calls[0][2]).toEqual({
+      abilities: { str: 20, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+    });
+  });
+
+  it("DADOS con intento elegido: si el servidor rechaza la corrección del DM, el mensaje se escribe en línea", async () => {
+    const attempt = intentoDePrueba({ values: [15, 14, 13, 12, 10, 8], chosen: true, of: 1 });
+    vi.spyOn(characterSheetApi, "fetchAbilityRolls").mockResolvedValue([attempt]);
+    vi.spyOn(characterSheetApi, "updateSheet").mockRejectedValue(
+      new Error(
+        "Con esta regla las seis características se fijan juntas: manda las seis a la vez.",
+      ),
+    );
+
+    renderAsignar(
+      { metodo: "DADOS", expresion: "4d6kh3", intentos: 1, asignacionLibre: true },
+      true,
+      { esDM: true, character: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } },
+    );
+
+    await screen.findByText("Corregir las seis");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar las seis" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/se fijan juntas/);
+  });
+
+  it("DADOS sin intento elegido: el DM ve el mismo botón de tirar que el dueño (tira por el jugador, spec §7)", async () => {
+    vi.spyOn(characterSheetApi, "fetchAbilityRolls").mockResolvedValue([]);
+
+    renderAsignar(
+      { metodo: "DADOS", expresion: "4d6kh3", intentos: 2, asignacionLibre: true },
+      true,
+      { esDM: true },
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Tirar características" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Corregir las seis")).not.toBeInTheDocument();
+  });
+
+  // Ola de arreglos 1 (M-3): un 409/400 del servidor al tirar se pinta, y un doble clic no manda
+  // dos POST.
+  it("DADOS: si el servidor rechaza la tirada, su mensaje se escribe en línea; y mientras vuela no se vuelve a pedir", async () => {
+    vi.spyOn(characterSheetApi, "fetchAbilityRolls").mockResolvedValue([]);
+    let rechazar: (e: Error) => void = () => undefined;
+    const rollSpy = vi.spyOn(characterSheetApi, "rollAbilities").mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rechazar = reject;
+        }),
+    );
+
+    renderAsignar({ metodo: "DADOS", expresion: "4d6kh3", intentos: 2, asignacionLibre: true });
+
+    const boton = await screen.findByRole("button", { name: "Tirar características" });
+    fireEvent.click(boton);
+    await waitFor(() => expect(rollSpy).toHaveBeenCalledTimes(1));
+    // Segundo clic con la primera petición todavía en vuelo: el botón sigue habilitado (regla
+    // de la casa), pero no sale otra petición.
+    expect(boton).not.toHaveAttribute("disabled");
+    fireEvent.click(boton);
+    expect(rollSpy).toHaveBeenCalledTimes(1);
+
+    rechazar(new Error("Las características ya se fijaron con dados."));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Las características ya se fijaron con dados.",
+    );
+  });
+
+  // Ola de arreglos 1 (M-11): quien vuelve a la hoja ve lo que guardó, no un bloque vacío.
+  it("MATRIZ: con las seis ya guardadas, los desplegables arrancan con ellas", async () => {
+    renderAsignar({ metodo: "MATRIZ" }, true, {
+      character: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+    });
+
+    expect(screen.getByLabelText("Fuerza")).toHaveValue("15");
+    expect(screen.getByLabelText("Carisma")).toHaveValue("8");
+  });
+
+  it("MATRIZ: un valor guardado que la matriz no ofrece se enseña marcado y no seleccionable, nunca desaparece", async () => {
+    renderAsignar({ metodo: "MATRIZ" }, true, {
+      character: { str: 18, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+    });
+
+    const fuerza = screen.getByLabelText("Fuerza") as HTMLSelectElement;
+    expect(fuerza).toHaveValue("18");
+    const huerfana = within(fuerza).getByRole("option", {
+      name: /18 — guardado, fuera de la matriz/,
+    });
+    expect(huerfana).toBeDisabled();
+  });
+
+  it("PUNTOS: con las seis ya guardadas, los campos arrancan con ellas y el contador las cuenta", async () => {
+    renderAsignar({ metodo: "PUNTOS", puntos: 27 }, true, {
+      character: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+    });
+
+    expect(screen.getByLabelText("Fuerza")).toHaveValue(15);
+    // 9 + 7 + 5 + 4 + 2 + 0 = 27 gastados.
+    expect(screen.getByText("Te quedan 0 de 27 puntos")).toBeInTheDocument();
+  });
+
+  it("PUNTOS: con alguna de las seis sin fijar, arranca en 8 como siempre", async () => {
+    renderAsignar({ metodo: "PUNTOS", puntos: 27 }, true, {
+      character: { str: 15, dex: null, con: 13, int: 12, wis: 10, cha: 8 },
+    });
+
+    expect(screen.getByLabelText("Fuerza")).toHaveValue(8);
   });
 
   it("DADOS: agotados los intentos, «Tirar características» escribe el error en línea sin pedir nada", async () => {

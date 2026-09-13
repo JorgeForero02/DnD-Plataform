@@ -64,6 +64,13 @@ export class AbilityRollsService {
     const { expresion, intentos } = regla.abilities;
 
     return this.prisma.transaction(async (tx) => {
+      // Ola de arreglos 1 (M-1): **el candado de la fila del personaje, antes de contar**
+      // (`SELECT … FOR UPDATE`, la misma forma que `level-up.service.ts`). `count` y `create` ya
+      // iban en la misma transacción, pero Postgres corre en READ COMMITTED: dos POST a la vez
+      // —un doble clic— veían los dos `hechos = N-1` y los dos creaban, N+1 intentos. Con el
+      // candado el segundo espera al primero y cuenta lo que este dejó. `updateSheet` toma el
+      // mismo candado al fijar un intento (M-2), así que tirar y fijar tampoco se cruzan.
+      await tx.$queryRaw`SELECT id FROM "Character" WHERE id = ${characterId} FOR UPDATE`;
       const elegido = await tx.abilityRollAttempt.findFirst({
         where: { characterId, chosen: true },
       });

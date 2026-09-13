@@ -209,6 +209,31 @@ describe("Reglas de la mesa (e2e)", () => {
     expect(despues.status).toBe(400);
     expect(despues.body.message).toMatch(/fijaron con dados/);
 
+    // Ola de arreglos 1 (I-1): tampoco puede volver al PRIMER intento mandando su `attemptId` con
+    // sus propios valores — hasta este arreglo la comprobación del elegido solo corría sin
+    // `attemptId`, y el dueño alternaba entre sus dos intentos cuando quería.
+    const [s1, d1, c1, i1, w1, ch1] = [...a1.body.values].sort((x: number, y: number) => y - x);
+    const otroIntento = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${id}/sheet`)
+      .set(auth(tokenPL))
+      .send({
+        attemptId: a1.body.id,
+        abilities: { str: s1, dex: d1, con: c1, int: i1, wis: w1, cha: ch1 },
+      });
+    expect(otroIntento.status).toBe(400);
+    expect(otroIntento.body.message).toMatch(/fijaron con dados/);
+    const trasElIntentoDeCambiar = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${id}/ability-rolls`)
+      .set(auth(tokenPL));
+    expect(trasElIntentoDeCambiar.body.map((a: { chosen: boolean }) => a.chosen)).toEqual([
+      false,
+      true,
+    ]);
+    const hojaIntacta = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${id}/sheet`)
+      .set(auth(tokenPL));
+    expect(hojaIntacta.body.character.str).toBe(str);
+
     // Reglas de la mesa (E-RM-13, ronda 1): `overrides` no cubre `ability.*` — `maxHp` sí está en
     // `OVERRIDABLE_KEYS`, pero ninguna clave de característica lo está —, así que «el DM arbitra
     // con overrides» era una puerta que no existía. La puerta real es esta misma ruta: el DM

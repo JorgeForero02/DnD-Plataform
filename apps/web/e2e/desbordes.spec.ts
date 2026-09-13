@@ -285,6 +285,8 @@ test("hoja de PJ (Brann): la lista de objetivos al atacar cabe en el cliente de 
     .click();
   await page.getByRole("button", { name: /^Atacar con /i }).click();
   await expect(page.locator('[aria-label^="Objetivo del ataque"]')).toBeVisible();
+  // Reconocimiento visual (D-CF-67): la captura es la evidencia que el autor mira.
+  await page.screenshot({ path: "e2e-resultados/desborde-objetivos-del-ataque.png" });
   await nadaSeSale(page, "hoja de PJ (Brann): lista de objetivos al atacar");
 });
 
@@ -302,6 +304,7 @@ test("mesa: el menú «…» de la fila más baja del elenco cabe en su carril",
   const menuFilaMasBaja = elenco.getByRole("button", { name: /^Más acciones sobre /i }).first();
   await menuFilaMasBaja.click();
   await expect(page.getByRole("menu")).toBeVisible();
+  await page.screenshot({ path: "e2e-resultados/desborde-menu-del-elenco.png" });
   await nadaSeSale(page, "mesa: menú de la fila más baja del elenco");
 });
 
@@ -313,5 +316,6 @@ test("hoja de PJ (Brann): la traza de «Comp.» cabe en la ventana", async ({ pa
   await abrirHojaDePj(page);
   const resumen = page.getByRole("region", { name: "resumen de combate" });
   await abrirCasillaCompacta(resumen, "Comp.");
+  await page.screenshot({ path: "e2e-resultados/desborde-traza-comp.png" });
   await nadaSeSale(page, "hoja de PJ (Brann): traza de «Comp.»");
 });

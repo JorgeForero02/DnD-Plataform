@@ -330,7 +330,7 @@ export function DesgloseDelMundo({
   const nadaEncaja = buscado !== "" && raices.every((r) => r.hijos.length === 0);
 
   return (
-    <div className="flex min-h-0 flex-col gap-s3">
+    <div className="flex flex-col gap-s3 lg:min-h-0">
       <div className="flex flex-wrap items-center gap-s2">
         <label className="flex min-w-[10rem] flex-1 items-center gap-s2 rounded-radius-sm border border-muted px-s2 py-1.5">
           <IconoLupa className="shrink-0 text-muted" />
@@ -356,7 +356,10 @@ export function DesgloseDelMundo({
         <ul
           role="tree"
           aria-label="El mundo"
-          className="scroll-quiet min-h-0 flex-1 overflow-y-auto"
+          // El scroll propio del árbol solo en `lg:`, con columna acotada; en estrecho es un
+          // bloque más y scrollea el taller (ronda 1: con `overflow` y `min-h-0` siempre, a 390 px
+          // el detalle se montaba encima del árbol).
+          className="scroll-quiet lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
         >
           {raices.map((r) => {
             const fila = filaDe(r.type);

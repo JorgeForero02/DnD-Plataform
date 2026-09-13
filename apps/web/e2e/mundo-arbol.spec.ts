@@ -151,7 +151,11 @@ test("a 390 px el detalle va debajo del desglose y la página no se sale de la v
   );
 
   // Se monta ancho, donde todo funciona, y SOLO ENTONCES se estrecha: lo que se mide es el
-  // orden de las dos mitades, no que la mesa entera quepa a 390 (eso sigue aplazado, D-CF-26).
+  // orden de las dos mitades DENTRO de «El mundo» —apiladas, sin montarse una sobre otra— y que
+  // nada desborda en horizontal. **La rejilla exterior del taller a 390 px NO se apila** (la
+  // columna queda en ~180 px): eso es D-CF-26, aplazado, y esta prueba no lo afirma ni lo niega.
+  // Ronda 1 de la Task 14 bis: aquí se midió el detalle empezando 64 px antes del final del árbol
+  // (`min-h-0` + scroll propio del árbol por debajo de `lg`); esta aserción es la que lo cazó.
   await page.setViewportSize({ width: 390, height: 844 });
   const arbol = mundo.getByRole("tree", { name: "El mundo" });
   const cajaArbol = await arbol.boundingBox();

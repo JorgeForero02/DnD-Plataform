@@ -19,6 +19,14 @@ import { arbolDelMundo } from "./arbolDelMundo";
 // `lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]`: dos columnas desde 1024 px, y en estrecho el
 // detalle va DEBAJO del desglose. Los `minmax(0, …)` no son adorno: sin ellos una ficha con
 // nombre largo ensancha la columna y la mesa se sale de la ventana.
+//
+// **Por debajo de `lg` las dos mitades se apilan como bloques, sin `min-h-0` ni altura acotada.**
+// La ronda 1 de la Task 14 bis midió a 390 px el detalle EMPEZANDO 64 px antes de que acabara
+// el árbol: la rejilla llevaba `min-h-0` y vive dentro de la columna de scroll del taller
+// (`flex-col overflow-y-auto`), así que como hijo de flex podía encoger por debajo de su
+// contenido; con la mitad izquierda también en `min-h-0` su fila de `auto` no aportaba mínimo y
+// el árbol se salía de su fila por encima del detalle. Ahora `min-h-0` y el scroll propio del
+// árbol solo existen en `lg:`, donde la columna está acotada; en estrecho scrollea el taller.
 
 export function ElMundo({
   campaignId,
@@ -58,8 +66,8 @@ export function ElMundo({
   }
 
   return (
-    <div className="grid min-h-0 gap-s4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <div className="flex min-h-0 min-w-0 flex-col">
+    <div className="grid gap-s4 lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="flex min-w-0 flex-col lg:min-h-0">
         <DesgloseDelMundo arbol={arbol} seleccionId={seleccionId} onSeleccion={elegirPorId} />
         {hilos.isError && (
           <p className="mt-s2 font-chrome text-chrome-xs text-danger-text">

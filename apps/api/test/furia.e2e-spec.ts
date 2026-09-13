@@ -96,6 +96,7 @@ describe("La Furia, de punta a punta (e2e)", () => {
     // cifra que el brief citaba, «max 2», es la de un bárbaro de NIVEL 1, no de uno «recién
     // creado» sin más — comprobado contra `classes.ts` antes de escribir esta prueba, no contra
     // la cita del encargo.
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     barbaroId = (
       await request(s())
         .post(`/campaigns/${campaignId}/characters`)
@@ -106,6 +107,7 @@ describe("La Furia, de punta a punta (e2e)", () => {
       .patch(sheetUrl())
       .set("Authorization", auth(tokenPL))
       .send({
+        level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "barbarian" },

@@ -82,12 +82,17 @@ describe("Inventario, equipo y bolsa (e2e)", () => {
       await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${token}`);
     }
 
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     characterId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Duernor", level: 3, visibility: "PLAYERS" })
     ).body.id;
+    await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${characterId}`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ level: 3 });
     await prisma.character.update({ where: { id: characterId }, data: { str: 14 } });
   });
 

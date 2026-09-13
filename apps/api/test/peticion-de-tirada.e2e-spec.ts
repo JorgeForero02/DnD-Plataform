@@ -59,6 +59,7 @@ describe("Petición de tirada (e2e)", () => {
       await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${token}`);
     }
 
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     characterId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
@@ -69,6 +70,7 @@ describe("Petición de tirada (e2e)", () => {
       .patch(`/campaigns/${campaignId}/characters/${characterId}/sheet`)
       .set("Authorization", `Bearer ${tokenPL}`)
       .send({
+        level: 3,
         abilities: { str: 10, dex: 14, con: 12, int: 10, wis: 16, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "fighter" },

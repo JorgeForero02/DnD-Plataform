@@ -67,6 +67,7 @@ describe("Condiciones en las tiradas (e2e)", () => {
     await request(s)
       .post(`/invites/${invite}/accept`)
       .set("Authorization", `Bearer ${tokenJugador}`);
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     characterId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
@@ -77,6 +78,7 @@ describe("Condiciones en las tiradas (e2e)", () => {
       .patch(sheetUrl())
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({
+        level: 3,
         abilities: { str: 15, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "dwarf" },
         subrace: { source: "SRD", key: "dwarf-hill" },

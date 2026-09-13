@@ -66,6 +66,7 @@ describe("Characters (e2e)", () => {
 
   it("member creates own character; ownerId is the caller", async () => {
     const s = app.getHttpServer();
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     const res = await request(s)
       .post(`/campaigns/${campaignId}/characters`)
       .set("Authorization", `Bearer ${tokenP1}`)
@@ -73,6 +74,11 @@ describe("Characters (e2e)", () => {
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("Aragorn");
     aragornId = res.body.id;
+    const conNivel = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${aragornId}`)
+      .set("Authorization", `Bearer ${tokenP1}`)
+      .send({ level: 3 });
+    expect(conNivel.status).toBe(200);
     // seed more: P2 OWNER_DM, P1 DM_ONLY
     await request(s)
       .post(`/campaigns/${campaignId}/characters`)
@@ -157,6 +163,11 @@ describe("Characters (e2e)", () => {
         .send({ name: "Boromir", level: 5, visibility: "PLAYERS" });
       expect(created.status).toBe(201);
       boromirId = created.body.id;
+      const conNivel = await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${boromirId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ level: 5 });
+      expect(conNivel.status).toBe(200);
 
       // Se le da inventario y dinero antes de archivar, para comprobar que archivar no los toca.
       //
@@ -217,6 +228,11 @@ describe("Characters (e2e)", () => {
         .set("Authorization", `Bearer ${tokenP1}`)
         .send({ name: "Faramir", level: 3, visibility: "OWNER_DM" });
       expect(mio.status).toBe(201);
+      const conNivel = await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${mio.body.id}`)
+        .set("Authorization", `Bearer ${tokenP1}`)
+        .send({ level: 3 });
+      expect(conNivel.status).toBe(200);
 
       const archivado = await request(s)
         .post(`/campaigns/${campaignId}/characters/${mio.body.id}/archive`)

@@ -76,12 +76,17 @@ describe("Usar una actividad (e2e)", () => {
         .set("Authorization", `Bearer ${tokenDM}`)
     ).body.token;
     await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${tokenPL}`);
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     personajeDelJugador = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenPL}`)
         .send({ name: "Brann", level: 5 })
     ).body.id;
+    await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${personajeDelJugador}`)
+      .set("Authorization", `Bearer ${tokenPL}`)
+      .send({ level: 5 });
   });
 
   afterAll(async () => {

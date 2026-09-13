@@ -40,12 +40,17 @@ describe("Errores de validación legibles (e2e)", () => {
         .set("Authorization", `Bearer ${tokenDM}`)
         .send({ name: "Campaña de validación" })
     ).body.id;
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     characterId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenDM}`)
         .send({ name: "Kelemvor", level: 3, visibility: "PLAYERS" })
     ).body.id;
+    await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${characterId}`)
+      .set("Authorization", `Bearer ${tokenDM}`)
+      .send({ level: 3 });
   });
 
   afterAll(async () => {

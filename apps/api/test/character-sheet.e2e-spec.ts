@@ -136,6 +136,7 @@ describe("Hoja de personaje y PG (e2e)", () => {
   // siguen ahí** — contra Postgres real, no contra un Prisma simulado.
   it("una subclase que no es de la clase del personaje es 400, y no se guarda", async () => {
     const s = app.getHttpServer();
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     const otroId = (
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
@@ -148,6 +149,7 @@ describe("Hoja de personaje y PG (e2e)", () => {
       .patch(otraSheetUrl)
       .set("Authorization", `Bearer ${tokenA}`)
       .send({
+        level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "barbarian" },
@@ -178,6 +180,7 @@ describe("Hoja de personaje y PG (e2e)", () => {
       .patch(otraSheetUrl)
       .set("Authorization", `Bearer ${tokenA}`)
       .send({
+        level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "barbarian" },

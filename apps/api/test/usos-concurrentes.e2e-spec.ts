@@ -66,6 +66,7 @@ describe("Usos concurrentes de una actividad (e2e)", () => {
 
     // Un bárbaro de nivel 3: `barbarian-rages` le da **3** usos (tramo `desde: 3` de
     // `classes.ts`), que es el número que hace legible el resultado de abajo.
+    // E-RM-1: el POST ya no fija el nivel (nace con nivelInicial); se sube con el PATCH.
     barbaroId = (
       await request(s())
         .post(`/campaigns/${campaignId}/characters`)
@@ -76,6 +77,7 @@ describe("Usos concurrentes de una actividad (e2e)", () => {
       .patch(`${base()}/sheet`)
       .set("Authorization", auth(tokenPL))
       .send({
+        level: 3,
         abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "barbarian" },

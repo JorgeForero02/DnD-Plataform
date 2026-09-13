@@ -77,7 +77,7 @@ decidió el mismo día: **el nivel es del DM**, D-CF-66). **Después, «desborde
 `desbordes/antes-del-paso-3` sobre la anterior** ([07-historial.md](./07-historial.md), «Desbordes»):
 `ui/PanelFlotante` en portal para el panel de ataque y el menú del elenco, la traza de «Comp.»
 dentro de su casilla, y `desbordes.spec.ts` con captura por caso; recortada por el autor a «solo
-arreglo + reconocimiento visual» (D-CF-67). **Tampoco fusionada ni desplegada.** **Lo siguiente es
+arreglo + reconocimiento visual» (D-CF-67). **Las dos se fusionaron a `main` el 2026-09-13 (`5bab60f` y `d83b9c8`, `--no-ff`) y se empujaron; el despliegue lo lanza Coolify desde `main` — comprobar en el servidor qué sirve `dnd.supportive.pro`.** **Lo siguiente es
 la «puerta de efectos»**, bajo D-CF-65 tal cual, con su plan por `writing-plans` cuando el autor lo
 pida. El orden previo, que ya no manda, sigue debajo:
 

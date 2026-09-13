@@ -308,8 +308,14 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
 
   // Y el golpe queda en el registro de la sesión, en prosa: es el motivo por el que la mesa
   // existe. `−5` no es un control de la interfaz, es un suceso de la partida.
+  //
+  // Tarea 11 del pulido (C4, #15): el hilo ya sabe QUIÉN lo recibió, y lo dice — «Borin
+  // Barbaférrea pierde 5 PG», sin el `(13 → 8)` que solo se ve cuando el sujeto no se puede
+  // nombrar (ese caso lo cubre `linea-de-log-sin-claves.test.ts`, que sigue en verde sin `ctx`).
   await expect(
-    page.getByRole("list", { name: "Sucesos de la sesión" }).getByText("Pierde 5 PG (13 → 8)"),
+    page
+      .getByRole("list", { name: "Sucesos de la sesión" })
+      .getByText("Borin Barbaférrea pierde 5 PG"),
   ).toBeVisible({ timeout: 15_000 });
 });
 

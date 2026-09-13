@@ -38,6 +38,8 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md`](./_archivo/historial-2026-09-06-cero-comodin-y-proceso-medido.md) | **El cero de tipos comodín** y **el proceso pasa a medirse**, movidas enteras el 2026-09-12 al pasarse el fichero (1002 de 1000) con los retoques de la revisión de la hoja. Sus hitos se quedan arriba |
 > | [`_archivo/historial-2026-09-06-claude-md-sin-estado.md`](./_archivo/historial-2026-09-06-claude-md-sin-estado.md) | **`CLAUDE.md` deja de narrar el estado**, movida entera el 2026-09-12 al escribir la línea de la ronda de documentación de cierre de la hoja (el fichero iba a pasar de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-poda-del-tablero.md`](./_archivo/historial-2026-09-06-poda-del-tablero.md) | **La poda del tablero y el nacimiento de `como-seguir.md`**, movida entera el 2026-09-12 al escribir la línea de HP-9a (el fichero estaba en 997 de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-5-boardroomurl.md`](./_archivo/historial-2026-09-12-tarea-5-boardroomurl.md) | **La tarea 5 del pulido, `Campaign.boardRoomUrl`**, movida entera el 2026-09-13 al escribir la entrada de la tarea 11 (el fichero estaba en 979 de 1000). Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-6-tablero-enmarcado.md`](./_archivo/historial-2026-09-12-tarea-6-tablero-enmarcado.md) | **La tarea 6 del pulido, el tablero enmarcado y el registro como cajón**, movida entera el 2026-09-13, mismo corte que la tarea 5. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-botin-y-reparto.md`](./_archivo/historial-2026-09-06-botin-y-reparto.md) | **Botín y reparto** —una tabla entrega, y decir quién dio—, movida entera el 2026-09-12 al escribir la línea de HP-9a Task 2 (el fichero quedaba en 1007 de 1000). Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-06-paso-2-actividad.md`](./_archivo/historial-2026-09-06-paso-2-actividad.md) | **Paso 2 — la actividad, sus cinco formas y la economía de la mesa** (2026-09-06/07), movida entera el 2026-09-12 al escribir la línea de cierre de HP-9a: el fichero quedaba en 1005 de 1000 y era la entrada completa más antigua |
 > | [`_archivo/historial-2026-09-07-tanda-corta.md`](./_archivo/historial-2026-09-07-tanda-corta.md) | **Tanda corta — los seis arreglos que dejó abiertos el paso 2** (2026-09-07), movida entera el 2026-09-12 al escribir la línea de la revisión de HP-10: el fichero quedaba en 1002 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
@@ -78,6 +80,68 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Tarea 11 del pulido: el hilo habla de personajes (2026-09-13, C4: #15)
+
+Qué — hasta esta tarea el hilo de sesión decía QUÉ pasó y nunca A QUIÉN ni DE QUIÉN: «Pierde 7 PG
+(24 → 17)» y «Espadazo: impacta» no nombran a nadie, y el hueco #15 pedía justo esa mitad.
+`changeHpSchema.sourceCharacterId` (`packages/shared/src/character-sheet.schema.ts`) y
+`HP_CHANGED.sourceCharacterId` (`game-event.schema.ts`) son el nuevo campo opcional —«de quién
+viene», cuando el DM pone daño a mano sin que cuelgue de ninguna tirada—; `changeHp`
+(`character-sheet.service.ts`) lo valida con `requireVisibleCharacter`
+(`apps/api/src/common/character-viewer.ts`, el mismo helper que ya usan `activities`,
+`conditions`, `resources`, `rest`, `temporary-modifiers` e `inventory`) antes de escribirlo en el
+suceso — 404 uniforme si el id no existe o no se ve, nunca una causa inventada.
+
+En la web, `nombres-del-hilo.ts` (nuevo) resuelve un id a nombre contra `useCharacters` +
+`useNpcs` —las mismas listas ya filtradas por `canView`—, con `null` como «este espectador no lo
+ve»; `atacanteDeLaTirada` recorre la ventana de sucesos buscando el `ATTACK_RESOLVED` que citó esa
+tirada. `lineaDeLog(p, ctx?)` (`linea-de-log.ts`) sigue con un solo argumento para las 33 frases
+de siempre —`linea-de-log-sin-claves.test.ts` no se ha tocado—; con `ctx: { sujeto, nombres }`,
+`HP_CHANGED` dice «Sylas pierde 7 PG (cortante) ← Klarg» (o «← ataque de Klarg» si el origen sale
+de `rollEventId`) y `ATTACK_RESOLVED` dice «Klarg ataca a Sylas con Cimitarra: impacta» — **el
+objetivo se nombra a propósito**: el suceso se escribe a la visibilidad del objetivo, así que
+quien lo lee ya lo ve por definición, y el comentario que decía lo contrario en `linea-de-log.ts`
+estaba caducado desde 2.5.3. `ACTIVITY_USED` no existe en el esquema — se buscó y se anotó, no se
+inventó.
+
+`HiloDeSesion.tsx` construye `nombres` con `personajes` + la nueva prop `pnjs` (que `MesaDeSesion`
+ya tenía de `useNpcs`, pasada en vez de pedida dos veces) y compone `linea` para cada mensaje, que
+`MensajeDelHilo.tsx` recibe ya hecha en vez de llamar a `lineaDeLog` por su cuenta. Su cabecera de
+tipo «personaje» pinta el NOMBRE DEL PERSONAJE cuando `vozDe` resolvió uno real, y la persona baja
+a una firma con su hora — sin personaje, la persona sigue en la cabecera, como siempre.
+`PonerDano.tsx` gana un `<select>` «¿De quién viene?» con `<option value="">Sin decir</option>`:
+es una lista de personajes y PNJ —datos, no una opción con significado—, así que un `<select>`
+nativo es correcto y no una desviación de la regla de los radios con explicación; manda
+`sourceCharacterId` solo si se elige.
+
+Por qué — «¿de qué murió Elara?» (hueco M15, cerrado en 2.5.4) respondía el tipo de daño y la
+tirada, pero el registro seguía sin decir QUIÉN. Con el objetivo ya protegido por `canView` desde
+que el suceso nace, ocultar su nombre en la frase no protegía nada — protegía menos que decir
+«Alguien pierde 7 PG» delante de quien ya lo está viendo.
+
+Evidencia — e2e de API (`dano-con-su-traza.e2e-spec.ts`, 9/9): el DM cita el origen y
+`HP_CHANGED.sourceCharacterId` lo lleva; un origen que no existe en la campaña es 404 y no escribe
+nada (comprobado con el PG sin cambiar). Unitarias de servicio (`character-sheet.service.spec.ts`,
+157/157) sin tocar. Unitarias web: `linea-de-log-con-nombres.test.ts` (nuevo, 6/6) —el daño con
+origen directo, con origen de tirada, el ataque con y sin atacante visible, y que sin `ctx` las
+frases de siempre no cambian—; el resto de `sessions` en verde (1542/1542 de la suite completa).
+Mutación: quitar el `← ${origen}` de `HP_CHANGED` y el `${atacante} ataca a...` de `ATTACK_RESOLVED`
+hace fallar las pruebas nuevas correspondientes (restaurado con `cp`); comentar la llamada a
+`requireVisibleCharacter` en `changeHp` hace fallar el 404 del origen inexistente (restaurado con
+`cp`). `combate.spec.ts` gana una comprobación de extremo a extremo: Thora ataca a Brann por API
+(equipar, resolver el ataque, aplicar daño citando la tirada) y el hilo real muestra «Thora ataca
+a Brann con … : impacta/falla» y «Brann pierde 3 PG ← ataque de Thora» — no ejecutado en esta
+sesión (frontera: solo se corrió el e2e de API una vez), a correr por el orquestador.
+`sesion.spec.ts` actualizado: el golpe real a Borin ahora se lee «Borin Barbaférrea pierde 5 PG»
+en vez de «Pierde 5 PG (13 → 8)», porque su sujeto SÍ se resuelve en ese recorrido.
+
+**Revertir:** quitar `sourceCharacterId` de los dos esquemas y de `changeHp`; borrar
+`nombres-del-hilo.ts` y su prueba; devolver `lineaDeLog`, `HiloDeSesion.tsx` y `MensajeDelHilo.tsx`
+a su forma de un argumento; quitar el `<select>` de `PonerDano.tsx`; deshacer las aserciones nuevas
+de `combate.spec.ts` y la frase cambiada de `sesion.spec.ts`.
 
 ---
 
@@ -404,80 +468,28 @@ en verde (detalle en el commit de esta ronda). Sin Playwright — el orquestador
 
 ---
 
-## Tarea 6 del pulido: el tablero enmarcado y el registro como cajón (2026-09-12, C1 bis)
+## Tarea 6 del pulido: el tablero enmarcado y el registro como cajón (2026-09-12, C1 bis) — archivada
 
-Qué — `sessions/tablero/` (nuevo): `MarcoDelTablero` enmarca la partida de PlanarAlly (`<iframe>`
-con `referrerPolicy="no-referrer"` y `allow="clipboard-read; clipboard-write"`, la única línea fija
-de que cada jugador inicia sesión dentro del marco, una vez por navegador — sin fichero de aviso,
-porque PlanarAlly guarda mapas y usuarios en su servidor y la trampa del particionado de Owlbear
-Legacy no existe) y `CajonDelRegistro` pliega el registro en vivo con un contador de líneas
-nuevas (compara el id que había arriba al plegar contra la lista actual). `MesaDeSesion.tsx`
-monta los dos en el centro de la rama `main` cuando `campana.boardRoomUrl` existe (Tarea 5); sin
-ella, el hilo sigue a pelo, sin cambios.
-
-Por qué — D-CF-63: cierra el hueco entre guardar la URL de la sala (Tarea 5) y verla puesta en la
-mesa. El cajón, y no una segunda columna, porque el registro sigue haciendo falta durante la
-partida y la mesa a 390 px sigue aplazada (D-CF-26): apilar verticalmente (marco arriba, cajón
-abajo) es lo único que no necesita esa decisión para funcionar.
-
-Evidencia — unitarias (RTL): `MarcoDelTablero` pone `src`, `referrerpolicy`, `allow` y la línea de
-inicio de sesión; `CajonDelRegistro` cuenta las líneas nuevas plegado y las pone a cero al
-desplegar; `mesa-de-sesion.test.tsx` monta el marco y el cajón con `boardRoomUrl` y el hilo a pelo
-sin ella (32 pruebas en total, en verde). Mutación: `cp` de respaldo, `findIndex` fijado a `0`,
-la prueba del contador falla («2» esperado, «Registro» recibido); restaurado con `cp`. e2e nuevos
-(`tablero-en-la-mesa.spec.ts`, dos pruebas, corridos por el orquestador): con sala guardada —la
-propia `/acerca-de`, mismo origen— el marco ocupa el centro sin scroll de página y el registro se
-pliega con su contador; a 390 px el marco va arriba y el registro debajo, con la cifra de
-D-CF-26 repetida en el nombre de la prueba. `tokens-contrast.spec.ts` mide el botón del cajón
-plegado y desplegado en los tres temas. `mesa-mide.spec.ts` se corrió después, sin cambios, para
-confirmar que la rama sin sala sigue igual.
-
-**Revertir:** un commit. Borrar `sessions/tablero/`, las tres líneas que lo montan en
-`MesaDeSesion.tsx`, el spec e2e nuevo y las adiciones de `tokens-contrast.spec.ts`.
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-6-tablero-enmarcado.md`](./_archivo/historial-2026-09-12-tarea-6-tablero-enmarcado.md)
+el 2026-09-13, al escribir la entrada de la tarea 11: el fichero seguía por encima de su tope tras
+archivar la tarea 5, y esta era la siguiente entrada completa más antigua. En una línea:
+`MarcoDelTablero` enmarca la partida de PlanarAlly en un `<iframe>` y `CajonDelRegistro` pliega el
+registro en vivo con un contador de líneas nuevas, montados en el centro de la mesa cuando la
+campaña tiene `boardRoomUrl`.
 
 ---
 
-## Tarea 5 del pulido: `Campaign.boardRoomUrl` (2026-09-12, C1 bis)
+## Tarea 5 del pulido: `Campaign.boardRoomUrl` (2026-09-12, C1 bis) — archivada
 
-Qué — la partida de PlanarAlly (`tablero.supportive.pro/game/<nombre>`) que la mesa enmarcará
-(spec del tablero § 2 ter). Migración escrita a mano
-(`20260912120000_campaign_board_room_url`, `ADD COLUMN "boardRoomUrl" TEXT`), aplicada con
-`migrate deploy` contra el Postgres de Docker y el cliente regenerado; el contrato
-(`packages/shared/src/campaign.schema.ts`) solo acepta `http(s)` hasta 500 caracteres —el valor va
-a un `src` de `<iframe>`, y `javascript:` no es una sala—, `null` la quita y ausente no la toca
-(mismo patrón que `encumbranceVariant`, D-CF-16). El servicio (`campaigns.service.ts#update`) la
-escribe solo si viaja; se acepta al crear y desde ajustes —el mismo defecto de MEDIA-2 con
-`encumbranceVariant` reapareció con este campo en la revisión y se cerró igual—. La web
-añade un bloque «Sala del tablero» bajo el interruptor de sobrecarga en `CampaignSettings.tsx`,
-con Guardar/Quitar explícitos sobre el mismo `PATCH /campaigns/:id`; solo el DM puede escribir, y
-el servidor lo exige (`requireDM`), no el botón deshabilitado.
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-5-boardroomurl.md`](./_archivo/historial-2026-09-12-tarea-5-boardroomurl.md)
+el 2026-09-13, al escribir la entrada de la tarea 11 del pulido: el fichero estaba en 979 de 1000
+y esta era la entrada completa más antigua. En una línea: `Campaign.boardRoomUrl` guarda la URL
+de la partida de PlanarAlly que la mesa enmarcará, con su migración, su `refine` de `http(s)` y su
+bloque «Sala del tablero» en `CampaignSettings.tsx`.
 
-Ronda de revisión (mismo día) — dos Important, los dos contra el propio boceto del brief: el
-botón «Guardar la sala» se deshabilitaba con el campo vacío, contra
-`docs/04-convenciones.md:460` («el botón de guardar nunca se deshabilita»); ahora un campo vacío
-se explica con el error del `Field` y no llama al PATCH, y «Quitar la sala» ya no vacía el input
-antes de la respuesta —si el PATCH falla, lo tecleado se queda—. Y `campaigns.service.ts#create`
-tiraba `boardRoomUrl` en silencio pese a que el contrato la acepta desde el alta —el mismo defecto
-de MEDIA-2 que ya se había cerrado una vez con `encumbranceVariant`—; ahora se persiste también
-al crear.
-
-Por qué — el tablero es autohospedado y cada mesa tiene su propia partida; la URL vive en la
-campaña, no en código ni en variable de entorno, porque cada DM la pega una vez desde su PlanarAlly
-y la mesa la usa desde ahí en adelante (fuera de esta tarea: la propia pantalla de la mesa que la
-consume).
-
-Evidencia — e2e de API (`campaigns.e2e-spec.ts`): el DM guarda y lee la URL, un jugador miembro
-recibe 403, `javascript:alert(1)` da 400 y `null` la borra, y un `POST` con `boardRoomUrl` la
-persiste desde el alta — 22/22 en verde. Mutación: quitar el `refine` del `http(s)` hace fallar
-el caso de `javascript:` (200 en vez de 400) — confirma que la prueba depende de esa línea, no
-de la forma del contrato. Unitarias web (RTL, 7 en total): el DM ve «Sala del tablero», pulsa
-Guardar y el PATCH lleva `boardRoomUrl`; con sala guardada aparece «Quitar la sala» y manda
-`null`; Guardar con el campo vacío no llama al PATCH y muestra el error; si «Quitar la sala»
-falla, el input conserva su valor. `pnpm verify` en verde.
-
-**Revertir:** migración inversa `DROP COLUMN "boardRoomUrl"` (descrita en la cabecera del SQL) y
-quitar el bloque `SalaDelTablero` de `CampaignSettings.tsx`, la línea del servicio y el campo del
-contrato y del esquema de Prisma.
+---
 
 ## Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición (2026-09-12, tres rondas) — archivada
 

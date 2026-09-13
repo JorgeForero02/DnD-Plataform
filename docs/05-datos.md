@@ -512,6 +512,23 @@ que `effective-speed.ts`— que reduce un daño bruto por esos modificadores y d
 Se engancha al `POST .../hp` existente: con `damageType` en el cuerpo, reduce antes de aplicar;
 sin él, el comportamiento no cambia.
 
+## `sourceCharacterId`: de quién viene un golpe puesto a mano (tarea 11 del pulido, C4 #15)
+
+**`changeHpSchema.sourceCharacterId`** y **`HP_CHANGED.sourceCharacterId`** (`z.string().min(1)`,
+opcional, sin migración: viven en el `payload Json` como `rollEventId`, no en columna — no hay
+consulta declarada que necesite promoverlo). Es el mismo patrón que `ATTACK_RESOLVED.attackerId`:
+un id, nunca un nombre; quien lee resuelve el nombre contra `canView` (`nombres-del-hilo.ts`,
+`apps/web`), nunca el servidor.
+
+Se manda cuando el DM pone daño a mano desde el elenco y **no** cuelga de ninguna tirada — con
+`rollEventId`, el origen se recupera de ahí y este campo sobra (`character-sheet.service.ts`
+escribe `sourceCharacterId` solo si viajó, y nunca junto a un `rollEventId` que ya lo explique por
+su cuenta, aunque el esquema no lo impida: es decisión de quien manda la petición). El servicio lo
+valida con `requireVisibleCharacter` (`apps/api/src/common/character-viewer.ts`) antes de
+escribirlo: 404 si el id no existe en la campaña **o** si existe pero el actor no lo ve — el mismo
+404 uniforme que ya usa `sePuedeApuntar`, para no delatar por la forma del error cuál de los dos
+casos era.
+
 ## `ENTITY_REVEALED` también nace de subir la visibilidad a mano (2026-09-04, ficha P1)
 
 Hasta ahora el único sitio que emitía `ENTITY_REVEALED` era el motor de reglas (efecto

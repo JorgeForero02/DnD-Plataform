@@ -230,6 +230,13 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
      * un ajuste manual del DM (sin tirada de por medio) sigue sin tener uno.
      */
     rollEventId: z.string().min(1).optional(),
+    /**
+     * Pulido 2026-09-12 (anexo #15). **De quién viene**, cuando el daño se pone a mano desde el
+     * elenco y no cuelga de una tirada: el hilo dice «← Klarg». Opcional; con `rollEventId` el
+     * origen se recupera de la tirada y este campo sobra. Es un id como `ATTACK_RESOLVED.attackerId`:
+     * el nombre lo resuelve quien lee, con lo que `canView` le manda.
+     */
+    sourceCharacterId: z.string().min(1).optional(),
     reason,
   }),
   z.object({

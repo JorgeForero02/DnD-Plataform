@@ -9,11 +9,14 @@ import { PanelDeMesa } from "../PanelDeMesa";
 import { useMembers } from "../../campaigns/members";
 import { useCharacters } from "../../characters/hooks";
 import type { Character } from "../../characters/api";
+import type { NpcEnLaMesa } from "../../bestiario/api";
 import type { ConColor } from "../../../dominio/voces";
 import type { Member } from "../../campaigns/members";
 import { Button } from "../../../ui/Button";
 import { MensajeDelHilo } from "./MensajeDelHilo";
 import { IconoPluma } from "../../../ui/Iconos";
+import { lineaDeLog } from "../linea-de-log";
+import { nombresDelHilo } from "../nombres-del-hilo";
 
 // **El hilo de la sesión: los cinco tipos de mensaje de la maqueta, no una lista plana.**
 //
@@ -102,11 +105,18 @@ export function HiloDeSesion({
   eventos,
   esDm,
   comoUsuario,
+  pnjs = [],
 }: {
   campaignId: string;
   eventos: GameEventRow[];
   esDm: boolean;
   comoUsuario: string;
+  /**
+   * Tarea 11 del pulido (C4, #15). **Prop, no una segunda consulta.** `MesaDeSesion` ya pide
+   * `useNpcs` para el orden de turnos y el diálogo de combate (comentario de ese fichero); pasarlo
+   * aquí es lo que ya hace con `ColumnaElenco`, no una excepción para el hilo.
+   */
+  pnjs?: NpcEnLaMesa[];
 }) {
   const { data: miembros } = useMembers(campaignId);
   const sellar = useStampNote(campaignId);
@@ -148,6 +158,19 @@ export function HiloDeSesion({
     }
     return { id: e.actorUserId };
   };
+
+  // Tarea 11 del pulido (C4, #15). **Quién es quién, para que la frase lo diga en vez de un id.**
+  // Personajes y PNJ juntos: los dos son la misma fila de `Character` por debajo (fase 2D), y los
+  // dos pueden ser el origen citado a mano o el atacante de una tirada.
+  const nombres = nombresDelHilo(
+    [...(personajes ?? []), ...pnjs].map((c) => ({ id: c.id, name: c.name })),
+    eventos,
+  );
+  // El sujeto de la frase: quien recibe el suceso, si es un personaje y este visor lo tiene en
+  // sus listas filtradas por `canView`. `null` en cualquier otro caso, y `lineaDeLog` cae a la
+  // frase de siempre — nunca inventa un nombre para un suceso que no es de un personaje.
+  const nombreDelSujeto = (e: GameEventRow): string | null =>
+    e.subjectType === "character" ? nombres.personaje(e.subjectId) : null;
 
   // **La marca se congela al montar, a propósito.** Si se releyera en cada sondeo, la franja
   // desaparecería a los quince segundos —justo cuando alguien vuelve a la mesa y todavía no ha
@@ -325,6 +348,7 @@ export function HiloDeSesion({
                   personaje={vozDe(e)}
                   ligada={tiradaLigada(e.payload)}
                   nuevo={esNuevo(e.createdAt)}
+                  linea={lineaDeLog(e.payload, { sujeto: nombreDelSujeto(e), nombres })}
                 />
               </Fragment>
             );

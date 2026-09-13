@@ -10,6 +10,8 @@ import { nombreAnulable, nombreCondicion } from "../character-sheet/vocabulario"
 import { NOMBRE_MONEDA, NOMBRE_RANURA, NOMBRE_ZONA } from "../inventory/vocabulario";
 import { NOMBRE_SELLO } from "./vocabulario";
 import { ETIQUETA_DE_TIPO } from "../entities/resumen";
+import { NOMBRE_TIPO_DANO } from "../../dominio/dano";
+import type { NombresDelHilo } from "./nombres-del-hilo";
 
 // De un suceso del log a **una línea que se lee en voz alta**.
 //
@@ -30,6 +32,13 @@ import { ETIQUETA_DE_TIPO } from "../entities/resumen";
 // **el build del gráfico se pone rojo** en este fichero y en ningún otro sitio. Ese es el aviso
 // que no existía. Escribir la frase catorce es trabajo de una tarde; el que no se escriba la
 // quince en silencio es lo que arregla la deuda.
+//
+// **Tarea 11 (C4, #15): no existe `ACTIVITY_USED` en `gameEventPayloadSchema`.** El brief de esta
+// tarea pedía traducirlo con sus objetivos («Elara lanza Bola de fuego sobre Klarg y Sylas») si
+// llevaba destinatarios; se buscó en `@dnd/shared` y en `apps/api/src` y no hay ningún suceso de
+// «usar una actividad» — `RESOURCE_SPENT` es lo más cercano y no lleva objetivos. Se deja
+// anotado, no inventado: el día que el motor escriba ese suceso, esta unión deja de compilar
+// (por el punto de arriba) y ahí toca escribir su frase, con sus objetivos si los trae.
 //
 // **Lo que se traduce y lo que no.** Las condiciones (`CONDITION_*`) y los valores derivados que
 // el DM anula (`MANUAL_OVERRIDE_SET.target`) son enumeraciones cerradas del SRD y del motor, y
@@ -113,7 +122,19 @@ const RESULTADO_MUERTE: Record<string, string> = {
   CRIT_FAILURE: "un 1 natural: cuenta como dos fracasos",
 };
 
-export function lineaDeLog(p: GameEventPayload): string {
+/**
+ * Tarea 11 del pulido (C4, #15). Lo que `lineaDeLog` necesita para nombrar a alguien en vez de
+ * citar solo el rol de un suceso. **Opcional a propósito**: sin `ctx`, la unión entera se lee
+ * exactamente como antes de esta tarea — es lo que comprueba `linea-de-log-sin-claves.test.ts`,
+ * que no se ha tocado.
+ */
+export interface ContextoDeLinea {
+  /** El nombre de quien sufre este suceso, si el hilo pudo resolverlo. `null`/ausente: como hoy. */
+  sujeto?: string | null;
+  nombres?: NombresDelHilo;
+}
+
+export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
   switch (p.type) {
     case "SESSION_STARTED":
       return `Empieza la sesión «${p.sessionTitle}»`;
@@ -125,9 +146,33 @@ export function lineaDeLog(p: GameEventPayload): string {
       return p.text ? `${NOMBRE_SELLO[p.kind]}: ${p.text}` : NOMBRE_SELLO[p.kind];
     case "HP_CHANGED": {
       if (p.massive) return `Daño masivo: muere en el acto (${p.from} → ${p.to})`;
+      const motivo = p.reason ? ` — ${p.reason}` : "";
+      // **Con sujeto resuelto, la frase nombra a quien recibe el golpe y de dónde viene** — el
+      // hueco M15 pedía «¿de qué murió Elara?»; esto responde también «¿y quién se lo hizo?».
+      // Sin sujeto (el suceso no es de un personaje visible, o nadie llamó con `ctx`), la frase
+      // de siempre: la del `from → to`, que es la que lee la crónica fuera de la mesa.
+      if (ctx?.sujeto) {
+        const verbo = p.delta < 0 ? "pierde" : "recupera";
+        const tipo = p.damageType ? ` (${NOMBRE_TIPO_DANO[p.damageType]})` : "";
+        const critico = p.critical ? ", crítico" : "";
+        const origenDirecto = p.sourceCharacterId
+          ? (ctx.nombres?.personaje(p.sourceCharacterId) ?? null)
+          : null;
+        // `sourceCharacterId` manda cuando viene: es lo que el DM citó a mano. Sin él, se
+        // recupera el atacante de la tirada que produjo este daño, si la hay.
+        const deTirada = !p.sourceCharacterId && p.rollEventId ? p.rollEventId : null;
+        const origenDeTirada = deTirada
+          ? (ctx.nombres?.atacanteDeLaTirada(deTirada) ?? null)
+          : null;
+        const origen = origenDirecto
+          ? ` ← ${origenDirecto}`
+          : origenDeTirada
+            ? ` ← ataque de ${origenDeTirada}`
+            : "";
+        return `${ctx.sujeto} ${verbo} ${Math.abs(p.delta)} PG${tipo}${critico}${origen}${motivo}`;
+      }
       const verbo = p.delta < 0 ? "Pierde" : "Recupera";
       const critico = p.critical ? ", crítico" : "";
-      const motivo = p.reason ? ` — ${p.reason}` : "";
       return `${verbo} ${Math.abs(p.delta)} PG (${p.from} → ${p.to}${critico})${motivo}`;
     }
     case "TEMP_HP_SET":
@@ -316,9 +361,15 @@ export function lineaDeLog(p: GameEventPayload): string {
 
     // --- 2.5.3: el ataque comparado en el servidor ---
     case "ATTACK_RESOLVED":
-      // **Sin CA y sin el nombre del objetivo.** El suceso se escribe a la visibilidad del
-      // objetivo justo para no anunciar que existe; la frase dice lo que pasó, no contra quién.
-      return `${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`;
+      // **Sin CA, con o sin nombres.** El número contra el que se tiró no sale nunca, ni con
+      // contexto ni sin él. El OBJETIVO sí se nombra cuando hay `ctx.sujeto` — y no es un desliz:
+      // este suceso se escribe a la visibilidad del objetivo (ficha #15, resolución del
+      // controlador), así que quien lo lee ya lo ve por definición; ocultar su nombre aquí no
+      // protegía nada que `canView` no protegiera ya. El ATACANTE se resuelve por `attackerId`
+      // contra `useCharacters`/`useNpcs`, y «Alguien» si este espectador no lo ve.
+      return ctx?.sujeto
+        ? `${ctx.nombres?.personaje(p.attackerId) ?? "Alguien"} ataca a ${ctx.sujeto} con ${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`
+        : `${p.attackName}: ${VEREDICTO[p.verdict] ?? p.verdict}`;
 
     // --- 2.5.8: archivar en vez de borrar ---
     case "CHARACTER_ARCHIVED":

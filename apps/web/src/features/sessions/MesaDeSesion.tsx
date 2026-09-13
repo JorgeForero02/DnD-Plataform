@@ -254,6 +254,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
                     eventos={eventos}
                     esDm={esDm}
                     comoUsuario={comoUsuario}
+                    pnjs={pnjs ?? []}
                   />
                 </CajonDelRegistro>
               </div>
@@ -263,6 +264,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
                 eventos={eventos}
                 esDm={esDm}
                 comoUsuario={comoUsuario}
+                pnjs={pnjs ?? []}
               />
             )}
 

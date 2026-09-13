@@ -17,6 +17,13 @@ function nuevaCuenta() {
   };
 }
 
+/** Mismo patrón que `condiciones-en-la-mesa.spec.ts`: la sesión ya autenticada, para pedir a la
+ *  API directamente lo que la interfaz tardaría media suite en montar (equipar un arma real). */
+async function comoLaSesion(page: Page) {
+  const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+  return { Authorization: `Bearer ${token}` };
+}
+
 async function registrarse(page: Page) {
   const cuenta = nuevaCuenta();
   await page.goto("/register");
@@ -38,6 +45,12 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
   await page.getByLabel("Nombre").fill("La emboscada");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La emboscada" }).click();
+  // Tarea 11 del pulido (C4, #15): hace falta el id de la campaña para pedirle a la API que
+  // resuelva un ataque de verdad, más abajo. `/campaigns/<id>` es la URL de la propia campaña.
+  const campaignId = page.url().split("/campaigns/")[1].split(/[/?]/)[0];
+  // El id de cada personaje, capturado al entrar en su ficha — hace falta el mismo par para
+  // pedirle a la API que Thora ataque a Brann.
+  const idDe: Record<string, string> = {};
 
   for (const [nombre, destreza] of [
     ["Thora", "16"],
@@ -50,6 +63,7 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
     await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
     await page.getByRole("link", { name: new RegExp(nombre) }).click();
     await expect(page.getByRole("heading", { name: nombre })).toBeVisible();
+    idDe[nombre] = page.url().split("/personajes/")[1].split(/[/?]/)[0];
     await page.getByLabel("Raza", { exact: true }).selectOption("dwarf");
     await page.getByLabel("Clase", { exact: true }).selectOption("fighter");
     // **Destrezas muy distintas a propósito**: la iniciativa la tira el servidor, y con un +3 y
@@ -117,6 +131,56 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
   // **Uno y solo uno tiene el turno**, y se dice con palabras además de con color.
   await expect(tira.getByText("Le toca")).toHaveCount(1);
 
+  const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
+
+  // --- Tarea 11 del pulido (C4, #15): el hilo habla de personajes, no de ids ---
+  //
+  // Montar el ataque entero desde la interfaz (equipar un arma, abrir la pestaña de Ataques,
+  // tirar) es el camino de `tirada.spec.ts`; aquí basta con que el suceso exista de verdad en
+  // la base y se lea bien en el hilo, así que se pide directamente a la API con la que ya
+  // autenticó esta misma sesión — el mismo patrón que `condiciones-en-la-mesa.spec.ts`.
+  const headers = await comoLaSesion(page);
+  const personaje = (id: string) => `/api/campaigns/${campaignId}/characters/${id}`;
+
+  // Thora empuña una cimitarra: sin arma equipada no hay ataque que tirar (`buildAttacks`).
+  const inventario = await page.request.post(`${personaje(idDe.Thora)}/inventory`, {
+    headers,
+    data: { ref: { source: "SRD", key: "scimitar" }, location: "EQUIPPED", slot: "MAIN_HAND" },
+  });
+  expect(inventario.ok()).toBe(true);
+
+  // La clave del ataque la da la propia hoja — no se reconstruye a mano el `ref:mano` de
+  // `claveDeArma` (`apps/api/src/rules/attacks.ts`), que es un detalle del servidor.
+  const hojaDeThora = await page.request.get(`${personaje(idDe.Thora)}/sheet`, { headers });
+  expect(hojaDeThora.ok()).toBe(true);
+  const attackKey = (await hojaDeThora.json()).attacks[0].key as string;
+
+  const ataque = await page.request.post(
+    `${personaje(idDe.Thora)}/sheet/attacks/${encodeURIComponent(attackKey)}/resolve`,
+    { headers, data: { targetCharacterId: idDe.Brann } },
+  );
+  expect(ataque.ok()).toBe(true);
+  const rollEventId = (await ataque.json()).roll.eventId as string;
+
+  // El hilo nombra a las dos partes: quien ataca, resuelto por `attackerId` contra la lista de
+  // personajes, y a quién — que se nombra a propósito porque el suceso se escribió a la
+  // visibilidad del objetivo (comentario del controlador en `linea-de-log.ts`).
+  await expect(sucesos.getByText(/Thora ataca a Brann con .*: (impacta|falla)/)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  // Y un golpe puesto a mano que CITA esa misma tirada dice de quién viene, sin repetir el
+  // ataque: `atacanteDeLaTirada` (`nombres-del-hilo.ts`) resuelve el atacante desde el
+  // `ATTACK_RESOLVED` que ya está en la ventana.
+  const golpe = await page.request.post(`${personaje(idDe.Brann)}/hp`, {
+    headers,
+    data: { delta: -3, rollEventId },
+  });
+  expect(golpe.ok()).toBe(true);
+  await expect(sucesos.getByText(/Brann pierde 3 PG ← ataque de Thora/)).toBeVisible({
+    timeout: 15_000,
+  });
+
   // --- La tira no arrastra la página a lo ancho, y eso solo se puede medir aquí ---
   const desborde = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -138,7 +202,6 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
   await pasarTurno.click();
   await expect(tira).toContainText("Asalto 2", { timeout: 10_000 });
   // Y el registro lo cuenta en castellano, no como clave del enumerado (ficha L1).
-  const sucesos = page.getByRole("list", { name: "Sucesos de la sesión" });
   await expect(sucesos.getByText("Empieza el combate")).toBeVisible({ timeout: 10_000 });
   await expect(sucesos.getByText(/Asalto 2/)).toBeVisible();
   await expect(sucesos.getByText(/Sin traducir/)).toHaveCount(0);

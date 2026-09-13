@@ -14,6 +14,8 @@
 // descuadra en cuanto el texto cambia de escala. `align` con un descenso pequeño los sienta
 // sobre la línea base, que es donde el glifo que sustituyen estaba.
 
+import type { Caras } from "../features/rolls/bandeja";
+
 interface IconoProps {
   className?: string;
 }
@@ -331,6 +333,19 @@ export function IconoMas({ className }: IconoProps) {
   );
 }
 
+/**
+ * Menos: quitar uno, bajar. Revisión final de la rama (2026-09-13): el «−» de fuente del
+ * modificador de `BandejaDeDados` sobrevivió al barrido de la Tarea 7 por un `=>` en el regex;
+ * es la misma barra horizontal de `IconoMas`, sin la vertical, para que los dos hagan pareja.
+ */
+export function IconoMenos({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="menos">
+      <path d="M5 12h14" />
+    </Marco>
+  );
+}
+
 /** Megáfono: narrar, anunciar a la mesa. */
 export function IconoMegafono({ className }: IconoProps) {
   return (
@@ -427,10 +442,7 @@ export function IconoPluma({ className }: IconoProps) {
  * segundo dado), dodecaedro (d12) e icosaedro (d20 — la misma silueta que traía `DadoDibujado`
  * e `IconoD20` antes de delegar, para que ninguno de los dos cambiara de dibujo al mudarse).
  */
-export function IconoDado({
-  caras,
-  className,
-}: IconoProps & { caras: 4 | 6 | 8 | 10 | 12 | 20 | 100 }) {
+export function IconoDado({ caras, className }: IconoProps & { caras: Caras }) {
   const forma = caras === 100 ? 10 : caras;
   return (
     <Marco className={className} data-icono={`d${caras}`}>

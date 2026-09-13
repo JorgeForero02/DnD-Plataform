@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { PanelDeDadosDeLaMesa } from "../PanelDeDadosDeLaMesa";
 import * as rollRequestsApi from "../../../roll-requests/api";
+import * as rollsApi from "../../api";
 
 // Round 2 de revisión (anexo #8) — **el cajón compacto tampoco se mueve al escribir.** Mismo
 // defecto que se cazó en la pantalla «Dados» —el radio de ventaja se montaba y desmontaba con
@@ -42,5 +43,29 @@ describe("PanelDeDadosDeLaMesa — el radio de ventaja no se desmonta al escribi
     expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
+  });
+});
+
+// Revisión final de la rama (2026-09-13). Mismo criterio que en `PanelDeDados.test.tsx`: «Tirar»
+// no se apaga por bandeja vacía; pulsarlo explica en línea qué falta y no manda nada.
+describe("PanelDeDadosDeLaMesa — Tirar con la bandeja vacía", () => {
+  it("sigue habilitado, explica en línea qué falta y no manda nada", async () => {
+    vi.spyOn(rollRequestsApi, "fetchDifficultyClasses").mockResolvedValue([]);
+    const crear = vi.spyOn(rollsApi, "createRoll");
+    pintar();
+
+    fireEvent.click(screen.getByRole("button", { name: "Quitar el d20 (posición 1)" }));
+    const tirar = screen.getByRole("button", { name: "Tirar" });
+    expect(tirar).not.toHaveAttribute("aria-disabled");
+
+    fireEvent.click(tirar);
+
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(
+      "Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.",
+    );
+    expect(screen.getByLabelText("Qué se tira")).toHaveAttribute("aria-invalid", "true");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(crear).not.toHaveBeenCalled();
   });
 });

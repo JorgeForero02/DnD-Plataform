@@ -11,6 +11,20 @@
 /** Las siete caras que se tiran en la mesa (`vocabulario.ts`, `DADOS_DE_ATAJO`). */
 export type Caras = 4 | 6 | 8 | 10 | 12 | 20 | 100;
 
+const CARAS_CONOCIDAS: ReadonlySet<number> = new Set<Caras>([4, 6, 8, 10, 12, 20, 100]);
+
+/**
+ * Revisión final de la rama (2026-09-13). **La guarda que separa «se dibuja» de «se nombra».**
+ * El servidor admite hasta 1000 caras (`maxSides`, `apps/api/src/dice/dice.ts`) y «Modo
+ * avanzado» deja escribir `2d7`; `IconoDado` solo dibuja estas siete. Sin esta guarda, un
+ * `as Caras` en el consumidor le colaba un 7 y el icono salía VACÍO. Quien pinte un dado pasa
+ * por aquí: conocido → `IconoDado`; desconocido → el nombre en texto (`d7`), nunca un d20
+ * disfrazado — «un dado, una forma» (D-CF-62).
+ */
+export function esCaraConocida(n: number): n is Caras {
+  return CARAS_CONOCIDAS.has(n);
+}
+
 /** Los dados que hay puestos, en el orden en que se pulsaron, y el modificador aparte. */
 export interface Bandeja {
   dados: Caras[];

@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import type { RollMode } from "@dnd/shared";
 import { Button, Field, fieldControlClass } from "../../ui";
-import { IconoDado, IconoQuitar } from "../../ui/Iconos";
+import { IconoDado, IconoMas, IconoMenos, IconoQuitar } from "../../ui/Iconos";
 import { SelectorDeVentaja } from "./SelectorDeVentaja";
 import { DADOS_DE_ATAJO } from "./vocabulario";
 import {
   type Bandeja,
-  type Caras,
   admiteVentaja,
   admiteVentajaEnTexto,
   conDado,
@@ -146,10 +145,10 @@ export function BandejaDeDados({
               type="button"
               variant="secondary"
               disabled={disabled}
-              onClick={() => aplicar(conDado(valor, caras as Caras))}
+              onClick={() => aplicar(conDado(valor, caras))}
               aria-label={`Añadir un d${caras}`}
             >
-              <IconoDado caras={caras as Caras} />
+              <IconoDado caras={caras} />
               <span className="font-data">d{caras}</span>
             </Button>
           ))}
@@ -206,7 +205,10 @@ export function BandejaDeDados({
           onClick={() => aplicar(conModificador(valor, -1))}
           aria-label="Bajar el modificador"
         >
-          −
+          {/* Revisión final de la rama (2026-09-13): **dibujados, no «−» y «+» de fuente.** El
+              barrido de la Tarea 7 no los vio por el `=>` del `onClick` (ya corregido en la
+              prueba); el nombre accesible lo sigue dando el `aria-label`. */}
+          <IconoMenos />
         </Button>
         <span className="min-w-[3ch] text-center font-data text-chrome-sm text-text">
           {valor.modificador}
@@ -218,7 +220,7 @@ export function BandejaDeDados({
           onClick={() => aplicar(conModificador(valor, 1))}
           aria-label="Subir el modificador"
         >
-          +
+          <IconoMas />
         </Button>
       </div>
 

@@ -52,9 +52,31 @@ const ficheros = [
   ...ficherosTsxBajo(join(RAIZ, "src", "features")),
 ];
 
+// Revisión final de la rama (2026-09-13). **El regex de la primera versión, `<Button[^>]*>`, se
+// paraba en el `>` del `=>` de un `onClick={() => …}`** y por eso el «+» y el «−» de fuente de
+// los botones del modificador (`BandejaDeDados.tsx`) sobrevivieron al barrido de la Tarea 7:
+// tenían `onClick` con flecha delante del cuerpo. Los atributos de apertura se leen ahora
+// tolerando `=>` — un `>` cuenta como cierre de la etiqueta solo si no viene de `=>`. Y el
+// glifo cuenta si va seguido de un espacio O del cierre `<`: `>+</Button>` es el mismo «+» de
+// fuente aunque no lleve salto de línea detrás. Un «+1» de texto sigue sin coincidir.
+const BOTON_QUE_EMPIEZA_POR_MAS = /<Button(?:[^>]|=>)*>\s*[+−-](?:\s|<)/;
+
 describe("los botones primarios de página llevan icono dibujado", () => {
-  it("ningún botón empieza por un «+» de fuente", () => {
-    const culpables = ficheros.filter((f) => /<Button[^>]*>\s*\+\s/.test(readFileSync(f, "utf8")));
+  it("el barrido ve el «+» aunque el botón lleve un onClick con flecha delante", () => {
+    // La pieza que faltaba, probada contra el propio regex: si vuelve a `[^>]*`, esto se pone rojo.
+    expect(BOTON_QUE_EMPIEZA_POR_MAS.test("<Button onClick={() => x()}>+</Button>")).toBe(true);
+    expect(BOTON_QUE_EMPIEZA_POR_MAS.test("<Button onClick={() => x()}>\n  −\n</Button>")).toBe(
+      true,
+    );
+    expect(BOTON_QUE_EMPIEZA_POR_MAS.test("<Button onClick={() => x()}>Guardar</Button>")).toBe(
+      false,
+    );
+  });
+
+  it("ningún botón empieza por un «+» ni un «−» de fuente", () => {
+    const culpables = ficheros.filter((f) =>
+      BOTON_QUE_EMPIEZA_POR_MAS.test(readFileSync(f, "utf8")),
+    );
     expect(culpables).toEqual([]);
   });
 

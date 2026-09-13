@@ -222,6 +222,34 @@ describe("PanelDeDados — tirar", () => {
   });
 });
 
+// Revisión final de la rama (2026-09-13). **«Tirar» nunca se deshabilita por bandeja vacía**
+// (docs/04-convenciones.md, «el botón de guardar nunca se deshabilita: deshabilitado no recibe
+// foco de teclado y tiene mal contraste»), igual que resolvió T5 «Guardar la sala»: se pulsa,
+// el rechazo se explica en línea junto al campo, y no sale ninguna petición. La única razón
+// de apagarlo que queda es `isPending`, como en el resto de la aplicación.
+describe("PanelDeDados — Tirar con la bandeja vacía", () => {
+  it("sigue habilitado, explica en línea qué falta y no manda nada", async () => {
+    const crear = vi.spyOn(rollsApi, "createRoll");
+    pintar();
+
+    // La bandeja empieza con un d20; se quita para dejarla vacía.
+    fireEvent.click(screen.getByRole("button", { name: "Quitar el d20 (posición 1)" }));
+    const tirar = screen.getByRole("button", { name: "Tirar" });
+    expect(tirar).not.toHaveAttribute("aria-disabled");
+
+    fireEvent.click(tirar);
+
+    // El motivo, en línea y junto al campo «Qué se tira» (que se abre solo con el error).
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(
+      "Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.",
+    );
+    expect(screen.getByLabelText("Qué se tira")).toHaveAttribute("aria-invalid", "true");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(crear).not.toHaveBeenCalled();
+  });
+});
+
 describe("PanelDeDados — la audiencia es una decisión visible", () => {
   it("son tres radios con su frase, no un desplegable", () => {
     pintar();

@@ -166,6 +166,20 @@ describe("el hilo, con nombres", () => {
         ),
       ).toBe("Sylas pierde 7 PG ← Alguien");
     });
+
+    // Revisión final de la rama (2026-09-13). `rollEventId` cita CUALQUIER tirada, no solo un
+    // ataque: la hoja cita «2d6 de caída» desde `PuntosDeGolpe` y esa tirada no tiene ningún
+    // `ATTACK_RESOLVED` detrás. Con la versión anterior, «hay rollEventId» contaba como «se
+    // citó un origen» y el daño salía con «← Alguien» — un atacante inventado para una caída.
+    // «Alguien» solo cuando el DM citó a alguien a mano y este espectador no lo ve.
+    it("tirada citada sin ataque → sin origen", () => {
+      expect(
+        lineaDeLog(
+          { type: "HP_CHANGED", delta: -7, from: 20, to: 13, rollEventId: "roll-caida" },
+          { sujeto: "Sylas", nombres },
+        ),
+      ).toBe("Sylas pierde 7 PG");
+    });
   });
 
   describe("sujetoEnCabecera: la cabecera ya dijo el nombre, la frase no lo repite", () => {

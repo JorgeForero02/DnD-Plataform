@@ -75,6 +75,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md`](./_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md) | **Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md`](./_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md) | **Tarea 9 del pulido: el servidor dice qué dado cayó, `dice[]` por dado**, movida entera el 2026-09-13 al escribir la entrada de la Task 14 bis (el mundo como árbol con detalle): el fichero estaba en 977 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-13-tarea-10-bandeja-de-dados.md`](./_archivo/historial-2026-09-13-tarea-10-bandeja-de-dados.md) | **Tarea 10 del pulido: la bandeja de dados, pulsar y no escribir**, movida entera el 2026-09-13 al escribir la ronda 1 de la Task 14 bis: el fichero quedaba en 1002 de 1000 y era la entrada completa más antigua. Sus rondas de arreglo y su hito se quedan arriba |
+> | [`_archivo/historial-2026-09-13-ronda-arreglo-tarea-10.md`](./_archivo/historial-2026-09-13-ronda-arreglo-tarea-10.md) | **La ronda de arreglo 1 de la tarea 10 del pulido** —el d20 al principio, plegar devuelve el control, la pila se distingue—, movida entera el 2026-09-13 al escribir la entrada de la revisión final de la rama: el fichero estaba en 983 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -85,6 +86,53 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Revisión final de la rama: ningún atacante inventado, caras desconocidas en texto, iconos dibujados en el modificador, «Tirar» nunca se apaga (2026-09-13)
+
+Qué — cuatro hallazgos de la revisión de toda la rama `pulido/antes-del-paso-3`, en un commit.
+**(1)** `origenDeGolpe` (`linea-de-log.ts`) trataba «hay `rollEventId`» como «se citó un origen» y
+ponía «← Alguien» a un daño cuya tirada no tenía ningún `ATTACK_RESOLVED` detrás —la hoja cita
+«2d6 de caída» desde `PuntosDeGolpe`—: un atacante inventado para una caída. Ahora «Alguien» sale
+**solo** cuando el DM citó un `sourceCharacterId` que este espectador no ve; con `rollEventId`
+solo, se nombra al atacante deducido o no se dice nada. **(2)** `ResultadoDeTirada` colaba con un
+`as Caras` cualquier número de caras a `IconoDado`, que solo dibuja siete, y `2d7` o `1d1000`
+(escritos en «Modo avanzado»; el servidor admite hasta 1000) pintaban un `<svg data-icono="d7">`
+vacío. `esCaraConocida(n): n is Caras` vive en `bandeja.ts` junto al tipo; conocida → icono,
+desconocida → la etiqueta `d7` en `font-data` —nunca un d20 disfrazado, «un dado, una forma»
+(D-CF-62)—. Se van los casts: `DADOS_DE_ATAJO` es `readonly Caras[]` e `IconoDado` recibe `Caras`.
+**(3)** Los botones del modificador de `BandejaDeDados` eran un «−» y un «+» de fuente —lo que el
+barrido de la Tarea 7 prohíbe— y el barrido no los vio porque su regex `<Button[^>]*>` se paraba
+en el `>` del `=>` del `onClick`. `IconoMenos` nuevo (trazo 1.6, `data-icono="menos"`), `IconoMas`
+en el otro, `aria-label` intactos; y el regex del barrido tolera `=>` en los atributos
+(`(?:[^>]|=>)*`) y el glifo seguido de `<`, con una prueba que lo demuestra contra el fixture
+`<Button onClick={() => x()}>+</Button>`. **(4)** «Tirar» se deshabilitaba con la bandeja vacía
+(`PanelDeDados`, `PanelDeDadosDeLaMesa`), y «Dárselos»/«Quedarse con los N nuevos»
+(`DarTemporales`) con un 0 o un campo vacío — contra `04-convenciones.md` («el botón de guardar
+nunca se deshabilita: no recibe foco de teclado») y contra cómo T5 resolvió «Guardar la sala».
+Ahora siguen habilitados; pulsar con nada que tirar escribe en línea, junto a «Qué se tira»,
+«Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.» y no manda nada; los del
+bestiario escriben «Escribe cuántos PG temporales nuevos son.» con `aria-invalid` en el campo. Se
+retira el `sr-only` con `aria-describedby` que solo existía para el estado apagado. La única
+razón de apagar que queda es la petición en curso (y, en el bestiario, la hoja sin `version`).
+
+Por qué — (1) y (2) son mentiras en pantalla: un origen que no hubo y un dado sin forma ni nombre.
+(3) es la regla de iconos con un agujero en su propio control. (4) es una convención vinculante
+que tres pantallas nuevas contradecían mientras una cuarta, de la misma rama, la cumplía.
+
+Pruebas — TDD, rojo primero en las cuatro: `linea-de-log-con-nombres.test.ts` +1 («tirada citada
+sin ataque → sin origen»); `ResultadoDeTirada.test.tsx` +1 (caras 7: texto `d7`, ningún
+`data-icono="d7"` ni `d20`); `bandeja.test.ts` +2 (`esCaraConocida`); `botones-con-icono.test.tsx`
++1 (el fixture con `=>`) y el barrido amplía a «−»; `Iconos.test.tsx` cuenta 31; `PanelDeDados.test.tsx`
++1, `PanelDeDadosDeLaMesa.test.tsx` +1 y `DarTemporales.test.tsx` +2 −1 (la del candado pasa a
+«habilitado + error + sin petición»). Mutación con `cp`: devolver el guard viejo a `origenDeGolpe`
+enrojece la nueva de (1); hacer que `esCaraConocida` devuelva siempre `true` enrojece dos de (2).
+`pnpm --filter @dnd/web test -- src/features/rolls src/features/sessions src/features/bestiario
+src/ui`: 56 ficheros, 532/532. Playwright (dados, tirada, espacios, bestiario, sesion, combate,
+tokens-contrast) a cargo del orquestador.
+
+Revertir — `git revert` del commit; ningún dato ni migración de por medio.
 
 ---
 
@@ -341,45 +389,13 @@ dibujados en vez de escribiendo notación, con la pila a la vista y el modo avan
 
 ---
 
-## Ronda de arreglo de la tarea 10: el d20 al principio, plegar devuelve el control, la pila se distingue (2026-09-13)
+## Ronda de arreglo de la tarea 10: el d20 al principio, plegar devuelve el control, la pila se distingue (2026-09-13) — archivada
 
-Qué — tres defectos de la revisión (round 1) sobre la bandeja de dados. **El grave**: `admiteVentaja`
-ofrecía el radio con «exactamente un d20 en cualquier posición», pero el servidor
-(`conVentaja`, `apps/api/src/rolls/rolls.service.ts:436`) solo reescribe un `d20` **al
-principio** de la expresión; pulsar d6 y luego d20 componía `1d6+1d20`, ofrecía «Ventaja» y el
-servidor la tiraba normal, sin avisar a nadie. `expresionDeBandeja` antepone el grupo del d20
-cuando hay exactamente uno, sin importar cuándo se pulsó; y cuando el campo escrito a mano es la
-fuente, el radio deja de mirar la bandeja y mira el propio texto (`admiteVentajaEnTexto`, mismo
-criterio que el servidor: `/^\s*1?d20(\b|[^0-9])/`). Extra: `modo` vuelve a `NORMAL` solo cuando
-el radio deja de ofrecerse, para que no se quede pegado en Ventaja sin ningún control que lo
-explique. **Plegar «Modo avanzado» también devuelve el control a la bandeja**: antes, escribir
-`4d6kh3` y plegar el `<details>` dejaba esa expresión mandando escondida; ahora plegar hace lo
-mismo que pulsar un dado. **La pila ya no se confunde con los atajos** (anexo #10): rótulo
-propio «En la bandeja · N dados», superficie de cobre (`border-copper`,
-`bg-[color:var(--copper-tint)]`) en vez del contorno de los atajos, y una «×» dibujada
-(`IconoQuitar`) en cada dado de la pila. De regalo: `expresionDeBandeja` da `""` con la bandeja
-vacía aunque haya modificador puesto (un modificador solo no es una tirada); los dados del
-resultado (`ResultadoDeTirada.tsx`) pasan de números pegados al icono a fichas con borde,
-icono a `h-5 w-5` y valor en `text-chrome-md`, envueltas con `flex-wrap`.
-
-Por qué — el defecto del d20 lo encontró la revisión leyendo el regex de `conVentaja` contra lo
-que la bandeja componía; sin el arreglo, la mitad de la promesa de esta tarea —pulsar dados en
-vez de escribir, y que la ventaja siga siendo real— quedaba rota en el caso más obvio (un ataque:
-el dado de daño primero, el d20 después). La pila sin distinguir de los atajos era el propio
-anexo #10 sin cerrar del todo: «pulsado» y «disponible» tenían la misma silueta.
-
-Pruebas — `bandeja.test.ts`: +7 (el reordenado del d20, dos d20 no se reordenan,
-`admiteVentajaEnTexto` con sus tres casos, la bandeja vacía con modificador). `BandejaDeDados.test.tsx`:
-+5 (el caso d6-luego-d20 ofrece ventaja de verdad; el texto manda sobre la bandeja para el
-radio; plegar devuelve el control; `modo` vuelve a Normal; el rótulo de la pila). Dos pruebas
-existentes con su expectativa corregida al nuevo orden (`"1d6+1d20"` → `"1d20+1d6"`). `pnpm
---filter @dnd/web test -- src/features/rolls`: 89/89. Mutación (ya hecha en la tarea, sigue
-válida: agrupar sin `Map` enrojece `bandeja.test.ts` y `PanelDeDados.test.tsx`). E2E actualizados
-(no corridos por el agente, mismo alcance que la tarea): `exact: true` en los botones de la
-bandeja que ya escribían pruebas de la tarea, y `tokens-contrast.spec.ts` mide también el borde
-de la pila y el rótulo «En la bandeja».
-
-Revertir — `git revert` del commit; ningún dato ni migración de por medio.
+**Movida entera** a [`_archivo/historial-2026-09-13-ronda-arreglo-tarea-10.md`](./_archivo/historial-2026-09-13-ronda-arreglo-tarea-10.md)
+el 2026-09-13, al escribir la entrada de la revisión final de la rama: el fichero estaba en 983 de
+1000 y era la entrada completa más antigua. En una línea: el d20 va al principio de la expresión
+compuesta (el servidor solo da ventaja ahí), plegar «Modo avanzado» devuelve el control a la
+bandeja, y la pila se distingue de los atajos.
 
 ---
 

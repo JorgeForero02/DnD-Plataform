@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
 import { Button, Field, fieldControlClass, Panel } from "../../ui";
 import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
@@ -70,7 +70,6 @@ function mensajeDeError(error: unknown): string {
 }
 
 export function PanelDeDados({ campaignId }: { campaignId: string }) {
-  const idMotivoTirar = useId();
   // Task 10 — la bandeja empieza con un d20, como el «1d20» de siempre: es lo que hace que
   // «Ventaja» siga visible desde el primer render, igual que antes de esta tarea.
   const [bandeja, setBandeja] = useState<Bandeja>(() => conDado(BANDEJA_VACIA, 20));
@@ -95,6 +94,16 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
   const etiqueta = motivo.trim() || "modificador";
 
   function alTirar() {
+    // Revisión final de la rama (2026-09-13). **«Tirar» no se apaga por bandeja vacía**
+    // (docs/04-convenciones.md: «el botón de guardar nunca se deshabilita: deshabilitado no
+    // recibe foco de teclado y tiene mal contraste»), igual que T5 resolvió «Guardar la sala»:
+    // se pulsa, el rechazo se explica en línea junto a «Qué se tira» —`BandejaDeDados` abre el
+    // modo avanzado sola cuando hay error— y no sale ninguna petición.
+    if (expresion.trim() === "") {
+      setResultado(null);
+      setError("Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.");
+      return;
+    }
     const cdNumero = cd.trim() === "" ? undefined : Number(cd);
     setError(null);
     tirar.mutate(
@@ -227,23 +236,16 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
               </div>
 
               <div className="flex items-center gap-s2">
+                {/* **Solo `isPending` lo apaga.** Con la bandeja vacía sigue habilitado y es
+                    `alTirar` quien explica en línea qué falta (ver arriba). */}
                 <Button
                   type="button"
                   variant="primary"
                   onClick={alTirar}
-                  disabled={tirar.isPending || expresion.trim() === ""}
-                  aria-describedby={idMotivoTirar}
+                  disabled={tirar.isPending}
                 >
                   Tirar
                 </Button>
-                {/* Round 2 de revisión (anexo #8) — **siempre montado**, nunca un `title` a
-                    secas: un `title` no lo anuncia ningún lector de pantalla de forma fiable, y
-                    «se deshabilita, nunca se esconde, con su motivo» (docs/04-convenciones.md)
-                    pide que el motivo se pueda leer. `sr-only` no ocupa espacio, así que su
-                    texto vacío/lleno tampoco mueve nada. */}
-                <span id={idMotivoTirar} className="sr-only">
-                  {expresion.trim() === "" ? "Añade al menos un dado para tirar." : ""}
-                </span>
                 <Button
                   type="button"
                   variant="secondary"

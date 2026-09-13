@@ -121,7 +121,6 @@ export function PanelDeDadosDeLaMesa({
   onCerrar: () => void;
 }) {
   const idGuia = useId();
-  const idMotivoTirar = useId();
   // Task 10 — la bandeja empieza con un d20 cuando nadie pidió otra cosa (el «1d20» de siempre);
   // si quien abre el panel trae SU PROPIA expresión (un ataque, «1d8+5»), no hay bandeja que la
   // represente sin inventarse una composición que nadie pidió, así que empieza vacía y el texto
@@ -159,6 +158,15 @@ export function PanelDeDadosDeLaMesa({
 
   function alTirar() {
     const expr = expresion.trim();
+    // Revisión final de la rama (2026-09-13). **«Tirar» no se apaga por bandeja vacía**: mismo
+    // criterio que `PanelDeDados.tsx` y que T5 «Guardar la sala» (docs/04-convenciones.md). El
+    // rechazo va en línea, junto a «Qué se tira», y no sale ninguna petición.
+    if (expr === "") {
+      setResultado(null);
+      setMomento("antes");
+      setError("Añade un dado a la bandeja, o escribe una expresión en Modo avanzado.");
+      return;
+    }
     // **La CD viaja, y sin ella no hay veredicto.** El servidor deja `outcome` en `NO_DC` cuando
     // no se le dice contra qué se tira (`roll.schema.ts`), así que omitirla no es «una tirada sin
     // dificultad»: es una tirada de la que nadie puede decir si salió bien. Se manda solo cuando
@@ -365,22 +373,12 @@ export function PanelDeDadosDeLaMesa({
             </p>
 
             <div className="flex items-center gap-s2">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={alTirar}
-                disabled={tirar.isPending || expresion.trim() === ""}
-                aria-describedby={idMotivoTirar}
-              >
+              {/* **Solo `isPending` lo apaga**; con la bandeja vacía es `alTirar` quien explica. */}
+              <Button type="button" variant="primary" onClick={alTirar} disabled={tirar.isPending}>
                 <DadoDibujado />
                 {tirar.isPending ? "Tirando…" : "Tirar"}
               </Button>
             </div>
-            {/* Round 2 de revisión (anexo #8) — siempre montado, nunca solo un `title`: ver el
-                mismo motivo en `PanelDeDados.tsx`. */}
-            <span id={idMotivoTirar} className="sr-only">
-              {expresion.trim() === "" ? "Añade al menos un dado para tirar." : ""}
-            </span>
           </div>
         )}
 

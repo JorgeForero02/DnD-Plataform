@@ -158,21 +158,25 @@ export interface ContextoDeLinea {
  *  2. **Si `sourceCharacterId` vino pero este espectador no lo ve** (o no vino ninguno) **y hay
  *     `rollEventId`**, el atacante de esa tirada — con el prefijo «ataque de», que es lo que
  *     distingue una cita directa de una recuperada por deducción.
- *  3. **Si se citó un origen —cualquiera de los dos campos— y ninguno se pudo nombrar**, «Alguien»
- *     y no silencio: se sabe que hubo un origen, solo que este espectador no lo ve, y callarlo
- *     sería mentir por omisión — el mismo criterio que ya usa `ATTACK_RESOLVED` con su atacante.
- *  4. **Sin ningún campo citado**, nada: un ajuste sin origen declarado no inventa uno.
+ *  3. **Si el DM citó a alguien (`sourceCharacterId`) y ni él ni la tirada se pudieron nombrar**,
+ *     «Alguien» y no silencio: se sabe que hubo un origen, solo que este espectador no lo ve, y
+ *     callarlo sería mentir por omisión — el mismo criterio que ya usa `ATTACK_RESOLVED` con su
+ *     atacante.
+ *  4. **Con `rollEventId` solo, o sin ningún campo, nada.** Revisión final de la rama
+ *     (2026-09-13): `rollEventId` cita CUALQUIER tirada —la hoja cita «2d6 de caída» desde
+ *     `PuntosDeGolpe`— y una caída no tiene atacante. Tratar «hay tirada» como «hubo alguien»
+ *     ponía «← Alguien» a un daño que no vino de nadie: un atacante inventado. La deducción por
+ *     tirada nombra al atacante que encuentra o no dice nada.
  */
 function origenDeGolpe(
   p: Extract<GameEventPayload, { type: "HP_CHANGED" }>,
   nombres?: NombresDelHilo,
 ): string {
-  const origenCitado = Boolean(p.sourceCharacterId) || Boolean(p.rollEventId);
-  if (!origenCitado) return "";
   const directo = p.sourceCharacterId ? (nombres?.personaje(p.sourceCharacterId) ?? null) : null;
   if (directo) return ` ← ${directo}`;
   const deTirada = p.rollEventId ? (nombres?.atacanteDeLaTirada(p.rollEventId) ?? null) : null;
-  return deTirada ? ` ← ataque de ${deTirada}` : " ← Alguien";
+  if (deTirada) return ` ← ataque de ${deTirada}`;
+  return p.sourceCharacterId ? " ← Alguien" : "";
 }
 
 export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {

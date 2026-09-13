@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { useCharacterSheet, useSetHp } from "../character-sheet/hooks";
@@ -35,6 +35,7 @@ export function DarTemporales({
   characterId: string;
   nombre: string;
 }) {
+  const idError = useId();
   const { data: hoja } = useCharacterSheet(campaignId, characterId);
   const fijar = useSetHp(campaignId, characterId);
   const [cuantos, setCuantos] = useState("5");
@@ -51,8 +52,20 @@ export function DarTemporales({
   const version = hoja?.character.version;
   const hayPrevios = actuales > 0;
 
+  // Revisión final de la rama (2026-09-13). **Un 0 o un campo vacío no apagan el botón**
+  // (docs/04-convenciones.md: «el botón de guardar nunca se deshabilita»; T5 «Guardar la sala» lo
+  // resolvió igual): se pulsa, se explica en línea y no sale nada — `tempHp: 0` o `NaN` no es
+  // ninguno de los dos montones que el SRD pide elegir. Lo único que sigue apagando es la
+  // petición en curso y la hoja sin llegar (sin `version` no hay petición posible).
+  const cantidadValida = Number.isFinite(nuevos) && nuevos > 0;
+  const rechazarCantidad = () => setError("Escribe cuántos PG temporales nuevos son.");
+
   const mandar = (eleccion: "mayor" | "los-nuevos") => {
     if (version === undefined) return;
+    if (!cantidadValida) {
+      rechazarCantidad();
+      return;
+    }
     setError(null);
     fijar.mutate(
       {
@@ -64,7 +77,15 @@ export function DarTemporales({
       { onSuccess: () => setPreguntando(false), onError: (e) => setError((e as Error).message) },
     );
   };
-  const alPulsarDarselos = () => (hayPrevios ? setPreguntando(true) : mandar("los-nuevos"));
+  const alPulsarDarselos = () => {
+    if (!cantidadValida) {
+      rechazarCantidad();
+      return;
+    }
+    setError(null);
+    if (hayPrevios) setPreguntando(true);
+    else mandar("los-nuevos");
+  };
 
   return (
     <div className="flex flex-col gap-s1">
@@ -77,6 +98,8 @@ export function DarTemporales({
             className={fieldControlClass + " w-20"}
             value={cuantos}
             onChange={(e) => setCuantos(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? idError : undefined}
           />
         </label>
         <Button
@@ -86,9 +109,7 @@ export function DarTemporales({
           // del personaje —es concurrencia optimista— y sin ella la petición no puede salir. Sin
           // este candado el botón se dejaba pulsar y **no hacía nada en silencio**, que es peor
           // que estar apagado; lo cazó su propia prueba.
-          disabled={
-            version === undefined || !Number.isFinite(nuevos) || nuevos <= 0 || fijar.isPending
-          }
+          disabled={version === undefined || fijar.isPending}
           title={version === undefined ? "Cargando la ficha del PNJ…" : undefined}
           onClick={alPulsarDarselos}
         >
@@ -113,15 +134,9 @@ export function DarTemporales({
             <Button
               type="button"
               variant="secondary"
-              // Mismo candado que «Dárselos»: sin él, borrar el campo o dejarlo en 0 mientras la
-              // pregunta está abierta permitía mandar `tempHp: 0` o `NaN` — un número que no es
-              // ninguno de los dos montones que el SRD pide elegir.
-              disabled={fijar.isPending || !Number.isFinite(nuevos) || nuevos <= 0}
-              title={
-                !Number.isFinite(nuevos) || nuevos <= 0
-                  ? "Escribe cuántos PG temporales nuevos son."
-                  : undefined
-              }
+              // Mismo criterio que «Dárselos»: un 0 o un campo vacío no lo apagan — `mandar` lo
+              // rechaza en línea sin mandar `tempHp: 0` ni `NaN`.
+              disabled={fijar.isPending}
               onClick={() => mandar("los-nuevos")}
             >
               Quedarse con los {nuevos} nuevos
@@ -143,7 +158,7 @@ export function DarTemporales({
       )}
 
       {error && (
-        <p role="alert" className="font-chrome text-chrome-xs text-danger-text">
+        <p id={idError} role="alert" className="font-chrome text-chrome-xs text-danger-text">
           {error}
         </p>
       )}

@@ -132,10 +132,12 @@ describe("dar PG temporales a un PNJ", () => {
     expect(fijar).not.toHaveBeenCalled();
   });
 
-  it("«Quedarse con los N nuevos» lleva el mismo candado que «Dárselos»: 0 o «no numérico» lo apaga", async () => {
-    // Mismo motivo que el candado de «Dárselos»: sin él, vaciar el campo o dejarlo en 0 mientras
-    // la pregunta está abierta permitía mandar `tempHp: 0` o `NaN` — ninguno de los dos montones
-    // que el SRD pide elegir.
+  // Revisión final de la rama (2026-09-13). **Ni «Dárselos» ni «Quedarse con los N nuevos» se
+  // apagan por un 0 o un campo vacío** (docs/04-convenciones.md: «el botón de guardar nunca se
+  // deshabilita»; T5 «Guardar la sala» lo resolvió igual): se pulsan, el rechazo se explica en
+  // línea y no sale ninguna petición — `tempHp: 0` o `NaN` no es ninguno de los dos montones que
+  // el SRD pide elegir. Lo único que sigue apagando es la petición en curso y la hoja sin llegar.
+  it("«Quedarse con los N nuevos» con 0: sigue habilitado, dice «Escribe cuántos» y no manda nada", async () => {
     vi.spyOn(api, "fetchSheet").mockResolvedValue(hoja(8));
     const fijar = vi.spyOn(api, "setHp");
     montar();
@@ -144,11 +146,31 @@ describe("dar PG temporales a un PNJ", () => {
     await waitFor(() => expect(darselos).not.toHaveAttribute("aria-disabled"));
     fireEvent.click(darselos);
 
-    const quedarse = await screen.findByRole("button", { name: /Quedarse con los 5 nuevos/ });
+    await screen.findByRole("alertdialog");
     fireEvent.change(screen.getByLabelText("PG temporales"), { target: { value: "0" } });
-    expect(quedarse).toHaveAttribute("aria-disabled", "true");
+    const quedarse = screen.getByRole("button", { name: /Quedarse con los 0 nuevos/ });
+    expect(quedarse).not.toHaveAttribute("aria-disabled");
 
     fireEvent.click(quedarse);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Escribe cuántos/);
+    await new Promise((r) => setTimeout(r, 0));
     expect(fijar).not.toHaveBeenCalled();
+  });
+
+  it("«Dárselos» con el campo vacío: sigue habilitado, dice «Escribe cuántos» y no manda nada", async () => {
+    vi.spyOn(api, "fetchSheet").mockResolvedValue(hoja(0));
+    const fijar = vi.spyOn(api, "setHp");
+    montar();
+
+    const darselos = await screen.findByRole("button", { name: "Dárselos" });
+    await waitFor(() => expect(darselos).not.toHaveAttribute("aria-disabled"));
+    fireEvent.change(screen.getByLabelText("PG temporales"), { target: { value: "" } });
+    expect(darselos).not.toHaveAttribute("aria-disabled");
+
+    fireEvent.click(darselos);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Escribe cuántos/);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fijar).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 });

@@ -5,6 +5,7 @@ import {
   admiteVentajaEnTexto,
   conDado,
   conModificador,
+  esCaraConocida,
   expresionDeBandeja,
   sinDado,
 } from "../bandeja";
@@ -93,5 +94,18 @@ describe("admiteVentaja", () => {
     expect(admiteVentaja(conDado(conDado(BANDEJA_VACIA, 20), 20))).toBe(false);
     expect(admiteVentaja(conDado(BANDEJA_VACIA, 6))).toBe(false);
     expect(admiteVentaja(BANDEJA_VACIA)).toBe(false);
+  });
+});
+
+// Revisión final de la rama (2026-09-13) — **la guarda de tipo que separa «se dibuja» de «se
+// nombra»**: siete caras conocidas, y cualquier otra (`d3`, `d7`, `d1000` escritas en «Modo
+// avanzado») no es un `Caras` y no lleva icono.
+describe("esCaraConocida", () => {
+  it("acepta exactamente las siete caras de la mesa", () => {
+    expect([4, 6, 8, 10, 12, 20, 100].every(esCaraConocida)).toBe(true);
+  });
+
+  it("rechaza cualquier otro número, incluidos los que el servidor sí admite tirar", () => {
+    expect([1, 2, 3, 7, 30, 1000].some(esCaraConocida)).toBe(false);
   });
 });

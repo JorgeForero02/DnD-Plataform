@@ -39,11 +39,17 @@ export function DarTemporales({
   const fijar = useSetHp(campaignId, characterId);
   const [cuantos, setCuantos] = useState("5");
   const [error, setError] = useState<string | null>(null);
+  // Anexo #20 — **la pregunta es estado explícito, no una derivación del número en el campo.**
+  // Con `hayConflicto = actuales > 0 && nuevos > 0` (el valor viejo), en cuanto el PNJ tenía
+  // algún temporal el `alertdialog` estaba puesto desde el primer render —`cuantos` empieza en
+  // "5"— y «Dárselos» desaparecía: parecía que la pantalla no hacía nada. Ahora solo se
+  // pregunta al pulsar, con temporales previos.
+  const [preguntando, setPreguntando] = useState(false);
 
   const actuales = hoja?.hp.temp ?? 0;
   const nuevos = Number(cuantos);
   const version = hoja?.character.version;
-  const hayConflicto = actuales > 0 && Number.isFinite(nuevos) && nuevos > 0;
+  const hayPrevios = actuales > 0;
 
   const mandar = (eleccion: "mayor" | "los-nuevos") => {
     if (version === undefined) return;
@@ -55,9 +61,10 @@ export function DarTemporales({
         expectedVersion: version,
         reason: `Temporales para ${nombre}`,
       },
-      { onError: (e) => setError((e as Error).message) },
+      { onSuccess: () => setPreguntando(false), onError: (e) => setError((e as Error).message) },
     );
   };
+  const alPulsarDarselos = () => (hayPrevios ? setPreguntando(true) : mandar("los-nuevos"));
 
   return (
     <div className="flex flex-col gap-s1">
@@ -72,28 +79,27 @@ export function DarTemporales({
             onChange={(e) => setCuantos(e.target.value)}
           />
         </label>
-        {!hayConflicto && (
-          <Button
-            type="button"
-            variant="secondary"
-            // **Apagado hasta que la hoja llegue**, y con su motivo: fijar PG exige la `version`
-            // del personaje —es concurrencia optimista— y sin ella la petición no puede salir. Sin
-            // este candado el botón se dejaba pulsar y **no hacía nada en silencio**, que es peor
-            // que estar apagado; lo cazó su propia prueba.
-            disabled={
-              version === undefined || !Number.isFinite(nuevos) || nuevos <= 0 || fijar.isPending
-            }
-            title={version === undefined ? "Cargando la ficha del PNJ…" : undefined}
-            onClick={() => mandar("mayor")}
-          >
-            {fijar.isPending ? "Dándolos…" : "Dárselos"}
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="secondary"
+          // **Apagado hasta que la hoja llegue**, y con su motivo: fijar PG exige la `version`
+          // del personaje —es concurrencia optimista— y sin ella la petición no puede salir. Sin
+          // este candado el botón se dejaba pulsar y **no hacía nada en silencio**, que es peor
+          // que estar apagado; lo cazó su propia prueba.
+          disabled={
+            version === undefined || !Number.isFinite(nuevos) || nuevos <= 0 || fijar.isPending
+          }
+          title={version === undefined ? "Cargando la ficha del PNJ…" : undefined}
+          onClick={alPulsarDarselos}
+        >
+          {fijar.isPending ? "Dándolos…" : "Dárselos"}
+        </Button>
       </div>
 
       {/* **La pregunta del SRD**, con los dos números delante. Nunca «¿seguro?»: lo que hay que
-          decidir es cuál de los dos montones se queda, y eso se decide viéndolos. */}
-      {hayConflicto && (
+          decidir es cuál de los dos montones se queda, y eso se decide viéndolos. Solo sale al
+          pulsar «Dárselos» con temporales previos — nunca sola (anexo #20). */}
+      {preguntando && (
         <div
           role="alertdialog"
           aria-label="Ya tiene PG temporales"
@@ -116,7 +122,11 @@ export function DarTemporales({
               type="button"
               variant="secondary"
               disabled={fijar.isPending}
-              onClick={() => mandar("mayor")}
+              // SRD 5.1: «you decide whether to keep the ones you have or to gain the new ones» —
+              // **conservar es no cambiar nada**. Mandar `tempHpEleccion: "mayor"` (que el
+              // servidor resuelve con `Math.max`) cambiaba igual el PG temporal cuando los
+              // nuevos eran más que los que ya tenía el PNJ (anexo #20).
+              onClick={() => setPreguntando(false)}
             >
               Dejar los {actuales} que tenía
             </Button>

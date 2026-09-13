@@ -8,8 +8,10 @@ import { join } from "node:path";
 // mismo defecto que la regla de iconos ya prohíbe para los glifos sueltos, pero nadie lo barría
 // dentro de un botón. Esta prueba es ese barrido.
 //
-// Regla: todo `<Button>` primario de página (`variant` ausente o "primary") cuyo texto empieza
-// por un verbo de crear/escribir/abrir lleva un `Icono*` dentro, y ningún botón empieza por «+».
+// Regla: todo `<Button>` primario de página (`variant` ausente o "primary") cuyo texto CONTIENE
+// un verbo de crear/escribir/abrir lleva un `Icono*` dentro (el regex no ancla al principio del
+// texto), y ningún botón empieza por «+» —ese sí anclado, porque el `+` de fuente era siempre
+// el primer carácter del cuerpo—.
 //
 // `RAIZ` se calcula con `__dirname`, como `iconos-sin-duplicados.test.ts`, y no con
 // `import.meta.url`: bajo la transformación de Vitest para este fichero ese `import.meta.url` no
@@ -19,6 +21,17 @@ import { join } from "node:path";
 // de ejecución existe desde Node 22, pero los tipos que usa `tsc` aquí son `@types/node@20`
 // (fijados por `apps/api`, del que `apps/web` hereda por el hoisting de pnpm) y ese paquete no
 // lo declara — `pnpm build` fallaría con `TS2305` aunque la prueba pasara en Vitest.
+//
+// **Límites conocidos de este barrido de texto, a propósito** (revisión de la ronda 1): no
+// evalúa JSX, así que un botón cuya etiqueta viene de una variable (`{miVariable}`) no la ve —
+// solo detecta el `+` cuando está escrito literalmente en el JSX— y un `variant={expresion}`
+// (una condición, no la cadena literal `"secondary"`) se trata como si fuera primario, porque
+// la exclusión de variantes solo reconoce el literal `variant="secondary|ghost|danger"`. Y el
+// cuerpo capturado corta en el primer `</Button>` no anidado, así que un `=>` dentro de un
+// atributo (un `onClick={() => …}`) no rompe el emparejamiento con la etiqueta de cierre, pero
+// SÍ cuenta como texto del cuerpo si el regex de creación coincidiera dentro de esa función —no
+// ocurre en el código actual, pero es la clase de falso positivo que un `<Button onClick={() =>
+// crear()}>Guardar</Button>` podría producir si «crear» se escribiera con mayúscula inicial.
 function ficherosTsxBajo(dir: string): string[] {
   const salida: string[] = [];
   for (const entrada of readdirSync(dir, { withFileTypes: true })) {
@@ -57,6 +70,45 @@ describe("los botones primarios de página llevan icono dibujado", () => {
           culpables.push(`${f.slice(RAIZ.length)}: ${cuerpo.trim().slice(0, 40)}`);
         }
       }
+    }
+    expect(culpables).toEqual([]);
+  });
+
+  // Ronda 1 de revisión: 04-convenciones.md dice «toda entrada de navegación lleva icono», pero
+  // hasta aquí esta prueba solo miraba `<Button>` — la frase no tenía con qué sostenerse. Las
+  // entradas de navegación de `CampaignDetailPage.tsx` no son un array literal de objetos: son
+  // el `.map()` de `TABS` que arma cada `TabItem` en su propio `if` (`const items: TabItem[] =
+  // TABS.map((t) => { if (...) return { ... }; ... })`), así que un regex de "objeto entre
+  // llaves" no basta — un `{id}` o un `{/* comentario */}` de JSX dentro del cuerpo cierran su
+  // propia llave antes de tiempo. Por eso el cuerpo de la función se extrae contando llaves
+  // (balanceo real, no regex), y luego se trocea por cada `id: "…"` — un marcador que sí es
+  // único por entrada — para comprobar que el tramo hasta el siguiente `id:` lleva su `icon:`.
+  it("toda entrada de navegación de CampaignDetailPage.tsx lleva icono", () => {
+    const rutaCampaignDetail = join(RAIZ, "src", "pages", "CampaignDetailPage.tsx");
+    const fuente = readFileSync(rutaCampaignDetail, "utf8");
+    const marcador = "const items: TabItem[] = TABS.map((t) => ";
+    const inicioMarcador = fuente.indexOf(marcador);
+    expect(
+      inicioMarcador,
+      `No se encontró "${marcador}" en CampaignDetailPage.tsx`,
+    ).toBeGreaterThan(-1);
+    const aperturaLlave = fuente.indexOf("{", inicioMarcador + marcador.length);
+    let profundidad = 1;
+    let i = aperturaLlave + 1;
+    for (; i < fuente.length && profundidad > 0; i++) {
+      if (fuente[i] === "{") profundidad++;
+      else if (fuente[i] === "}") profundidad--;
+    }
+    const cuerpo = fuente.slice(aperturaLlave + 1, i - 1);
+
+    const marcasId = [...cuerpo.matchAll(/id:\s*"([a-z]+)"/g)];
+    expect(marcasId.length).toBeGreaterThan(0);
+    const culpables: string[] = [];
+    for (let n = 0; n < marcasId.length; n++) {
+      const desde = marcasId[n].index!;
+      const hasta = n + 1 < marcasId.length ? marcasId[n + 1].index! : cuerpo.length;
+      const bloque = cuerpo.slice(desde, hasta);
+      if (!/icon:\s*</.test(bloque)) culpables.push(marcasId[n][1]);
     }
     expect(culpables).toEqual([]);
   });

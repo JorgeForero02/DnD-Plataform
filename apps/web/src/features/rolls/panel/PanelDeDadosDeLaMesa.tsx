@@ -271,7 +271,8 @@ export function PanelDeDadosDeLaMesa({
                     aria-label={`Añadir un d${caras}`}
                   >
                     {/* Tarea 7 — el atajo dibuja SU dado, no siempre el icosaedro: cada `caras`
-                        tiene su propia forma («un dado, una forma», 04-convenciones). */}
+                        tiene su propia forma («un dado, una forma», docs/decisiones.md D-CF-62,
+                        con la regla de texto en 04-convenciones.md). */}
                     <IconoDado caras={caras as 4 | 6 | 8 | 10 | 12 | 20 | 100} />
                     <span className="font-data">d{caras}</span>
                   </Button>

@@ -228,14 +228,18 @@ export function IconoCorazon({ className }: IconoProps) {
   );
 }
 
-/** D20: la tirada. El dado de veinte caras visto de frente. */
+/**
+ * D20: la tirada. El dado de veinte caras visto de frente.
+ *
+ * Revisión de la Tarea 7 (ronda 1): esto dibujaba **su propio** icosaedro, con un `data-icono`
+ * idéntico al de `IconoDado caras={20}` — dos siluetas para un mismo dado, justo lo que «un
+ * dado, una forma» prohíbe (`docs/decisiones.md`, D-CF-62; la regla de texto en
+ * `04-convenciones.md`, Task 0). Pasa a delegar: el rail de sesiones y «pedir tirada» siguen
+ * importando `IconoD20` sin cambiar una línea, y ahora comparten trazo con el resto de la
+ * familia de seis.
+ */
 export function IconoD20({ className }: IconoProps) {
-  return (
-    <Marco className={className} data-icono="d20">
-      <path d="M12 3l8 5v8l-8 5-8-5V8l8-5z" />
-      <path d="M12 3v18M4 8l8 5 8-5M12 3l-8 5m8-5l8 5" />
-    </Marco>
-  );
+  return <IconoDado caras={20} className={className} />;
 }
 
 /** Ojo: visible, revelado, «la mesa lo sabe». */
@@ -408,16 +412,20 @@ export function IconoPluma({ className }: IconoProps) {
 /**
  * Tarea 7 (C3 #12, #22) — los seis dados, un dibujo por forma, y el menú de tres puntos.
  *
- * `IconoD20` de arriba ya dibujaba el icosaedro suelto (el rail de sesiones, «pedir tirada»); este
- * es distinto: **un dado concreto entre siete valores** (`caras`), para el atajo «añade un dX» de
- * `PanelDeDados`/`PanelDeDadosDeLaMesa` y para `DadoDibujado`, que pasa a delegar aquí. Vivía
- * duplicado en `features/rolls/DadoDibujado.tsx` porque `ui/Iconos.tsx` era de otro carril
- * cuando se escribió (comentario de F3, ahí mismo) — la mudanza que ese comentario prometía.
+ * `IconoD20` de arriba **delega aquí** (`caras={20}`) desde la revisión de ronda 1: dibujaba su
+ * propio icosaedro para el rail de sesiones y «pedir tirada», y ese segundo dibujo era la misma
+ * infracción que esta regla existe para impedir — dos siluetas para un `data-icono="d20"`. Este
+ * componente es **un dado concreto entre siete valores** (`caras`), para el atajo «añade un dX»
+ * de `PanelDeDados`/`PanelDeDadosDeLaMesa` y para `DadoDibujado`, que también pasa a delegar
+ * aquí. Vivía duplicado en `features/rolls/DadoDibujado.tsx` porque `ui/Iconos.tsx` era de otro
+ * carril cuando se escribió (comentario de F3, ahí mismo) — la mudanza que ese comentario
+ * prometía.
  *
- * **Un dado, una forma** (`docs/04-convenciones.md`): tetraedro (d4), cubo (d6), octaedro (d8),
- * trapezoedro (d10 y d100 — el d100 se lee como «d10 de decenas» y comparte silueta con el d10,
- * no dibuja un segundo dado), dodecaedro (d12) e icosaedro (d20 — la misma silueta de
- * `DadoDibujado`, para que el atajo `d20` no cambie de dibujo al mudarse).
+ * **Un dado, una forma** (`docs/decisiones.md`, D-CF-62; la regla de texto en
+ * `04-convenciones.md`, Task 0): tetraedro (d4), cubo (d6), octaedro (d8), trapezoedro (d10 y
+ * d100 — el d100 se lee como «d10 de decenas» y comparte silueta con el d10, no dibuja un
+ * segundo dado), dodecaedro (d12) e icosaedro (d20 — la misma silueta que traía `DadoDibujado`
+ * e `IconoD20` antes de delegar, para que ninguno de los dos cambiara de dibujo al mudarse).
  */
 export function IconoDado({
   caras,
@@ -429,7 +437,11 @@ export function IconoDado({
       {forma === 4 && (
         <>
           <path d="M12 3l9 16H3z" />
-          <path d="M12 3v16M12 19l-9 0M12 19l9 0" />
+          {/* Revisión ronda 1: eran dos segmentos del vértice inferior que **retrazaban la
+              base** (ya cerrada por el `z` de arriba) en vez de dibujar el tetraedro. Un
+              tetraedro de frente se ve así: el contorno y, desde el centroide, un rayo a cada
+              vértice. */}
+          <path d="M12 13.7 12 3M12 13.7 21 19M12 13.7 3 19" />
         </>
       )}
       {forma === 6 && (
@@ -441,7 +453,12 @@ export function IconoDado({
       {forma === 8 && (
         <>
           <path d="M12 2l8 10-8 10L4 12z" />
-          <path d="M4 12h16M12 2l-8 10M12 2l8 10" />
+          {/* Revisión ronda 1: los dos segmentos del vértice superior a los vértices
+              izquierdo/derecho **retrazaban el contorno** (ya cerrado por el `z` de arriba).
+              El octaedro se ve de frente como el rombo con su ecuador y el eje vertical que
+              conecta los dos vértices que faltan por el centro — ninguna de las dos líneas
+              repite una arista del contorno. */}
+          <path d="M4 12h16M12 2v20" />
         </>
       )}
       {forma === 10 && (

@@ -43,12 +43,6 @@ async function crearCampana(page: Page, nombre: string) {
   await expect(page.getByRole("heading", { name: nombre })).toBeVisible();
 }
 
-/** Abre una pestaña de la hoja y espera a que sea la activa (`hoja-pestanas.spec.ts`). */
-async function abrirPestana(page: Page, nombre: string) {
-  await page.getByRole("tab", { name: nombre }).click();
-  await expect(page.getByRole("tab", { name: nombre, selected: true })).toBeVisible();
-}
-
 test("el DM fija «dados, 3d6, 2 intentos»; el jugador tira, ve seis dados con sus caras, elige el segundo, la hoja deriva y no deja editarlas", async ({
   browser,
 }: {
@@ -66,7 +60,7 @@ test("el DM fija «dados, 3d6, 2 intentos»; el jugador tira, ve seis dados con 
   await expect(bloqueDeReglas).toBeVisible();
   await bloqueDeReglas.getByRole("radio", { name: /Con dados/ }).click();
   await bloqueDeReglas.getByLabel("Expresión de dados").fill("3d6");
-  await bloqueDeReglas.getByLabel("Intentos").fill("2");
+  await bloqueDeReglas.getByRole("spinbutton", { name: "Intentos" }).fill("2");
   await bloqueDeReglas.getByRole("button", { name: "Guardar las reglas" }).click();
   // Guardar entero no deja ningún `role="alert"` de error en el bloque.
   await expect(bloqueDeReglas.getByRole("alert")).toHaveCount(0);
@@ -78,7 +72,7 @@ test("el DM fija «dados, 3d6, 2 intentos»; el jugador tira, ve seis dados con 
   const bloqueTrasRecargar = dmPage.getByRole("region", { name: "Reglas de la mesa" });
   await expect(bloqueTrasRecargar.getByRole("radio", { name: /Con dados/ })).toBeChecked();
   await expect(bloqueTrasRecargar.getByLabel("Expresión de dados")).toHaveValue("3d6");
-  await expect(bloqueTrasRecargar.getByLabel("Intentos")).toHaveValue("2");
+  await expect(bloqueTrasRecargar.getByRole("spinbutton", { name: "Intentos" })).toHaveValue("2");
 
   // Invitar a un jugador — mismo camino que `invitacion.spec.ts`: generar y leer el enlace de
   // la pantalla, no construirlo a mano.
@@ -143,16 +137,20 @@ test("el DM fija «dados, 3d6, 2 intentos»; el jugador tira, ve seis dados con 
   // Un segundo intento: el DM permitió dos.
   await playerPage.getByRole("button", { name: "Tirar características" }).click();
   await expect(playerPage.getByText("Intento 2 de 2")).toBeVisible();
-  // Agotados los dos intentos: el botón de tirar ya no está.
-  await expect(playerPage.getByRole("button", { name: "Tirar características" })).toHaveCount(0);
+  // Agotados los dos intentos: el botón NO se esconde ni se deshabilita (regla de la casa: el
+  // error se escribe en línea y no se manda nada); un tercer clic lo dice.
+  await playerPage.getByRole("button", { name: "Tirar características" }).click();
+  await expect(playerPage.getByText("Ya usaste los 2 intentos.")).toBeVisible();
+  await expect(playerPage.getByText("Intento 3 de 2")).toHaveCount(0);
 
   const segundoIntento = playerPage.getByText("Intento 2 de 2").locator("..");
   // `asignacionLibre` es `true` por defecto (no se tocó al guardar): hay un `<select>` por
-  // característica para repartir los seis valores tirados. Se asigna cada valor a la
-  // característica de su mismo índice, en orden — reparto válido con seis selects.
+  // característica para repartir los seis valores tirados, y **se agotan**: cada valor asignado
+  // desaparece de los demás. Así que a cada característica se le da el primer valor que quede
+  // (índice 1; el 0 es «—»), que siempre existe — un reparto válido con seis selects.
   const etiquetas = ["Fuerza", "Destreza", "Constitución", "Inteligencia", "Sabiduría", "Carisma"];
-  for (let i = 0; i < etiquetas.length; i++) {
-    await segundoIntento.getByLabel(etiquetas[i], { exact: true }).selectOption({ index: i + 1 });
+  for (const etiqueta of etiquetas) {
+    await segundoIntento.getByLabel(etiqueta, { exact: true }).selectOption({ index: 1 });
   }
   await segundoIntento.getByRole("button", { name: "Quedarme con este" }).click();
 
@@ -188,6 +186,8 @@ test("clase fuera de permitidos no se ofrece al crear, y un valor guardado que d
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("heading", { name: "Nuevo personaje" })).toBeHidden();
 
+  // El cajón «Personajes» es un diálogo que tapa las pestañas: se cierra antes de ir a Ajustes.
+  await page.getByRole("button", { name: "Cerrar (Escape)" }).click();
   // El DM (aquí, la misma cuenta: es el único jugador) restringe las clases a «Guerrero».
   await page.getByRole("tab", { name: "Ajustes" }).click();
   const bloqueDeReglas = page.getByRole("region", { name: "Reglas de la mesa" });
@@ -211,7 +211,9 @@ test("clase fuera de permitidos no se ofrece al crear, y un valor guardado que d
   // mecanismo huérfano, no un valor que desapareció.
   await page.getByRole("link", { name: /Vex la Huérfana/ }).click();
   await expect(page.getByRole("heading", { name: "Vex la Huérfana" })).toBeVisible();
-  await abrirPestana(page, "Rasgos");
+  // Sin las seis características la hoja no deriva y no hay pestañas: la «Ficha» (raza, clase,
+  // nivel) se pinta directamente, sin pasar por «Rasgos».
+  await expect(page.getByRole("region", { name: "ficha del personaje" })).toBeVisible();
 
   // El select en sí sigue editable (esta cuenta es DM y dueña a la vez); lo que no se puede
   // volver a elegir es la opción huérfana concreta — sigue ahí, marcada, y deshabilitada.
@@ -221,5 +223,6 @@ test("clase fuera de permitidos no se ofrece al crear, y un valor guardado que d
     hasText: "Mago — guardado, ya no disponible",
   });
   await expect(opcionHuerfana).toHaveCount(1);
-  await expect(opcionHuerfana).toBeDisabled();
+  // `toBeDisabled` no aplica a `<option>`: se mira el atributo.
+  await expect(opcionHuerfana).toHaveAttribute("disabled", "");
 });

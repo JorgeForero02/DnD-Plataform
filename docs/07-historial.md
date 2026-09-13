@@ -157,11 +157,13 @@ cuando hay alguno activo.
 Por qué — el anexo #21 lo pedía por paridad con el bestiario, que ya resolvió el mismo problema
 con el mismo patrón de chips.
 
-Evidencia — unitaria nueva (anexo #21): con 1 objeto propio + 2 del SRD, pulsar «Arma» deja 2
-filas y pulsar además «De la campaña» deja 1 («Daga de la casa»). e2e: en el recorrido del
-catálogo, pulsar «Armadura» dejar sin «Daga» y con «Cota de mallas» (no corrido en esta sesión, a
-cargo del orquestador). Mutación: ignorar `tipo` en el filtro hace fallar la unitaria nueva
-(restaurado con `cp`).
+Evidencia — unitarias nuevas (anexo #21): con 1 objeto propio + 2 del SRD, pulsar «Arma» deja 2
+filas y pulsar además «De la campaña» deja 1 («Daga de la casa»); y el `EmptyState` nombra los
+filtros cuando no hay coincidencia. e2e (`inventario.spec.ts`, el recorrido que ya crea un objeto
+propio y lo distingue del SRD — no hay fichero dedicado al catálogo): tras crear «Farol de
+marea», pulsar «Armadura» deja «Cota de malla» (SRD) y quita «Daga» (SRD, arma) — no corrido en
+esta sesión, a cargo del orquestador. Mutación: quitar la condición de `tipo` del filtro hace
+fallar las dos unitarias nuevas (restaurado con `cp`).
 
 **Revertir:** en `CampaignItemsCatalogPage.tsx`, quitar los dos `useState` de `tipo`/`origen`, sus
 condiciones en el filtro y los dos `<Toolbar>` de `FilterChip`; devolver el `EmptyState` a su

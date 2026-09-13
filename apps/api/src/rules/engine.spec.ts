@@ -207,6 +207,39 @@ describe("puntos de golpe máximos", () => {
   });
 });
 
+describe("PG máximos con hitPointsPerLevel (reglas de la mesa, E-RM-3)", () => {
+  it("usa los valores guardados en vez de la media para los niveles que cubren, y la media para el resto", () => {
+    // Guerrero d10, CON 14 (+2), nivel 4, con [10, 3] guardados para los niveles 2 y 3.
+    // Nivel 1: 10+2 · nivel 2: 10+2 · nivel 3: 3+2 · nivel 4 (media 6): 6+2 → 37.
+    const hoja = derive(
+      personaje({
+        level: 4,
+        hitDieSize: 10,
+        abilities: { str: 10, dex: 10, con: 14, int: 10, wis: 10, cha: 10 },
+        hitPointsPerLevel: [10, 3],
+      }),
+    );
+    expect(hoja.derived.maxHp.total).toBe(37);
+    const pasos = hoja.derived.maxHp.steps.map((p) => p.labelKey);
+    expect(pasos).toContain("maxHp.perLevelAtCreation");
+    expect(pasos).toContain("maxHp.perLevel"); // la media del nivel 4
+  });
+
+  it("sin hitPointsPerLevel el número es el de siempre", () => {
+    const hoja = derive(
+      personaje({
+        level: 4,
+        hitDieSize: 10,
+        abilities: { str: 10, dex: 10, con: 14, int: 10, wis: 10, cha: 10 },
+      }),
+    );
+    expect(hoja.derived.maxHp.total).toBe(10 + 2 + 3 * (6 + 2));
+    expect(hoja.derived.maxHp.steps.map((p) => p.labelKey)).not.toContain(
+      "maxHp.perLevelAtCreation",
+    );
+  });
+});
+
 describe("salvaciones, habilidades y pericia", () => {
   it("una salvación con competencia suma el bonificador; sin ella, no", () => {
     const r = derive(

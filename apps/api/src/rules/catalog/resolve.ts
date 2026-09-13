@@ -560,6 +560,8 @@ export function resolveBuild(
       abilities: build.abilities,
       level: build.level,
       hitDieSize: characterClass.hitDie,
+      // Reglas de la mesa (E-RM-3): los PG fijados al nacer, sin CON, tal cual llegan del build.
+      hitPointsPerLevel: build.hitPointsPerLevel,
       modifiers,
       saveProficiencies: [...saveProficiencies],
       skillProficiencies,

@@ -29,6 +29,28 @@ describe("invariantes del catálogo entero", () => {
     expect(SRD_CLASSES).toHaveLength(12);
   });
 
+  it("startingGold sigue la tabla Starting Wealth by Class del SRD 5.1, en po", () => {
+    // SRD 5.1, «Starting Wealth by Class»: Barbarian 2d4×10, Bard 5d4×10, Cleric 5d4×10, Druid
+    // 2d4×10, Fighter 5d4×10, Monk 5d4, Paladin 5d4×10, Ranger 5d4×10, Rogue 4d4×10, Sorcerer
+    // 3d4×10, Warlock 4d4×10, Wizard 4d4×10.
+    const esperado: Record<string, { dice: string; times: number }> = {
+      barbarian: { dice: "2d4", times: 10 },
+      bard: { dice: "5d4", times: 10 },
+      cleric: { dice: "5d4", times: 10 },
+      druid: { dice: "2d4", times: 10 },
+      fighter: { dice: "5d4", times: 10 },
+      monk: { dice: "5d4", times: 1 },
+      paladin: { dice: "5d4", times: 10 },
+      ranger: { dice: "5d4", times: 10 },
+      rogue: { dice: "4d4", times: 10 },
+      sorcerer: { dice: "3d4", times: 10 },
+      warlock: { dice: "4d4", times: 10 },
+      wizard: { dice: "4d4", times: 10 },
+    };
+    for (const clase of SRD_CLASSES) expect(clase.startingGold).toEqual(esperado[clase.key]);
+    expect(Object.keys(esperado)).toHaveLength(SRD_CLASSES.length);
+  });
+
   it("ninguna clave se repite: ni raza, ni subraza, ni clase, ni armadura, ni concesión", () => {
     const conjuntos: [string, string[]][] = [
       ["razas", SRD_RACES.map((r) => r.key)],

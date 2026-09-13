@@ -164,6 +164,10 @@ export class LevelUpService {
       level,
       choices: (character.choices as CharacterChoices | null) ?? undefined,
       items,
+      // Reglas de la mesa (E-RM-3): el cuarto motivo por el que esta construcción tiene que ir a
+      // la par de las otras dos — sin esto, el previo de subida de nivel calcularía unos PG
+      // distintos a los de la propia hoja para quien fijó los suyos al nacer.
+      hitPointsPerLevel: (character.hitPointsPerLevel as number[] | null) ?? undefined,
     };
   }
 

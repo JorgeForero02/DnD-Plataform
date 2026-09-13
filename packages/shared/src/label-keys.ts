@@ -28,6 +28,7 @@ export const LABEL_KEYS = [
   "ac.unarmored",
   "maxHp.firstLevel",
   "maxHp.perLevel",
+  "maxHp.perLevelAtCreation",
   "maxHp.conPerLevel",
   "maxHp.minimum",
   "passive.base",

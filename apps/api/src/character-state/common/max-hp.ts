@@ -62,6 +62,10 @@ export function maxHpDe(
       subclass: character.subclassKey ? { source: "SRD", key: character.subclassKey } : undefined,
       level: character.level,
       choices: (character.choices as Record<string, string[]> | null) ?? undefined,
+      // Reglas de la mesa (E-RM-3): el cuarto motivo por el que esta construcción tiene que ir a
+      // la par de las otras dos — sin esto, un personaje con PG fijados al nacer vería un tope de
+      // curación distinto al de su propia hoja.
+      hitPointsPerLevel: (character.hitPointsPerLevel as number[] | null) ?? undefined,
     });
     const maxHp = hoja.derived.maxHp;
     if (!maxHp) return null;

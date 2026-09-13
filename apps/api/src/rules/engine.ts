@@ -139,6 +139,12 @@ export interface EngineInput {
    * sumado aquí, para que la traza pueda enseñar de dónde sale cada pie.
    */
   baseSpeeds?: Partial<Record<Movement, number>>;
+  /**
+   * Reglas de la mesa (E-RM-3): los PG **decididos** para los niveles 2..(1+length) al nacer — la
+   * tirada o el máximo del dado, sin Constitución. Sustituyen a la media solo en esos niveles;
+   * los niveles por encima (subidos después con `level-up`) siguen con la media.
+   */
+  hitPointsPerLevel?: number[];
 }
 
 /**
@@ -689,16 +695,24 @@ function calcularPgMaximos(input: EngineInput, mods: Record<AbilityKey, number>)
   // y por eso una Constitución baja duele más cuanto más alto es el nivel.
   const primerNivel = input.hitDieSize + mods.con;
   const media = averageHitDie(input.hitDieSize);
-  const siguientes = (input.level - 1) * (media + mods.con);
+  const fijados = (input.hitPointsPerLevel ?? []).slice(0, Math.max(0, input.level - 1));
+  const nivelesConMedia = input.level - 1 - fijados.length;
+  const sumaFijada = fijados.reduce((s, v) => s + v, 0);
+  const siguientes = sumaFijada + nivelesConMedia * media + (input.level - 1) * mods.con;
 
   const steps: TraceStep[] = [
     paso("base", input.hitDieSize, "class", "hit-die", "maxHp.firstLevel"),
     paso("add", mods.con, "ability", "con", "abilityMod.con"),
   ];
-  if (input.level > 1) {
+  if (fijados.length > 0) {
+    steps.push(paso("add", sumaFijada, "level", "creation", "maxHp.perLevelAtCreation"));
+  }
+  if (nivelesConMedia > 0) {
     steps.push(
-      paso("add", (input.level - 1) * media, "level", String(input.level), "maxHp.perLevel"),
+      paso("add", nivelesConMedia * media, "level", String(input.level), "maxHp.perLevel"),
     );
+  }
+  if (input.level > 1) {
     steps.push(paso("add", (input.level - 1) * mods.con, "ability", "con", "maxHp.conPerLevel"));
   }
 

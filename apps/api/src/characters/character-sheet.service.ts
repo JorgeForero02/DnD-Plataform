@@ -182,6 +182,10 @@ function construirBuild(
       // necesita la base, y el resolutor no la toca — así no hay ningún `else` donde se cuele un
       // identificador de otra mesa.
       items,
+      // Reglas de la mesa (E-RM-3): el cuarto motivo por el que esta construcción tiene que ir a
+      // la par de las otras dos — sin esto, la hoja calcularía unos PG distintos a los del previo
+      // de subida de nivel para quien fijó los suyos al nacer.
+      hitPointsPerLevel: (character.hitPointsPerLevel as number[] | null) ?? undefined,
     },
   };
 }

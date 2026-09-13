@@ -142,6 +142,42 @@ quitar las unitarias y el e2e nuevos.
 
 ---
 
+## Ronda de arreglo de la tarea 13: la aserción de «no manda nada» esperaba en el momento equivocado, y «Quedarse con los nuevos» gana el candado de «Dárselos» (2026-09-13)
+
+Qué — revisión de ronda 1 (`cdf8d00..df15c30`) encontró que `expect(fijar).not.toHaveBeenCalled()`
+en «Dejar los que tenía no manda nada» corría **justo tras el `fireEvent.click`**, de forma
+síncrona: TanStack Query espera a que `onMutate` resuelva antes de invocar `mutationFn`, así que
+la aserción pasaba **aunque `mandar()` estuviera siendo llamada** — un mutante que hace
+`mandar("mayor")` y luego `setPreguntando(false)` sobrevivía sin que ninguna prueba lo notara. El
+espía de `setHp` tampoco tenía `mockResolvedValue`, lo que agravaba la carrera. Arreglo: el espía
+gana `mockResolvedValue(hoja(8))`, y la aserción se mueve DESPUÉS de un `waitFor` que observa el
+`alertdialog` cerrado, más un `await new Promise(r => setTimeout(r, 0))` de margen para cualquier
+microtask de React Query pendiente. Repetida la mutación del `cp` (`mandar("mayor")` +
+`setPreguntando(false)`) contra el arreglo: **esta vez la aserción cae** (`setHp` llamada 1 vez,
+con `tempHpEleccion: "mayor"`), confirmando que ahora sí la cazaba.
+
+Hallazgo menor de la misma revisión: «Quedarse con los N nuevos» no llevaba el candado numérico
+que sí tiene «Dárselos» (`!Number.isFinite(nuevos) || nuevos <= 0`), así que vaciar el campo o
+ponerlo en 0 mientras la pregunta estaba abierta permitía mandar `tempHp: 0` o `NaN` — ninguno de
+los dos montones que el SRD pide elegir. Mismo candado añadido a ese botón, con su `title`;
+unitaria nueva: con el campo en «0», el botón queda `aria-disabled` y el clic no llama a `setHp`.
+
+Por qué — revisión de ronda 1 sobre las tareas 12–14 del pulido; hallazgo «Important» (aserción
+que no prueba lo que dice) y un menor barato de corregir en el mismo fichero.
+
+Evidencia — `DarTemporales.test.tsx`: 5/5 en verde (era 4/4; +1 del candado nuevo). Mutación
+repetida con el `cp` de la tarea 13 (`mandar("mayor")` en «Dejar los que tenía»): la unitaria
+arreglada cae, confirmando que la aserción ahora sí depende de la llamada real. `pnpm verify` en
+verde (168 ficheros, 1558 pruebas). Sin Playwright — el orquestador vuelve a correr
+`bestiario.spec.ts`.
+
+**Revertir:** en `DarTemporales.test.tsx`, quitar el `mockResolvedValue` del espía de `setHp` en
+esa prueba y devolver la aserción a justo después del `fireEvent.click`; quitar la unitaria del
+candado nuevo. En `DarTemporales.tsx`, quitar `disabled`/`title` del botón «Quedarse con los N
+nuevos».
+
+---
+
 ## Tarea 14 del pulido: filtros del catálogo de objetos (2026-09-13, anexo #21)
 
 Qué — `CampaignItemsCatalogPage.tsx` solo filtraba por el texto del buscador; con un catálogo

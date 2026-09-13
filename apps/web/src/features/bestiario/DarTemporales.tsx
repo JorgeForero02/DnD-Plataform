@@ -113,7 +113,15 @@ export function DarTemporales({
             <Button
               type="button"
               variant="secondary"
-              disabled={fijar.isPending}
+              // Mismo candado que «Dárselos»: sin él, borrar el campo o dejarlo en 0 mientras la
+              // pregunta está abierta permitía mandar `tempHp: 0` o `NaN` — un número que no es
+              // ninguno de los dos montones que el SRD pide elegir.
+              disabled={fijar.isPending || !Number.isFinite(nuevos) || nuevos <= 0}
+              title={
+                !Number.isFinite(nuevos) || nuevos <= 0
+                  ? "Escribe cuántos PG temporales nuevos son."
+                  : undefined
+              }
               onClick={() => mandar("los-nuevos")}
             >
               Quedarse con los {nuevos} nuevos

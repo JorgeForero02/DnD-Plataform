@@ -110,7 +110,12 @@ describe("dar PG temporales a un PNJ", () => {
     // gain the new ones»). Mandar `tempHpEleccion: "mayor"` —que el servidor resuelve con
     // `Math.max`— cambiaba igual el PG temporal cuando los nuevos eran más que los que tenía.
     vi.spyOn(api, "fetchSheet").mockResolvedValue(hoja(8));
-    const fijar = vi.spyOn(api, "setHp");
+    // **`mockResolvedValue`, no un espía sin retorno.** TanStack Query espera a que `onMutate`
+    // resuelva antes de llamar a `mutationFn`; con un espía que no devuelve una promesa resuelta,
+    // `expect(fijar).not.toHaveBeenCalled()` leído justo tras el `fireEvent.click` pasa siempre
+    // —esté `mandar()` llamada o no—, porque la llamada real a `setHp` aún no ha tenido ocasión de
+    // ocurrir. Esto dejó pasar un mutante que sí manda `mandar("mayor")` (revisión, ronda 1).
+    const fijar = vi.spyOn(api, "setHp").mockResolvedValue(hoja(8));
     montar();
 
     const darselos = await screen.findByRole("button", { name: "Dárselos" });
@@ -118,7 +123,32 @@ describe("dar PG temporales a un PNJ", () => {
     fireEvent.click(darselos);
     fireEvent.click(await screen.findByRole("button", { name: /Dejar los 8 que tenía/ }));
 
-    expect(fijar).not.toHaveBeenCalled();
+    // **La aserción va DESPUÉS de esperar a que la pregunta se cierre**, no justo tras el clic:
+    // solo entonces ha tenido tiempo de correr cualquier mutación que «Dejar los que tenía»
+    // pudiera haber disparado. Un `setTimeout(0)` de más asegura que un microtask pendiente de
+    // React Query también ha tenido su turno.
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fijar).not.toHaveBeenCalled();
+  });
+
+  it("«Quedarse con los N nuevos» lleva el mismo candado que «Dárselos»: 0 o «no numérico» lo apaga", async () => {
+    // Mismo motivo que el candado de «Dárselos»: sin él, vaciar el campo o dejarlo en 0 mientras
+    // la pregunta está abierta permitía mandar `tempHp: 0` o `NaN` — ninguno de los dos montones
+    // que el SRD pide elegir.
+    vi.spyOn(api, "fetchSheet").mockResolvedValue(hoja(8));
+    const fijar = vi.spyOn(api, "setHp");
+    montar();
+
+    const darselos = await screen.findByRole("button", { name: "Dárselos" });
+    await waitFor(() => expect(darselos).not.toHaveAttribute("aria-disabled"));
+    fireEvent.click(darselos);
+
+    const quedarse = await screen.findByRole("button", { name: /Quedarse con los 5 nuevos/ });
+    fireEvent.change(screen.getByLabelText("PG temporales"), { target: { value: "0" } });
+    expect(quedarse).toHaveAttribute("aria-disabled", "true");
+
+    fireEvent.click(quedarse);
+    expect(fijar).not.toHaveBeenCalled();
   });
 });

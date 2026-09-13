@@ -62,9 +62,19 @@ orden fijo:** [Owlbear como tablero](./superpowers/specs/2026-09-12-owlbear-como
 **La tanda «pulido» quedó cerrada el 2026-09-13 y fusionada a `main` en `d7ec2b3`** (Tarea 15, 45 commits sobre `0ebdd9f`,
 [07-historial.md](./07-historial.md) — «Pulido antes del paso 3»): los 24 puntos del anexo pasados
 uno a uno en [06-pendientes.md](./06-pendientes.md). **Sin desplegar**: producción sigue en `6d2b2ca`
-y el despliegue lo lanza el autor a mano, como siempre. **Lo siguiente es «reglas de la
-mesa»**, y no arranca hasta que el autor la apruebe con su propio plan (`writing-plans` sobre la
-spec de arriba). El orden previo, que ya no manda, sigue debajo:
+y el despliegue lo lanza el autor a mano, como siempre. **Fusionada a `main` el 2026-09-13
+(`d7ec2b3`); producción sigue en `6d2b2ca`.**
+
+**La tanda «reglas de la mesa» quedó cerrada el 2026-09-13 en la rama
+`reglas-de-la-mesa/antes-del-paso-3`** (15 commits sobre `27304e1`; [plan](./superpowers/plans/2026-09-13-reglas-de-la-mesa.md);
+[07-historial.md](./07-historial.md), «Reglas de la mesa»; E-RM-1..16 en [decisiones.md](./decisiones.md)):
+`Campaign.tableRules`, el servidor tira y fija las características, PG y oro al nacer, permitidos,
+el bloque de Ajustes y la hoja que obedece. **Primera tanda bajo D-CF-65** (proceso ligero por
+tarea, riguroso al cierre): la revisión de la rama entera cazó cuatro importantes que ninguna tarea
+vio, y dos olas los cerraron. **Sin fusionar ni desplegar: la fusión la decide el autor.** Lo que
+dejó abierto está en [06-pendientes.md](./06-pendientes.md), «Dejado por reglas de la mesa» (RM-1 la
+decidió el mismo día: **el nivel es del DM**, D-CF-66). **Lo siguiente es la «puerta de efectos»**, también bajo D-CF-65, con su plan
+por `writing-plans` cuando el autor lo pida. El orden previo, que ya no manda, sigue debajo:
 
 Antes → la tanda **«puerta de efectos»**
 ([spec](./superpowers/specs/2026-09-12-la-puerta-de-efectos-design.md): curar a otro, daño de

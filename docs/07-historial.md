@@ -52,6 +52,9 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-11-origin-alcanza-main.md`](./_archivo/historial-2026-09-11-origin-alcanza-main.md) | **`origin/main` alcanza a `main`**, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1013 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-11-relectura-diez-frases-falsas.md`](./_archivo/historial-2026-09-11-relectura-diez-frases-falsas.md) | **Relectura de 01–05 y 09 al cerrar la rama: diez frases falsas**, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1015 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-11-y-12-hoja-a-pagina-completa.md`](./_archivo/historial-2026-09-11-y-12-hoja-a-pagina-completa.md) | **La hoja a página completa** —fusión, despliegue y las once tareas del plan, HP-1 a HP-10—, movida entera el 2026-09-12 en la ronda de revisión de la Tarea 5 del pulido: el fichero quedaba en 1013 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-07-bahia-normaliza-diacriticos.md`](./_archivo/historial-2026-09-07-bahia-normaliza-diacriticos.md) | **`[[bahia]]` encuentra «Bahía»** (ficha P4), movida entera el 2026-09-13 al escribir la línea de la Tarea 9 del pulido (`dice[]` por dado): el fichero quedaba en 1007 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-07-mesa-390px.md`](./_archivo/historial-2026-09-07-mesa-390px.md) | **La mesa a 390 px, demostrada y no arreglada** (ficha P2 de estrecho), movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el primer archivado. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-07-poda-desbloquea-tres-fichas.md`](./_archivo/historial-2026-09-07-poda-desbloquea-tres-fichas.md) | **Tres fichas que la poda ya había cerrado sin que nadie lo notara**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los dos primeros archivados. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -62,6 +65,37 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Tarea 9 del pulido: el servidor dice qué dado cayó — `dice[]` por dado (2026-09-13, C5)
+
+Qué — `dadosTirados(terms: DiceTermResult[]): DieRolled[]`, nueva en `apps/api/src/dice/dice.ts`
+junto al evaluador (es su conocimiento, no del servicio): empareja cada dado de `rolled` con sus
+caras y dice si cuenta, consumiendo `dropped` como multiconjunto para que `[4, 4]` con un
+descartado tache uno y no los dos — el mismo truco que ya usaba `dadosDeLaTirada` en la web.
+`dieRolledSchema` (`{ sides, value, kept }`, `packages/shared/src/roll.schema.ts`) se añade,
+**opcional**, a `desglose` (rama `revealed: true` de `rollResultSchema`) y al payload
+`ABILITY_ROLL` de `game-event.schema.ts`; `rolls.service.ts` calcula `const dice =
+dadosTirados(resultado.terms)` junto a `rolls`/`kept`/`dropped` y lo pone en los dos sitios.
+
+Por qué — la pantalla (Task 10, web) necesita pintar cada dado con sus caras para poder tachar
+el descartado dado a dado; hasta ahora solo tenía tres listas paralelas (`rolls`, `kept`,
+`dropped`) y tenía que reconstruir el emparejamiento a mano, que es exactamente el fallo que ya
+había en la web con `dadosDeLaTirada`. Con `dice[]` el emparejamiento se hace una sola vez, en el
+servidor, con la misma lógica que ya lo resolvía.
+
+Pruebas — tres unitarias nuevas en `dice.spec.ts` (empareja caras y marca kh/kl y relanzados;
+con dos iguales y un descartado tacha uno y no los dos; una constante no es un dado) y una en
+`rolls.service.spec.ts` (con ventaja, `dice` trae los dos d20 con su `kept`); un e2e nuevo en
+`rolls.e2e-spec.ts` (`2d6+1d20` devuelve `dice` con tres entradas, caras `[6, 6, 20]` en orden, y
+el suceso del log lo trae igual). `pnpm --filter @dnd/api test -- dice rolls`: 90/90. E2E de
+`rolls`: 14/14. Mutación: quitar el `splice` que consume `pendientes` como multiconjunto hace
+fallar «tacha uno y no los dos» (recibía dos dados con `kept: false` en vez de uno) — restaurado
+con `cp`.
+
+Revertir — `git revert` del commit; `dice` es opcional en ambos schemas y su ausencia no rompe
+nada que ya exista, así que revertir no tiene trampa de datos que limpiar.
 
 ---
 
@@ -687,49 +721,38 @@ densas, de modo que para el DM el renumerado es la identidad — lo confirmaron 
 
 **Revertir:** un commit. Solo toca `encounters.service.ts` y su spec.
 
-## Lo que la poda desbloqueó: tres fichas que ya se podían cerrar (2026-09-07)
+## Lo que la poda desbloqueó: tres fichas que ya se podían cerrar (2026-09-07) — archivada
 
-Ninguna era nueva. Las tres llevaban semanas con una cláusula «Cierra cuando…» **que el paso 2
-había cumplido la noche anterior y nadie había notado**, porque una condición de cierre no se
-revisa sola.
-
-- **Conceder un modificador temporal pasa a ser del DM.** Un jugador podía darse `+10` al ataque,
-  sin caducidad, y entraba en su hoja. La puerta existía por un caso real —beberse una poción— que
-  dejó de necesitarla el 2026-09-06: `consume` escribe el modificador **directo con el `tx`**, sin
-  pasar por `grant`. Comprobado antes de cerrar, y con prueba que lo sostiene.
-- **Ayudar cuesta la acción de quien ayuda.** Un jugador con dos personajes se daba ventaja de uno
-  al otro sin límite. Prohibirlo estaba descartado —el SRD deja que dos criaturas se ayuden—; lo
-  que el SRD cobra es que Ayudar es **una acción**. Hereda la doctrina del paso 2: **cuenta y
-  avisa, no impide**. Fuera de combate no gasta nada, y es supuesto declarado del autor.
-- **El combate propone terminarse, y un jugador a 0 PG sigue en la mesa** con sus salvaciones a la
-  vista. **Dos frases de esa ficha eran falsas** —el bando ya existía, y nadie retiraba a nadie— y
-  se corrigieron en vez de copiarse. No cierra nada solo: el SRD 5.1 dice que ni la muerte del
-  monstruo es automática, *«most DMs have a monster die the instant it drops to 0»* — costumbre
-  del DM. La propuesta **solo llega al DM**, o el jugador deduciría que no queda ningún enemigo
-  incluido el que no ve.
-
-**Revertir:** tres commits independientes. Solo el tercero toca el contrato de `@dnd/shared`
-(`derrotado` y `finalPropuesto`), así que es el único que arrastra fixtures.
+**Movida entera** a
+[`_archivo/historial-2026-09-07-poda-desbloquea-tres-fichas.md`](./_archivo/historial-2026-09-07-poda-desbloquea-tres-fichas.md)
+el 2026-09-13, al escribir la línea de la Tarea 9 del pulido (`dice[]` por dado): el fichero
+seguía por encima de 1000 tras los dos primeros cortes de la noche y era la entrada completa más
+antigua. En una línea: tres fichas con cláusula «Cierra cuando…» que el paso 2 ya había cumplido
+sin que nadie lo notara — el modificador temporal pasó a ser del DM, Ayudar cuesta la acción de
+quien ayuda, y el combate propone terminarse solo al DM cuando un jugador cae a 0 PG.
 
 ---
 
-## La mesa a 390 px: demostrada, no arreglada (2026-09-07, ficha P2 de estrecho)
+## La mesa a 390 px: demostrada, no arreglada (2026-09-07, ficha P2 de estrecho) — archivada
 
-`e2e/mesa-en-estrecho.spec.ts` mide lo que era sospecha desde el paseo del 2026-09-05: el borde
-derecho de las «Herramientas del DM» cae en **550 px dentro de una ventana de 390**, y **la página
-no lo delata** —ni barra horizontal ni vertical—, que es por lo que nada lo cazaba. **No se arregla
-aquí, y esa es la entrega**: el apilado evidente mete el panel dentro y **gira el corte 90°** —el
-elenco queda en 16 px de alto con cabecera de 36—, así que se revirtió y la medida 6 impide que ese
-arreglo falso vuelva a colar. Falta una **decisión del autor** entre tres salidas, en
-[06-pendientes.md](./06-pendientes.md). **Revertir**: borrar la prueba; no hay código que deshacer.
+**Movida entera** a
+[`_archivo/historial-2026-09-07-mesa-390px.md`](./_archivo/historial-2026-09-07-mesa-390px.md)
+el 2026-09-13, al escribir la línea de la Tarea 9 del pulido (`dice[]` por dado): el fichero
+volvía a pasarse tras el primer corte de la noche y era la entrada completa más antigua. En una
+línea: el borde de «Herramientas del DM» se salía 160 px de una ventana de 390 sin que la página
+lo delatara, y queda **demostrado, no arreglado** — falta una decisión del autor entre tres
+salidas.
 
-## `[[bahia]]` encuentra «Bahía» (2026-09-07, ficha P4)
+---
 
-`normalizar` de `wikilinks.ts` pliega los diacríticos antes de comparar: hasta hoy el DM que
-tecleaba el enlace sin tilde veía su ficha dada por **inexistente**. La prueba que fijaba lo
-contrario **avisaba en su comentario de que cambiarla sería a propósito** — es esto, y se
-reescribió con la razón dentro: 4 en rojo antes, 1251 en verde después. Decisión y precio en
-[decisiones.md](./decisiones.md) (D-P4-1). **Revertir**: deshacer el commit, es una función pura.
+## `[[bahia]]` encuentra «Bahía» (2026-09-07, ficha P4) — archivada
+
+**Movida entera** a
+[`_archivo/historial-2026-09-07-bahia-normaliza-diacriticos.md`](./_archivo/historial-2026-09-07-bahia-normaliza-diacriticos.md)
+el 2026-09-13, al escribir la línea de la Tarea 9 del pulido (`dice[]` por dado): el fichero
+quedaba en 1007 de 1000 y era la entrada completa más antigua. En una línea: `normalizar` de
+`wikilinks.ts` pliega los diacríticos antes de comparar, así que `[[bahia]]` ya encuentra
+«Bahía» sin tilde.
 
 ---
 

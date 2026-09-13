@@ -694,6 +694,17 @@ Cinco niveles, en `Visibility`. Los interpreta **`canView` y solo `canView`**
 respuesta. La tirada a ciegas se completa preguntando a `canView` si quien acaba de tirar puede
 ver lo que tiró; si no, la respuesta omite el desglose.
 
+**El desglose trae, además de `rolls`/`kept`/`dropped`, un `dice[]` por dado (C5).** Cada entrada
+es `{ sides, value, kept }`: las caras del dado, lo que salió y si cuenta en el total —lo mismo
+para un dado descartado por `kh`/`kl` que para el valor original de uno relanzado—, en el orden
+en que cayó. Lo calcula `dadosTirados` (`apps/api/src/dice/dice.ts`), a partir de los mismos
+`DiceTermResult` que ya conocía `rolls`/`kept`/`dropped`; no es un dato nuevo, es el mismo
+desglose emparejado dado a dado para que la pantalla lo pinte uno a uno sin tener que rehacer el
+emparejamiento a mano (`apps/web/src/features/rolls/desglose.ts` ya lo hacía por su cuenta contra
+`rolled`/`dropped`). Vive en `rollResultSchema` (rama `revealed: true`) y en el payload
+`ABILITY_ROLL` del suceso, y es **opcional en los dos**: el historial escrito antes de esta tarea
+no lo trae, y no se reescribe.
+
 **El cuarto modo de la industria no cabe en esta tabla**, y está declarado: ver la ficha **C2C-1**
 de [06-pendientes.md](./06-pendientes.md).
 

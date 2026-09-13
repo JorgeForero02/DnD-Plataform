@@ -20,6 +20,7 @@ import {
 import {
   DiceExpressionError,
   rollExpression,
+  dadosTirados,
   type DiceRollResult,
   type Roller,
 } from "../dice/dice";
@@ -141,6 +142,8 @@ export class RollsService {
     const rolls = resultado.terms.flatMap((t) => t.rolled);
     const kept = resultado.terms.flatMap((t) => (t.sides > 0 ? t.kept : []));
     const dropped = resultado.terms.flatMap((t) => t.dropped);
+    // Cada dado, con sus caras y si cuenta (C5): lo que la pantalla pintará uno a uno.
+    const dice = dadosTirados(resultado.terms);
     // El modificador es lo que no son dados: el `+3` de `1d8+3`, con su signo.
     const modifier = resultado.terms
       .filter((t) => t.sides === 0)
@@ -176,6 +179,7 @@ export class RollsService {
             rolls,
             kept,
             dropped,
+            dice,
             modifier,
             total: resultado.total,
             ...(input.dc === undefined ? {} : { dc: input.dc }),
@@ -274,6 +278,7 @@ export class RollsService {
       rolls,
       kept,
       dropped,
+      dice,
       modifier,
       total: resultado.total,
       ...(input.dc === undefined ? {} : { dc: input.dc }),

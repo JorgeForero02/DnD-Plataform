@@ -309,7 +309,7 @@ test("mesa: el menú «…» de la fila más baja del elenco cabe en su carril",
 // de la casilla «Comp.» (la última de la tira, pegada al borde derecho) · Traza.tsx:311
 // (Casilla.desplegable, la ul/li de ListaDeTraza) · recorta la ventana · 8 px fuera (derecha) ·
 // ventana 1280. Lo arregla la Tarea 3.
-test.fail("hoja de PJ (Brann): la traza de «Comp.» cabe en la ventana", async ({ page }) => {
+test("hoja de PJ (Brann): la traza de «Comp.» cabe en la ventana", async ({ page }) => {
   await abrirHojaDePj(page);
   const resumen = page.getByRole("region", { name: "resumen de combate" });
   await abrirCasillaCompacta(resumen, "Comp.");

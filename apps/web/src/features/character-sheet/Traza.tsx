@@ -153,16 +153,22 @@ function PasoDeTraza({ paso, total }: { paso: TraceStep; total: number }) {
           // fallo que ya se pagó una vez en `TextoEditable`.
           title={`Ir a ${causa}, que es de donde sale este paso`}
           onClick={() => enfocarCausa(causa)}
-          className={`${clase} text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+          // Desbordes (2026-09-13, E-DB-10): sin `min-w-0`, este hijo de un `flex` no encoge
+          // por debajo de su propio ancho de contenido (el mínimo por defecto de un ítem
+          // flexible es `auto`, no `0`) — en la casilla «Comp.», pegada al borde derecho de la
+          // tira sin margen de sobra, la palabra más larga del rótulo («Bonificador») más la
+          // columna numérica de al lado sumaban 8 px más que los 6rem de la casilla. `min-w-0`
+          // deja que el texto rompa línea dentro de su propia caja en vez de estirarla.
+          className={`${clase} min-w-0 text-left underline decoration-dotted underline-offset-2 hover:text-accent-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
         >
           {contenido}
         </button>
       ) : (
-        <span className={clase} data-untranslated={conocida ? undefined : "true"}>
+        <span className={`${clase} min-w-0`} data-untranslated={conocida ? undefined : "true"}>
           {contenido}
         </span>
       )}
-      <span className="font-data text-chrome-xs text-text">
+      <span className="shrink-0 font-data text-chrome-xs text-text">
         {/* La columna numérica sí se queda en «= N» para CUALQUIER `override`, DM o no: la
             revisión (hallazgo 2) confirma que esa mitad del cambio ya era correcta — un paso
             `override` sustituye el total, así que "=" describe mejor lo que pasó que "+"/"−". */}

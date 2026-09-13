@@ -52,7 +52,15 @@ export function Casilla({
         ANCHO_CASILLA,
         ALTO_CASILLA,
         desplegable ? "grid-rows-[auto_1fr_auto_auto]" : "grid-rows-[auto_1fr_auto]",
-        "grid rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
+        // Desbordes (2026-09-13, E-DB-10): la tira de cabecera es un `flex` (`Cabecera.tsx`,
+        // `ml-auto flex flex-wrap ...`), y un ítem de `flex` sin `min-w-0` no puede encoger por
+        // debajo del tamaño mínimo de SU CONTENIDO — el ancho explícito (`w-[6rem]`) deja de
+        // mandar en cuanto la traza abierta mete un texto cuyo mínimo por palabra pesa más que
+        // eso, y la caja entera crece hacia la derecha. En «Comp.», la última casilla, sin
+        // margen de sobra, ese crecimiento se salía 8 px de la ventana. `min-w-0` deja que el
+        // ancho declarado vuelva a mandar; el texto de dentro rompe línea en su lugar (ver el
+        // `min-w-0` de `PasoDeTraza`, `Traza.tsx`).
+        "grid min-w-0 rounded-radius-sm border border-muted bg-surface px-s2 py-1 text-center",
         className,
       ].join(" ")}
     >
@@ -76,7 +84,13 @@ export function Casilla({
       {desplegable && (
         <div
           data-testid="casilla-desplegable"
-          className="whitespace-normal text-left leading-normal"
+          // `min-w-0`: esta fila es también un ÍTEM de la rejilla (`grid-rows-…` de arriba), y
+          // sin él su pista de columna implícita crece para acomodar el contenido más ancho
+          // (`Bonificador de competencia` en una sola línea) por encima de las 6rem del propio
+          // contenedor — la caja exterior no cambia de ancho, pero esta fila se pinta por fuera
+          // de ella. `min-w-0` deja que la columna vuelva a medir 6rem y el texto de dentro
+          // rompa línea en su lugar (el `min-w-0` de `PasoDeTraza`, `Traza.tsx`).
+          className="min-w-0 whitespace-normal text-left leading-normal"
         >
           {desplegable}
         </div>

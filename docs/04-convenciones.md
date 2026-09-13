@@ -383,9 +383,14 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   resto de la interfaz. SVG en trazo, heredando `currentColor`. `ui/Iconos.tsx` es
   la casa **común**, y `ui/Logo.tsx` / `ui/Ornament.tsx` la marca y el ornamento; además **cada
   módulo grande dibuja los suyos** cuando solo los usa él (`features/rules/iconos.tsx`,
-  `features/sessions/iconos.tsx`, `features/level-up/IconoAscenso.tsx`,
-  `features/rolls/DadoDibujado.tsx`). Lo que la regla exige es que sean **dibujados**, no que
-  vivan en un único fichero; enumerar tres sitios cuando había siete fue una lista que caducó. Un icono que vive
+  `features/sessions/iconos.tsx`, `features/level-up/IconoAscenso.tsx`). Lo que la regla exige es
+  que sean **dibujados**, no que vivan en un único fichero; enumerar tres sitios cuando había
+  siete fue una lista que caducó. **Tarea 7 (C3 #12, #22, 2026-09-12):** `features/rolls/DadoDibujado.tsx`
+  pasó de dibujar su propio icosaedro a delegar en `IconoDado caras={20}` de `ui/Iconos.tsx` — el
+  dado dejó de ser un dibujo aparte para ser uno de los seis. Y **todo botón primario de página y
+  toda entrada de navegación llevan icono**; lo comprueba `ui/__tests__/botones-con-icono.test.tsx`,
+  el barrido que encontró «+ Crear objeto» (un `+` de fuente, la misma infracción que esta regla
+  ya prohibía para los glifos sueltos) y «Escribir una criatura» sin ninguno. Un icono que vive
   **dentro de una línea de texto** se dimensiona en `1em`, no en píxeles, para que escale con
   ella. Una auditoría del 2026-09-02 encontró **seis infracciones**, y una de ellas era el
   `✓` que esta misma regla nombra como prohibido: escribir la regla no la aplica, hace falta

@@ -120,7 +120,9 @@ describe("ResultadoDeTirada", () => {
 
   it("el dado se dibuja: SVG, nunca un emoji de dado", () => {
     const { container } = render(<ResultadoDeTirada resultado={tirada()} etiqueta="Percepción" />);
-    expect(container.querySelectorAll('svg[data-icono="dado"]')).toHaveLength(2);
+    // Tarea 7 — `data-icono` pasó de "dado" a "d20": DadoDibujado ahora delega en
+    // IconoDado caras={20}, que es el mismo dibujo con el nombre de la familia de seis dados.
+    expect(container.querySelectorAll('svg[data-icono="d20"]')).toHaveLength(2);
   });
 });
 

@@ -52,6 +52,7 @@ import {
 } from "../features/campaigns/iconosDeSeccion";
 import { CampaignItemsCatalogPage } from "../features/campaign-items/CampaignItemsCatalogPage";
 import { IconoImpedimenta } from "../features/campaign-items/iconos";
+import { IconoMas } from "../ui/Iconos";
 import { PanelDeDados } from "../features/rolls/PanelDeDados";
 import { PanelDeTablas } from "../features/dm-tables/PanelDeTablas";
 import { IconoTabla } from "../features/dm-tables/iconos";
@@ -384,6 +385,7 @@ function SessionsTab({ campaignId }: { campaignId: string }) {
             disabled={!canManage}
             title={reason}
           >
+            <IconoMas />
             Nueva sesión
           </Button>
         }
@@ -503,6 +505,7 @@ function CharactersTab({ campaignId }: { campaignId: string }) {
         paraQue="Quién se sienta a esta mesa. Cada jugador lleva el suyo, y el DM puede crearlos también."
         accion={
           <Button variant="primary" onClick={() => setCreating(true)}>
+            <IconoMas />
             Nuevo personaje
           </Button>
         }

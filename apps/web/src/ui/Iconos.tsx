@@ -404,3 +404,78 @@ export function IconoPluma({ className }: IconoProps) {
     </Marco>
   );
 }
+
+/**
+ * Tarea 7 (C3 #12, #22) — los seis dados, un dibujo por forma, y el menú de tres puntos.
+ *
+ * `IconoD20` de arriba ya dibujaba el icosaedro suelto (el rail de sesiones, «pedir tirada»); este
+ * es distinto: **un dado concreto entre siete valores** (`caras`), para el atajo «añade un dX» de
+ * `PanelDeDados`/`PanelDeDadosDeLaMesa` y para `DadoDibujado`, que pasa a delegar aquí. Vivía
+ * duplicado en `features/rolls/DadoDibujado.tsx` porque `ui/Iconos.tsx` era de otro carril
+ * cuando se escribió (comentario de F3, ahí mismo) — la mudanza que ese comentario prometía.
+ *
+ * **Un dado, una forma** (`docs/04-convenciones.md`): tetraedro (d4), cubo (d6), octaedro (d8),
+ * trapezoedro (d10 y d100 — el d100 se lee como «d10 de decenas» y comparte silueta con el d10,
+ * no dibuja un segundo dado), dodecaedro (d12) e icosaedro (d20 — la misma silueta de
+ * `DadoDibujado`, para que el atajo `d20` no cambie de dibujo al mudarse).
+ */
+export function IconoDado({
+  caras,
+  className,
+}: IconoProps & { caras: 4 | 6 | 8 | 10 | 12 | 20 | 100 }) {
+  const forma = caras === 100 ? 10 : caras;
+  return (
+    <Marco className={className} data-icono={`d${caras}`}>
+      {forma === 4 && (
+        <>
+          <path d="M12 3l9 16H3z" />
+          <path d="M12 3v16M12 19l-9 0M12 19l9 0" />
+        </>
+      )}
+      {forma === 6 && (
+        <>
+          <path d="M4 8l8-4 8 4v8l-8 4-8-4z" />
+          <path d="M4 8l8 4 8-4M12 12v8" />
+        </>
+      )}
+      {forma === 8 && (
+        <>
+          <path d="M12 2l8 10-8 10L4 12z" />
+          <path d="M4 12h16M12 2l-8 10M12 2l8 10" />
+        </>
+      )}
+      {forma === 10 && (
+        <>
+          <path d="M12 2l9 8-9 12-9-12z" />
+          <path d="M3 10l9 4 9-4M12 14v8M7.5 7l4.5 7 4.5-7" />
+        </>
+      )}
+      {forma === 12 && (
+        <>
+          <path d="M12 2l7 5 3 8-4 7H6l-4-7 3-8z" />
+          <path d="M12 8l4 3-1.5 5h-5L8 11z" />
+          <path d="M12 2v6M19 7l-3 4M22 15l-6.5 1M2 15l6.5 1M5 7l3 4" />
+        </>
+      )}
+      {forma === 20 && (
+        <>
+          <path d="M12 2.2 21 7.3v9.4L12 21.8 3 16.7V7.3z" />
+          <path d="M12 2.2 7 10.6h10z" />
+          <path d="M7 10.6 12 21.8l5-11.2" />
+          <path d="M3 7.3 7 10.6M21 7.3 17 10.6" />
+        </>
+      )}
+    </Marco>
+  );
+}
+
+/** El menú «…» de una fila: tres puntos, dibujados. */
+export function IconoMenu({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="menu">
+      <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </Marco>
+  );
+}

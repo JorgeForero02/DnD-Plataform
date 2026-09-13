@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
 import { ApiError } from "../../../lib/api";
 import { Button, Field, fieldControlClass } from "../../../ui";
-import { IconoCerrar } from "../../../ui/Iconos";
+import { IconoCerrar, IconoDado } from "../../../ui/Iconos";
 import { DadoDibujado } from "../DadoDibujado";
 import { ResultadoDeTirada } from "../ResultadoDeTirada";
 import { TiradaACiegas } from "../TiradaACiegas";
@@ -270,7 +270,9 @@ export function PanelDeDadosDeLaMesa({
                     onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
                     aria-label={`Añadir un d${caras}`}
                   >
-                    <DadoDibujado />
+                    {/* Tarea 7 — el atajo dibuja SU dado, no siempre el icosaedro: cada `caras`
+                        tiene su propia forma («un dado, una forma», 04-convenciones). */}
+                    <IconoDado caras={caras as 4 | 6 | 8 | 10 | 12 | 20 | 100} />
                     <span className="font-data">d{caras}</span>
                   </Button>
                 ))}

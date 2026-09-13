@@ -3,6 +3,7 @@ import type { ChangeSetMemberInput } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { EmptyState } from "../../ui/Collection";
+import { IconoMas } from "../../ui/Iconos";
 import { useMembers } from "../campaigns/members";
 import { useCharacters } from "../characters/hooks";
 import { useAllEntities } from "../entities/hooks";
@@ -214,6 +215,7 @@ function Conjuntos({ campaignId }: { campaignId: string }) {
           variant="primary"
           disabled={!clave.trim() || !rotulo.trim() || crear.isPending}
         >
+          <IconoMas />
           Crear el conjunto
         </Button>
       </form>

@@ -137,7 +137,9 @@ test("tirar con ventaja pinta los dos dados, tacha el descartado de verdad y des
   // El dado se **dibuja**: SVG, nunca un emoji ni un glifo de fuente. Se cuenta dentro del
   // resultado y no en la fila entera, porque desde el rediseño el disparador de la tirada es
   // **otro** dado dibujado — contar tres aquí y llamarlo «los dos dados» sería medir mal.
-  await expect(fila.getByRole("status").locator('svg[data-icono="dado"]')).toHaveCount(2);
+  // Tarea 7 — `data-icono` pasó de "dado" a "d20": DadoDibujado ahora delega en
+  // IconoDado caras={20}, que es el mismo dibujo con el nombre de la familia de seis dados.
+  await expect(fila.getByRole("status").locator('svg[data-icono="d20"]')).toHaveCount(2);
 
   // --- Ninguna enumeración del servidor llega a la pantalla. ---
   const cuerpo = await page.locator("body").innerText();

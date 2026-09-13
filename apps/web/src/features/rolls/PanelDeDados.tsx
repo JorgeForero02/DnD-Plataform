@@ -4,6 +4,7 @@ import { Button, Field, fieldControlClass, Panel } from "../../ui";
 import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
 import { ApiError } from "../../lib/api";
 import { DadoDibujado } from "./DadoDibujado";
+import { IconoDado } from "../../ui/Iconos";
 import { ResultadoDeTirada } from "./ResultadoDeTirada";
 import { TiradaACiegas } from "./TiradaACiegas";
 import { SelectorDeVentaja } from "./SelectorDeVentaja";
@@ -206,7 +207,9 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
                       onClick={() => setExpresion((actual) => conDadoAnadido(actual, caras))}
                       aria-label={`Añadir un d${caras}`}
                     >
-                      <DadoDibujado />
+                      {/* Tarea 7 — el atajo dibuja SU dado, no siempre el icosaedro: cada
+                          `caras` tiene su propia forma («un dado, una forma», 04-convenciones). */}
+                      <IconoDado caras={caras as 4 | 6 | 8 | 10 | 12 | 20 | 100} />
                       <span className="font-data">d{caras}</span>
                     </Button>
                   ))}

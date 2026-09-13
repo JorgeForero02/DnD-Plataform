@@ -5,6 +5,7 @@ import { useCreateCampaign } from "./hooks";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { Dialog } from "../../ui/Dialog";
+import { IconoMas } from "../../ui/Iconos";
 
 export function CreateCampaignModal({ onClose }: { onClose: () => void }) {
   const {
@@ -41,6 +42,7 @@ export function CreateCampaignModal({ onClose }: { onClose: () => void }) {
             Cancelar
           </Button>
           <Button type="submit" disabled={create.isPending}>
+            <IconoMas />
             Crear
           </Button>
         </div>

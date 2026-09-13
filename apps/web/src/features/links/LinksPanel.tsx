@@ -5,6 +5,7 @@ import { useMyRole } from "../campaigns/members";
 import { CHECKING_PERMISSIONS } from "../campaigns/PermissionStatus";
 import { useCreateLink, useDeleteLink, useLinks } from "./hooks";
 import { Button } from "../../ui/Button";
+import { IconoMas } from "../../ui/Iconos";
 import { ETIQUETA_DE_TIPO } from "../entities/resumen";
 import { fieldControlClass } from "../../ui/Field";
 import { lecturaEntrante, lecturaSaliente, relacionesSugeridas } from "./relaciones";
@@ -329,6 +330,7 @@ export function LinksPanel({
                 className={fieldControlClass}
               />
               <Button type="submit" disabled={!toId || createLink.isPending}>
+                <IconoMas />
                 Añadir enlace
               </Button>
             </div>

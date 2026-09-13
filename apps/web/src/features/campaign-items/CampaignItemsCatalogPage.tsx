@@ -5,6 +5,7 @@ import { useMyRole } from "../campaigns/members";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { EmptyState } from "../../ui/Collection";
+import { IconoMas } from "../../ui/Iconos";
 import { CampaignItemEditor } from "./CampaignItemEditor";
 import { FilaDeObjeto } from "./FilaDeObjeto";
 import { ItemDetail } from "./ItemDetail";
@@ -105,7 +106,10 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
         accion={
           esDM ? (
             <Button type="button" onClick={() => setEditando("nuevo")}>
-              + Crear objeto
+              {/* Anexo #22 — el `+` era un glifo de fuente haciendo de icono, y la regla de
+                  iconos ya lo prohíbe (docs/04-convenciones.md): se dibuja, no se teclea. */}
+              <IconoMas />
+              Crear objeto
             </Button>
           ) : errorDeRol ? (
             // "Todavía no sé", no "no eres DM" — un fallo al cargar el papel no se trata como

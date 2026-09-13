@@ -32,12 +32,12 @@ dominio (200).
 > que el autor desplegó ese mismo día: `git diff --name-only 6d2b2ca..HEAD -- apps packages` está
 > vacío, así que no queda nada sin desplegar.
 
-**`main` sigue en `6d2b2ca`, lo mismo que producción — hasta que esta rama se fusione.** Empujar a
-GitHub **no despliega nada** — el CI solo prueba, y el despliegue es manual por decisión del autor:
-ver [03-despliegue.md](./03-despliegue.md). La rama `pulido/antes-del-paso-3` (43 commits sobre
-`0ebdd9f`, cerrada el 2026-09-13 por la Tarea 15) **todavía no está fusionada**: en cuanto el autor
-la fusione, `main` quedará por delante de producción hasta que él mismo la despliegue a mano — la
-misma regla de siempre, no una excepción.
+**`main` va por delante de producción desde el 2026-09-13**: la rama `pulido/antes-del-paso-3`
+(45 commits sobre `0ebdd9f`, cerrada por la Tarea 15) se fusionó a `main` en `d7ec2b3`
+(`--no-ff`) y se empujó a GitHub. Producción sigue sirviendo `6d2b2ca`: empujar **no despliega
+nada** — el CI solo prueba, y el despliegue es manual por decisión del autor, ver
+[03-despliegue.md](./03-despliegue.md). Qué separa `main` de producción se mide:
+`git diff --name-only 6d2b2ca..HEAD -- apps packages`.
 
 **Los quince planes del 2026-09-05 están cerrados**, uno por fichero, en
 [superpowers/plans/2026-09-05-planes/](./superpowers/plans/2026-09-05-planes/00-INDICE.md), y lo que
@@ -124,7 +124,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `0a8689e` **(rama `pulido/antes-del-paso-3`)** — instantánea de la
+> - **Generado sobre el commit** `d7ec2b3` **(rama `main`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

@@ -195,7 +195,7 @@ líneas que solo coloca ranuras**:
 | `sessions/elenco/` | La columna de quién está, con los mandos del DM y el cajón de condiciones |
 | `sessions/hilo/` | El registro con sus cinco formas de mensaje y su compositor |
 | `sessions/dm/` | La columna de herramientas de narración y la consulta del mundo |
-| `sessions/taller/` | Lo que ocupa la mesa cuando el DM está en reposo |
+| `sessions/taller/` | Lo que ocupa la mesa cuando el DM está en reposo. A la izquierda **el mundo como árbol con detalle** (`taller/mundo/`, Task 14 bis, D-CF-64): `arbolDelMundo.ts` es la función pura —cuelga por `ROTULOS_DE_JERARQUIA`, dos padres se ven en los dos, un ciclo se corta—, `DesgloseDelMundo` el `tree` WAI-ARIA, `DetalleDeFicha` la cabecera · vitela · `AnilloDeVecinos` · `EditorDeHilos`, y `ElMundo` las dos mitades. **Sustituye al tablero telaraña** (D4; `TableroTelarana.tsx` y `posiciones.ts` ya no existen). A la derecha las tres solapas: escribir ficha, preparar sesión, lo que sabe la mesa |
 | `sessions/tablero/` | C1 bis (2026-09-12): el tablero PlanarAlly enmarcado en el centro (`MarcoDelTablero`) y el registro en vivo como cajón inferior plegable con contador (`CajonDelRegistro`), cuando la campaña tiene `boardRoomUrl` (D-CF-63) |
 | `apps/web/src/features/sessions/BandaDeMesa.tsx` · `PanelDeMesa.tsx` | La banda superior y la tarjeta común |
 

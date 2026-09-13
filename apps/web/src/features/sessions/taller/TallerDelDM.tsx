@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Tabs } from "../../../ui/Tabs";
 import { useAllEntities } from "../../entities/hooks";
 import type { Entity } from "../../entities/api";
-import { TableroTelarana } from "./TableroTelarana";
+import { ElMundo } from "./mundo/ElMundo";
 import { EscribirFicha } from "./EscribirFicha";
 import { PrepararSesion } from "./PrepararSesion";
 import { LoQueSabeLaMesa } from "./LoQueSabeLaMesa";
@@ -14,14 +14,17 @@ import { IconoOjo, IconoPluma, IconoReloj } from "../../../ui/Iconos";
 // sesión abierta, y ocupa la mesa entera con `grid-cols-[1.15fr_1fr]` (§5 de la auditoría del
 // 2026-09-04, copiado literal de la maqueta).
 //
-// A la izquierda **el tablero telaraña**: chinchetas e hilos de cobre entre las fichas enlazadas.
+// A la izquierda **el mundo como desglose con detalle** (`mundo/ElMundo`, Task 14 bis, D-CF-64):
+// un árbol por tipo donde cada ficha cuelga de su padre por un rótulo de jerarquía, y al lado la
+// ficha elegida con su anillo de vecinos y sus hilos. **Sustituye al tablero telaraña** (D4,
+// 2026-09-02: chinchetas con posiciones que se tapaban desde seis fichas), retirado en el mismo
+// commit que montó esto; el mapa de historia que iba a ocupar su sitio lo aplazó el autor.
 // A la derecha **tres solapas**: escribir una ficha, preparar la sesión, y ver lo que sabe la
-// mesa. Pulsar una chincheta trae esa ficha a la solapa de escribir, que es lo que promete el
-// rótulo de la maqueta: *«Pulsa una ficha para editarla»*.
+// mesa. Elegir una ficha en el desglose la trae a la solapa de escribir, como antes la chincheta.
 //
 // **Este fichero solo compone.** El mundo se lee una vez aquí —`useAllEntities`— y se reparte por
-// props, para que el tablero y las dos solapas que lo necesitan no pidan tres veces lo mismo;
-// react-query lo deduplicaría de todos modos, pero repartirlo deja escrito quién depende de qué.
+// props a las solapas que lo necesitan; `ElMundo` lo vuelve a pedir con la misma clave y
+// react-query lo deduplica: una sola llamada por campaña.
 //
 // Las dos reglas de armazón que le tocan a esta pieza: **`min-h-0` en todos los ancestros** que
 // scrollean —sin él el `overflow-y-auto` de los paneles no se activa jamás—, y **scroll por
@@ -75,28 +78,21 @@ export function TallerDelDM({ campaignId }: { campaignId: string }) {
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[1.15fr_1fr] gap-s3">
       <section
-        aria-label="El mundo, con sus hilos"
+        aria-label="El mundo"
         className="flex min-h-0 min-w-0 flex-col rounded-radius-sm border border-muted bg-surface p-s4"
       >
         <div className="mb-s3 flex shrink-0 items-center gap-s3">
-          <h2 className="font-title text-chrome-md text-text">El mundo, con sus hilos</h2>
+          <h2 className="font-title text-chrome-md text-text">El mundo</h2>
           <span aria-hidden="true" className="h-px flex-1 bg-copper/40" />
           <span className="font-chrome text-chrome-xs text-muted">
-            Pulsa una ficha para editarla
+            Qué cuelga de qué, y qué dice cada ficha
           </span>
         </div>
         <div className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <TableroTelarana
+          <ElMundo
             campaignId={campaignId}
-            fichas={fichas.data ?? []}
-            seleccion={seleccionada?.id ?? null}
+            seleccionId={seleccionada?.id ?? null}
             onSeleccion={setElegida}
-            cargando={fichas.isLoading}
-            error={
-              fichas.isError
-                ? "No se pudo leer el mundo de esta campaña. Un corcho vacío aquí no significa que no haya fichas."
-                : null
-            }
           />
         </div>
       </section>

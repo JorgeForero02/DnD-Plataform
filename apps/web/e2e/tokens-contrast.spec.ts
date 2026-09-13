@@ -1293,6 +1293,135 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
+// Task 14 bis (pulido, D-CF-64) — **el mundo como árbol con detalle**, en el taller del DM, medido
+// como el resto del fichero: pantalla real, colores reales, en los tres temas. Lo que esta pantalla
+// pinta y ninguna medida anterior cubría: la raíz de tipo en cobre con su contador, la fila elegida
+// del árbol (`--accent-text` sobre `--accent-tint`), el rótulo en gris de una ficha que cuelga, el
+// enlace «Abrir ficha», un vecino del anillo (texto y borde) y la fila del editor de hilos. Se
+// monta por API —campaña, lugar, PNJ y el hilo «vive en»— para no repetir el recorrido de
+// `mundo-arbol.spec.ts`, que es quien demuestra que el gesto funciona.
+for (const theme of ["dark", "light", "reading"] as const) {
+  test(`contraste medido en el mundo como árbol con detalle (${theme})`, async ({ page }) => {
+    await setStoredTheme(page, theme);
+    const cuenta = nuevaCuenta("mundo-contraste");
+    await page.goto("/register");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await page.getByLabel("Nombre").fill(cuenta.displayName);
+    await page.getByLabel("Correo").fill(cuenta.email);
+    await page.getByLabel("Contraseña").fill(cuenta.password);
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+    await expect(page.getByRole("heading", { name: "Tus crónicas" })).toBeVisible();
+
+    const token = await page.evaluate(() => localStorage.getItem("dnd_token"));
+    const headers = { Authorization: `Bearer ${token}` };
+    const campana = await page.request.post("/api/campaigns", {
+      headers,
+      data: { name: "Campaña de contraste (mundo)" },
+    });
+    expect(campana.ok()).toBe(true);
+    const campaignId: string = (await campana.json()).id;
+    const torre = await page.request.post(`/api/campaigns/${campaignId}/entities`, {
+      headers,
+      data: { type: "LOCATION", name: "Torre Gris" },
+    });
+    expect(torre.ok()).toBe(true);
+    const torreId: string = (await torre.json()).id;
+    const corvin = await page.request.post(`/api/campaigns/${campaignId}/entities`, {
+      headers,
+      data: { type: "NPC", name: "Corvin" },
+    });
+    expect(corvin.ok()).toBe(true);
+    const corvinId: string = (await corvin.json()).id;
+    const hilo = await page.request.post(`/api/entities/${corvinId}/links`, {
+      headers,
+      data: { toId: torreId, label: "vive en" },
+    });
+    expect(hilo.ok()).toBe(true);
+
+    await page.goto(`/campaigns/${campaignId}/sesion`);
+    const mundo = page.getByRole("region", { name: "El mundo" });
+    const arbol = mundo.getByRole("tree", { name: "El mundo" });
+    const lugares = arbol.getByRole("treeitem", { name: "Lugares" });
+    await expect(lugares).toBeVisible();
+
+    {
+      const rotuloDeRaiz = lugares.getByText("Lugares", { exact: true });
+      const { color, bg } = await effectiveTextColours(rotuloDeRaiz);
+      record(theme, "mundo: raíz de tipo en cobre", contrastRatio(color, bg), 4.5);
+      const contador = lugares.getByText("1", { exact: true }).first();
+      const medida = await effectiveTextColours(contador);
+      record(theme, "mundo: contador de la raíz", contrastRatio(medida.color, medida.bg), 4.5);
+    }
+
+    const torreItem = arbol.getByRole("treeitem", { name: "Torre Gris", exact: true });
+    await torreItem.getByRole("button", { name: "Desplegar Torre Gris" }).click();
+    const corvinItem = arbol.getByRole("treeitem", { name: "Corvin", exact: true });
+    await expect(corvinItem).toBeVisible();
+    {
+      const nombre = corvinItem.getByText("Corvin", { exact: true });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "mundo: ficha del árbol, texto", contrastRatio(color, bg), 4.5);
+      const rotulo = corvinItem.getByText("vive en", { exact: true });
+      const medida = await effectiveTextColours(rotulo);
+      record(
+        theme,
+        "mundo: rótulo de jerarquía en gris",
+        contrastRatio(medida.color, medida.bg),
+        4.5,
+      );
+    }
+
+    // La fila elegida cambia de fondo (`--accent-tint`) y de texto (`--accent-text`).
+    await corvinItem.click();
+    await expect(corvinItem).toHaveAttribute("aria-selected", "true");
+    {
+      const nombre = corvinItem.getByText("Corvin", { exact: true });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "mundo: ficha elegida del árbol, texto", contrastRatio(color, bg), 4.5);
+    }
+
+    const detalle = mundo.getByRole("article", { name: "Detalle de Corvin" });
+    {
+      const abrir = detalle.getByRole("link", { name: "Abrir ficha" });
+      const { color, bg } = await effectiveTextColours(abrir);
+      record(theme, "mundo: enlace «Abrir ficha» texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(abrir);
+      record(theme, "mundo: enlace «Abrir ficha» borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const vecino = detalle
+        .getByRole("group", { name: "Vecinos de Corvin" })
+        .getByRole("button", { name: "vive en Torre Gris" });
+      const nombre = vecino.getByText("Torre Gris", { exact: true });
+      const { color, bg } = await effectiveTextColours(nombre);
+      record(theme, "mundo: vecino del anillo, texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(vecino);
+      record(theme, "mundo: vecino del anillo, borde", contrastRatio(border, borderBg), 3);
+    }
+    {
+      const fila = detalle.getByRole("list", { name: "Hilos de Corvin" }).getByRole("listitem");
+      const rotulo = fila.getByText("vive en", { exact: true });
+      const { color, bg } = await effectiveTextColours(rotulo);
+      record(theme, "mundo: rótulo de la fila de hilos, cobre", contrastRatio(color, bg), 4.5);
+      const tipo = fila.getByText("Lugar", { exact: true });
+      const medida = await effectiveTextColours(tipo);
+      record(
+        theme,
+        "mundo: tipo legible de la fila de hilos",
+        contrastRatio(medida.color, medida.bg),
+        4.5,
+      );
+    }
+    {
+      const chip = mundo.getByRole("button", { name: "Sin hilos" });
+      const { color, bg } = await effectiveTextColours(chip);
+      record(theme, "mundo: chip «Sin hilos» en reposo, texto", contrastRatio(color, bg), 4.5);
+      const { border, bg: borderBg } = await borderColourAgainstBg(chip);
+      record(theme, "mundo: chip «Sin hilos» en reposo, borde", contrastRatio(border, borderBg), 3);
+    }
+  });
+}
+
 // Fix round 2 (post-1.19b review): fix round 1's "computed size, not explicitness"
 // argument was correct about the test, then lost to the very cascade it was reasoning
 // about -- the element-selector override it shipped in tokens.css never beat

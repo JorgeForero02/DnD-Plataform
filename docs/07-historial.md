@@ -73,6 +73,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md`](./_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md) | **Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md`](./_archivo/historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md) | **Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla**, movida entera el 2026-09-13 al escribir la ronda de arreglo 2 de la Task 10: el fichero volvía a pasarse de 1000. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md`](./_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md) | **Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md`](./_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md) | **Tarea 9 del pulido: el servidor dice qué dado cayó, `dice[]` por dado**, movida entera el 2026-09-13 al escribir la entrada de la Task 14 bis (el mundo como árbol con detalle): el fichero estaba en 977 de 1000 y era la entrada completa más antigua. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -83,6 +84,43 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## Task 14 bis del pulido: el mundo como árbol con detalle — sustituye al tablero telaraña (2026-09-13, #23, D-CF-64)
+
+Qué — `features/sessions/taller/mundo/`: `arbolDelMundo.ts` (puro: cuelga cada ficha de su padre
+por un rótulo de `ROTULOS_DE_JERARQUIA`, dos padres → «también en …», ciclos cortados y marcados,
+`sinHilos`, y `vecinosDe` leído desde la ficha abierta), `DesgloseDelMundo.tsx` (`tree` WAI-ARIA
+con tabindex rotatorio: flechas, → despliega, ← pliega, Enter elige; buscador sin tildes; chip
+«Sin hilos»), `DetalleDeFicha.tsx` (cabecera · vitela recortada con «Leer más» · anillo · hilos),
+`AnilloDeVecinos.tsx` (SVG propio, posiciones fijas `2π·i/n`, cada vecino un `<button>`),
+`EditorDeHilos.tsx` (fila ficha · rótulo · cambiar · quitar; dos desplegables con buscador,
+rótulo sugerido por `relacionesSugeridas` o libre; **cambiar = crear y luego quitar**, porque no
+hay `PATCH` de enlaces) y `ElMundo.tsx` (las dos mitades, `lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]`).
+`ROTULOS_DE_JERARQUIA` y `esRotuloDeJerarquia` en `apps/web/src/features/links/relaciones.ts`: los seis son `desde` de
+`RELACIONES`, ninguno se descartó. `TallerDelDM.tsx` monta `ElMundo` donde iba el tablero, con la
+cabecera «El mundo»; la selección sigue alimentando «Escribir ficha». **Se borran** `TableroTelarana.tsx`,
+`posiciones.ts` y sus dos pruebas (**D4**, 2026-09-02: «el tablero telaraña se retira»); es la única
+baja de pruebas de la tanda y va en el mismo commit. Desviación del brief: el componente del árbol
+se llama `DesgloseDelMundo.tsx` y no `ArbolDelMundo.tsx` porque en Windows `./ArbolDelMundo` resolvía
+al módulo puro `arbolDelMundo.ts` (`.ts` antes que `.tsx`, sin distinguir mayúsculas).
+
+Por qué — el autor, tras cuatro maquetas (2026-09-12), aplazó el mapa de historia y cerró el #23
+con desglose + detalle. La regla nueva de `04-convenciones.md`: *un árbol enseña un padre; los
+demás hilos van en la ficha*.
+
+Evidencia — unitarias nuevas: `arbolDelMundo.test.ts` (11), `DetalleDeFicha.test.tsx` (11),
+`ElMundo.test.tsx` (7), y dos en `relaciones.test.ts`; `pnpm --filter @dnd/web test -- taller links`
+en verde. Mutación: quitar la comprobación de `ROTULOS_DE_JERARQUIA` (todo rótulo cuelga) hace
+fallar exactamente «un hilo lateral no mueve nada»; restaurado con `cp`. e2e nuevo
+`mundo-arbol.spec.ts` (tender «vive en» desde los desplegables cuelga a Corvin de la Torre Gris,
+persiste tras recargar; a 390 px el detalle va debajo y `scrollWidth <= 390`) y el mundo en
+`tokens-contrast.spec.ts` en los tres temas — **no corridos en esta sesión, a cargo del orquestador**
+junto a `mesa-mide.spec.ts`.
+
+**Revertir:** `git revert` del commit devuelve el tablero, `posiciones.ts` y sus dos pruebas; no
+hay migración ni dato que limpiar (los hilos ya existían tal cual).
 
 ---
 
@@ -391,34 +429,13 @@ Revertir — `git revert` del commit; ningún dato ni migración de por medio.
 
 ---
 
-## Tarea 9 del pulido: el servidor dice qué dado cayó — `dice[]` por dado (2026-09-13, C5)
+## Tarea 9 del pulido: el servidor dice qué dado cayó — `dice[]` por dado (2026-09-13, C5) — archivada
 
-Qué — `dadosTirados(terms: DiceTermResult[]): DieRolled[]`, nueva en `apps/api/src/dice/dice.ts`
-junto al evaluador (es su conocimiento, no del servicio): empareja cada dado de `rolled` con sus
-caras y dice si cuenta, consumiendo `dropped` como multiconjunto para que `[4, 4]` con un
-descartado tache uno y no los dos — el mismo truco que ya usaba `dadosDeLaTirada` en la web.
-`dieRolledSchema` (`{ sides, value, kept }`, `packages/shared/src/roll.schema.ts`) se añade,
-**opcional**, a `desglose` (rama `revealed: true` de `rollResultSchema`) y al payload
-`ABILITY_ROLL` de `game-event.schema.ts`; `rolls.service.ts` calcula `const dice =
-dadosTirados(resultado.terms)` junto a `rolls`/`kept`/`dropped` y lo pone en los dos sitios.
-
-Por qué — la pantalla (Task 10, web) necesita pintar cada dado con sus caras para poder tachar
-el descartado dado a dado; hasta ahora solo tenía tres listas paralelas (`rolls`, `kept`,
-`dropped`) y tenía que reconstruir el emparejamiento a mano, que es exactamente el fallo que ya
-había en la web con `dadosDeLaTirada`. Con `dice[]` el emparejamiento se hace una sola vez, en el
-servidor, con la misma lógica que ya lo resolvía.
-
-Pruebas — tres unitarias nuevas en `dice.spec.ts` (empareja caras y marca kh/kl y relanzados;
-con dos iguales y un descartado tacha uno y no los dos; una constante no es un dado) y una en
-`rolls.service.spec.ts` (con ventaja, `dice` trae los dos d20 con su `kept`); un e2e nuevo en
-`rolls.e2e-spec.ts` (`2d6+1d20` devuelve `dice` con tres entradas, caras `[6, 6, 20]` en orden, y
-el suceso del log lo trae igual). `pnpm --filter @dnd/api test -- dice rolls`: 90/90. E2E de
-`rolls`: 14/14. Mutación: quitar el `splice` que consume `pendientes` como multiconjunto hace
-fallar «tacha uno y no los dos» (recibía dos dados con `kept: false` en vez de uno) — restaurado
-con `cp`.
-
-Revertir — `git revert` del commit; `dice` es opcional en ambos schemas y su ausencia no rompe
-nada que ya exista, así que revertir no tiene trampa de datos que limpiar.
+**Movida entera** a [`_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md`](./_archivo/historial-2026-09-13-tarea-9-dice-por-dado.md)
+el 2026-09-13, al escribir la entrada de la Task 14 bis: el fichero estaba en 977 de 1000 y era la
+entrada completa más antigua. En una línea: `dadosTirados()` empareja cada dado con sus caras y
+dice si cuenta, y `dice[]` viaja opcional en el desglose y en `ABILITY_ROLL` para que la pantalla
+tache dado a dado sin reconstruir el emparejamiento.
 
 ---
 

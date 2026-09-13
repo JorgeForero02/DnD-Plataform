@@ -511,6 +511,16 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   d8 octaedro, d10/d100 trapezoedro, d12 dodecaedro, d20 icosaedro. Un resultado enseña **cada
   dado** con su forma y su cara; los descartados tachados (anexo #11, #12).
 
+- **Un árbol enseña un padre; los demás hilos van en la ficha** (Task 14 bis, D-CF-64). El
+  desglose del mundo cuelga cada ficha de la de destino de un hilo cuyo rótulo está en
+  `ROTULOS_DE_JERARQUIA` (`apps/web/src/features/links/relaciones.ts`, la lista única: «vive en», «se encuentra en»,
+  «forma parte de», «ocurrió en», «pertenece a», «custodia»); todo lo demás —«es aliado de»,
+  «menciona», «protege a»— es lateral y se lee en el detalle de la ficha, no en el árbol. Dos
+  padres se enseñan en los dos, marcados «también en …»; un ciclo se corta y se marca. Un rótulo
+  de jerarquía tiene que existir como `desde` de `RELACIONES`: un padre que nadie puede elegir
+  desde el selector sería un padre secreto. Y los desplegables de «hacia qué ficha» y «rótulo»
+  son datos, no opciones con significado: por eso son listas con buscador y no radios.
+
 ## Los tokens de color se declaran por CANALES (B0, 2026-09-04)
 
 **La causa de los 49 defectos invisibles está arreglada, y la prohibición que la tapaba se

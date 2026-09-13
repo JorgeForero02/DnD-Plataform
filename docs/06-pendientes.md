@@ -201,6 +201,17 @@ rarezas, objetos que conceden conjuros (dependen del paso 3) y romperse a las 24
 sin ellos se modela a medias. **Antes de abrir el plan, una spec con dos preguntas:** ¿solo +N o
 también resistencias y ventajas? ¿descanso corto real (el de 2C, con su hora de reloj) o un clic?
 
+## El mapa de historia del DM — aplazado por el autor (2026-09-12); el #23 se cerró con el árbol
+
+**El #23 del anexo («grafo del mundo poco intuitivo») está cerrado** por la Task 14 bis del pulido
+(D-CF-64): el tablero telaraña se retiró (D4) y en su sitio va el mundo como **desglose + detalle**
+(`apps/web/src/features/sessions/taller/mundo/`). Lo que queda abierto es **el mapa de historia**
+—D-CF-52 lo ponía como cuarta tanda, D-CF-54 fijó su forma— que **el autor aplazó el 2026-09-12**
+tras ver cuatro maquetas. Su spec, [`superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md`](./superpowers/specs/2026-09-12-mapa-de-historia-del-dm-design.md),
+**se queda tal cual, sin fecha**: no se reescribe ni se borra, y no se abre plan hasta que el autor
+lo pida. Si se retoma, el árbol no lo estorba: el mapa lo dibuja el DM (D-CF-54) y no se genera de
+los hilos, así que los dos pueden convivir.
+
 ## #13 · Dados en 3D con física de verdad (aplazado, de la nota de Task 0)
 
 **Coste investigado, no se hace.** La nota de diseño del pulido

@@ -121,6 +121,7 @@ export function PanelDeDadosDeLaMesa({
   onCerrar: () => void;
 }) {
   const idGuia = useId();
+  const idMotivoTirar = useId();
   // Task 10 — la bandeja empieza con un d20 cuando nadie pidió otra cosa (el «1d20» de siempre);
   // si quien abre el panel trae SU PROPIA expresión (un ataque, «1d8+5»), no hay bandeja que la
   // represente sin inventarse una composición que nadie pidió, así que empieza vacía y el texto
@@ -369,12 +370,17 @@ export function PanelDeDadosDeLaMesa({
                 variant="primary"
                 onClick={alTirar}
                 disabled={tirar.isPending || expresion.trim() === ""}
-                title={expresion.trim() === "" ? "Añade al menos un dado para tirar." : undefined}
+                aria-describedby={idMotivoTirar}
               >
                 <DadoDibujado />
                 {tirar.isPending ? "Tirando…" : "Tirar"}
               </Button>
             </div>
+            {/* Round 2 de revisión (anexo #8) — siempre montado, nunca solo un `title`: ver el
+                mismo motivo en `PanelDeDados.tsx`. */}
+            <span id={idMotivoTirar} className="sr-only">
+              {expresion.trim() === "" ? "Añade al menos un dado para tirar." : ""}
+            </span>
           </div>
         )}
 

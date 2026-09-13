@@ -194,6 +194,32 @@ describe("PanelDeDados — tirar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Añadir un d20" }));
     expect(campo).toHaveValue("2d20+1d6");
   });
+
+  // Round 2 de revisión (anexo #8) — **el defecto de verdad, reproducido.** La primera versión
+  // de esta ronda desmontaba el radiogroup de ventaja letra a letra mientras se escribía una
+  // expresión que no empieza por `d20`, y la tarjeta de «Tirada nueva» se encogía 28px con cada
+  // tecla — jsdom no maqueta, así que ninguna prueba de aquí lo había medido; lo midió Playwright
+  // (`espacios.spec.ts`). Esta prueba no mide alto (eso sigue siendo del navegador): comprueba
+  // el porqué, en el DOM — que ni el radiogroup ni el botón «Tirar» se muevan del árbol mientras
+  // se escribe, montados los dos antes y después.
+  it("Round 2 — escribir una expresión inválida no desmonta el radio de ventaja ni «Tirar»", () => {
+    pintar();
+    fireEvent.click(screen.getByText("Modo avanzado"));
+
+    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "4d" } });
+
+    // El elemento que se desmontaba con el defecto: el radiogroup de ventaja (`SelectorDeVentaja`
+    // dentro de `BandejaDeDados.tsx`), condicionado antes a `ofreceVentaja &&`. Ahora se queda,
+    // apagado y con su motivo — ni el radiogroup ni el botón «Tirar» salen del documento.
+    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
+  });
 });
 
 describe("PanelDeDados — la audiencia es una decisión visible", () => {

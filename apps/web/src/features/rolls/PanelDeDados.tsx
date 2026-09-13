@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
 import { Button, Field, fieldControlClass, Panel } from "../../ui";
 import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
@@ -70,6 +70,7 @@ function mensajeDeError(error: unknown): string {
 }
 
 export function PanelDeDados({ campaignId }: { campaignId: string }) {
+  const idMotivoTirar = useId();
   // Task 10 — la bandeja empieza con un d20, como el «1d20» de siempre: es lo que hace que
   // «Ventaja» siga visible desde el primer render, igual que antes de esta tarea.
   const [bandeja, setBandeja] = useState<Bandeja>(() => conDado(BANDEJA_VACIA, 20));
@@ -231,10 +232,18 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
                   variant="primary"
                   onClick={alTirar}
                   disabled={tirar.isPending || expresion.trim() === ""}
-                  title={expresion.trim() === "" ? "Añade al menos un dado para tirar." : undefined}
+                  aria-describedby={idMotivoTirar}
                 >
                   Tirar
                 </Button>
+                {/* Round 2 de revisión (anexo #8) — **siempre montado**, nunca un `title` a
+                    secas: un `title` no lo anuncia ningún lector de pantalla de forma fiable, y
+                    «se deshabilita, nunca se esconde, con su motivo» (docs/04-convenciones.md)
+                    pide que el motivo se pueda leer. `sr-only` no ocupa espacio, así que su
+                    texto vacío/lleno tampoco mueve nada. */}
+                <span id={idMotivoTirar} className="sr-only">
+                  {expresion.trim() === "" ? "Añade al menos un dado para tirar." : ""}
+                </span>
                 <Button
                   type="button"
                   variant="secondary"

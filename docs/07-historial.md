@@ -66,6 +66,8 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-12-tarea-1-casilla-banda-anclada.md`](./_archivo/historial-2026-09-12-tarea-1-casilla-banda-anclada.md) | **Tarea 1 del pulido: `Casilla` y la banda anclada**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-12-ronda-arreglo-tarea-1-casilla-6rem.md`](./_archivo/historial-2026-09-12-ronda-arreglo-tarea-1-casilla-6rem.md) | **Ronda de arreglo de la tarea 1: `Casilla` a 6rem**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
 > | [`_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md`](./_archivo/historial-2026-09-12-tarea-2-field-reserva-espacio.md) | **Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras los archivados anteriores. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md`](./_archivo/historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md) | **Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla**, movida entera el 2026-09-13 al escribir la ronda de arreglo 2 de la Task 10: el fichero volvía a pasarse de 1000. Su hito se queda arriba |
+> | [`_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md`](./_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md) | **Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición**, movida entera el 2026-09-13 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su hito se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -161,6 +163,41 @@ válida: agrupar sin `Map` enrojece `bandeja.test.ts` y `PanelDeDados.test.tsx`)
 (no corridos por el agente, mismo alcance que la tarea): `exact: true` en los botones de la
 bandeja que ya escribían pruebas de la tarea, y `tokens-contrast.spec.ts` mide también el borde
 de la pila y el rótulo «En la bandeja».
+
+Revertir — `git revert` del commit; ningún dato ni migración de por medio.
+
+---
+
+## Ronda de arreglo 2 de la tarea 10: el radio de ventaja se queda montado, apagado con su motivo (2026-09-13)
+
+Qué — round 1 arregló que la ventaja mintiera, pero **la escondió**: `ofreceVentaja &&` montaba
+y desmontaba el `radiogroup` letra a letra al escribir en el modo avanzado, y el controlador lo
+cazó con `espacios.spec.ts` (los dos tearing de anexo #8, rojos: 840→812, −28px) — exactamente
+el defecto que esa suite existe para cazar y que `jsdom` no puede ver. Arreglo por la regla del
+proyecto («se deshabilita, nunca se esconde, con su motivo», `04-convenciones.md`): el
+`radiogroup` de `BandejaDeDados.tsx` se queda **siempre montado**; cuando no admite ventaja se
+apaga (`disabled`) y una línea con `min-h-[1.125rem]` —reservada también cuando está vacía— dice
+«Solo con un d20 al principio de la tirada.». El botón «Tirar» de los dos paneles cambia su
+motivo de `title` (invisible para lectores de pantalla) a un `span` `sr-only` siempre montado con
+`aria-describedby`, mismo patrón que ya usa `TirarAtaqueBoton.tsx`.
+
+Por qué — el elemento que se movía era el `radiogroup` «Ventaja»: al escribir una expresión que
+no empieza por `d20` (`admiteVentajaEnTexto` en falso), `ofreceVentaja` pasaba a `false` y el
+`{ofreceVentaja && (...)}` de round 1 desmontaba el bloque entero, encogiendo la tarjeta lo que
+medía ese bloque. El botón «Tirar» no cambiaba de alto —su motivo ya vivía en un `title`, que no
+ocupa espacio—, pero se corrigió igual porque un `title` no lo anuncia ningún lector de pantalla
+de forma fiable.
+
+Pruebas — reproducido primero: RTL que abre el modo avanzado, escribe una expresión que no
+admite ventaja y comprueba que el mismo conjunto de roles sigue presente antes y después
+(`PanelDeDados.test.tsx`, nueva); confirma que el culpable era el `radiogroup`. Dos pruebas de
+`BandejaDeDados.test.tsx` que antes esperaban `queryByRole(...).toBeNull()` pasan a esperar
+`toBeInTheDocument()` + `toBeDisabled()`. `PanelDeDadosDeLaMesa.test.tsx` (nuevo fichero, no
+existía prueba unitaria de este componente): mismo reproductor para el cajón compacto.
+`pnpm --filter @dnd/web test -- src/features/rolls`: 91/91 (12 ficheros). `pnpm verify`: verde
+(shared/api/web). E2E (no corridos por el agente; el controlador ya los tiene en su tanda):
+`espacios.spec.ts` queda intacto — no hizo falta tocarlo, porque medía bien: el defecto estaba en
+el componente, no en la medida.
 
 Revertir — `git revert` del commit; ningún dato ni migración de por medio.
 
@@ -442,81 +479,28 @@ falla, el input conserva su valor. `pnpm verify` en verde.
 quitar el bloque `SalaDelTablero` de `CampaignSettings.tsx`, la línea del servicio y el campo del
 contrato y del esquema de Prisma.
 
-## Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición (2026-09-12, tres rondas)
+## Tarea 4 del pulido: `e2e/espacios.spec.ts`, la pasada de medición (2026-09-12, tres rondas) — archivada
 
-Qué — anexo #17, y cierra la medida de #6 y #8. Estado final de `medirHermanas(raiz)`, tras dos
-rondas de arreglo sobre el commit original: mide **toda tarjeta** de la pestaña —
-`section[aria-label]` (`TarjetaDeHoja`) y `[data-tarjeta]` (la caja pequeña que se apila junto a
-una `TarjetaDeHoja` en vez de ir dentro: Percepción pasiva, Dados de golpe, Salvaciones de
-muerte) — no solo los hijos directos de `[data-pestana]`. Ronda 1 medía `:scope > *`, y la
-mutación de prueba del controlador (`gap-[10rem]` bajo «Ficha», en `Rasgos.tsx`) seguía en
-verde: el hueco de 160px vivía DENTRO de un hijo directo (una sub-rejilla que apila Ficha +
-Personalidad), invisible desde fuera. Cinco pruebas corren a 1280px sobre `[data-pestana]` de
-Números, Rasgos, Recursos, Estado y **Ataques** (ronda 3: mismo `lg:grid-cols-2 items-start` de
-dos tarjetas que las demás) contra `HUECO_MAX_PX=48` / `DESNIVEL_MAX_PX=24` (nota de diseño de la
-Tarea 0, § 7); Objetos y Conjuros se quedan fuera — Objetos tiene su propia rejilla de
-inventario con panel de detalle sticky, medida por la prueba del anexo #6 de más abajo, y
-Conjuros solo se monta para quien lanza conjuros, que el guerrero de esta suite no. **Desnivel:
-una tarjeta con otra tarjeta debajo en su misma columna queda exenta** (la columna, no la
-tarjeta, llena la fila) — en Números eso exime a Salvaciones (que desde la ronda 3 crece con
-`flex-1` para repartirse el alto sobrante con Percepción pasiva, dejándola pegada al final de la
-columna en vez de flotando con un hueco debajo) y a las tarjetas que abren un apilado en
-Rasgos/Recursos/Estado. Lo que sí se compara: la última tarjeta de cada columna (o la única),
-agrupadas por techo compartido (`|y diff| < 4`); ninguna fila se descarta (la ronda 2 traía un
-descarte de «la fila más baja, salvo que sea la única» que nunca llegaba a ejecutarse con el
-contenido real de hoy, y se quitó en la ronda 3 en vez de dejarlo como lógica muerta). Una sexta
-prueba abre la pestaña Objetos con doce objetos dados por la API (mismo atajo que
-`inventario.spec.ts`) y comprueba que el panel `aside "detalle del objeto"` (sticky de la Tarea
-2) se pega justo bajo la banda fija tras desplazar — **con cota de arriba y de abajo** desde la
-ronda 3 (antes solo comprobaba que no se solapara; sin la cota de arriba, un `--banda-fija-alto`
-roto que reportara siempre 0 habría dejado pasar el detalle a 16px de la banda sin que nada lo
-notara), leyendo `--space-4` resuelto a píxeles por el propio navegador y no por el texto del
-token (`1rem`, no `16px`, es lo que devuelve `getPropertyValue` de una variable CSS). Las dos
-últimas pruebas escriben una expresión inválida y comprueban que el alto de la tarjeta de tirar
-no cambia — en la pantalla «Dados» y en el cajón «La mesa tira» (extra al brief, del
-controlador). Los helpers de registro/campaña/personaje son copias literales de `hoja.spec.ts` —
-los e2e no comparten módulo hoy, anotado así en el propio fichero.
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md`](./_archivo/historial-2026-09-12-tarea-4-espacios-medicion.md)
+el 2026-09-13, al escribir la ronda de arreglo 2 de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: `medirHermanas` mide toda
+tarjeta de la pestaña, no solo los hijos directos, sobre Números/Rasgos/Recursos/Estado/Ataques;
+cierra los anexos #6, #8 y #17, y de paso arregla el detalle de Objetos bajo la banda fija y el
+desnivel de Números.
 
-**Los tres defectos reales que la medida encontró y se arreglaron en la misma tanda**:
-1. (ronda 1) el detalle de Objetos se metía 60px bajo la banda fija — la banda ahora reporta su
-   alto real por `ResizeObserver` (`Cabecera.tsx` → `onAlto` → `HojaCalculada.tsx` → variable
-   `--banda-fija-alto` → `DetalleDeObjeto.tsx`), en vez de que el sticky sumara solo el escalón
-   de `AppShell`;
-2. (ronda 1) 42px de desnivel en Números — `items-stretch` a página, igualando el alto de las
-   tres columnas (a mesa sigue en `items-start`);
-3. (ronda 3) ese `items-stretch` estiraba el envoltorio invisible de la columna del medio, no
-   sus dos tarjetas: Percepción pasiva seguía con su alto natural y dejaba un hueco vacío bajo
-   ella. La tarjeta Salvaciones (`className="flex-1"`) es la que ahora crece para llenar ese
-   sobrante — la corrección visible, no solo el envoltorio.
+---
 
-Por qué — Tarea 4 del
-[plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), cierra el
-anexo #17 y las medidas de #6 y #8; revertir — `git revert` de los cuatro commits de esta tarea,
-en orden inverso (`695d200`, luego el de esta tercera ronda, que quita `ataques` de la lista,
-`flex-1` de Salvaciones e `items-stretch` de `Ataques.tsx`, y las dos cotas nuevas de la prueba
-de Objetos; después `8cca54d`; por último el commit original de la Tarea 4).
+## Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla (2026-09-12) — archivada
 
-## Tarea 3 del pulido: Ajustes del personaje en una tarjeta con pie, y Dados en rejilla (2026-09-12)
+**Movida entera** a
+[`_archivo/historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md`](./_archivo/historial-2026-09-12-tarea-3-ajustes-y-dados-en-rejilla.md)
+el 2026-09-13, al escribir la ronda de arreglo 2 de la Task 10 del pulido: el fichero seguía por
+encima de 1000 y era la entrada completa más antigua. En una línea: `AjustesDePersonaje.tsx` pasa
+a `TarjetaDeHoja` con archivar y borrar en el `pie`; `PanelDeDados.tsx` mete el reloj en la misma
+rejilla que pedir y tirar (anexo #16), sin la bandeja compacta todavía — esa llega en la Task 10.
 
-Qué — anexo #9: `AjustesDePersonaje.tsx` pasa de una pila de `div` a una `TarjetaDeHoja` (Task 1)
-con `etiqueta="ajustes del personaje"`; color y visibilidad se quedan en el cuerpo, y archivar +
-borrar (con sus errores en línea) se mueven al `pie`, separados por su propio filete. Anexo #16:
-`PanelDeDados.tsx` mete el reloj en la misma rejilla que pedir una tirada y tirar
-(`grid items-stretch gap-s5 xl:grid-cols-2`, reloj con `xl:col-span-2`) en vez de apilarlo aparte
-en `mb-s5`; `RelojDeCampana` gana `className?` que **sustituye** su `max-w-[40rem]` por defecto
-(no lo añade), y sus dos bloques «Pasa el tiempo» / «O viajáis» pasan de apilados a
-`md:grid md:grid-cols-2 md:gap-s4`, con el «Qué pasa (opcional)» debajo a todo lo ancho. **La
-bandeja compacta de #16 no está aquí** — sigue en el formulario largo de siempre; llega en la
-Task 10 (nota en `docs/06-pendientes.md`). Unitarias: una de orden en `archivar.test.tsx`
-(`compareDocumentPosition` entre color, visibilidad y archivar, y `archivar.closest("footer")`
-no nulo) y una en `PanelDeDados.test.tsx` («con rol DM, el reloj, pedir y tirar están los tres»).
-Verificado por mutación: `cp AjustesDePersonaje.tsx …bak`, se sacó `BotonArchivar` del `pie` al
-cuerpo → la unitaria de orden FAIL (el botón deja de estar bajo un `footer`), restaurado con
-`cp`. (Sacar solo `DeleteButton`, como decía el brief al pie de la letra, no rompe esa unitaria
-— la aserción mira `archivar`, no `borrar` — así que la mutación real se hizo sobre
-`BotonArchivar`, que sí prueba el pie.) Por qué — Tarea 3 del
-[plan de pulido](./superpowers/specs/2026-09-12-pulido-antes-del-paso-3-design.md), anexos #9 y
-#16 de la lista del autor; revertir — `git revert` del commit de esta tarea.
+---
 
 ## Tarea 2 del pulido: espacio reservado en `Field`, sticky con escalón y rejilla de Rasgos (2026-09-12) — archivada
 

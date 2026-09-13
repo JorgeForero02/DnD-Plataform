@@ -28,14 +28,21 @@ describe("BandejaDeDados", () => {
     });
   });
 
-  it("con un d20 en la pila ofrece ventaja; sin él, no", () => {
+  // Round 2 de revisión (anexo #8) — **el radio se queda montado siempre**, apagado cuando no
+  // se puede: el anexo #8 (espacio reservado) prohíbe que un control aparezca/desaparezca y
+  // mueva la tarjeta. `queryByRole` con `null` sería el defecto que esta ronda arregló.
+  it("con un d20 en la pila ofrece ventaja habilitada; sin él, se apaga con su motivo", () => {
     const { rerender } = render(
       <BandejaDeDados valor={{ dados: [20], modificador: 0 }} onChange={() => {}} />,
     );
     expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
 
     rerender(<BandejaDeDados valor={{ dados: [6], modificador: 0 }} onChange={() => {}} />);
-    expect(screen.queryByRole("radiogroup", { name: /ventaja/i })).toBeNull();
+    // Sigue montado — no desaparece — pero apagado, y con el motivo a la vista.
+    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
   });
 
   // Round 1 de revisión (IMPORTANT #1) — el defecto de verdad: un d6 pulsado antes que el d20
@@ -65,14 +72,16 @@ describe("BandejaDeDados", () => {
   // ofrece nunca en el servidor.
   it("con el texto al mando, el radio depende de lo escrito y no de la bandeja de debajo", () => {
     render(<BandejaDeDados valor={{ dados: [20], modificador: 0 }} onChange={() => {}} />);
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
 
     fireEvent.click(screen.getByText("Modo avanzado"));
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d6+1d20" } });
-    expect(screen.queryByRole("radiogroup", { name: /ventaja/i })).toBeNull();
+    // Sigue montado, apagado — no desmontado: es justo lo que el anexo #8 exige.
+    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20+3" } });
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
   });
 
   it("el modo avanzado está plegado y, abierto, la expresión escrita manda", () => {

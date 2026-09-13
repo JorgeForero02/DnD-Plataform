@@ -222,20 +222,26 @@ export function BandejaDeDados({
         </Button>
       </div>
 
-      {/* **Solo cuando el d20 manda de verdad** (`ofreceVentaja`, arriba): pedir ventaja sobre
-          `4d6kh3` — o sobre `1d6+1d20` escrito a mano, que el servidor tampoco reescribe— no
-          significa nada. El `div` con `role="radiogroup"` es lo que da nombre al grupo entero;
-          `SelectorDeVentaja` ya trae su propio `fieldset` con la leyenda visualmente oculta. */}
-      {ofreceVentaja && (
-        <div role="radiogroup" aria-label="Ventaja">
-          <SelectorDeVentaja
-            value={modo}
-            onChange={onModoChange}
-            etiqueta="esta tirada"
-            disabled={disabled}
-          />
-        </div>
-      )}
+      {/* Round 2 de revisión (anexo #8) — **el radio se queda montado siempre.** La primera
+          versión lo montaba y desmontaba con `ofreceVentaja`, y eso es exactamente el anexo #8
+          que esta misma tarea cita en otro sitio: escribir «4d» en el modo avanzado apagaba el
+          radio letra a letra y la tarjeta encogía 28px con cada tecla — el control mide y
+          `pnpm verify` no lo vio porque `jsdom` no maqueta. La regla del proyecto es
+          «se deshabilita, nunca se esconde, con su motivo» (`docs/04-convenciones.md`): cuando
+          `4d6kh3` — o `1d6+1d20` escrito a mano, que el servidor tampoco reescribe — no admite
+          ventaja, el `fieldset` se apaga y una línea reservada (`min-h-[1.125rem]`, vacía si no
+          hace falta) dice por qué, en vez de que el control desaparezca y la tarjeta se mueva. */}
+      <div role="radiogroup" aria-label="Ventaja">
+        <SelectorDeVentaja
+          value={modo}
+          onChange={onModoChange}
+          etiqueta="esta tirada"
+          disabled={disabled || !ofreceVentaja}
+        />
+        <p className="mt-1 min-h-[1.125rem] font-chrome text-chrome-xs text-muted">
+          {ofreceVentaja ? "" : "Solo con un d20 al principio de la tirada."}
+        </p>
+      </div>
 
       {/* **`<details>` controlado a mano, no nativo.** jsdom no implementa la acción por defecto
           de un clic en `<summary>` (solo el evento `toggle` cuando el atributo `open` cambia:

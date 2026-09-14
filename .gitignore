@@ -18,3 +18,4 @@ apps/web/capturas-salida/
 
 # Cache incremental de tsc.
 *.tsbuildinfo
+seed.env

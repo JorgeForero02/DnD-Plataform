@@ -76,9 +76,10 @@ cerraron. **Fusionada a `main` el 2026-09-14 (`7688b44`, `pnpm verify` entero en
 unitarias); producción sigue en `6d2b2ca` y el despliegue lo lanza el autor.** Lo abierto en
 [06-pendientes.md](./06-pendientes.md), «Dejado por puerta de efectos». **Lo siguiente: la tanda «PNJ
 del mundo y la mesa»** (spec del 2026-09-13, por incorporar al repositorio) **y después el paso 3 en
-cinco tandas** ([orden que manda](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md), D-CF-70:
-el libro → el mago → la mesa en combate → lo temporal → deuda), con sus propias reglas de proceso
-fijadas antes de la tanda 1 (D-CF-65 no las anticipa).
+dos partes** ([orden que manda](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md), D-CF-70/71:
+**A** el libro de voz y con daño → elegir, lanzar y usar → la barra de acciones, y **se juega**;
+**B** el resto, en el orden que la partida pida), con sus propias reglas de proceso fijadas antes
+de 3A.1 (D-CF-65 no las anticipa).
 
 **La tanda «reglas de la mesa» quedó cerrada el 2026-09-13 en la rama
 `reglas-de-la-mesa/antes-del-paso-3`** (15 commits sobre `27304e1`; [plan](./superpowers/plans/2026-09-13-reglas-de-la-mesa.md);

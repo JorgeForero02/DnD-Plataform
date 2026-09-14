@@ -542,6 +542,8 @@ export function EditorDeStatblock({
             value={b.visibility ?? "DM_ONLY"}
             niveles={NIVELES_DE_CRIATURA}
             onChange={(v) => setB({ ...b, visibility: v })}
+            legend="Quién ve la plantilla"
+            aclaracion="Afecta a la plantilla del Bestiario. Cada criatura ya en la mesa tiene su propia visibilidad; «Revelar a la mesa» sube las dos."
           />
         }
       </div>

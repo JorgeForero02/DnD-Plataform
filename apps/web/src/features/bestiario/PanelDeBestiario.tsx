@@ -108,7 +108,14 @@ function FichaDeCriatura({
       data-testid="ficha-de-criatura"
     >
       <header className="flex items-baseline justify-between gap-s2 border-b border-muted px-s3 py-s2">
-        <h3 className="font-title text-chrome-lg text-text">{statblock.name}</h3>
+        <div className="min-w-0">
+          {/* PNJ del mundo y la mesa (spec §3.4) — la tarjeta dice de qué es antes de decir
+              cuál: sin esto, «Plantilla» y «En la mesa» (más abajo, la lista de criaturas ya
+              instanciadas) leían igual y solo el texto suelto de la cabecera de bestiario los
+              distinguía. */}
+          <p className="font-chrome text-chrome-xs uppercase tracking-wide text-muted">Plantilla</p>
+          <h3 className="font-title text-chrome-lg text-text">{statblock.name}</h3>
+        </div>
         <span className="font-chrome text-chrome-xs uppercase tracking-wide text-muted">
           {NOMBRE_ORIGEN[statblock.source]}
         </span>

@@ -1010,3 +1010,41 @@ Consecuencia práctica, y por eso se anota en vez de dejarlo implícito: **el ca
 solo se puede probar con la API simulada**, y su recorrido de navegador mide la otra mitad del
 mismo carril de datos (que la lista de PNJ llega al selector). Decidir si ceder un PNJ es una
 funcionalidad que se quiere —y con qué permiso— es del autor, no de un agente.
+
+### D-CF-81 · `entityId` en respuestas de mutación no pasa por la redacción (2026-09-14)
+
+**Abierto, declarado al escribir el plan (E-PM-10), no encontrado tarde.** Las seis rutas de
+LECTURA de `Character` redactan `entityId` con `entityIdsVisibleFor` (`apps/api/src/common/entity-link.ts`,
+ver [05-datos.md](./05-datos.md)): quien no puede ver la ficha del mundo recibe `null`. Las
+respuestas de MUTACIÓN de estado —`PATCH hp`, condiciones, descanso, y cualquier otra que devuelva
+la fila del personaje tras cambiarla— siguen devolviendo la fila cruda a quien ya tiene permiso de
+ESCRITURA (DM o dueño), sin pasar por el mismo helper. La fuga concreta: el dueño de un PNJ cedido
+con una ficha del mundo que él no puede ver (`DM_ONLY`, por ejemplo) podría leer su `entityId` real
+en el cuerpo de una de esas respuestas, aunque las seis lecturas se lo den como `null`. Son quince
+lecturas de `Character` repartidas en cinco servicios; cubrirlas todas en esta tanda era perseguir
+la completitud (memoria del autor: «el riesgo es perseguir la completitud»).
+
+### D-CF-83 · El nombre de un PNJ en el hilo no enlaza a su ficha del mundo (2026-09-14)
+
+**Abierto, declarado al escribir el plan (E-PM-12).** Desde esta tanda, el nombre de un PNJ en el
+**elenco** enlaza a `/campaigns/:id/entidades/:entityId` cuando llega `entityId` (spec §3.4). En el
+**hilo de la sesión** no: `apps/web/src/features/sessions/nombres-del-hilo.ts` resuelve nombres
+para las tarjetas de suceso, no rutas, y darle un enlace es tocar el renderizado de mensajes — una
+tanda con su propia ficha de diseño, no un añadido de esta.
+
+### T3 · Revelar un grupo entero desde el orden de turnos, de un solo clic (2026-09-14)
+
+**Abierto, sin decisión de producto.** `TiraDeIniciativa` revela un PNJ oculto a la vez —«oculto ·
+Revelar» junto al primero del grupo—, aunque el grupo entero comparta posición (varios goblins
+idénticos, por ejemplo): el siguiente clic revela al siguiente, hasta que el grupo entero deja de
+tener «oculto». Revelar el grupo con un solo botón —seis goblins con un solo clic— es una decisión
+de interfaz que la spec de PNJ del mundo y la mesa (§3.2) deja sin cerrar; se anota para cuando el
+autor la pida.
+
+### Sin ficha propia · `CharacterRow` no declara `entityId` (2026-09-14)
+
+**Abierto, menor, encontrado en la Task 4.** `CharacterRow` (`apps/web/src/features/character-sheet/api.ts`)
+no declara `entityId` en su tipo, aunque el servidor ya lo manda desde `GET
+.../characters/:id/sheet` (redactado por `entityIdsVisibleFor`, como el resto de lecturas). No
+rompe nada hoy —nada de la hoja lee ese campo—, pero una pantalla de la hoja que quisiera enlazar
+«Ficha del mundo» desde ahí tendría que ensanchar el tipo primero.

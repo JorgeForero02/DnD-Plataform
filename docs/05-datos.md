@@ -1321,3 +1321,53 @@ NULL`, la misma idea que ya usa una fila `UNIQUE` para lo mismo, pero sobre un c
 absoluto: la bandeja de daño (`damage-tray.controller.ts`) trata esa ausencia exactamente igual que
 un objetivo que no se puede ver, con el mismo 404, para que preguntar por el daño de una tirada
 ajena no delate si esa tirada tenía objetivo o no.
+
+## PNJ del mundo y la mesa: `Character.entityId` y tres sucesos (spec 2026-09-14)
+
+Una columna y tres valores de `GameEventType` más, en tres migraciones aditivas de la misma tanda
+(ver el mapa de ficheros de esa spec en
+[superpowers/plans/2026-09-14-pnj-del-mundo-y-la-mesa.md](./superpowers/plans/2026-09-14-pnj-del-mundo-y-la-mesa.md)).
+
+**`Character.entityId`** (`TEXT?`, migración `20260914100000_character_entity_id`): a qué ficha
+del mundo (`Entity`) pertenece un cuerpo en la mesa — «¿de qué ficha del mundo es este PNJ?».
+`SetNull` en el borrado: borrar la ficha del mundo no se lleva al cuerpo por delante, solo lo
+desenlaza. Entra por dos puertas, las dos validadas por el mismo helper (`requireNpcEntity`: 400
+si el `entityId` no existe, no es de la campaña o no es `type: NPC`) y las dos solo para el DM
+(403 al dueño, como `level`): `PATCH /characters/:id` (`updateCharacterSchema.entityId`,
+`cuid().nullable().optional()`, `null` desenlaza) y `POST /npcs`
+(`instantiateNpcSchema.entityId`, `cuid().optional()`, al instanciar desde el Bestiario).
+
+**Se redacta al leer, nunca se filtra al escribir.** `entityId` viaja al cliente **solo si el
+espectador puede ver la ficha que señala** (`canView`); si no, `null` — un helper único,
+`entityIdsVisibleFor` (`apps/api/src/common/entity-link.ts`), calcula de una vez el conjunto de
+fichas visibles para el espectador y cada ruta de lectura mapea `entityId: set.has(id) ? id :
+null`. Se aplica en las seis rutas de lectura de `Character` que hoy lo devuelven: `GET
+/characters`, `GET /characters/archived`, `GET /characters/:id`, `PATCH /characters/:id`, `GET
+/characters/:id/sheet` y `GET /npcs`. **Queda fuera, a propósito** (E-PM-10, ficha en
+[06-pendientes.md](./06-pendientes.md)): las respuestas de mutación de estado —`PATCH hp`,
+condiciones, descanso…— devuelven la fila cruda a quien ya tiene permiso de escritura (DM o
+dueño), así que el dueño de un PNJ cedido con una ficha del mundo que no ve podría leer ahí el
+`entityId` sin pasar por el helper. Cubrir las quince lecturas de `Character` repartidas en cinco
+servicios en esta misma tanda era perseguir la completitud.
+
+**Tres sucesos nuevos** (`ALTER TYPE "GameEventType" ADD VALUE`, cada uno en su propia sentencia,
+migraciones `20260914100100_npc_reveal_events` y `20260914100200_combatant_left_event`; revertir
+un valor de enum exige reescribir el tipo entero, así que las tres se quedan si algún día se
+revierte la columna que las motivó):
+
+- **`NPC_REVEALED`** (`PLAYERS`, `subjectType: "character"`): «Garrik entra en escena» —o «…—
+  es Garrik el Herrero» si además subió la ficha del mundo. Lo escribe `NpcsService.reveal`
+  (`apps/api/src/statblocks/`, ruta en `NpcVisibilityController`, E-PM-1) cuando sube la
+  visibilidad de la instancia, de cada «cuerpo vivo» que comparte `entityId` (E-PM-5) y, si
+  corresponde, `EntitiesService.update` cuando sube la ficha misma — el mismo suceso que ya emitía
+  una ficha subida a mano, para que `rules-engine/world-builder.ts` no tenga que distinguir el
+  origen.
+- **`NPC_HIDDEN`** (`DM_ONLY`): lo escribe `NpcsService.hide`, siempre, aunque su única audiencia
+  sea el propio DM — el canal en vivo emite un aviso por cada suceso escrito sin mirar su
+  visibilidad, y sin este suceso la pantalla del jugador seguiría enseñando al bicho hasta el
+  siguiente sondeo de 10 s.
+- **`COMBATANT_LEFT`** (`PLAYERS`): «Garrik sale del combate», o «Alguien sale del combate» si el
+  personaje no es visible para la mesa (`PLAYERS`/`PUBLIC`) en el momento de salir — el `payload`
+  de un suceso no se filtra por espectador, así que el nombre de un oculto no puede viajar aquí.
+  Lo escribe `EncountersService.removeCombatant` (`DELETE …/encounters/:id/combatants/:combatantId`,
+  200 con el `Encounter` entero, como `setSide` y `advanceTurn`).

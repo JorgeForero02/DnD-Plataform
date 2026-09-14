@@ -151,6 +151,22 @@ describe("Archivar — el gesto fácil, en la ficha del personaje", () => {
     expect(archivar.compareDocumentPosition(borrar) & 4).toBeTruthy();
   });
 
+  it("PNJ del mundo y la mesa (E-PM-14): un personaje jugador sigue leyendo «Quién puede verlo»", () => {
+    montarAjustes({ character: { ...personaje, statblockRef: null } });
+    expect(screen.getByRole("group", { name: "Quién puede verlo" })).toBeInTheDocument();
+    expect(screen.queryByText(/afecta solo a este cuerpo en la mesa/i)).not.toBeInTheDocument();
+  });
+
+  it("PNJ del mundo y la mesa (E-PM-14): una criatura (con statblockRef) pinta el rótulo y la aclaración de la mesa", () => {
+    montarAjustes({ character: { ...personaje, statblockRef: "SRD:goblin" } });
+    expect(
+      screen.getByRole("group", { name: "Quién ve a esta criatura en la mesa" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/afecta solo a este cuerpo en la mesa, no a la plantilla/i),
+    ).toBeInTheDocument();
+  });
+
   it("un personaje ARCHIVADO no deja un pie vacío: sin nada que ofrecer, no hay footer", () => {
     const { container } = montarAjustes({
       character: { ...personaje, archivedAt: "2026-09-01T00:00:00.000Z" },

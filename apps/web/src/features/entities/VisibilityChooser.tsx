@@ -26,6 +26,8 @@ export function VisibilityChooser({
   disabled = false,
   niveles = TODOS,
   children,
+  legend = "Quién puede verlo",
+  aclaracion,
 }: {
   value: Visibility;
   onChange: (next: Visibility) => void;
@@ -39,11 +41,21 @@ export function VisibilityChooser({
   niveles?: Visibility[];
   /** El bloque de jugadores concretos, que solo aparece cuando hace falta. */
   children?: ReactNode;
+  /**
+   * **PNJ del mundo y la mesa (E-PM-14)**: la plantilla del bestiario y la instancia en la mesa
+   * son dos fronteras distintas con el mismo control, y confundirlas es justo el error que la
+   * spec §3.4 pide evitar. Con el valor de hoy por defecto, los consumidores que no distinguen
+   * (sesiones, objetos, reglas de la mesa…) no cambian ni su rótulo ni su prueba.
+   */
+  legend?: string;
+  /** Bajo el `legend`, cuando hace falta precisar a qué frontera afecta este control en concreto. */
+  aclaracion?: string;
 }) {
   const opciones = niveles.includes(value) ? niveles : [...niveles, value];
   return (
     <fieldset className="rounded-radius-sm border border-muted p-s3">
-      <legend className="px-1 font-chrome text-chrome-sm text-text">Quién puede verlo</legend>
+      <legend className="px-1 font-chrome text-chrome-sm text-text">{legend}</legend>
+      {aclaracion && <p className="mb-s2 font-chrome text-chrome-xs text-muted">{aclaracion}</p>}
       <div className="space-y-1">
         {opciones.map((valor) => {
           const elegido = value === valor;

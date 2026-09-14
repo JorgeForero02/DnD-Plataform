@@ -12,11 +12,13 @@ import {
   CLAVE_AYUDA,
   CLAVE_ESTABLE,
   CLAVE_MUY_CARGADO,
+  nivelPorXp,
   normalizeOverride,
   ORDEN_DE_CARACTERISTICAS,
   overrideValueSchema,
   RANGO_DE_ANULACION,
   tableRulesSchema,
+  umbralDeNivel,
 } from "@dnd/shared";
 import type {
   AbilityKey,
@@ -712,6 +714,24 @@ export class CharacterSheetService {
     }
     const respuesta = await this.buildResponse(userId, character);
     const derivado = await this.loQueDerivanLasCondiciones(character, respuesta.sheet);
+
+    // Puerta de efectos §5 bis (E-PE-10, D-CF-68/D-CF-69). **Solo en modo `XP`**: con `HITO` —el
+    // defecto, para que una campaña que ya existe no cambie (D-CF-53)— la hoja no enseña un
+    // marcador que no significa nada. Mismo helper que `updateSheet` para leer la regla.
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { tableRules: true },
+    });
+    const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
+    const xp =
+      regla.progresion === "XP"
+        ? {
+            actual: character.xp,
+            siguiente: umbralDeNivel(character.level + 1),
+            nivelPorXp: nivelPorXp(character.xp),
+          }
+        : undefined;
+
     return {
       ...respuesta,
       sheet:
@@ -723,6 +743,7 @@ export class CharacterSheetService {
           : respuesta.sheet,
       effectiveSpeeds: derivado.effectiveSpeeds,
       rollSuggestions: derivado.rollSuggestions,
+      ...(xp ? { xp } : {}),
     };
   }
 

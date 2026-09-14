@@ -87,8 +87,15 @@ export const tableRulesSchema = z.object({
     })
     .default({}),
   oroInicial: oroInicialSchema.default({ modo: "EQUIPO" }),
+  // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13). **`HITO` por defecto, para que una
+  // campaña que ya existe no cambie de comportamiento**: sin XP en ningún sitio, la hoja no
+  // enseñaba un marcador que no tenía sentido y `end()` no proponía ningún reparto. Con `XP`, la
+  // columna que ya existía (`Character.xp`) empieza a contar y la mesa la ve — es un MODO, no un
+  // permiso, igual que el `noxp` de Foundry (`award.mjs:108`) esconde el XP en vez de apagarlo.
+  progresion: z.enum(["HITO", "XP"]).default("HITO"),
 });
 export type TableRules = z.infer<typeof tableRulesSchema>;
+export type Progresion = TableRules["progresion"];
 
 /** La respuesta de `POST`/`GET …/ability-rolls` (Task 3). Cada una de las seis tiradas viaja con el
  * mismo desglose que `rollResultSchema` revelado, para que la pantalla reutilice `ResultadoDeTirada`. */

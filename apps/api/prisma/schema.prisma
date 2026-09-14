@@ -113,6 +113,9 @@ enum GameEventType {
   ITEM_QUANTITY_CHANGED
   // D-CF-14, commit 5 (J5, 2026-09-11): la muerte se derivaba al leer y nunca se registraba.
   CHARACTER_DIED
+  // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13): dar XP es un hecho propio de la
+  // crónica, no un eco de HP_CHANGED.
+  XP_AWARDED
 }
 
 enum ResourceReset {
@@ -671,6 +674,13 @@ model Character {
   /// **Cadena y no clave foranea a proposito**, igual que `ResolvedItem.ref` de 2B: el catalogo
   /// del SRD vive en codigo y no tiene fila a la que apuntar.
   statblockRef String?
+
+  /// Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13). SRD 5.1, *Beyond 1st Level*: «A
+  /// character who reaches a specified experience point total advances in capability.» **El
+  /// nivel NO sube solo** (D-CF-66): esta columna cuenta, y subirlo lo pulsa el DM. Existe en
+  /// las dos modalidades de la regla de la mesa (`progresion: HITO | XP`) — cambiar la regla no
+  /// pierde ni borra XP, solo decide si la mesa lo ve.
+  xp Int @default(0)
 
   // Cuando termino el ultimo descanso largo, **en segundos del reloj de la campana** (2C.3).
   // El SRD: «a character can't benefit from more than one long rest in a 24-hour period», y sin

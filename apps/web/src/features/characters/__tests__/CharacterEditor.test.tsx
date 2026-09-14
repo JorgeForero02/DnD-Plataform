@@ -100,6 +100,8 @@ describe("CharacterEditor (crear)", () => {
         pgNivelesSiguientes: "MEDIA",
         permitidos: { razas: [], clases: [], subclases: [] },
         oroInicial: { modo: "EQUIPO" },
+        // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13): campo nuevo con default "HITO".
+        progresion: "HITO",
       },
     });
     renderEditor();
@@ -163,6 +165,8 @@ describe("CharacterEditor (crear)", () => {
         pgNivelesSiguientes: "MEDIA",
         permitidos: { razas: ["dwarf"], clases: [], subclases: [] },
         oroInicial: { modo: "EQUIPO" },
+        // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13): campo nuevo con default "HITO".
+        progresion: "HITO",
       },
     });
     renderEditor();

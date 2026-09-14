@@ -10,7 +10,7 @@ import {
 } from "../index";
 
 describe("tableRulesSchema", () => {
-  it("un objeto vacío da las reglas de siempre: libre, nivel 1, media, todo permitido, equipo", () => {
+  it("un objeto vacío da las reglas de siempre: libre, nivel 1, media, todo permitido, equipo, hito", () => {
     const r = tableRulesSchema.parse({});
     expect(r).toEqual({
       abilities: { metodo: "LIBRE" },
@@ -18,7 +18,14 @@ describe("tableRulesSchema", () => {
       pgNivelesSiguientes: "MEDIA",
       permitidos: { razas: [], clases: [], subclases: [] },
       oroInicial: { modo: "EQUIPO" },
+      progresion: "HITO",
     });
+  });
+
+  it("progresion: {} da HITO (Puerta de efectos §5 bis, D-CF-68/D-CF-69)", () => {
+    expect(tableRulesSchema.parse({}).progresion).toBe("HITO");
+    expect(tableRulesSchema.parse({ progresion: "XP" }).progresion).toBe("XP");
+    expect(tableRulesSchema.safeParse({ progresion: "NIVEL" }).success).toBe(false);
   });
 
   it("DADOS rellena expresión, intentos y asignación libre por defecto", () => {

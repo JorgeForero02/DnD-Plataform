@@ -91,6 +91,7 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "TEMP_MODIFIER_GRANTED":
     case "TEMP_MODIFIER_EXPIRED":
     case "LEVEL_CHANGED":
+    case "XP_AWARDED": // Puerta de efectos §5 bis (D-CF-68/D-CF-69): dar XP, igual que subir de nivel.
     case "CONDITION_APPLIED":
     case "CONDITION_REMOVED":
     case "CONDITION_EXPIRED":

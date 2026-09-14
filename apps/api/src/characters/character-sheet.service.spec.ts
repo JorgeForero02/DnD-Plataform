@@ -4277,3 +4277,49 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
     );
   });
 });
+
+// Puerta de efectos §5 bis (E-PE-10, tarea 5). `getSheet` añade `xp` SOLO en modo `XP`; con
+// `HITO` — el defecto — la respuesta no lo lleva, para que una campaña que ya existe no cambie.
+describe("getSheet — el marcador de XP (spec §5b.4, E-PE-10)", () => {
+  it("modo XP, xp: 1250 y level: 3 → xp: { actual: 1250, siguiente: 2700, nivelPorXp: 3 }", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ xp: 1250, level: 3 }));
+    prisma.campaign.findUnique.mockResolvedValue({ tableRules: { progresion: "XP" } });
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.xp).toEqual({ actual: 1250, siguiente: 2700, nivelPorXp: 3 });
+  });
+
+  it("modo XP, xp: 2700 y level: 3 → nivelPorXp: 4 (la pantalla avisa: alcanzó el umbral del nivel siguiente)", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ xp: 2700, level: 3 }));
+    prisma.campaign.findUnique.mockResolvedValue({ tableRules: { progresion: "XP" } });
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    // `siguiente` es el umbral del nivel siguiente al GUARDADO (3), no al que da `nivelPorXp` (4):
+    // el DM todavía no ha pulsado «Subir de nivel» (D-CF-66), así que coincide con `actual`.
+    expect(res.xp).toEqual({ actual: 2700, siguiente: 2700, nivelPorXp: 4 });
+  });
+
+  it("modo XP, nivel 20 → siguiente: null", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ xp: 355000, level: 20 }));
+    prisma.campaign.findUnique.mockResolvedValue({ tableRules: { progresion: "XP" } });
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res.xp).toEqual({ actual: 355000, siguiente: null, nivelPorXp: 20 });
+  });
+
+  it("modo HITO (el defecto): la respuesta no tiene `xp`", async () => {
+    const { service, prisma } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ xp: 1250, level: 3 }));
+    prisma.campaign.findUnique.mockResolvedValue({ tableRules: {} });
+
+    const res = await service.getSheet("p1", "c1", "ch1");
+
+    expect(res).not.toHaveProperty("xp");
+  });
+});

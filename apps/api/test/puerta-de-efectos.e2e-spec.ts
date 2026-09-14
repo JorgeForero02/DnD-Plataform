@@ -561,4 +561,156 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
       );
     });
   });
+
+  // --- 9. XP (tarea 5, spec §5 bis) ----------------------------------------------------------
+  //
+  // Solo el DM da XP, nunca a un PNJ de statblock, y `end()` propone (no aplica) el reparto de
+  // la suma de VD entre quienes pueden recibirlo — el DM confirma en «Dar XP».
+  describe("XP (tarea 5, spec §5 bis)", () => {
+    let sessionXpId = "";
+
+    it("el DM activa el modo XP en las reglas de la mesa", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ tableRules: { progresion: "XP" } });
+      expect(r.status).toBe(200);
+    });
+
+    it("un jugador no puede dar XP (403)", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/xp`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ characterIds: [personajeB], amount: 50 });
+      expect(r.status).toBe(403);
+    });
+
+    it("el DM da XP a un PNJ de statblock: 400", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/xp`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [personajeC], amount: 50 });
+      expect(r.status).toBe(400);
+    });
+
+    it("el DM da 450 PX a A y B: 200, y la hoja de A trae xp.actual === 450", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/xp`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [personajeA, personajeB], amount: 450 });
+      expect(r.status).toBe(201);
+
+      const hoja = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(hoja.body.xp.actual).toBe(450);
+    });
+
+    it("en modo HITO la hoja no trae xp", async () => {
+      const s = app.getHttpServer();
+      await request(s)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ tableRules: { progresion: "HITO" } });
+
+      const hoja = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(hoja.body.xp).toBeUndefined();
+
+      // Se deja en XP otra vez: el resto de este bloque lo necesita.
+      await request(s)
+        .patch(`/campaigns/${campaignId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ tableRules: { progresion: "XP" } });
+    });
+
+    // Dos goblins contra A y B: al terminar el combate, `end()` propone 50 por cabeza.
+    it("dos goblins contra A y B: end() propone xpPropuesto.total 100, porCabeza 50", async () => {
+      const s = app.getHttpServer();
+      sessionXpId = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/sessions`)
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ title: "Sesión de XP", visibility: "PLAYERS" })
+      ).body.id;
+
+      // Dos goblins nuevos y propios de este bloque, para no interferir con `personajeC`/`D` del
+      // bloque de la bandeja de daño.
+      const goblins = await request(s)
+        .post(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ ref: "SRD:goblin", count: 2, hp: "AVERAGE" });
+      const [goblin1, goblin2] = goblins.body.map((g: { id: string }) => g.id);
+
+      const creado = await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${sessionXpId}/encounters`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [personajeA, personajeB, goblin1, goblin2] });
+      expect(creado.status).toBe(201);
+      const encounterId = creado.body.id;
+
+      const ponerBando = async (characterId: string, side: "ALLY" | "ENEMY") => {
+        const combatiente = creado.body.combatants.find(
+          (c: { characterId: string }) => c.characterId === characterId,
+        );
+        const r = await request(s)
+          .patch(
+            `/campaigns/${campaignId}/sessions/${sessionXpId}/encounters/${encounterId}/combatants/${combatiente.id}/side`,
+          )
+          .set("Authorization", `Bearer ${tokenDM}`)
+          .send({ side });
+        expect(r.status).toBe(200);
+      };
+      await ponerBando(personajeA, "ALLY");
+      await ponerBando(personajeB, "ALLY");
+      await ponerBando(goblin1, "ENEMY");
+      await ponerBando(goblin2, "ENEMY");
+
+      const fin = await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${sessionXpId}/encounters/${encounterId}/end`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(fin.status).toBe(201);
+      expect(fin.body.xpPropuesto.total).toBe(100);
+      expect(fin.body.xpPropuesto.porCabeza).toBe(50);
+
+      const antesA = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      const antesB = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeB}/sheet`)
+        .set("Authorization", `Bearer ${tokenB}`);
+
+      const confirmar = await request(s)
+        .post(`/campaigns/${campaignId}/xp`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [personajeA, personajeB], amount: fin.body.xpPropuesto.porCabeza });
+      expect(confirmar.status).toBe(201);
+
+      const despuesA = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      const despuesB = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeB}/sheet`)
+        .set("Authorization", `Bearer ${tokenB}`);
+      expect(despuesA.body.xp.actual).toBe(antesA.body.xp.actual + 50);
+      expect(despuesB.body.xp.actual).toBe(antesB.body.xp.actual + 50);
+    });
+
+    it("un jugador no puede terminar el combate (403, ya era así)", async () => {
+      const s = app.getHttpServer();
+      const otro = await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${sessionXpId}/encounters`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ characterIds: [personajeA] });
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/sessions/${sessionXpId}/encounters/${otro.body.id}/end`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(r.status).toBe(403);
+    });
+  });
 });

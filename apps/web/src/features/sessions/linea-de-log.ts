@@ -375,6 +375,23 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
         ? "Termina el combate en un asalto"
         : `Termina el combate tras ${p.rounds} asaltos`;
 
+    // --- Puerta de efectos §5 bis: XP (D-CF-68/D-CF-69, 2026-09-13) ---
+    case "XP_AWARDED": {
+      // `amount` puede ser negativo (el DM corrige un error), así que la frase mira el signo en
+      // vez de asumir «gana» — misma idea que `HP_CHANGED` con `delta`.
+      const gana = p.amount >= 0;
+      const cantidad = Math.abs(p.amount);
+      const motivo = p.reason ? ` — ${p.reason}` : "";
+      if (ctx?.sujeto) {
+        const verbo = gana ? "gana" : "pierde";
+        // **La cabecera ya dijo quién es**, como en `HP_CHANGED`.
+        const sujetoDeLaFrase = ctx.sujetoEnCabecera ? "" : `${ctx.sujeto} `;
+        return `${sujetoDeLaFrase}${verbo} ${cantidad} PX (total ${p.xpTotal})${motivo}`;
+      }
+      const verbo = gana ? "Gana" : "Pierde";
+      return `${verbo} ${cantidad} PX (total ${p.xpTotal})${motivo}`;
+    }
+
     // --- Paso 2, tarea A2: gastar la economía del turno ---
     case "ACTION_SPENT": {
       // **Ningún valor de enumeración llega a la pantalla.** Nunca "ACTION" ni "MOVEMENT": el

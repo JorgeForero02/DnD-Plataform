@@ -10,6 +10,7 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollsService } from "../rolls/rolls.service";
 import { GameClockService } from "../game-clock/game-clock.service";
+import { StatblocksService } from "../statblocks/statblocks.service";
 
 // Ronda de arreglo 1 (2026-09-05) — mismo guardián que ya existe para `GameEventType` en
 // `apps/api/src/game-events/game-events.service.spec.ts`, para `EncounterStatus`: el enum de
@@ -61,7 +62,13 @@ describe("EncountersService", () => {
     // **Paso 1, tarea 4:** al empezar turno, `advanceTurn` corta las condiciones que esperaban ese
     // borde —hoy, la marca de Ayudar— poniéndoles el reloj de ese instante. Necesita el reloj de
     // la campaña y la escritura sobre las condiciones.
-    campaign: { findUniqueOrThrow: jest.fn().mockResolvedValue({ clockSeconds: 0 }) },
+    campaign: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({ clockSeconds: 0 }),
+      // Puerta de efectos §5 bis (tarea 5): `end()` lee la regla de progresión ANTES de abrir su
+      // transacción. `{}` por defecto (`progresion: "HITO"`) es el comportamiento de siempre —
+      // sin XP en ningún sitio, `end()` no propone ningún reparto.
+      findUnique: jest.fn().mockResolvedValue({ tableRules: {} }),
+    },
     characterCondition: { updateMany: jest.fn() },
     transaction: jest.fn(),
     // **Ronda de arreglo 1 (I-1): `recolocar` ahora toma un candado (`bloquearEncuentro`) como
@@ -74,6 +81,9 @@ describe("EncountersService", () => {
   const sheets = { getInitiativeModifier: jest.fn(), getSheet: jest.fn() };
   const rolls = { roll: jest.fn() };
   const clock = { advance: jest.fn() };
+  // Puerta de efectos §5 bis (tarea 5): `end()` en modo XP resuelve el VD de cada `ENEMY` con
+  // statblock. Sin implementación por defecto — cada prueba de `end()` la pone a mano.
+  const statblocks = { resolver: jest.fn() };
 
   /**
    * **Las filas de `Combatant` tal y como quedan escritas en el Prisma simulado**, después de que
@@ -104,6 +114,7 @@ describe("EncountersService", () => {
         { provide: CharacterSheetService, useValue: sheets },
         { provide: RollsService, useValue: rolls },
         { provide: GameClockService, useValue: clock },
+        { provide: StatblocksService, useValue: statblocks },
       ],
     }).compile();
     service = ref.get(EncountersService);
@@ -1686,6 +1697,132 @@ describe("EncountersService", () => {
       await expect(
         service.gastar(jugadoraId, campaignId, sessionId, encId, "fantasma", { coste: "ACTION" }),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  // Puerta de efectos §5 bis (D-CF-68, spec §5b.3, tarea 5). `end()` propone el reparto de XP en
+  // modo `XP`: la suma de la tabla por VD de los `ENEMY` con statblock, dividida (`floor`) entre
+  // los `ALLY` sin `statblockRef` y no archivados. `NEUTRAL` nunca cuenta, y modo `HITO` no
+  // propone nada.
+  describe("end() — la propuesta de XP (D-CF-68, spec §5b.3)", () => {
+    const dmId = "dm";
+    const campaignId = "c1";
+    const sessionId2 = "s1";
+    const encId2 = "enc1";
+
+    beforeEach(() => {
+      prisma.session.findFirst.mockResolvedValue({ id: sessionId2, campaignId });
+      prisma.encounter.findFirst.mockReset();
+      prisma.encounter.findFirst.mockResolvedValue({ id: encId2, status: "ACTIVE", round: 1 });
+    });
+
+    const combatiente = (
+      side: "ALLY" | "ENEMY" | "NEUTRAL",
+      character: {
+        id: string;
+        name: string;
+        statblockRef?: string | null;
+        archivedAt?: Date | null;
+      },
+    ) => ({
+      id: `comb-${character.id}`,
+      side,
+      character: {
+        id: character.id,
+        name: character.name,
+        statblockRef: character.statblockRef ?? null,
+        archivedAt: character.archivedAt ?? null,
+      },
+    });
+
+    const A = { id: "A", name: "Aria" };
+    const P = { id: "P", name: "Klarg (PNJ jugable)", statblockRef: "SRD:goblin" };
+    const G1 = { id: "G1", name: "Goblin", statblockRef: "SRD:goblin" };
+    const G2 = { id: "G2", name: "Goblin", statblockRef: "SRD:goblin" };
+    const N = { id: "N", name: "Testigo" };
+
+    beforeEach(() => {
+      statblocks.resolver.mockImplementation(async (_campaignId: string, ref: string) =>
+        ref === "SRD:goblin" ? { cr: 0.25 } : null,
+      );
+    });
+
+    it("modo XP: dos ENEMY con statblock (VD 0,25) y un solo ALLY sin statblock → total 100, porCabeza 100", async () => {
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("ALLY", P),
+        combatiente("ENEMY", G1),
+        combatiente("ENEMY", G2),
+        combatiente("NEUTRAL", N),
+      ]);
+
+      const res = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(res.xpPropuesto).toEqual({
+        total: 100,
+        porCabeza: 100,
+        destinatarios: [{ characterId: "A", name: "Aria" }],
+        desglose: [
+          { characterId: "G1", name: "Goblin", cr: 0.25, xp: 50 },
+          { characterId: "G2", name: "Goblin", cr: 0.25, xp: 50 },
+        ],
+      });
+    });
+
+    it("dos allies sin statblock se reparten a partes iguales: porCabeza 50", async () => {
+      const A2 = { id: "A2", name: "Brann" };
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("ALLY", A2),
+        combatiente("ENEMY", G1),
+        combatiente("ENEMY", G2),
+      ]);
+
+      const res = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(res.xpPropuesto?.porCabeza).toBe(50);
+    });
+
+    it("tres allies y total 100: porCabeza 33 (floor)", async () => {
+      const A2 = { id: "A2", name: "Brann" };
+      const A3 = { id: "A3", name: "Corin" };
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("ALLY", A2),
+        combatiente("ALLY", A3),
+        combatiente("ENEMY", G1),
+        combatiente("ENEMY", G2),
+      ]);
+
+      const res = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(res.xpPropuesto?.total).toBe(100);
+      expect(res.xpPropuesto?.porCabeza).toBe(33);
+    });
+
+    it("modo HITO: sin xpPropuesto, aunque haya ENEMY con statblock y ALLY sin él", async () => {
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: {} });
+
+      const res = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(res).not.toHaveProperty("xpPropuesto");
+      // Modo HITO ni siquiera mira los combatientes.
+      expect(prisma.combatant.findMany).not.toHaveBeenCalled();
+    });
+
+    it("sin ningún ENEMY con statblock: sin xpPropuesto", async () => {
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("NEUTRAL", N),
+      ]);
+
+      const res = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(res).not.toHaveProperty("xpPropuesto");
     });
   });
 });

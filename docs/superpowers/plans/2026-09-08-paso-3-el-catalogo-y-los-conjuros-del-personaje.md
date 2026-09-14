@@ -1,5 +1,10 @@
 # Paso 3 — el catálogo y los conjuros del personaje · plan de implementación
 
+> **Desde el 2026-09-14 el ORDEN lo manda [Paso 3 en cinco tandas](./2026-09-14-paso-3-en-cinco-tandas.md)**
+> (D-CF-70): el libro → el mago → la mesa en combate → lo temporal → deuda. Este fichero conserva el
+> **contenido** de cada tarea —pasos, ficheros, invariantes, citas— y se cita por número; sus bloques
+> A–F ya no son el orden de ejecución. T5, T6 y T9 están hechas (puerta de efectos y D-OP-14).
+
 > **Para quien lo ejecute:** las tareas van **en orden** y cada una lleva los cuatro pasos completos
 > con su **mutación de una pieza cada vez**. Un commit por tarea, `pnpm verify` en verde antes de
 > cada uno, mensaje en inglés (Conventional Commits).

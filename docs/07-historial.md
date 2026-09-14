@@ -97,6 +97,19 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El paso 3 se reordena en cinco tandas; puerta de efectos fusionada (2026-09-14)
+
+Qué — `main` recibe la puerta de efectos en `7688b44` (merge `--no-ff` de `4e17a69`; `pnpm verify`
+entero en verde). Y el paso 3 deja de ser un plan de 26 tareas por orden de aparición:
+[Paso 3 en cinco tandas](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md) manda el orden
+—el libro → el mago → la mesa en combate → lo temporal → deuda— y el
+[plan del 8](./superpowers/plans/2026-09-08-paso-3-el-catalogo-y-los-conjuros-del-personaje.md)
+conserva el contenido de cada tarea (D-CF-70). T5/T6/T9 salen por hechas; B se disuelve.
+Por qué — el autor: «hay muchas cosas dispersas; lo único bien cuadrado es el catálogo». El mago
+estaba en cuatro bloques y la mesa en dos, por haber crecido por acumulación.
+Revertir — borrar el índice del 14, la nota de cabecera del plan del 8 y la fila D-CF-70; la fusión
+se deshace con `git revert -m 1 7688b44`.
+
 ## La puerta de efectos (2026-09-13/14) — cerrada en rama, sin fusionar ni desplegar
 
 Qué — rama `puerta-de-efectos/antes-del-paso-3` sobre `0ca530c` (`main` con reglas de la mesa y

@@ -118,7 +118,11 @@ import {
   viewerFor,
   viewerForCharacterOwner,
 } from "../common/character-viewer";
-import { conEntityIdVisible, entityIdsVisibleFor } from "../common/entity-link";
+import {
+  conEntityIdVisible,
+  entityIdsVisibleFor,
+  sinEntityIdEnRespuesta,
+} from "../common/entity-link";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
 //
@@ -1197,7 +1201,9 @@ export class CharacterSheetService {
     });
     const respuesta = await this.buildResponse(userId, actualizado);
     await this.sembrarRecursos(characterId, respuesta.sheet, actualizado.level);
-    return respuesta;
+    // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que redactan
+    // el enlace con la ficha del mundo — el campo no viaja.
+    return sinEntityIdEnRespuesta(respuesta);
   }
 
   /**
@@ -1373,7 +1379,9 @@ export class CharacterSheetService {
         ...(motivo ? { reason: motivo } : {}),
       },
     });
-    return await this.buildResponse(userId, actualizado);
+    // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que redactan
+    // el enlace con la ficha del mundo — el campo no viaja.
+    return sinEntityIdEnRespuesta(await this.buildResponse(userId, actualizado));
   }
 
   /** Quita una anulación y devuelve el valor al que el catálogo calcule. También solo el DM. */
@@ -1390,14 +1398,18 @@ export class CharacterSheetService {
     if (!character) throw new NotFoundException("Character not found");
 
     const actuales = { ...((character.overrides ?? {}) as Overrides) };
-    if (actuales[target] === undefined) return await this.buildResponse(userId, character);
+    // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que redactan
+    // el enlace con la ficha del mundo — el campo no viaja, en los dos retornos de este método.
+    if (actuales[target] === undefined) {
+      return sinEntityIdEnRespuesta(await this.buildResponse(userId, character));
+    }
     delete actuales[target];
 
     const actualizado = await this.prisma.character.update({
       where: { id: characterId },
       data: { overrides: actuales },
     });
-    return await this.buildResponse(userId, actualizado);
+    return sinEntityIdEnRespuesta(await this.buildResponse(userId, actualizado));
   }
 
   /**
@@ -2013,8 +2025,11 @@ export class CharacterSheetService {
     const respuesta = await this.buildResponse(userId, actualizado, tx);
     // La traza es lo que responde «−7 por resistencia a contundente»: sin ella, la reducción
     // sería un número sin origen, y esta tarea existe justo para lo contrario.
+    //
+    // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que redactan
+    // el enlace con la ficha del mundo — el campo no viaja.
     return {
-      ...respuesta,
+      ...sinEntityIdEnRespuesta(respuesta),
       ...(damageTrace ? { damageTrace } : {}),
       ...(concentrationSave ? { concentrationSave } : {}),
       // Tarea 3 de la puerta de efectos — aditivo, ver el comentario de `eventoHp` arriba.
@@ -2233,9 +2248,10 @@ export class CharacterSheetService {
 
       // Concurrencia optimista: una versión vieja es un 409 con el estado actual, no un pisotón.
       if (character.version !== input.expectedVersion) {
+        // PM-1 (cierre, 2026-09-14): también el cuerpo de un 409 es una respuesta de mutación.
         throw new ConflictException({
           message: "La versión enviada ya no es la actual.",
-          ...(await this.buildResponse(userId, character, tx)),
+          ...sinEntityIdEnRespuesta(await this.buildResponse(userId, character, tx)),
         });
       }
 
@@ -2304,7 +2320,9 @@ export class CharacterSheetService {
           tx,
         );
       }
-      return await this.buildResponse(userId, actualizado, tx);
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityIdEnRespuesta(await this.buildResponse(userId, actualizado, tx));
     });
   }
 
@@ -2470,8 +2488,10 @@ export class CharacterSheetService {
             ? "stable"
             : "dying";
 
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
       return {
-        ...(await this.buildResponse(userId, actualizado, tx)),
+        ...sinEntityIdEnRespuesta(await this.buildResponse(userId, actualizado, tx)),
         deathSaves: { successes, failures, status },
       };
     });

@@ -128,8 +128,6 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
-## Encontrado por el autor en producción y decidido con el controlador (2026-09-13, tarde)
-
 ## Dejado por «puerta de efectos» (2026-09-14) — cerrada en rama, sin fusionar ni desplegar
 
 Rama `puerta-de-efectos/antes-del-paso-3`; revisión Opus de la rama entera en dos mitades
@@ -157,12 +155,16 @@ Lo que queda:
 | e2e | El bucle «hasta impactar» de `puerta-de-efectos.spec.ts` es probabilístico (CA 1, tope 10); un `data-*` en `TirarAtaqueBoton` lo haría determinista | 20 min |
 | e2e | `iniciativa-en-vivo.spec.ts` estaba **rojo en `main` desde D-CF-66** (`4ea688c`): la jugadora fijaba `level: 8` por el `PATCH` y ahora es 403; se quitó el `level` del helper en esta rama (`8b6…`, ver historial) | hecho |
 
-### PE-2 · Un e2e de concurrencia real para `apply-damage` y `POST /xp`
+### PE-2 · Un e2e de concurrencia real para `apply-damage` y `POST /xp` — **cerrada el 2026-09-14 en `pnj-del-mundo/cierre`**
 
 Las unitarias prueban el orden de las sentencias (`jsonb_set … WHERE appliedEventId IS NULL`,
 `FOR UPDATE`), no el bloqueo de Postgres. Un e2e con dos `POST …/apply-damage` en paralelo (uno
 201, uno 409) y dos `POST /xp` cruzados cerraría la duda. 40 min. Misma deuda que la de
 `ability-rolls` en RM-2.
+
+**Cerrada:** `apps/api/test/concurrencia-puerta.e2e-spec.ts` — dos `apply-damage` en `Promise.all`
+(exactamente un 2xx y un 409, un solo `HP_CHANGED`) y dos `POST /xp` iguales en `Promise.all` (los
+dos 2xx, XP final es la suma). Escrita, no corrida (la corre el orquestador).
 
 ## Desplegar `main` (`84ed965`): reglas de la mesa + desbordes — lo hace el autor, a mano
 
@@ -334,7 +336,12 @@ principio, no al final; se comprueba en la puerta de efectos.
 > del sedimento de la fase 1. **Busca por identificador o por texto, nunca por posición.**
 > Reordenarlo mueve 1200 líneas y no se ha hecho a propósito: el riesgo supera al beneficio.
 
-## Dejado por la tarea 11 del pulido (C4, #15), ronda de revisión (2026-09-13)
+## Dejado por la tarea 11 del pulido (C4, #15), ronda de revisión (2026-09-13) — **cerrada el 2026-09-14 en `pnj-del-mundo/cierre`**
+
+**Cerrada.** `dano-con-su-traza.e2e-spec.ts` gana «un origen que SÍ existe pero este actor no ve es
+404, y no se escribe nada (tarea 11)»: el DM baja un PNJ `DM_ONLY` y el jugador dueño de su propio
+personaje lo cita como `sourceCharacterId` al cambiarse sus PG → 404, sin `HP_CHANGED` nuevo.
+Escrita, no corrida (la corre el orquestador).
 
 **e2e: un dueño citando un PNJ `DM_ONLY` como `sourceCharacterId` es 404.** `changeHp`
 (`apps/api/src/characters/character-sheet.service.ts`) valida el origen con
@@ -1011,7 +1018,18 @@ solo se puede probar con la API simulada**, y su recorrido de navegador mide la 
 mismo carril de datos (que la lista de PNJ llega al selector). Decidir si ceder un PNJ es una
 funcionalidad que se quiere —y con qué permiso— es del autor, no de un agente.
 
-### PM-1 · `entityId` en respuestas de mutación no pasa por la redacción (2026-09-14)
+### PM-1 · `entityId` en respuestas de mutación no pasa por la redacción (2026-09-14) — **cerrada el 2026-09-14 en `pnj-del-mundo/cierre`**
+
+**Cerrada.** Decisión del autor: no redactar las quince respuestas de mutación — **quitar el
+campo**. `sinEntityId`/`sinEntityIdEnRespuesta` en `apps/api/src/common/entity-link.ts`, aplicado
+en `character-sheet.service.ts` (`updateSheet`, `setOverride`, `clearOverride`, `changeHp`,
+`changeHpFromEffect`, `applyPendingDamage`, `setHp` —incluido el cuerpo del 409—, `rollDeathSave`),
+`level-up.service.ts` (`apply`), `character-state/rest/rest.service.ts` (`requestRest`) y
+`characters.service.ts` (`create`, `archive`, `unarchive`; `update` sigue redactando, es una de las
+seis lecturas). Las seis lecturas (`characters.service` list/listArchived/get/update,
+`character-sheet.service.getSheet`, `npcs.service.list`) no se tocaron. Prueba: aserción en
+`apps/api/test/pnj-del-mundo.e2e-spec.ts` (Task 0) tras `POST …/hp`, y unitaria de `sinEntityId` en
+`entity-link.spec.ts`.
 
 **Abierto, declarado al escribir el plan (E-PM-10), no encontrado tarde.** Las seis rutas de
 LECTURA de `Character` redactan `entityId` con `entityIdsVisibleFor` (`apps/api/src/common/entity-link.ts`,
@@ -1034,14 +1052,23 @@ para las tarjetas de suceso, no rutas, y darle un enlace es tocar el renderizado
 tanda con su propia ficha de diseño, no un añadido de esta. Decisión: [D-CF-83](./decisiones.md)
 en [decisiones.md](./decisiones.md).
 
-### T3 · Revelar un grupo entero desde el orden de turnos, de un solo clic (2026-09-14)
+### T3 · Revelar un grupo entero desde el orden de turnos, de un solo clic (2026-09-14) — **cerrada el 2026-09-14 en `pnj-del-mundo/cierre`**
 
-**Abierto, sin decisión de producto.** `TiraDeIniciativa` revela un PNJ oculto a la vez —«oculto ·
-Revelar» junto al primero del grupo—, aunque el grupo entero comparta posición (varios goblins
-idénticos, por ejemplo): el siguiente clic revela al siguiente, hasta que el grupo entero deja de
-tener «oculto». Revelar el grupo con un solo botón —seis goblins con un solo clic— es una decisión
-de interfaz que la spec de PNJ del mundo y la mesa (§3.2) deja sin cerrar; se anota para cuando el
-autor la pida.
+**Cerrada.** Decisión del autor: «Revelar» junto a «oculto» en `TiraDeIniciativa` revela el GRUPO
+entero de esa casilla — una casilla de la tira es un turno, y un turno es un grupo. El menú «…»
+del elenco sigue revelando uno solo. `POST /campaigns/:id/characters/reveal-many`
+(`revealManySchema`, `packages/shared/src/statblock.schema.ts`) en `NpcBulkVisibilityController`
+(nuevo, `campaigns/:campaignId/characters`, declarado antes que `NpcVisibilityController` en
+`StatblocksModule`) → `NpcsService.revealMany`: una sola transacción, `revealInTx` (extraído de
+`reveal()`) por fila, un `NPC_REVEALED` por criatura. Web: `revealNpcs` + `useRevealNpcs` en
+`features/bestiario`. Decisión: [D-CF-87](./decisiones.md).
+
+**Abierto, sin decisión de producto** (histórico, ya resuelto arriba). `TiraDeIniciativa` revela un
+PNJ oculto a la vez —«oculto · Revelar» junto al primero del grupo—, aunque el grupo entero
+comparta posición (varios goblins idénticos, por ejemplo): el siguiente clic revela al siguiente,
+hasta que el grupo entero deja de tener «oculto». Revelar el grupo con un solo botón —seis goblins
+con un solo clic— es una decisión de interfaz que la spec de PNJ del mundo y la mesa (§3.2) dejaba
+sin cerrar.
 
 ### Sin ficha propia · `CharacterRow` no declara `entityId` (2026-09-14)
 

@@ -18,6 +18,7 @@ import { abilityModifier } from "../../rules/engine";
 import { maxHpDe } from "../common/max-hp";
 import { MARCADOR_DE_USOS_SIN_TOPE } from "../resources/resources.service";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
+import { sinEntityId } from "../../common/entity-link";
 
 // Tarea 2A.8 — descansos. Ampliada en 2C.3 con las tres reglas que el reloj hace comprobables.
 //
@@ -165,7 +166,10 @@ export class RestService {
         tx,
       );
 
-      return tx.character.findFirstOrThrow({ where: { id: characterId } });
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      const actualizado = await tx.character.findFirstOrThrow({ where: { id: characterId } });
+      return sinEntityId(actualizado);
     });
   }
 

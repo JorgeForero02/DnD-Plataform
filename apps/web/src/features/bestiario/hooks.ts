@@ -100,6 +100,15 @@ export function useRevealNpc(campaignId: string) {
   });
 }
 
+/** T3 (cierre, 2026-09-14) — revela el grupo entero de una casilla de la tira. */
+export function useRevealNpcs(campaignId: string) {
+  const invalidar = useInvalidarLaMesa(campaignId);
+  return useMutation({
+    mutationFn: (characterIds: string[]) => bestiarioApi.revealNpcs(campaignId, characterIds),
+    onSuccess: invalidar,
+  });
+}
+
 export function useHideNpc(campaignId: string) {
   const invalidar = useInvalidarLaMesa(campaignId);
   return useMutation({

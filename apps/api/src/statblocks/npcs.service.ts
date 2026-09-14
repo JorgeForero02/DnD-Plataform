@@ -10,10 +10,11 @@ import {
   origenDeRef,
   pgMediosDe,
   type InstantiateNpcInput,
+  type RevealManyInput,
   type Statblock,
   type Visibility,
 } from "@dnd/shared";
-import type { Entity, EntityVisibilityGrant, Prisma } from "@prisma/client";
+import type { Character, Entity, EntityVisibilityGrant, Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import {
   audienciaDeSuceso,
@@ -249,103 +250,140 @@ export class NpcsService {
     });
     if (!character) throw new NotFoundException("Character not found");
 
-    return this.prisma.transaction(async (tx) => {
-      const revealed = { character: false, entity: false, template: false };
-      let fila = character;
-      if (!loVeLaMesa(character.visibility)) {
-        // m2 (ola de cierre): `updateMany` condicional en vez de `update` a secas — dos
-        // «Revelar» a la vez pasan los dos el `if` de fuera (que lee con `this.prisma`, antes de
-        // la transacción), pero solo uno de los dos encuentra la fila todavía «por debajo de la
-        // mesa» aquí dentro. El otro ve `count: 0` y no escribe su «entra en escena».
-        const { count } = await tx.character.updateMany({
-          where: { id: characterId, visibility: { in: NpcsService.BELOW_TABLE } },
+    return this.prisma.transaction((tx) => this.revealInTx(tx, userId, campaignId, character));
+  }
+
+  /**
+   * T3 (cierre, 2026-09-14): el cuerpo de {@link reveal}, extraído para que `revealMany` lo
+   * reutilice fila por fila dentro de su propia transacción — la misma lógica, un `NPC_REVEALED`
+   * por criatura (la línea del hilo ya existe; no hace falta inventar un suceso de grupo).
+   */
+  private async revealInTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    character: Character,
+  ) {
+    const characterId = character.id;
+    const revealed = { character: false, entity: false, template: false };
+    let fila = character;
+    if (!loVeLaMesa(character.visibility)) {
+      // m2 (ola de cierre): `updateMany` condicional en vez de `update` a secas — dos
+      // «Revelar» a la vez pasan los dos el `if` de fuera (que lee con `this.prisma`, antes de
+      // la transacción), pero solo uno de los dos encuentra la fila todavía «por debajo de la
+      // mesa» aquí dentro. El otro ve `count: 0` y no escribe su «entra en escena».
+      const { count } = await tx.character.updateMany({
+        where: { id: characterId, visibility: { in: NpcsService.BELOW_TABLE } },
+        data: { visibility: "PLAYERS" },
+      });
+      if (count === 1) {
+        fila = { ...character, visibility: "PLAYERS" as Visibility };
+        revealed.character = true;
+      }
+    }
+
+    let entityName: string | undefined;
+    let entidadSubida: (Entity & { grants: EntityVisibilityGrant[] }) | null = null;
+    if (character.entityId) {
+      const entity = await tx.entity.findFirst({
+        where: { id: character.entityId, campaignId },
+        include: { grants: true },
+      });
+      if (entity) {
+        entityName = entity.name;
+        if (!loVeLaMesa(entity.visibility)) {
+          entidadSubida = await tx.entity.update({
+            where: { id: entity.id },
+            data: { visibility: "PLAYERS" },
+            include: { grants: true },
+          });
+          revealed.entity = true;
+        }
+      }
+    }
+
+    const origen = character.statblockRef ? origenDeRef(character.statblockRef) : null;
+    if (origen?.source === "CAMPAIGN") {
+      const plantilla = await tx.campaignStatblock.findFirst({
+        where: { id: origen.id, campaignId },
+      });
+      if (plantilla && !loVeLaMesa(plantilla.visibility)) {
+        await tx.campaignStatblock.update({
+          where: { id: plantilla.id },
           data: { visibility: "PLAYERS" },
         });
-        if (count === 1) {
-          fila = { ...character, visibility: "PLAYERS" as Visibility };
-          revealed.character = true;
-        }
+        revealed.template = true;
       }
+    }
 
-      let entityName: string | undefined;
-      let entidadSubida: (Entity & { grants: EntityVisibilityGrant[] }) | null = null;
-      if (character.entityId) {
-        const entity = await tx.entity.findFirst({
-          where: { id: character.entityId, campaignId },
-          include: { grants: true },
-        });
-        if (entity) {
-          entityName = entity.name;
-          if (!loVeLaMesa(entity.visibility)) {
-            entidadSubida = await tx.entity.update({
-              where: { id: entity.id },
-              data: { visibility: "PLAYERS" },
-              include: { grants: true },
-            });
-            revealed.entity = true;
-          }
-        }
-      }
-
-      const origen = character.statblockRef ? origenDeRef(character.statblockRef) : null;
-      if (origen?.source === "CAMPAIGN") {
-        const plantilla = await tx.campaignStatblock.findFirst({
-          where: { id: origen.id, campaignId },
-        });
-        if (plantilla && !loVeLaMesa(plantilla.visibility)) {
-          await tx.campaignStatblock.update({
-            where: { id: plantilla.id },
-            data: { visibility: "PLAYERS" },
-          });
-          revealed.template = true;
-        }
-      }
-
-      if (revealed.character || revealed.entity || revealed.template) {
-        await this.gameEvents.record(
-          userId,
-          campaignId,
-          {
-            subjectType: "character",
-            subjectId: characterId,
-            visibility: "PLAYERS",
-            payload: {
-              type: "NPC_REVEALED",
-              characterName: character.name,
-              entityName,
-              templateRevealed: revealed.template || undefined,
-              // m6 (ola de cierre): `false` explícito, no `|| undefined` — `linea-de-log.ts`
-              // necesita distinguir «esta columna ya estaba» de «no se sabe» (sucesos viejos).
-              characterRevealed: revealed.character,
-              entityRevealed: revealed.entity,
-            },
+    if (revealed.character || revealed.entity || revealed.template) {
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: "PLAYERS",
+          payload: {
+            type: "NPC_REVEALED",
+            characterName: character.name,
+            entityName,
+            templateRevealed: revealed.template || undefined,
+            // m6 (ola de cierre): `false` explícito, no `|| undefined` — `linea-de-log.ts`
+            // necesita distinguir «esta columna ya estaba» de «no se sabe» (sucesos viejos).
+            characterRevealed: revealed.character,
+            entityRevealed: revealed.entity,
           },
-          tx,
-        );
-      }
-      if (entidadSubida) {
-        // E-PM-3: `world-builder.ts` cuenta lo revelado por las filas ENTITY_REVEALED; esta puerta
-        // no puede revelar una ficha sin que el motor de reglas se entere.
-        await this.gameEvents.record(
-          userId,
-          campaignId,
-          {
-            subjectType: "campaign",
-            subjectId: entidadSubida.id,
-            ...audienciaDeSuceso(comoRecursoVisible(entidadSubida)),
-            payload: { type: "ENTITY_REVEALED", entityName: entidadSubida.name },
-          },
-          tx,
-        );
-      }
+        },
+        tx,
+      );
+    }
+    if (entidadSubida) {
+      // E-PM-3: `world-builder.ts` cuenta lo revelado por las filas ENTITY_REVEALED; esta puerta
+      // no puede revelar una ficha sin que el motor de reglas se entere.
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "campaign",
+          subjectId: entidadSubida.id,
+          ...audienciaDeSuceso(comoRecursoVisible(entidadSubida)),
+          payload: { type: "ENTITY_REVEALED", entityName: entidadSubida.name },
+        },
+        tx,
+      );
+    }
 
-      return {
-        id: fila.id,
-        name: fila.name,
-        visibility: fila.visibility,
-        entityId: fila.entityId,
-        revealed,
-      };
+    return {
+      id: fila.id,
+      name: fila.name,
+      visibility: fila.visibility,
+      entityId: fila.entityId,
+      revealed,
+    };
+  }
+
+  /**
+   * T3 (cierre, 2026-09-14): revela un grupo entero en una sola transacción — una casilla de la
+   * tira de iniciativa es un turno, y un turno es un grupo. Un `NPC_REVEALED` por fila, con la
+   * misma lógica que `reveal()` (`revealInTx`): sube su instancia si estaba por debajo de la
+   * mesa, y con ella su ficha del mundo y su plantilla si estaban ocultas. Un personaje que ya
+   * está en la mesa no escribe nada — `revealInTx` ya es idempotente por fila.
+   */
+  async revealMany(userId: string, campaignId: string, input: RevealManyInput) {
+    await this.membership.requireDM(campaignId, userId);
+
+    return this.prisma.transaction(async (tx) => {
+      const revealed: string[] = [];
+      for (const characterId of input.characterIds) {
+        const character = await tx.character.findFirst({
+          where: { id: characterId, campaignId },
+        });
+        if (!character) throw new NotFoundException("Character not found");
+        const resultado = await this.revealInTx(tx, userId, campaignId, character);
+        revealed.push(resultado.id);
+      }
+      return { revealed };
     });
   }
 

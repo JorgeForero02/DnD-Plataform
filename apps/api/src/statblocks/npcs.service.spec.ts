@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { DICE_ROLLER } from "../rolls/rolls.service";
@@ -461,6 +461,61 @@ describe("NpcsService", () => {
       await service.hide("dm", "c1", "g1");
       expect(prisma.character.update).not.toHaveBeenCalled();
       expect(gameEvents.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("revealMany (T3, cierre 2026-09-14) — revelar el grupo entero desde el orden de turnos", () => {
+    const goblin1 = {
+      id: "g1",
+      campaignId: "c1",
+      name: "Bandido 1",
+      ownerId: "dm",
+      visibility: "DM_ONLY",
+      statblockRef: "SRD:goblin",
+      entityId: null,
+    };
+    const goblin2 = { ...goblin1, id: "g2", name: "Bandido 2" };
+
+    beforeEach(() => {
+      membership.requireDM.mockResolvedValue({ role: "DM" });
+      prisma.character.findFirst.mockImplementation(async ({ where }: any) =>
+        where.id === "g1" ? goblin1 : where.id === "g2" ? goblin2 : null,
+      );
+      prisma.character.updateMany.mockResolvedValue({ count: 1 });
+      prisma.entity.findFirst.mockResolvedValue(null);
+      prisma.campaignStatblock.findFirst.mockResolvedValue(null);
+    });
+
+    it("una sola transacción, N filas, N sucesos NPC_REVEALED", async () => {
+      const r = await service.revealMany("dm", "c1", { characterIds: ["g1", "g2"] });
+      expect(prisma.transaction).toHaveBeenCalledTimes(1);
+      expect(r.revealed).toEqual(["g1", "g2"]);
+      expect(prisma.character.updateMany).toHaveBeenCalledWith({
+        where: { id: "g1", visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] } },
+        data: { visibility: "PLAYERS" },
+      });
+      expect(prisma.character.updateMany).toHaveBeenCalledWith({
+        where: { id: "g2", visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] } },
+        data: { visibility: "PLAYERS" },
+      });
+      const revelados = gameEvents.record.mock.calls.filter(
+        (c: any) => c[2].payload.type === "NPC_REVEALED",
+      );
+      expect(revelados).toHaveLength(2);
+      expect(revelados.map((c: any) => c[2].subjectId)).toEqual(["g1", "g2"]);
+    });
+
+    it("un id que no existe en la campaña: 404, y no cuenta como revelado", async () => {
+      await expect(
+        service.revealMany("dm", "c1", { characterIds: ["g1", "no-existe"] }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("un jugador no puede revelar el grupo: 403", async () => {
+      membership.requireDM.mockRejectedValue(new ForbiddenException());
+      await expect(service.revealMany("pl", "c1", { characterIds: ["g1"] })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

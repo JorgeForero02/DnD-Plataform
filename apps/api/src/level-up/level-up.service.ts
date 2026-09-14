@@ -23,6 +23,7 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { resolveInventoryRowItem } from "../inventory/common/resolve-item";
 import { ResourcesService } from "../character-state/resources/resources.service";
+import { sinEntityId } from "../common/entity-link";
 
 // Tarea 2A.9 — la subida de nivel: el diff propuesto, y el jugador que confirma.
 //
@@ -418,7 +419,9 @@ export class LevelUpService {
         tx,
       );
 
-      return actualizado;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(actualizado);
     });
   }
 }

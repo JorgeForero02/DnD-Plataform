@@ -121,6 +121,20 @@ export function revealNpc(
   });
 }
 
+/**
+ * T3 (cierre, 2026-09-14) — revela un grupo entero (una casilla de la tira de iniciativa) en una
+ * sola llamada. Misma lógica que `revealNpc`, fila por fila, dentro de una única transacción.
+ */
+export function revealNpcs(
+  campaignId: string,
+  characterIds: string[],
+): Promise<{ revealed: string[] }> {
+  return apiFetch(`/campaigns/${campaignId}/characters/reveal-many`, {
+    method: "POST",
+    body: JSON.stringify({ characterIds }),
+  });
+}
+
 /** Ocultar baja **solo la instancia** de la mesa (E-PM-4): la ficha del mundo no se toca. */
 export function hideNpc(
   campaignId: string,

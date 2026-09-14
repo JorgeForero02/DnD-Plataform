@@ -11,7 +11,12 @@ import { MembershipService } from "../campaigns/membership.service";
 import { audienciaDeSuceso, canView, Viewer } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
-import { conEntityIdVisible, entityIdsVisibleFor, requireNpcEntity } from "../common/entity-link";
+import {
+  conEntityIdVisible,
+  entityIdsVisibleFor,
+  requireNpcEntity,
+  sinEntityId,
+} from "../common/entity-link";
 
 @Injectable()
 export class CharactersService {
@@ -62,7 +67,9 @@ export class CharactersService {
         },
       });
       await this.resources.seedInspirationFor(personaje.id, tx);
-      return personaje;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(personaje);
     });
   }
 
@@ -210,7 +217,7 @@ export class CharactersService {
     // Va 404 y no 400 porque «archivar» es una operación de la pantalla de personajes, y desde
     // ahí un PNJ no existe — es la misma razón por la que no sale en ese listado desde 2D.
     if (character.statblockRef) throw new NotFoundException("Character not found");
-    if (character.archivedAt) return character; // ya estaba archivado: sin ruido en el log
+    if (character.archivedAt) return sinEntityId(character); // ya estaba archivado: sin ruido en el log
 
     return this.prisma.transaction(async (tx) => {
       const archivado = await tx.character.update({
@@ -240,7 +247,9 @@ export class CharactersService {
         },
         tx,
       );
-      return archivado;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(archivado);
     });
   }
 
@@ -251,7 +260,7 @@ export class CharactersService {
   async unarchive(userId: string, campaignId: string, characterId: string) {
     await this.membership.requireMember(campaignId, userId);
     const character = await this.requireEditable(userId, campaignId, characterId);
-    if (!character.archivedAt) return character; // no estaba archivado: sin ruido en el log
+    if (!character.archivedAt) return sinEntityId(character); // no estaba archivado: sin ruido en el log
 
     return this.prisma.transaction(async (tx) => {
       const recuperado = await tx.character.update({
@@ -269,7 +278,9 @@ export class CharactersService {
         },
         tx,
       );
-      return recuperado;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(recuperado);
     });
   }
 }

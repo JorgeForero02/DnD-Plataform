@@ -68,6 +68,16 @@ describe("CharactersService", () => {
     });
   });
 
+  it("PM-1 (cierre, 2026-09-14): create() no devuelve entityId — es una respuesta de mutación, no una de las seis lecturas que lo redactan", async () => {
+    prisma.character.create.mockResolvedValue({ id: "ch1", name: "Aragorn", entityId: "e1" });
+    const result = await service.create("p1", "c1", {
+      name: "Aragorn",
+      level: 3,
+      visibility: "PLAYERS",
+    } as any);
+    expect("entityId" in (result as object)).toBe(false);
+  });
+
   it("create ignora el level del cuerpo y pone el nivelInicial de la mesa", async () => {
     prisma.campaign.findUnique.mockResolvedValue({ id: "c1", tableRules: { nivelInicial: 5 } });
     prisma.character.create.mockResolvedValue({ id: "ch1" });
@@ -211,7 +221,9 @@ describe("CharactersService", () => {
         },
         tx,
       );
-      expect(result).toBe(archivado);
+      // PM-1 (cierre, 2026-09-14): ya no es la misma referencia — `sinEntityId` copia la fila
+      // para quitarle el campo —, pero sigue siendo el mismo contenido.
+      expect(result).toEqual(archivado);
     });
 
     it("archive() rechaza a quien no es dueño ni DM — misma regla que editar", async () => {
@@ -219,6 +231,16 @@ describe("CharactersService", () => {
       membership.getMembership.mockResolvedValue({ role: "PLAYER" });
       await expect(service.archive("p1", "c1", "ch1")).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    it("PM-1 (cierre, 2026-09-14): archive() no devuelve entityId aunque el personaje esté enlazado", async () => {
+      const enlazado = { ...activo, entityId: "e1" };
+      prisma.character.findFirst.mockResolvedValue(enlazado);
+      const tx = txMock({ ...archivado, entityId: "e1" });
+      prisma.transaction.mockImplementation((fn: (t: unknown) => unknown) => fn(tx));
+
+      const result = await service.archive("dm1", "c1", "ch1");
+      expect("entityId" in (result as object)).toBe(false);
     });
 
     it("archive() sobre uno ya archivado es idempotente: no vuelve a emitir el suceso", async () => {
@@ -250,7 +272,9 @@ describe("CharactersService", () => {
         },
         tx,
       );
-      expect(result).toBe(activo);
+      // PM-1 (cierre, 2026-09-14): ya no es la misma referencia — `sinEntityId` copia la fila
+      // para quitarle el campo —, pero sigue siendo el mismo contenido.
+      expect(result).toEqual(activo);
     });
   });
 

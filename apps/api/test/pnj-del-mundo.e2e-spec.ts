@@ -142,6 +142,17 @@ describe("PNJ del mundo y la mesa — Task 0 (e2e)", () => {
       expect(pl2.body.find((n: any) => n.id === goblinId).entityId).toBe(garrikId);
     });
 
+    it("PM-1 (cierre, 2026-09-14): la respuesta de una mutación de estado no lleva entityId, ni siquiera para el DM", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .post(`${ficha(goblinId)}/hp`)
+        .set("Authorization", auth(tokenDM))
+        .send({ delta: -1 })
+        .expect(201);
+      expect(r.body.character.entityId).toBeUndefined();
+      expect("entityId" in r.body.character).toBe(false);
+    });
+
     it("bajar una criatura con entityId la enlaza", async () => {
       const r = await request(app.getHttpServer())
         .post(`/campaigns/${campaignId}/npcs`)

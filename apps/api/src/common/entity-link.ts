@@ -56,6 +56,31 @@ export function conEntityIdVisible<T extends { entityId: string | null }>(
   return { ...fila, entityId: fila.entityId && visibles.has(fila.entityId) ? fila.entityId : null };
 }
 
+/**
+ * PM-1 (cierre, 2026-09-14): las respuestas de **mutación de estado** que devuelven la fila
+ * cruda de `Character` no pasan por `entityIdsVisibleFor` — redactar en quince sitios distintos
+ * era más superficie de fallo que el propio enlace. **Decisión del autor: en esas respuestas el
+ * campo no viaja, ni redactado ni visible.** Solo las seis lecturas ya existentes
+ * (`characters.service` list/listArchived/get/update, `character-sheet.service.getSheet`,
+ * `npcs.service.list`) siguen enseñando `entityId` a quien puede verlo.
+ */
+export function sinEntityId<T extends { entityId?: string | null }>(fila: T): Omit<T, "entityId"> {
+  const { entityId, ...resto } = fila;
+  void entityId;
+  return resto;
+}
+
+/**
+ * Igual que {@link sinEntityId}, pero para la forma `{ character, ... }` que devuelve
+ * `CharacterSheetService.buildResponse` — la mayoría de los quince sitios de PM-1 son esto, no
+ * una fila suelta.
+ */
+export function sinEntityIdEnRespuesta<T extends { character: { entityId?: string | null } }>(
+  respuesta: T,
+): Omit<T, "character"> & { character: Omit<T["character"], "entityId"> } {
+  return { ...respuesta, character: sinEntityId(respuesta.character) };
+}
+
 /** Parámetros de {@link raiseLiveBodies}. */
 export interface RaiseLiveBodiesParams {
   campaignId: string;

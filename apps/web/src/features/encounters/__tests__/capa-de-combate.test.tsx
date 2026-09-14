@@ -373,19 +373,17 @@ describe("«oculto · Revelar» en el orden de turnos (spec §3.2)", () => {
     expect(within(tira).queryByText("oculto ·")).not.toBeInTheDocument();
   });
 
-  it("revelar llama al servidor con el PNJ oculto de ese turno", async () => {
-    const espia = vi.spyOn(bestiarioApi, "revealNpc").mockResolvedValue({
-      id: "npc-klarg",
-      name: "Klarg",
-      visibility: "PLAYERS",
-      entityId: null,
-      revealed: { character: true, entity: false, template: false },
+  // T3 (cierre, 2026-09-14, decisión del autor): un clic revela el GRUPO entero de la casilla,
+  // no un PNJ suelto — `revealNpcs`, con los ids de todos los ocultos de ese turno.
+  it("revelar llama al servidor con TODOS los PNJ ocultos del grupo de ese turno", async () => {
+    const espia = vi.spyOn(bestiarioApi, "revealNpcs").mockResolvedValue({
+      revealed: ["npc-klarg"],
     });
     montarConDosPnj();
 
     fireEvent.click(screen.getByRole("button", { name: "Revelar a Klarg" }));
 
-    await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", "npc-klarg"));
+    await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", ["npc-klarg"]));
   });
 });
 

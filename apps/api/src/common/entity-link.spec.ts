@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { entityIdsVisibleFor, raiseLiveBodies, requireNpcEntity } from "./entity-link";
+import { entityIdsVisibleFor, raiseLiveBodies, requireNpcEntity, sinEntityId } from "./entity-link";
 
 describe("entity-link", () => {
   const dm = { userId: "dm", role: "DM" as const, isAdmin: false };
@@ -42,6 +42,20 @@ describe("entity-link", () => {
     const set = await entityIdsVisibleFor(db as any, dm, [null, null]);
     expect(set.size).toBe(0);
     expect(db.entity.findMany).not.toHaveBeenCalled();
+  });
+
+  describe("sinEntityId (PM-1, cierre 2026-09-14)", () => {
+    it("quita el campo entityId sin tocar el resto de la fila", () => {
+      const fila = { id: "c1", name: "Garrik", entityId: "e1" };
+      expect(sinEntityId(fila)).toEqual({ id: "c1", name: "Garrik" });
+    });
+
+    it("quita entityId aunque sea null", () => {
+      const fila = { id: "c1", name: "Garrik", entityId: null };
+      const resultado = sinEntityId(fila);
+      expect(resultado).toEqual({ id: "c1", name: "Garrik" });
+      expect("entityId" in resultado).toBe(false);
+    });
   });
 
   describe("raiseLiveBodies (I3, ola de cierre) — revelar una ficha sube sus cuerpos vivos", () => {

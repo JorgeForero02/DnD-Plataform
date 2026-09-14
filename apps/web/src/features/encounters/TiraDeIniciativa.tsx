@@ -12,7 +12,7 @@ import {
 import { EconomiaDeAccion } from "./EconomiaDeAccion";
 import type { Character } from "../characters/api";
 import type { NpcEnLaMesa } from "../bestiario/api";
-import { useRevealNpc } from "../bestiario/hooks";
+import { useRevealNpcs } from "../bestiario/hooks";
 import { sePuedeRevelar } from "../entities/BotonRevelar";
 import { useMembers } from "../campaigns/members";
 import { useRollRequests } from "../roll-requests/hooks";
@@ -78,7 +78,10 @@ export function TiraDeIniciativa({
   const [terminando, setTerminando] = useState(false);
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
   // PNJ del mundo y la mesa (spec §3.2, E-PM-11) — «oculto · Revelar» en cada turno del DM.
-  const revelar = useRevealNpc(campaignId);
+  // T3 (cierre, 2026-09-14, decisión del autor): revela el GRUPO entero de la casilla —una
+  // casilla de la tira es un turno, y un turno es un grupo—; el menú «…» del elenco sigue
+  // revelando uno solo.
+  const revelar = useRevealNpcs(campaignId);
 
   const nombreDe = (characterId: string) =>
     personajes.find((c) => c.id === characterId)?.name ??
@@ -87,9 +90,9 @@ export function TiraDeIniciativa({
 
   /**
    * Los PNJ ocultos de un turno (grupo de combatientes que comparten posición). **Un clic revela
-   * uno, no el grupo entero**: revelar el grupo de una vez —seis goblins con un solo botón— es
-   * una decisión que no está tomada (spec, sin cerrar); el siguiente clic revela el siguiente,
-   * hasta que el grupo entero deja de tener «oculto · Revelar».
+   * el grupo entero** (T3, cierre 2026-09-14, decisión del autor): una casilla de la tira es un
+   * turno, y un turno es un grupo — seis goblins con un solo botón, en una sola transacción del
+   * servidor (`revealMany`).
    */
   const ocultosDe = (grupo: Encounter["combatants"]) =>
     grupo
@@ -228,7 +231,7 @@ export function TiraDeIniciativa({
                   oculto ·
                   <button
                     type="button"
-                    onClick={() => revelar.mutate(ocultosDe(grupo)[0].id)}
+                    onClick={() => revelar.mutate(ocultosDe(grupo).map((p) => p.id))}
                     disabled={revelar.isPending}
                     aria-label={`Revelar a ${nombres}`}
                     className="underline-offset-2 hover:text-copper-text hover:underline"

@@ -198,6 +198,16 @@ export interface ContextoDeDerivacion {
   nivelDeEspacio?: number;
   /** La CD de conjuro ya derivada — `spellSaveDc` sale del motor con su traza. */
   cdDeConjuro?: number;
+  /**
+   * El bono de ataque de conjuro ya derivado — `derived["attack.spell"]` sale del motor con su
+   * traza (tarea 3A.1, T1). Hermano de `cdDeConjuro`: mismo patrón, campo distinto.
+   */
+  ataqueDeConjuro?: number;
+  /**
+   * La clave de la única clase del personaje (tarea 3A.1, T1). Sin multiclase todavía: `nivelDeClase`
+   * compara esta clave contra la del `Origen` y da el nivel del contexto si coinciden, 0 si no.
+   */
+  classKey?: string;
   /** Tramos por clave: `[{ desde: 1, valor: 2 }, { desde: 9, valor: 3 }]`. La llena A10. */
   escalas: ReadonlyMap<string, readonly { desde: number; valor: number }[]>;
 }
@@ -352,6 +362,27 @@ export function resolverOrigen(
       return {
         valor: ctx.cdDeConjuro,
         paso: paso("base", ctx.cdDeConjuro, "base", "spellSaveDc", "spellSaveDc"),
+      };
+    }
+
+    case "ataqueDeConjuro": {
+      if (ctx.ataqueDeConjuro === undefined) {
+        throw new Error("Este contexto no trae un bono de ataque de conjuro derivado.");
+      }
+      // Mismo patrón que `cdDeConjuro`: `"base"`, apuntando a la clave del valor ya derivado
+      // (`derived["attack.spell"]`), no a una fuente nueva.
+      return {
+        valor: ctx.ataqueDeConjuro,
+        paso: paso("base", ctx.ataqueDeConjuro, "base", "attack.spell", "attack.spell"),
+      };
+    }
+
+    case "nivelDeClase": {
+      // Sin multiclase: 0 si el personaje no es de esa clase, el nivel del contexto si lo es.
+      const valor = ctx.classKey === origen.clase ? ctx.level : 0;
+      return {
+        valor,
+        paso: paso("base", valor, "class", origen.clase, `nivelDeClase.${origen.clase}`),
       };
     }
 

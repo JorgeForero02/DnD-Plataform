@@ -1060,6 +1060,48 @@ describe("resolverOrigen: de dónde sale un número, nunca un cero en silencio",
     expect(() => resolverOrigen({ tipo: "cdDeConjuro" }, ctx({}))).toThrow();
   });
 
+  it("ataqueDeConjuro: devuelve el bono de ataque de conjuro ya derivado, apuntando a su propia clave", () => {
+    const { valor, paso } = resolverOrigen(
+      { tipo: "ataqueDeConjuro" },
+      ctx({ ataqueDeConjuro: 5 }),
+    );
+    expect(valor).toBe(5);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 5,
+      sourceType: "base",
+      sourceKey: "attack.spell",
+      labelKey: "attack.spell",
+    });
+  });
+
+  it("ataqueDeConjuro: lanza si no hay ningún bono de ataque de conjuro derivado en el contexto", () => {
+    expect(() => resolverOrigen({ tipo: "ataqueDeConjuro" }, ctx({}))).toThrow();
+  });
+
+  it("nivelDeClase: un guerrero nivel 5 resuelve nivelDeClase('fighter') = 5, con su paso de traza", () => {
+    const { valor, paso } = resolverOrigen(
+      { tipo: "nivelDeClase", clase: "fighter" },
+      ctx({ level: 5, classKey: "fighter" }),
+    );
+    expect(valor).toBe(5);
+    expect(paso).toEqual({
+      op: "base",
+      amount: 5,
+      sourceType: "class",
+      sourceKey: "fighter",
+      labelKey: "nivelDeClase.fighter",
+    });
+  });
+
+  it("nivelDeClase: un guerrero nivel 5 resuelve nivelDeClase('wizard') = 0 (sin multiclase)", () => {
+    const { valor } = resolverOrigen(
+      { tipo: "nivelDeClase", clase: "wizard" },
+      ctx({ level: 5, classKey: "fighter" }),
+    );
+    expect(valor).toBe(0);
+  });
+
   it("un tipo de origen que no existe en la unión también lanza, no cae en un switch en silencio", () => {
     // Distinto del caso "escala: lanza si la tabla no existe": aquí el `tipo` mismo es ajeno a
     // las siete variantes, así que golpea el `default` del switch y no una rama real. Llega así

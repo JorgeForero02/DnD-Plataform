@@ -29,3 +29,4 @@ export * from "./activity.schema";
 export * from "./level-up.schema";
 export * from "./table-rules.schema";
 export * from "./xp";
+export * from "./catalog.schema";

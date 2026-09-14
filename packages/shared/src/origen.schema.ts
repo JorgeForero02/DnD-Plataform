@@ -43,5 +43,20 @@ export const origenSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("nivelDeEspacio") }),
   /** La CD de conjuro de quien lanza — `spellSaveDc`, ya derivada con traza por el motor. */
   z.object({ tipo: z.literal("cdDeConjuro") }),
+  /**
+   * El nivel de una clase concreta. Tarea 3A.1 (T1, E-3A1-4 amendment): `@classes.<clase>.levels`
+   * de Foundry (`nivelDeClase("fighter")` en `second-wind`, `nivelDeClase("monk")` en `ki`…).
+   * `clase` es la clave estable del catálogo (`"fighter"`, `"monk"`), nunca vacía. **Sin
+   * multiclase todavía**: `resolverOrigen` compara contra la única clase del personaje y da 0
+   * si no coincide — el día que haya multiclase, esta rama necesita revisión.
+   */
+  z.object({ tipo: z.literal("nivelDeClase"), clase: z.string().min(1).max(60) }),
+  /**
+   * El bono de ataque de un conjuro: modificador de lanzamiento + bonificador por competencia.
+   * Hermano de `cdDeConjuro` — el motor ya lo deriva (`derived["attack.spell"]`), esta variante
+   * solo lo expone como origen de un campo de actividad. Tarea 3A.1 (T1, E-3A1-4 amendment): sin
+   * ella, los 17 conjuros de ataque del SRD no podían entrar como `ataque` (hueco B de T0).
+   */
+  z.object({ tipo: z.literal("ataqueDeConjuro") }),
 ]);
 export type Origen = z.infer<typeof origenSchema>;

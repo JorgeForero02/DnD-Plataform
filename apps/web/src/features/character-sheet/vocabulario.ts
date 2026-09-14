@@ -530,6 +530,12 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   // (`resolverOrigen({ tipo: "escala", clave: "rage-damage" })`). Única tabla de escala que se
   // resuelve hoy fuera del catálogo genérico de clases.
   "scale.rage-damage": "Daño de Furia (por nivel)",
+  // Tarea 3A.1 (T1) — `resolverOrigen` gana dos kinds: "ataqueDeConjuro" (el bono de ataque de
+  // conjuro ya derivado, hermano de "cdDeConjuro") y "nivelDeClase" (el nivel de una clase
+  // concreta: Tomar Aliento del guerrero, Ki del monje).
+  "attack.spell": "Bono de ataque de conjuro (valor ya derivado)",
+  "nivelDeClase.fighter": "Nivel de guerrero",
+  "nivelDeClase.monk": "Nivel de monje",
   "speed.base": "Velocidad base",
   "speed.condition.zero": "Una condición deja la velocidad en 0",
   "speed.condition.half": "Una condición reduce la velocidad a la mitad",

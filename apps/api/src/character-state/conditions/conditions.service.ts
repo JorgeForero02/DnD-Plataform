@@ -170,6 +170,7 @@ export class ConditionsService {
       userId,
       character,
       "Solo el DM o el dueño puede aplicar una condición.",
+      tx,
     );
 
     // **La marca de Ayudar la pone `help()`, y nadie más.** Por esta ruta no entra ni el DM:

@@ -27,7 +27,7 @@ export async function viewerFor(
 ): Promise<Viewer> {
   const db = cliente ?? prisma;
   const [member, user] = await Promise.all([
-    membership.getMembership(campaignId, userId),
+    membership.getMembership(campaignId, userId, cliente),
     db.user.findUnique({ where: { id: userId } }),
   ]);
   return {
@@ -84,7 +84,9 @@ export async function requireVisibleCharacterWithViewer(
   characterId: string,
   cliente?: Prisma.TransactionClient,
 ): Promise<{ character: Character; viewer: Viewer }> {
-  await membership.requireMember(campaignId, userId);
+  // Dentro de una transacción, TODO va por su cliente — también la membresía (ver el porqué en
+  // `MembershipService.getMembership`): el pool de CI se interbloqueaba con tres usos a la vez.
+  await membership.requireMember(campaignId, userId, cliente);
   const db = cliente ?? prisma;
   const character = await db.character.findFirst({ where: { id: characterId, campaignId } });
   const viewer = await viewerFor(prisma, membership, userId, campaignId, cliente);
@@ -101,8 +103,9 @@ export async function requireOwnerOrDM(
   userId: string,
   character: Pick<Character, "ownerId">,
   message = "Solo el DM o el dueño del personaje puede hacer esto.",
+  cliente?: Prisma.TransactionClient,
 ): Promise<boolean> {
-  const member = await membership.getMembership(campaignId, userId);
+  const member = await membership.getMembership(campaignId, userId, cliente);
   const isDM = member?.role === "DM";
   if (!isDM && character.ownerId !== userId) {
     throw new ForbiddenException(message);

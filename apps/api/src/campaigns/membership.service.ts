@@ -4,21 +4,37 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { CampaignMember, Role } from "@prisma/client";
+import { CampaignMember, Prisma, Role } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class MembershipService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getMembership(campaignId: string, userId: string): Promise<CampaignMember | null> {
-    return this.prisma.campaignMember.findUnique({
+  /**
+   * `cliente` es el de la transacción abierta, si la hay — y **no es opcional por cortesía**.
+   * Una consulta con el cliente raíz desde DENTRO de una transacción interactiva pide una
+   * conexión nueva del pool mientras la transacción retiene la suya; con tantas transacciones
+   * como conexiones (tres usos concurrentes de una actividad sobre el pool de tres del runner de
+   * CI, 2026-09-14) ninguna puede conseguir la cuarta y todas mueren a los 10 s con `P2024` —
+   * interbloqueo del pool, no de filas. Quien tenga `tx` lo pasa; `character-viewer` lo hace.
+   */
+  getMembership(
+    campaignId: string,
+    userId: string,
+    cliente?: Prisma.TransactionClient,
+  ): Promise<CampaignMember | null> {
+    return (cliente ?? this.prisma).campaignMember.findUnique({
       where: { campaignId_userId: { campaignId, userId } },
     });
   }
 
-  async requireMember(campaignId: string, userId: string): Promise<CampaignMember> {
-    const member = await this.getMembership(campaignId, userId);
+  async requireMember(
+    campaignId: string,
+    userId: string,
+    cliente?: Prisma.TransactionClient,
+  ): Promise<CampaignMember> {
+    const member = await this.getMembership(campaignId, userId, cliente);
     if (!member) throw new ForbiddenException("Not a member of this campaign");
     return member;
   }

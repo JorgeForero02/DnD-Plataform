@@ -9,11 +9,14 @@ import type { Prisma } from "@prisma/client";
 import type {
   AnswerRollRequestInput,
   CreateRollRequestInput,
+  EffectApplied,
   ListRollRequestsInput,
+  PendingSaveEffect,
   RollAudience,
   RollMode,
   RollResult,
 } from "@dnd/shared";
+import { pendingSaveEffectSchema } from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { EncountersService } from "../encounters/encounters.service";
@@ -127,7 +130,7 @@ export class RollRequestsService {
     tx: Prisma.TransactionClient,
     userId: string,
     campaignId: string,
-    input: CreateRollRequestInput,
+    input: CreateRollRequestInput & { pendingEffect?: PendingSaveEffect },
   ) {
     const creadas = [];
     for (const characterId of input.characterIds) {
@@ -142,6 +145,10 @@ export class RollRequestsService {
             dc: input.dc ?? null,
             mode: input.mode,
             audience: input.audience,
+            // Puerta de efectos §4.2: solo `createFromEffect` puede llenar esto — `create()`,
+            // la puerta pública del DM, nunca pasa `pendingEffect` porque su tipo (`CreateRollRequestInput`
+            // pelado) no lo declara.
+            pendingEffect: (input.pendingEffect ?? undefined) as Prisma.InputJsonValue | undefined,
           },
         }),
       );
@@ -158,7 +165,7 @@ export class RollRequestsService {
     tx: Prisma.TransactionClient,
     actorUserId: string,
     campaignId: string,
-    input: CreateRollRequestInput,
+    input: CreateRollRequestInput & { pendingEffect?: PendingSaveEffect },
   ) {
     const personajes = await tx.character.findMany({
       where: { id: { in: input.characterIds }, campaignId, archivedAt: null },
@@ -253,7 +260,7 @@ export class RollRequestsService {
     campaignId: string,
     requestId: string,
     input: AnswerRollRequestInput,
-  ): Promise<RollResult> {
+  ): Promise<RollResult & { effectApplied?: EffectApplied }> {
     const miembro = await this.membership.requireMember(campaignId, userId);
     const peticion = await this.prisma.rollRequest.findFirst({
       where: { id: requestId, campaignId },
@@ -388,15 +395,69 @@ export class RollRequestsService {
     // pasaban la comprobación y tiraban. La regla del proyecto dice que lo que la base puede
     // garantizar lo garantiza la base: aquí la garantía es que el `updateMany` solo toca la fila
     // que **sigue** sin responder, y si no tocó ninguna es que ganó la otra.
-    const cerrada = await this.prisma.rollRequest.updateMany({
-      where: { id: peticion.id, resolvedAt: null },
-      data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
-    });
-    if (cerrada.count === 0) {
-      throw new BadRequestException("Esa petición ya se respondió.");
-    }
+    //
+    // **Puerta de efectos §4.3 (tarea 2) — cerrar la petición y aplicar su efecto pendiente
+    // confirman JUNTOS.** Mismo patrón que el camino de iniciativa de más arriba (I-2): si el
+    // `updateMany` y el `changeHpFromEffect` vivieran en transacciones separadas, un fallo entre
+    // las dos dejaría la petición cerrada sin que el daño se hubiera repartido, o al revés.
+    //
+    // SRD 5.1, *Saving Throws*: «A saving throw is successful if the total equals or exceeds the
+    // DC». *Fireball*: «half as much damage on a successful one». *Rounding Down*: la mitad se
+    // redondea hacia abajo. El daño ya se tiró UNA vez en `usar` (*Damage Rolls*: «roll the
+    // damage once for all of them») y viaja en `pendingEffect`; aquí solo se decide si se aplica
+    // entero, mitad o nada.
+    const efecto = peticion.pendingEffect
+      ? pendingSaveEffectSchema.parse(peticion.pendingEffect)
+      : null;
+    const effectApplied = await this.prisma.transaction(async (tx) => {
+      const cerrada = await tx.rollRequest.updateMany({
+        where: { id: peticion.id, resolvedAt: null },
+        data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
+      });
+      if (cerrada.count === 0) {
+        throw new BadRequestException("Esa petición ya se respondió.");
+      }
+      if (!efecto || peticion.dc === null) return undefined;
 
-    return resultado;
+      // E-PE-6: el total se lee del suceso escrito, no de `resultado` — `RollResult` puede venir
+      // `revealed: false` (una petición `BLIND`), y ahí `resultado.total` no existe.
+      const evento = await tx.gameEvent.findUnique({
+        where: { id: resultado.eventId },
+        select: { payload: true },
+      });
+      const total = (evento?.payload as { total?: number } | null)?.total;
+      if (typeof total !== "number") {
+        throw new BadRequestException("La tirada de la salvación no se pudo leer.");
+      }
+      const salvo = total >= peticion.dc;
+      const cantidad = salvo
+        ? efecto.siSalva === "mitad"
+          ? Math.floor(efecto.amount / 2)
+          : 0
+        : efecto.amount;
+      // `cantidad === 0 ? 0 : …` y no `efecto.signo * cantidad` a secas: con `signo: -1` y
+      // `cantidad: 0` la multiplicación da `-0`, que es un cero de verdad para el juego pero NO
+      // para `toEqual` — el `-0` de JavaScript no es `0` bajo `Object.is`, y devolverlo habría
+      // hecho mentir a `effectApplied.delta` sobre un caso donde no pasó nada.
+      const delta = cantidad === 0 ? 0 : efecto.signo * cantidad;
+      if (cantidad > 0) {
+        await this.sheets.changeHpFromEffect(
+          tx,
+          peticion.requestedById,
+          campaignId,
+          peticion.characterId,
+          {
+            delta,
+            reason: `Actividad: ${efecto.actividadKey}${salvo ? " (salvó, mitad)" : " (falló)"}`,
+            ...(efecto.signo < 0 && efecto.tipoDeDano ? { damageType: efecto.tipoDeDano } : {}),
+            rollEventId: resultado.eventId,
+          },
+        );
+      }
+      return { delta, saved: salvo };
+    });
+
+    return effectApplied ? { ...resultado, effectApplied } : resultado;
   }
 
   /**

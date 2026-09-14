@@ -873,6 +873,12 @@ model RollRequest {
   /// `resolvedAt` puesto y `resolvedEventId` nulo, esto es lo que separa «lo anularon» de
   /// «lo respondí yo»: sin ella la pantalla del jugador le diría que tiró él.
   cancelledAt     DateTime?
+  /// Puerta de efectos §4.2 (2026-09-13): el daño (o curación) de una actividad de salvación,
+  /// tirado UNA vez en `ActivitiesService.usar` y aplicado por `RollRequestsService.answer` al
+  /// cerrar esta petición. Forma de `PendingSaveEffect` (`packages/shared/src/roll-request.schema.ts`,
+  /// `pendingSaveEffectSchema`). `null` en cualquier petición que no venga de una salvación con
+  /// dados — la inmensa mayoría, que solo pide un valor de la hoja.
+  pendingEffect   Json?
   campaign        Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   character       Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
 

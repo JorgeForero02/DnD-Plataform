@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { rollAudienceSchema } from "./roll.schema";
+import { damageTypeSchema } from "./item.schema";
 
 // Tarea 2C.5 — **el DM pide una tirada y al jugador le aparece.**
 //
@@ -88,6 +89,39 @@ export const answerRollRequestSchema = z.object({
   spendInspiration: z.boolean().default(false),
 });
 export type AnswerRollRequestInput = z.infer<typeof answerRollRequestSchema>;
+
+// Puerta de efectos §4.2 (2026-09-13) — el daño (o la curación) de una actividad de salvación se
+// tira UNA sola vez, en `ActivitiesService.usar`, y viaja aquí hasta que cada objetivo responde su
+// petición. SRD 5.1, *Damage Rolls*: «If a spell or other effect deals damage to more than one
+// target at the same time, roll the damage once for all of them» — el mismo dado sirve para todos los
+// objetivos de un `fireball`, así que se tira antes de saber quién de ellos va a salvar.
+//
+// **No es del esquema PÚBLICO de crear una petición** (`createRollRequestSchema`, spec §6): nadie
+// que llame a `POST /campaigns/:id/roll-requests` puede inventarse un daño pendiente para otro
+// personaje. Solo lo escribe `RollRequestsService.createFromEffect`, y solo con lo que la
+// actividad ya calculó dentro de su propia transacción.
+export const pendingSaveEffectSchema = z.object({
+  /** La cantidad YA tirada (o ya calculada, si `dados` era un bono fijo): siempre un entero ≥ 0. */
+  amount: z.number().int().min(0),
+  /** `-1` daña, `1` cura — el mismo vocabulario que `dados.signo` en `activity.schema.ts`. */
+  signo: z.union([z.literal(1), z.literal(-1)]),
+  /** Solo tiene sentido cuando `signo` es `-1`: una curación no tiene tipo de daño. */
+  tipoDeDano: damageTypeSchema.optional(),
+  /**
+   * Qué le pasa a `amount` si la salvación tiene éxito. SRD 5.1, *Fireball*: «half as much damage
+   * on a successful one» — la otra mitad de los casos es que la salvación deje el efecto entero
+   * en nada (`"ninguno"`), como una condición sin componente de daño.
+   */
+  siSalva: z.enum(["ninguno", "mitad"]),
+  /** Con qué actividad se cita en el `reason` de `changeHpFromEffect` y en la traza. */
+  actividadKey: z.string().min(1),
+  /** Quién firma el `changeHpFromEffect` cuando se aplique: el actor que usó la actividad. */
+  actorCharacterId: z.string().min(1),
+});
+export type PendingSaveEffect = z.infer<typeof pendingSaveEffectSchema>;
+
+/** Lo que `RollRequestsService.answer` aplicó al cerrar una petición con `pendingEffect`. */
+export type EffectApplied = { delta: number; saved: boolean };
 
 export const listRollRequestsSchema = z.object({
   /**

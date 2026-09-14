@@ -22,11 +22,17 @@ describe("RollRequestsService", () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    // Puerta de efectos §4.3 (tarea 2): `answer` lee el total de la salvación del suceso escrito,
+    // no de `resultado` (E-PE-6, `RollResult` puede venir `revealed: false`).
+    gameEvent: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
+  // El mock de `prisma.transaction` ejecuta su callback pasándole `prisma` — así que `tx` en las
+  // pruebas de abajo ES `prisma`, la misma identidad que ya usaba el resto del fichero.
+  const tx = prisma;
   const membership = { requireDM: jest.fn(), requireMember: jest.fn() };
   const rolls = { roll: jest.fn() };
-  const sheets = { getSheet: jest.fn() };
+  const sheets = { getSheet: jest.fn(), changeHpFromEffect: jest.fn() };
   // Tarea 3: `answer` escribe la iniciativa en el combatiente cuando la petición viene de un
   // encuentro (`peticion.encounterId`). Ninguna de las peticiones de este fichero lleva
   // `encounterId`, así que esta rama no se ejerce aquí — sí en `iniciativa-pedida.e2e-spec.ts`,
@@ -64,7 +70,12 @@ describe("RollRequestsService", () => {
     }));
     rolls.roll.mockResolvedValue({ revealed: true, eventId: "e1", total: 17 });
     sheets.getSheet.mockResolvedValue(
-      hojaCon({ "skill.perception": { key: "skill.perception", total: 5, steps: [] } }),
+      hojaCon({
+        "skill.perception": { key: "skill.perception", total: 5, steps: [] },
+        // Puerta de efectos §4.3: las pruebas de `pendingEffect` piden `save.dex` para tirar la
+        // salvación antes de decidir si el efecto se aplica.
+        "save.dex": { key: "save.dex", total: 2, steps: [] },
+      }),
     );
   });
 
@@ -451,6 +462,140 @@ describe("RollRequestsService", () => {
           data: expect.objectContaining({ resolvedEventId: "e1" }),
         }),
       );
+    });
+  });
+
+  // Puerta de efectos §4.3 (tarea 2) — el daño de la salvación se tiró UNA vez en `usar` y viaja
+  // en `pendingEffect`; `answer` decide aquí, dentro de la MISMA transacción que cierra la
+  // petición, si se aplica entero, mitad o nada.
+  describe("answer aplica pendingEffect (spec §4.3)", () => {
+    const base = {
+      id: "r1",
+      campaignId: "c1",
+      characterId: "b",
+      requestedById: "a",
+      key: "save.dex",
+      label: "S",
+      dc: 15,
+      mode: "NORMAL",
+      audience: "PUBLIC",
+      resolvedAt: null,
+      cancelledAt: null,
+      encounterId: null,
+      character: { id: "b", ownerId: "u-b" },
+    };
+    const efecto = {
+      amount: 21,
+      signo: -1,
+      tipoDeDano: "FIRE",
+      siSalva: "mitad",
+      actividadKey: "fireball",
+      actorCharacterId: "a",
+    };
+
+    function conTotal(total: number) {
+      prisma.rollRequest.findFirst.mockResolvedValue({ ...base, pendingEffect: efecto });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: true,
+        eventId: "ev1",
+        total,
+        expression: "1d20+2",
+        audience: "PUBLIC",
+        rolls: [],
+        kept: [],
+        dropped: [],
+        modifier: 2,
+      });
+      tx.gameEvent.findUnique.mockResolvedValue({ payload: { type: "ABILITY_ROLL", total } });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+    }
+
+    it("falla (14 < 15): daño entero, firmado por quien lanzó, citando la salvación", async () => {
+      conTotal(14);
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).toHaveBeenCalledWith(tx, "a", "c1", "b", {
+        delta: -21,
+        reason: "Actividad: fireball (falló)",
+        damageType: "FIRE",
+        rollEventId: "ev1",
+      });
+      expect(r.effectApplied).toEqual({ delta: -21, saved: false });
+    });
+
+    it("empata (15 >= 15): salva, mitad redondeada abajo (floor(21/2) = 10)", async () => {
+      conTotal(15);
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).toHaveBeenCalledWith(
+        tx,
+        "a",
+        "c1",
+        "b",
+        expect.objectContaining({ delta: -10, reason: "Actividad: fireball (salvó, mitad)" }),
+      );
+      expect(r.effectApplied).toEqual({ delta: -10, saved: true });
+    });
+
+    it("salva con siSalva ninguno: no toca los PG y effectApplied dice delta 0", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({
+        ...base,
+        pendingEffect: { ...efecto, siSalva: "ninguno" },
+      });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: true,
+        eventId: "ev1",
+        total: 20,
+        expression: "1d20+2",
+        audience: "PUBLIC",
+        rolls: [],
+        kept: [],
+        dropped: [],
+        modifier: 2,
+      });
+      tx.gameEvent.findUnique.mockResolvedValue({ payload: { type: "ABILITY_ROLL", total: 20 } });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(r.effectApplied).toEqual({ delta: 0, saved: true });
+    });
+
+    it("sin pendingEffect no cambia nada: ni changeHp ni effectApplied", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({ ...base, pendingEffect: null });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: true,
+        eventId: "ev1",
+        total: 10,
+        expression: "1d20+2",
+        audience: "PUBLIC",
+        rolls: [],
+        kept: [],
+        dropped: [],
+        modifier: 2,
+      });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(r.effectApplied).toBeUndefined();
+    });
+
+    it("si la petición se cerró en la carrera (count 0) no aplica el efecto", async () => {
+      conTotal(14);
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.answer("u-b", "c1", "r1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
     });
   });
 });

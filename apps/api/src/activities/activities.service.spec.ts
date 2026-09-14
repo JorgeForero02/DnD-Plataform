@@ -591,16 +591,31 @@ describe("ActivitiesService", () => {
     });
   });
 
-  // **I5 (vuelta de arreglo 1).** `aliento-de-fuego` trae `dados` (8d6 de fuego, `siSalva:
-  // "mitad"`), y A7 no los aplica: no sabe quién salvó hasta que alguien responda la petición.
-  // Callarlo sería peor que no aplicarlo — la mesa vería un cono de fuego que no quema a nadie
-  // sin que nadie se lo dijera.
-  it("una salvación con dados avisa de que el daño NO se aplica solo", async () => {
+  // Puerta de efectos §4.2 (tarea 2) — el I5 de la vuelta de arreglo 1 quedó cerrado: el daño de
+  // una salvación con `dados` se tira UNA vez aquí (SRD 5.1, *Damage Rolls*: «roll the damage
+  // once for all of them») y viaja en `pendingEffect` hasta que cada objetivo responda su
+  // petición (`RollRequestsService.answer`). Ya no hay nada que avisar.
+  it("una salvación con dados tira el daño UNA vez y lo manda como pendingEffect, sin aviso", async () => {
     const r = await service.usar(dmId, campaignId, pnjId, "aliento-de-fuego", {
       objetivos: [magaId],
     });
 
-    expect(r.aviso).toMatch(/no aplica/i);
+    expect(r.aviso).toBeUndefined();
+    // `aliento-de-fuego` tira `6d6` con el tirador fijo de la suite (`roller = () => 5`):
+    // 6 × 5 = 30.
+    expect(rollRequests.createFromEffect.mock.calls[0][3]).toMatchObject({
+      pendingEffect: {
+        amount: 30,
+        signo: -1,
+        tipoDeDano: "FIRE",
+        siSalva: "mitad",
+        actividadKey: "aliento-de-fuego",
+        actorCharacterId: pnjId,
+      },
+    });
+    // La traza de la respuesta trae los pasos del dado, aunque el daño no se aplique aquí.
+    expect(r.traza).toBeDefined();
+    expect(r.traza!.length).toBeGreaterThan(0);
   });
 
   it("una actividad de dados con signo positivo CURA, por la puerta de siempre", async () => {

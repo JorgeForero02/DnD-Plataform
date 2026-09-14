@@ -143,150 +143,159 @@ export class ActivitiesService {
     const traza: TraceStep[] = [];
     let cd: number | undefined;
 
-    const resultado = await this.prisma.transaction(async (tx) => {
-      const consumo = await this.consumir(tx, actor.id, actividad.consumption);
-      if (!consumo.ok) {
-        return { aviso: consumo.motivo, sinRecurso: true as const };
-      }
-      for (const paso of consumo.pasos) {
-        await this.events.record(
-          userId,
-          campaignId,
-          {
-            subjectType: "character",
-            subjectId: actor.id,
-            visibility: actor.visibility,
-            payload: {
-              type: "RESOURCE_SPENT",
-              key: paso.key,
-              label: paso.label,
-              amount: paso.amount,
-              remaining: paso.remaining,
-              reason: `Actividad: ${actividadKey}`,
+    // **Esta transacción espera un cerrojo a propósito** (`consumir` hace `SELECT … FOR UPDATE`
+    // sobre el recurso, ficha P2-6) y **la espera cuenta dentro del tope**. Con el tope por
+    // defecto de Prisma (5 s), tres usos a la vez sobre un Postgres cargado —la CI corre 57 suites
+    // contra una sola base— dejaban a la tercera con un `P2028` y un 500 que no era de nadie:
+    // `usos-concurrentes.e2e-spec.ts` lo cazó en GitHub el 2026-09-13 tras pasar aquí en 132 ms.
+    // Un tope de 30 s no cambia nada en la mesa y deja de convertir carga en error.
+    const resultado = await this.prisma.transaction(
+      async (tx) => {
+        const consumo = await this.consumir(tx, actor.id, actividad.consumption);
+        if (!consumo.ok) {
+          return { aviso: consumo.motivo, sinRecurso: true as const };
+        }
+        for (const paso of consumo.pasos) {
+          await this.events.record(
+            userId,
+            campaignId,
+            {
+              subjectType: "character",
+              subjectId: actor.id,
+              visibility: actor.visibility,
+              payload: {
+                type: "RESOURCE_SPENT",
+                key: paso.key,
+                label: paso.label,
+                amount: paso.amount,
+                remaining: paso.remaining,
+                reason: `Actividad: ${actividadKey}`,
+              },
             },
-          },
-          tx,
-        );
-      }
+            tx,
+          );
+        }
 
-      // **I4 (vuelta de arreglo 1) — el nivel del espacio es el del recurso que se gastó de
-      // verdad, nunca el que declaró el cliente.** La primera versión metía
-      // `opciones.nivelDeEspacio` directamente en el contexto de derivación, así que un cliente
-      // podía declarar nivel 9 y pagar un espacio de nivel 1 — Zod valida el rango (1 a 9), no
-      // la verdad. `consumption` es fijo por actividad hoy (elegir QUÉ espacio pagar, cuando una
-      // actividad ofrezca esa opción, es una tarea futura); lo que sí se corrige aquí es que la
-      // fórmula nunca vea un nivel que nadie pagó.
-      ctx.nivelDeEspacio = nivelDeEspacioConsumido(consumo.pasos);
+        // **I4 (vuelta de arreglo 1) — el nivel del espacio es el del recurso que se gastó de
+        // verdad, nunca el que declaró el cliente.** La primera versión metía
+        // `opciones.nivelDeEspacio` directamente en el contexto de derivación, así que un cliente
+        // podía declarar nivel 9 y pagar un espacio de nivel 1 — Zod valida el rango (1 a 9), no
+        // la verdad. `consumption` es fijo por actividad hoy (elegir QUÉ espacio pagar, cuando una
+        // actividad ofrezca esa opción, es una tarea futura); lo que sí se corrige aquí es que la
+        // fórmula nunca vea un nivel que nadie pagó.
+        ctx.nivelDeEspacio = nivelDeEspacioConsumido(consumo.pasos);
 
-      switch (actividad.tipo) {
-        case "salvacion": {
-          const resuelto = resolverOrigen(actividad.salvacion.cd, ctx);
-          traza.push(resuelto.paso);
-          cd = resuelto.valor;
-          // Puerta de efectos §4.2 (tarea 2) — el I5 de la vuelta de arreglo 1 queda cerrado
-          // aquí: el daño (o curación) de una salvación con `dados` se tira UNA sola vez, ahora,
-          // y no una vez por cada objetivo que responda. SRD 5.1, *Damage Rolls*: «If a spell or
-          // other effect deals damage to more than one target at the same time, roll the damage
-          // once for all of them» — un solo `fireball` no tira 8d6 dos veces
-          // porque haya dos objetivos. El total viaja en `pendingEffect`, guardado en la
-          // `RollRequest`, y `RollRequestsService.answer` decide al responder si se aplica
-          // entero, mitad (`siSalva: "mitad"`) o nada, según si esa tirada concreta superó la CD.
-          let pendingEffect: PendingSaveEffect | undefined;
-          if (actividad.dados) {
-            const { total, pasos } = this.tirarDados(actividad.dados, ctx);
-            traza.push(...pasos);
-            pendingEffect = {
-              amount: total,
-              signo: actividad.dados.signo,
-              // Solo un daño lleva tipo: una curación por salvación (spec §4.4) no tiene «tipo de
-              // daño» que guardar, y el esquema lo dice — el dato guardado no lo contradice.
-              ...(actividad.dados.signo < 0 && actividad.dados.tipoDeDano
-                ? { tipoDeDano: actividad.dados.tipoDeDano }
-                : {}),
-              siSalva: actividad.salvacion.siSalva,
-              actividadKey,
-              actorCharacterId: actor.id,
-            };
-          }
-          if (objetivos.length > 0) {
-            await this.rollRequests.createFromEffect(tx, userId, campaignId, {
-              characterIds: destinatarios.map((o) => o.id),
-              key: `save.${actividad.salvacion.ability}`,
-              label: `Salvación de ${actividad.salvacion.ability} — ${actividadKey}`,
-              dc: resuelto.valor,
-              mode: "NORMAL",
-              audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
-              ...(pendingEffect ? { pendingEffect } : {}),
-            });
-          }
-          break;
-        }
-        case "dados": {
-          const { total, pasos } = this.tirarDados(actividad.dados, ctx);
-          traza.push(...pasos);
-          const delta = actividad.dados.signo * total;
-          for (const destino of destinatarios) {
-            await this.characterSheet.changeHpFromEffect(tx, userId, campaignId, destino.id, {
-              delta,
-              reason: `Actividad: ${actividadKey}`,
-              ...(delta < 0 && actividad.dados.tipoDeDano
-                ? { damageType: actividad.dados.tipoDeDano }
-                : {}),
-            });
-          }
-          break;
-        }
-        case "ataque": {
-          // **No se resuelve el impacto.** No hay en el proyecto una puerta de "tirada de ataque
-          // contra la CA de un objetivo" desligada de un arma equipada (`rollAttack`/
-          // `resolveAttack` operan sobre el cuadro de ataques del inventario, no sobre el bono de
-          // una actividad). Inventar esa comparación aquí sería construir mecánica nueva, que
-          // este encargo tiene prohibido. Se resuelve el bono y su traza; el acierto lo decide
-          // quien juegue, con las herramientas que ya existen.
-          const resuelto = resolverOrigen(actividad.ataque.bono, ctx);
-          traza.push(resuelto.paso);
-          break;
-        }
-        case "prueba": {
-          if (actividad.prueba.cd) {
-            const resuelto = resolverOrigen(actividad.prueba.cd, ctx);
+        switch (actividad.tipo) {
+          case "salvacion": {
+            const resuelto = resolverOrigen(actividad.salvacion.cd, ctx);
             traza.push(resuelto.paso);
             cd = resuelto.valor;
+            // Puerta de efectos §4.2 (tarea 2) — el I5 de la vuelta de arreglo 1 queda cerrado
+            // aquí: el daño (o curación) de una salvación con `dados` se tira UNA sola vez, ahora,
+            // y no una vez por cada objetivo que responda. SRD 5.1, *Damage Rolls*: «If a spell or
+            // other effect deals damage to more than one target at the same time, roll the damage
+            // once for all of them» — un solo `fireball` no tira 8d6 dos veces
+            // porque haya dos objetivos. El total viaja en `pendingEffect`, guardado en la
+            // `RollRequest`, y `RollRequestsService.answer` decide al responder si se aplica
+            // entero, mitad (`siSalva: "mitad"`) o nada, según si esa tirada concreta superó la CD.
+            let pendingEffect: PendingSaveEffect | undefined;
+            if (actividad.dados) {
+              const { total, pasos } = this.tirarDados(actividad.dados, ctx);
+              traza.push(...pasos);
+              pendingEffect = {
+                amount: total,
+                signo: actividad.dados.signo,
+                // Solo un daño lleva tipo: una curación por salvación (spec §4.4) no tiene «tipo de
+                // daño» que guardar, y el esquema lo dice — el dato guardado no lo contradice.
+                ...(actividad.dados.signo < 0 && actividad.dados.tipoDeDano
+                  ? { tipoDeDano: actividad.dados.tipoDeDano }
+                  : {}),
+                siSalva: actividad.salvacion.siSalva,
+                actividadKey,
+                actorCharacterId: actor.id,
+              };
+            }
+            if (objetivos.length > 0) {
+              await this.rollRequests.createFromEffect(tx, userId, campaignId, {
+                characterIds: destinatarios.map((o) => o.id),
+                key: `save.${actividad.salvacion.ability}`,
+                label: `Salvación de ${actividad.salvacion.ability} — ${actividadKey}`,
+                dc: resuelto.valor,
+                mode: "NORMAL",
+                audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+                ...(pendingEffect ? { pendingEffect } : {}),
+              });
+            }
+            break;
           }
-          break;
+          case "dados": {
+            const { total, pasos } = this.tirarDados(actividad.dados, ctx);
+            traza.push(...pasos);
+            const delta = actividad.dados.signo * total;
+            for (const destino of destinatarios) {
+              await this.characterSheet.changeHpFromEffect(tx, userId, campaignId, destino.id, {
+                delta,
+                reason: `Actividad: ${actividadKey}`,
+                ...(delta < 0 && actividad.dados.tipoDeDano
+                  ? { damageType: actividad.dados.tipoDeDano }
+                  : {}),
+              });
+            }
+            break;
+          }
+          case "ataque": {
+            // **No se resuelve el impacto.** No hay en el proyecto una puerta de "tirada de ataque
+            // contra la CA de un objetivo" desligada de un arma equipada (`rollAttack`/
+            // `resolveAttack` operan sobre el cuadro de ataques del inventario, no sobre el bono de
+            // una actividad). Inventar esa comparación aquí sería construir mecánica nueva, que
+            // este encargo tiene prohibido. Se resuelve el bono y su traza; el acierto lo decide
+            // quien juegue, con las herramientas que ya existen.
+            const resuelto = resolverOrigen(actividad.ataque.bono, ctx);
+            traza.push(resuelto.paso);
+            break;
+          }
+          case "prueba": {
+            if (actividad.prueba.cd) {
+              const resuelto = resolverOrigen(actividad.prueba.cd, ctx);
+              traza.push(resuelto.paso);
+              cd = resuelto.valor;
+            }
+            break;
+          }
+          case "utilidad":
+            // Nada mecánico propio: solo `effects[]`, que se aplica abajo para las cinco ramas por
+            // igual — `utilidad` no es la única que puede dejar un efecto (una `salvacion` también
+            // trae `effects` de la base).
+            break;
         }
-        case "utilidad":
-          // Nada mecánico propio: solo `effects[]`, que se aplica abajo para las cinco ramas por
-          // igual — `utilidad` no es la única que puede dejar un efecto (una `salvacion` también
-          // trae `effects` de la base).
-          break;
-      }
 
-      // **`effects[]`, dentro de la MISMA transacción (vuelta de arreglo 1).** «Gasté el recurso
-      // y la condición no se aplicó» es el estado a medias que esta tarea existe para impedir, y
-      // es justo lo que A11 necesita: el bárbaro entra en furia y aparece su estado.
-      //
-      // **`concedidoPorActividad` solo se pasa cuando el destino es quien usa la actividad
-      // (ronda de arreglo 1 de A11, crítico 2).** `raging` se volvió clave reservada para que
-      // nadie se la escriba a sí mismo gratis por la puerta genérica de condiciones — y esta
-      // puerta, la de usar una actividad de verdad, tiene que poder seguir dándosela a quien
-      // gastó su acción adicional y su uso. Pero **nunca** a un objetivo distinto: una actividad
-      // futura con `effects` y `objetivos` no puede convertirse en la vía por la que un jugador
-      // le aplica una condición reservada a OTRO personaje sin que decida el DM — eso seguiría
-      // siendo exactamente el agujero que esta clave existe para cerrar, solo que por esta otra
-      // puerta. Hoy la única actividad con `effects` (la Furia) no declara `objetivos`, así que
-      // `destinatariosOrdenados` siempre la deja en `[actor]` — pero la condición se escribe
-      // explícita, no se confía en que siga siendo así.
-      for (const efecto of actividad.effects) {
-        for (const destino of destinatarios) {
-          await this.conditions.apply(userId, campaignId, destino.id, efecto, tx, {
-            concedidoPorActividad: destino.id === actor.id,
-          });
+        // **`effects[]`, dentro de la MISMA transacción (vuelta de arreglo 1).** «Gasté el recurso
+        // y la condición no se aplicó» es el estado a medias que esta tarea existe para impedir, y
+        // es justo lo que A11 necesita: el bárbaro entra en furia y aparece su estado.
+        //
+        // **`concedidoPorActividad` solo se pasa cuando el destino es quien usa la actividad
+        // (ronda de arreglo 1 de A11, crítico 2).** `raging` se volvió clave reservada para que
+        // nadie se la escriba a sí mismo gratis por la puerta genérica de condiciones — y esta
+        // puerta, la de usar una actividad de verdad, tiene que poder seguir dándosela a quien
+        // gastó su acción adicional y su uso. Pero **nunca** a un objetivo distinto: una actividad
+        // futura con `effects` y `objetivos` no puede convertirse en la vía por la que un jugador
+        // le aplica una condición reservada a OTRO personaje sin que decida el DM — eso seguiría
+        // siendo exactamente el agujero que esta clave existe para cerrar, solo que por esta otra
+        // puerta. Hoy la única actividad con `effects` (la Furia) no declara `objetivos`, así que
+        // `destinatariosOrdenados` siempre la deja en `[actor]` — pero la condición se escribe
+        // explícita, no se confía en que siga siendo así.
+        for (const efecto of actividad.effects) {
+          for (const destino of destinatarios) {
+            await this.conditions.apply(userId, campaignId, destino.id, efecto, tx, {
+              concedidoPorActividad: destino.id === actor.id,
+            });
+          }
         }
-      }
 
-      return { aviso: undefined, sinRecurso: false as const };
-    });
+        return { aviso: undefined, sinRecurso: false as const };
+      },
+      { maxWait: 10_000, timeout: 30_000 },
+    );
 
     if (resultado.sinRecurso) {
       return { aviso: resultado.aviso };

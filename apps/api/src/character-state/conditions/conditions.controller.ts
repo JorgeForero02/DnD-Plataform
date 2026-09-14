@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import {
-  applyConditionSchema,
+  applyConditionObjectSchema,
   helpSchema,
+  unaSolaDuracion,
   type ApplyConditionInput,
   type HelpInput,
 } from "@dnd/shared";
@@ -11,7 +12,18 @@ import { ConditionsService } from "./conditions.service";
 
 // `key` en la URL identifica la condición; el cuerpo del PUT no repite ese campo. Mismo patrón
 // que `resources.controller.ts` y que `world-state.controller.ts`.
-const applyConditionBodySchema = applyConditionSchema.omit({ key: true });
+//
+// Se recorta sobre `applyConditionObjectSchema` (el objeto, sin el `.refine` ya aplicado) y no
+// sobre `applyConditionSchema`: un `ZodEffects` no tiene `.omit`. La regla de exclusividad entre
+// `durationSeconds` y `expiresOnRest` no depende de `key`, así que se vuelve a aplicar aquí con
+// el mismo `unaSolaDuracion` — es la que convierte «las dos a la vez» en un 400 también quien
+// entra por HTTP, no solo quien llama al servicio directamente.
+const applyConditionBodySchema = applyConditionObjectSchema
+  .omit({ key: true })
+  .refine(unaSolaDuracion, {
+    message: "Una condición dura por reloj o hasta un descanso, no las dos.",
+    path: ["expiresOnRest"],
+  });
 
 @UseGuards(JwtAuthGuard)
 @Controller("campaigns/:campaignId/characters/:characterId/conditions")

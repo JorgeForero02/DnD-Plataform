@@ -574,3 +574,131 @@ describe("dos bordes del descanso que una revisión contra la fuente encontró",
     );
   });
 });
+
+describe('descanso que retira condiciones "hasta el próximo descanso" (puerta de efectos §5.3, tarea 4)', () => {
+  // SRD 5.1, "Resting": un descanso largo incluye todo lo que repone uno corto (misma lógica que
+  // `reponerPorTipo`), así que un descanso largo retira SHORT **y** LONG; uno corto retira solo
+  // SHORT. Interrumpido no da nada, así que no retira ninguna.
+
+  let service: RestService;
+  const character = {
+    id: "c1",
+    ownerId: "owner1",
+    visibility: "PLAYERS",
+    campaignId: "cmp1",
+    con: 14,
+    currentHp: 10,
+  };
+  const condicionesPorDescanso = [
+    { id: "a", key: "a", expiresOnRest: "SHORT" as const },
+    { id: "b", key: "b", expiresOnRest: "LONG" as const },
+    { id: "c", key: "c", expiresOnRest: null },
+  ];
+  const prisma = {
+    character: { findFirst: jest.fn(), findFirstOrThrow: jest.fn(), update: jest.fn() },
+    user: { findUnique: jest.fn() },
+    characterResource: { findMany: jest.fn(), update: jest.fn() },
+    characterCondition: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    campaign: { findUniqueOrThrow: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn() };
+
+  async function montar() {
+    const ref = await Test.createTestingModule({
+      providers: [
+        RestService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+        { provide: GameClockService, useValue: { avanzar: jest.fn().mockResolvedValue({}) } },
+      ],
+    }).compile();
+    service = ref.get(RestService);
+    jest.resetAllMocks();
+    membership.requireMember.mockResolvedValue(undefined);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue(character);
+    prisma.character.findFirstOrThrow.mockResolvedValue(character);
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.characterResource.findMany.mockResolvedValue([]);
+    prisma.characterCondition.findUnique.mockResolvedValue(null);
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 0 });
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+    // Simula el filtro real de la consulta (`where: { expiresOnRest: { in: tipos } }`), no
+    // devuelve siempre las tres filas: así la prueba distingue de verdad corto de largo.
+    prisma.characterCondition.findMany.mockImplementation(
+      async ({ where }: { where?: { expiresOnRest?: { in?: string[] } } }) => {
+        const tipos = where?.expiresOnRest?.in ?? [];
+        return condicionesPorDescanso.filter(
+          (c) => c.expiresOnRest !== null && tipos.includes(c.expiresOnRest),
+        );
+      },
+    );
+    return { service, prisma, events };
+  }
+
+  it('corto → deleteMany de a y un CONDITION_REMOVED con key: "a", reason: "Descanso corto"; b y c siguen', async () => {
+    const { service, prisma, events } = await montar();
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "SHORT" });
+
+    expect(prisma.characterCondition.delete).toHaveBeenCalledTimes(1);
+    expect(prisma.characterCondition.delete).toHaveBeenCalledWith({ where: { id: "a" } });
+    expect(events.record).toHaveBeenCalledWith(
+      "owner1",
+      "cmp1",
+      expect.objectContaining({
+        payload: { type: "CONDITION_REMOVED", key: "a", reason: "Descanso corto" },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('largo completo retira a y b, dos CONDITION_REMOVED con reason: "Descanso largo"; c sigue', async () => {
+    const { service, prisma, events } = await montar();
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG" });
+
+    expect(prisma.characterCondition.delete).toHaveBeenCalledTimes(2);
+    expect(prisma.characterCondition.delete).toHaveBeenCalledWith({ where: { id: "a" } });
+    expect(prisma.characterCondition.delete).toHaveBeenCalledWith({ where: { id: "b" } });
+    expect(events.record).toHaveBeenCalledWith(
+      "owner1",
+      "cmp1",
+      expect.objectContaining({
+        payload: { type: "CONDITION_REMOVED", key: "a", reason: "Descanso largo" },
+      }),
+      expect.anything(),
+    );
+    expect(events.record).toHaveBeenCalledWith(
+      "owner1",
+      "cmp1",
+      expect.objectContaining({
+        payload: { type: "CONDITION_REMOVED", key: "b", reason: "Descanso largo" },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("largo interrumpido no retira ninguna: ningún deleteMany ni CONDITION_REMOVED por descanso", async () => {
+    const { service, prisma, events } = await montar();
+
+    await service.declare("owner1", "cmp1", "c1", { kind: "LONG", interrupted: true });
+
+    expect(prisma.characterCondition.delete).not.toHaveBeenCalled();
+    expect(events.record).not.toHaveBeenCalledWith(
+      "owner1",
+      "cmp1",
+      expect.objectContaining({ payload: expect.objectContaining({ type: "CONDITION_REMOVED" }) }),
+      expect.anything(),
+    );
+  });
+});

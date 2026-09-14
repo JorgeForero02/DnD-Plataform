@@ -794,6 +794,16 @@ model CharacterCondition {
   expiryEdge     String?
   // El combatiente cuyo turno corta la condicion. Solo tiene sentido con `expiryEdge`.
   sourceCharacterId String?
+  // **Hasta el proximo descanso corto o largo** (puerta de efectos §5, 2026-09-13). SRD 5.1,
+  // "Resting": docenas de condiciones usan literalmente "until you finish a short or long rest"
+  // o "until you finish a long rest" como su duracion, y eso no es un numero de segundos, es un
+  // suceso. "SHORT" | "LONG", texto y no un enum de Postgres por el mismo motivo que
+  // `expiryEdge`: lo valida Zod y el servicio.
+  //
+  // **Excluyente con `expiresAtClock`**: una condicion dura por reloj o hasta un descanso, nunca
+  // las dos. Eso lo garantiza el esquema Zod (`applyConditionSchema`, `.refine`), NO esta
+  // columna -- una `TEXT?` no impide que ambas lleguen puestas a la vez.
+  expiresOnRest  String?
   note           String?
   appliedById    String
   createdAt      DateTime  @default(now())

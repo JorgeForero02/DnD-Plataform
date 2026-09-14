@@ -501,4 +501,64 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
       expect(preview.status).toBe(404);
     });
   });
+
+  // --- 8. «Hasta el próximo descanso» (tarea 4, spec §5) ---------------------------------------
+  //
+  // El DM aplica a B dos condiciones con la misma llamada que ya existía, cada una con su
+  // duración: `poisoned` hasta el próximo descanso CORTO, `frightened` hasta el próximo LARGO. Un
+  // descanso corto solo tiene que llevarse la primera. Y `durationSeconds` con `expiresOnRest` a
+  // la vez tiene que ser un 400, aquí y no solo en la unitaria del esquema.
+  describe("hasta el próximo descanso", () => {
+    it("el DM aplica poisoned (hasta un descanso corto) y frightened (hasta uno largo) a B", async () => {
+      const s = app.getHttpServer();
+
+      const poisoned = await request(s)
+        .put(`/campaigns/${campaignId}/characters/${personajeB}/conditions/poisoned`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ expiresOnRest: "SHORT" });
+      expect(poisoned.status).toBe(200);
+
+      const frightened = await request(s)
+        .put(`/campaigns/${campaignId}/characters/${personajeB}/conditions/frightened`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ expiresOnRest: "LONG" });
+      expect(frightened.status).toBe(200);
+    });
+
+    it("aplicar poisoned con durationSeconds Y expiresOnRest a la vez es 400", async () => {
+      const s = app.getHttpServer();
+      const r = await request(s)
+        .put(`/campaigns/${campaignId}/characters/${personajeB}/conditions/poisoned`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ durationSeconds: 60, expiresOnRest: "LONG" });
+      expect(r.status).toBe(400);
+    });
+
+    it('un descanso corto de B retira poisoned y deja frightened; el último CONDITION_REMOVED dice "Descanso corto"', async () => {
+      const s = app.getHttpServer();
+
+      const descanso = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${personajeB}/rest`)
+        .set("Authorization", `Bearer ${tokenB}`)
+        .send({ kind: "SHORT" });
+      expect(descanso.status).toBe(201);
+
+      const condiciones = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeB}/conditions`)
+        .set("Authorization", `Bearer ${tokenB}`);
+      const claves = (condiciones.body as { key: string }[]).map((c) => c.key);
+      expect(claves).not.toContain("poisoned");
+      expect(claves).toContain("frightened");
+
+      const ultimoRemoved = await prisma.gameEvent.findFirst({
+        where: { campaignId, subjectId: personajeB, type: "CONDITION_REMOVED" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(ultimoRemoved).not.toBeNull();
+      expect((ultimoRemoved!.payload as { key?: string; reason?: string }).key).toBe("poisoned");
+      expect((ultimoRemoved!.payload as { key?: string; reason?: string }).reason).toBe(
+        "Descanso corto",
+      );
+    });
+  });
 });

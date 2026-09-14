@@ -11,6 +11,12 @@ import { MembershipService } from "../campaigns/membership.service";
 import { audienciaDeSuceso, canView, Viewer } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
+import {
+  conEntityIdVisible,
+  entityIdsVisibleFor,
+  requireNpcEntity,
+  sinEntityId,
+} from "../common/entity-link";
 
 @Injectable()
 export class CharactersService {
@@ -23,6 +29,16 @@ export class CharactersService {
 
   private canSee(viewer: Viewer, ownerId: string, visibility: Visibility): boolean {
     return canView(viewer, { visibility, createdById: ownerId, grantedUserIds: [] });
+  }
+
+  /** Spec §4: el enlace con la ficha del mundo solo viaja a quien puede ver la ficha. */
+  private async redactarEnlaces<T extends { entityId: string | null }>(viewer: Viewer, filas: T[]) {
+    const visibles = await entityIdsVisibleFor(
+      this.prisma,
+      viewer,
+      filas.map((f) => f.entityId),
+    );
+    return filas.map((f) => conEntityIdVisible(f, visibles));
   }
 
   async create(userId: string, campaignId: string, input: CreateCharacterInput) {
@@ -51,7 +67,9 @@ export class CharactersService {
         },
       });
       await this.resources.seedInspirationFor(personaje.id, tx);
-      return personaje;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(personaje);
     });
   }
 
@@ -71,7 +89,10 @@ export class CharactersService {
       where: { campaignId, statblockRef: null, archivedAt: null },
       orderBy: { createdAt: "desc" },
     });
-    return characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility));
+    return this.redactarEnlaces(
+      viewer,
+      characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility)),
+    );
   }
 
   /**
@@ -86,7 +107,10 @@ export class CharactersService {
       where: { campaignId, statblockRef: null, archivedAt: { not: null } },
       orderBy: { archivedAt: "desc" },
     });
-    return characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility));
+    return this.redactarEnlaces(
+      viewer,
+      characters.filter((c) => this.canSee(viewer, c.ownerId, c.visibility)),
+    );
   }
 
   async get(userId: string, campaignId: string, characterId: string) {
@@ -98,7 +122,7 @@ export class CharactersService {
     if (!character || !this.canSee(viewer, character.ownerId, character.visibility)) {
       throw new NotFoundException("Character not found");
     }
-    return character;
+    return (await this.redactarEnlaces(viewer, [character]))[0];
   }
 
   /**
@@ -135,6 +159,19 @@ export class CharactersService {
         );
       }
     }
+    // PNJ del mundo y la mesa (Task 0, spec §3.1): solo el DM enlaza un cuerpo con su ficha del
+    // mundo, igual que `level`. `null` desenlaza y no consulta la ficha — desenlazar siempre vale.
+    if (input.entityId !== undefined) {
+      const membresia = await this.membership.getMembership(campaignId, userId);
+      if (membresia?.role !== "DM") {
+        throw new ForbiddenException(
+          "Solo el DM puede enlazar un personaje con una ficha del mundo.",
+        );
+      }
+      if (input.entityId !== null) {
+        await requireNpcEntity(this.prisma, campaignId, input.entityId);
+      }
+    }
     const data: Record<string, unknown> = {};
     if (input.name !== undefined) data.name = input.name;
     if (input.level !== undefined) data.level = input.level;
@@ -148,7 +185,10 @@ export class CharactersService {
     // y por eso la comprobación es `!== undefined` y no un truthy. Con `if (input.color)` no se
     // podría deshacer una elección.
     if (input.color !== undefined) data.color = input.color;
-    return this.prisma.character.update({ where: { id: characterId }, data });
+    if (input.entityId !== undefined) data.entityId = input.entityId;
+    const fila = await this.prisma.character.update({ where: { id: characterId }, data });
+    const viewer = await viewerFor(this.prisma, this.membership, userId, campaignId);
+    return (await this.redactarEnlaces(viewer, [fila]))[0];
   }
 
   async remove(userId: string, campaignId: string, characterId: string) {
@@ -177,7 +217,7 @@ export class CharactersService {
     // Va 404 y no 400 porque «archivar» es una operación de la pantalla de personajes, y desde
     // ahí un PNJ no existe — es la misma razón por la que no sale en ese listado desde 2D.
     if (character.statblockRef) throw new NotFoundException("Character not found");
-    if (character.archivedAt) return character; // ya estaba archivado: sin ruido en el log
+    if (character.archivedAt) return sinEntityId(character); // ya estaba archivado: sin ruido en el log
 
     return this.prisma.transaction(async (tx) => {
       const archivado = await tx.character.update({
@@ -207,7 +247,9 @@ export class CharactersService {
         },
         tx,
       );
-      return archivado;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(archivado);
     });
   }
 
@@ -218,7 +260,7 @@ export class CharactersService {
   async unarchive(userId: string, campaignId: string, characterId: string) {
     await this.membership.requireMember(campaignId, userId);
     const character = await this.requireEditable(userId, campaignId, characterId);
-    if (!character.archivedAt) return character; // no estaba archivado: sin ruido en el log
+    if (!character.archivedAt) return sinEntityId(character); // no estaba archivado: sin ruido en el log
 
     return this.prisma.transaction(async (tx) => {
       const recuperado = await tx.character.update({
@@ -236,7 +278,9 @@ export class CharactersService {
         },
         tx,
       );
-      return recuperado;
+      // PM-1 (cierre, 2026-09-14): respuesta de mutación, no una de las seis lecturas que
+      // redactan el enlace con la ficha del mundo — el campo no viaja.
+      return sinEntityId(recuperado);
     });
   }
 }

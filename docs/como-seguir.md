@@ -74,8 +74,13 @@ entera cazó cuatro críticos que ninguna tarea vio (el visor del actor en la pu
 sin proveedor, la propuesta de XP que se desmontaba, y un e2e que pasaba por suerte); dos olas los
 cerraron. **Fusionada a `main` el 2026-09-14 (`7688b44`, `pnpm verify` entero en verde: 219 + 2051 + 1667
 unitarias); producción sigue en `6d2b2ca` y el despliegue lo lanza el autor.** Lo abierto en
-[06-pendientes.md](./06-pendientes.md), «Dejado por puerta de efectos». **Lo siguiente: la tanda «PNJ
-del mundo y la mesa»** (spec del 2026-09-13, por incorporar al repositorio) **y después el paso 3 en
+[06-pendientes.md](./06-pendientes.md), «Dejado por puerta de efectos». **La tanda «PNJ del mundo y la mesa» quedó cerrada el 2026-09-14 en la rama
+`pnj-del-mundo/antes-del-paso-3`** (9 commits sobre `ce0cc36`; [plan](./superpowers/plans/2026-09-14-pnj-del-mundo-y-la-mesa.md);
+[07-historial.md](./07-historial.md), «El PNJ del mundo y la mesa»; D-CF-72..86): el puente
+`Character.entityId`, revelar en una acción sobre tres columnas, ocultar, sacar del combate, y la mesa
+que lo ofrece todo desde el menú «…». Una revisión de rama y una ola; e2e de API 17/17 y Playwright
+26/26 en lo tocado, con la prueba a dos navegadores. **Sin fusionar ni desplegar: los dos gestos son
+del autor.** Lo dejado en [06-pendientes.md](./06-pendientes.md) (PM-1, PM-2). **Y después el paso 3 en
 dos partes** ([orden que manda](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md), D-CF-70/71:
 **A** el libro de voz y con daño → elegir, lanzar y usar → la barra de acciones, y **se juega**;
 **B** el resto, en el orden que la partida pida), con sus propias reglas de proceso fijadas antes

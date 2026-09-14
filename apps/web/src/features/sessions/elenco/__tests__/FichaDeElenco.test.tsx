@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
 import { FichaDeElenco } from "../FichaDeElenco";
@@ -76,18 +77,21 @@ function montar(props: Partial<Parameters<typeof FichaDeElenco>[0]> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <FichaDeElenco
-        campaignId="c1"
-        personaje={CORVIN}
-        puedeCambiarPg={false}
-        conMandos
-        enCombate
-        bando="ALLY"
-        sessionId="s1"
-        encounterId="enc-1"
-        combatanteId="cb-corvin"
-        {...props}
-      />
+      <MemoryRouter>
+        <FichaDeElenco
+          campaignId="c1"
+          personaje={CORVIN}
+          puedeCambiarPg={false}
+          conMandos
+          enCombate
+          combateEnMarcha
+          bando="ALLY"
+          sessionId="s1"
+          encounterId="enc-1"
+          combatanteId="cb-corvin"
+          {...props}
+        />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -170,6 +174,23 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
     expect(screen.queryByRole("menuitem", { name: /enemigo/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /su bando actual/i })).not.toBeInTheDocument();
+  });
+});
+
+// PNJ del mundo y la mesa (spec §3.3) — **«Sacar del combate»**, ofrecido a CUALQUIER
+// combatiente (E-PM-11), no solo a PNJ: un personaje de jugador puede huir de la pelea igual.
+describe("con encuentro y combatiente, el menú del DM ofrece «Sacar del combate»", () => {
+  it("aparece en el menú y llama a DELETE con el combatante", async () => {
+    const sacar = vi
+      .spyOn(encountersApi, "removeCombatant")
+      .mockResolvedValue(encuentroTrasCorreccion());
+
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Sacar del combate" }));
+
+    await waitFor(() => expect(sacar).toHaveBeenCalledWith("c1", "s1", "enc-1", "cb-corvin"));
   });
 });
 
@@ -280,5 +301,24 @@ describe("un personaje a 0 PG", () => {
     montar();
     await screen.findByRole("img", { name: /42 de 58 puntos de golpe/ });
     expect(screen.queryByLabelText("Salvaciones contra muerte")).not.toBeInTheDocument();
+  });
+});
+
+// m3 (ola de cierre, 2026-09-14) — un PNJ jugable (sin `statblockRef`) también tiene ficha del
+// mundo (E-PM-13), y hasta este arreglo solo `FichaDePnj.tsx` pintaba el enlace. Mismo patrón que
+// `FichaDePnj.test.tsx` («el nombre enlaza a la ficha del mundo», E-PM-12).
+describe("el nombre enlaza a la ficha del mundo (m3, E-PM-13)", () => {
+  it("con `entityId` el nombre es un enlace a su ficha", async () => {
+    montar({ personaje: { ...CORVIN, entityId: "ent-1" } });
+
+    const enlace = await screen.findByRole("link", { name: "Corvin Vhael" });
+    expect(enlace).toHaveAttribute("href", "/campaigns/c1/entidades/ent-1");
+  });
+
+  it("sin `entityId` el nombre es texto plano", async () => {
+    montar({ personaje: { ...CORVIN, entityId: null } });
+
+    expect(await screen.findByText("Corvin Vhael")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Corvin Vhael" })).not.toBeInTheDocument();
   });
 });

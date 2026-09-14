@@ -360,8 +360,20 @@ export const instantiateNpcSchema = z.object({
    * su generador inyectable. Es la regla que la fase 2 puso por escrito y aquí se respeta.
    */
   hp: z.enum(["AVERAGE", "ROLL"]).default("AVERAGE"),
+  /** «¿De qué ficha del mundo es?» (spec §3.1). Opcional; misma validación que el `PATCH`. */
+  entityId: z.string().cuid().optional(),
 });
 export type InstantiateNpcInput = z.infer<typeof instantiateNpcSchema>;
+
+/**
+ * T3 (cierre, 2026-09-14) — revelar el grupo entero desde el orden de turnos: una casilla de la
+ * tira es un turno, y un turno es un grupo. El tope de 50 es generoso a propósito: ningún
+ * encuentro real llega ahí, y existe solo para que el cuerpo no sea una lista sin fin.
+ */
+export const revealManySchema = z.object({
+  characterIds: z.array(z.string().cuid()).min(1).max(50),
+});
+export type RevealManyInput = z.infer<typeof revealManySchema>;
 
 /**
  * De dónde viene un `ref`, sin tener que preguntárselo a la base.

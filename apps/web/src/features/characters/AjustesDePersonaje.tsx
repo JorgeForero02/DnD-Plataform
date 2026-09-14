@@ -201,6 +201,18 @@ export function AjustesDePersonaje({
         onChange={onElegir}
         disabled={!puedeEditar}
         niveles={CHARACTER_VISIBILITIES}
+        // PNJ del mundo y la mesa (E-PM-14) — solo cambia el rótulo de una CRIATURA
+        // (`statblockRef`): un personaje jugador sigue leyendo «Quién puede verlo», porque este
+        // control no es su ficha del mundo ni su plantilla, es solo el cuerpo. La frase está
+        // verificada contra `npcs.service.list` (la instancia se lista por su propia
+        // visibilidad) y `resolverParaHoja` (los números salen de la plantilla).
+        {...(character.statblockRef
+          ? {
+              legend: "Quién ve a esta criatura en la mesa",
+              aclaracion:
+                "Afecta solo a este cuerpo en la mesa, no a la plantilla ni a la ficha del mundo. Si la plantilla es creada y está oculta, el jugador verá a la criatura pero no sus números.",
+            }
+          : {})}
       />
       {!puedeEditar && motivo && <p className="font-chrome text-chrome-sm text-muted">{motivo}</p>}
       {errorAlGuardar && (

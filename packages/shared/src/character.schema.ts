@@ -44,7 +44,13 @@ export const createCharacterSchema = z.object({
    */
   color: characterColorSchema.nullable().optional(),
 });
-export const updateCharacterSchema = createCharacterSchema.partial();
+export const updateCharacterSchema = createCharacterSchema.partial().extend({
+  /**
+   * PNJ del mundo y la mesa (spec §3.1): la ficha del mundo de la que este cuerpo es. **Solo el DM**
+   * (403 al dueño, como `level`); `null` desenlaza. El servidor exige `type: NPC` y misma campaña.
+   */
+  entityId: z.string().cuid().nullable().optional(),
+});
 
 export type CreateCharacterInput = z.infer<typeof createCharacterSchema>;
 export type UpdateCharacterInput = z.infer<typeof updateCharacterSchema>;

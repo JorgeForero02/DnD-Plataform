@@ -4,6 +4,7 @@ import { useMyRole } from "../features/campaigns/members";
 import type { Character } from "../features/characters/api";
 import { useCharacters, useUpdateCharacter } from "../features/characters/hooks";
 import { AjustesDePersonaje } from "../features/characters/AjustesDePersonaje";
+import { FichaDelMundo } from "../features/characters/FichaDelMundo";
 import { descriptorDePersonaje } from "../features/characters/descriptor";
 import { HojaCalculada } from "../features/character-sheet/HojaCalculada";
 import { useCharacterSheet } from "../features/character-sheet/hooks";
@@ -184,6 +185,18 @@ export function CharacterDetailPage() {
               hoja —no es un número de la ficha, es quién puede leerla— así que se queda aquí, en
               el sitio donde se lee, y no en un diálogo. */}
           <Panel className="max-w-[66ch]">
+            {/* PNJ del mundo y la mesa (spec §3.1) — encima de «Ajustes», misma columna. Solo si
+                el personaje no está archivado: un cuerpo archivado ya no está en la mesa, y
+                enlazarlo con una ficha no tiene a quién revelárselo. */}
+            {personaje.archivedAt === null && (
+              <div className="mb-s4">
+                <FichaDelMundo
+                  campaignId={id}
+                  character={personaje}
+                  esDm={!roleUnresolved && role === "DM"}
+                />
+              </div>
+            )}
             <AjustesDePersonaje
               campaignId={id}
               character={personaje}

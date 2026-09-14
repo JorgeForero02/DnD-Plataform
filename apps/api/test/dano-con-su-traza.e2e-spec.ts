@@ -254,6 +254,64 @@ describe("El daño, con su traza (e2e)", () => {
     expect(despues).toBe(antes);
   });
 
+  it("un origen que SÍ existe pero este actor no ve es 404, y no se escribe nada (tarea 11)", async () => {
+    const s = app.getHttpServer();
+    // Un PNJ `DM_ONLY`: existe en la campaña, pero el jugador no lo ve — la misma regla que
+    // `requireVisibleCharacter` ya impone en `activities`, `conditions`, `resources`, `rest`,
+    // `temporary-modifiers` e `inventory`: 404 tanto si no existe como si existe y no se ve, sin
+    // diferencia observable entre las dos.
+    const oculto = await request(s)
+      .post(npcs())
+      .set("Authorization", auth(tokenDM))
+      .send({ ref: "SRD:goblin" });
+    const ocultoId = oculto.body[0].id;
+
+    const jugador = await request(s)
+      .post(`/campaigns/${campaignId}/characters`)
+      .set("Authorization", auth(tokenPL))
+      .send({ name: "Dara", level: 1, visibility: "PLAYERS" });
+    const daraId = jugador.body.id;
+    // Sin hoja los PG no derivan y `/hp` responde 400 antes de mirar el origen: la prueba mediría
+    // otra cosa. La misma receta que Elara, más arriba.
+    await request(s)
+      .patch(`${ficha(daraId)}/sheet`)
+      .set("Authorization", auth(tokenDM))
+      .send({
+        abilities: { str: 10, dex: 12, con: 14, int: 15, wis: 10, cha: 8 },
+        race: { source: "SRD", key: "human" },
+        class: { source: "SRD", key: "fighter" },
+        choices: { "fighter-skills": ["athletics", "perception"] },
+      });
+
+    const antes = (
+      await request(s)
+        .get(`${ficha(daraId)}/sheet`)
+        .set("Authorization", auth(tokenPL))
+    ).body.hp.current;
+
+    // El propio jugador dueño de Dara cambia sus PG citando al goblin DM_ONLY como origen.
+    const r = await request(s)
+      .post(`${ficha(daraId)}/hp`)
+      .set("Authorization", auth(tokenPL))
+      .send({ delta: -1, sourceCharacterId: ocultoId });
+    expect(r.status).toBe(404);
+
+    const despues = (
+      await request(s)
+        .get(`${ficha(daraId)}/sheet`)
+        .set("Authorization", auth(tokenPL))
+    ).body.hp.current;
+    expect(despues).toBe(antes);
+
+    // Y no se escribió ningún HP_CHANGED nuevo para Dara.
+    const log = await request(s).get(eventos()).set("Authorization", auth(tokenDM));
+    const hpChanged = log.body.events.filter(
+      (e: { subjectId: string; payload: { type: string } }) =>
+        e.subjectId === daraId && e.payload.type === "HP_CHANGED",
+    );
+    expect(hpChanged).toHaveLength(0);
+  });
+
   it("un jugador que no es dueño ni DM no puede aplicar daño con un rollEventId ajeno", async () => {
     const r = await request(app.getHttpServer())
       .post(`${ficha(tumularioId)}/hp`)

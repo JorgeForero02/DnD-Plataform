@@ -58,6 +58,8 @@ export function MandosDeCombatiente({
   soyDm,
   accionesDeBando = [],
   errorDeBando = null,
+  accionesDeMesa = [],
+  errorDeMesa = null,
 }: {
   campaignId: string;
   characterId: string;
@@ -83,6 +85,14 @@ export function MandosDeCombatiente({
    * aquí, bajo la fila de mandos, donde sigue a la vista (fix round 3 de la tarea 8).
    */
   errorDeBando?: string | null;
+  /**
+   * **PNJ del mundo y la mesa (spec §3.2/§3.3)**: «Revelar a la mesa»/«Ocultar»/«Sacar del
+   * combate», ya resueltos por `useAccionesDeMesa`. Mismo patrón que `accionesDeBando` — la
+   * lista llega vacía cuando no toca (no es DM, no hay `visibility`, no hay combate).
+   */
+  accionesDeMesa?: AccionDeMenu[];
+  /** Lo que dijo el servidor al rechazar revelar/ocultar/sacar, del mismo `useAccionesDeMesa`. */
+  errorDeMesa?: string | null;
 }) {
   const [panel, setPanel] = useState<"dano" | "curar" | "condicion" | "dar" | "hoja" | null>(null);
   // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
@@ -113,8 +123,9 @@ export function MandosDeCombatiente({
           <span className="sr-only"> a {nombre}</span>
         </button>
         {/* **El resto va al menú** (tarea 8 del pulido): «Condición», «Dar…» y «Su hoja» son
-            del mando de este combatiente, y `accionesDeBando` se añade al final cuando hay
-            encuentro y bando que corregir — el mismo orden que llevaba la fila vieja. */}
+            del mando de este combatiente; `accionesDeMesa` (revelar/ocultar/sacar del combate,
+            PNJ del mundo y la mesa §3.2/§3.3) y `accionesDeBando` se añaden al final, en ese
+            orden — el mismo orden que llevaba la fila vieja para el bando. */}
         <MenuDeAcciones
           etiqueta={`Más acciones sobre ${nombre}`}
           acciones={[
@@ -131,10 +142,16 @@ export function MandosDeCombatiente({
               icono: <IconoOjo />,
               onSelect: () => setPanel("hoja"),
             },
+            ...accionesDeMesa,
             ...accionesDeBando,
           ]}
         />
       </div>
+      {errorDeMesa && (
+        <p role="alert" className="mt-s1 font-chrome text-chrome-xs text-danger-text">
+          {errorDeMesa}
+        </p>
+      )}
       {errorDeBando && (
         <p role="alert" className="mt-s1 font-chrome text-chrome-xs text-danger-text">
           {errorDeBando}

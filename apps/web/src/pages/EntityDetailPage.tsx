@@ -5,6 +5,7 @@ import { useMyRole } from "../features/campaigns/members";
 import { useEntityDetail } from "../features/entities/hooks";
 import { BotonEjecutar } from "../features/entities/BotonEjecutar";
 import { BotonRevelar } from "../features/entities/BotonRevelar";
+import { ALaMesa } from "../features/bestiario/ALaMesa";
 import { EntityEditor } from "../features/entities/EntityEditor";
 import { Markdown } from "../features/entities/Markdown";
 import { ETIQUETA_DE_TIPO } from "../features/entities/resumen";
@@ -141,6 +142,10 @@ export function EntityDetailPage() {
                 dirección sobre esta ficha. Solo el DM — el servidor lo impone con `requireDM`, y
                 aquí no se ofrece porque un botón que va a dar 403 promete algo falso. */}
             {esDM && <BotonEjecutar campaignId={id} entityId={entity.id} />}
+            {/* PNJ del mundo y la mesa (spec §3.4) — solo sobre un PNJ, y solo al DM: el
+                servidor exige `requireDM` y `type: NPC` (`requireNpcEntity`), y un botón que
+                fuera a dar 403 o 400 prometería algo falso. */}
+            {esDM && entity.type === "NPC" && <ALaMesa campaignId={id} entity={entity} />}
             {puedeEditar && (
               <BotonRevelar
                 campaignId={id}

@@ -270,6 +270,22 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
       return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
       return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una entrada del mundo";
+    case "NPC_REVEALED":
+      // m6 (ola de cierre, 2026-09-14): si SOLO subió la plantilla —la criatura y su ficha del
+      // mundo ya estaban a la vista—, esto no es una entrada en escena: ya estaba. Caso raro
+      // (una criatura visible con la plantilla todavía oculta), pero «entra en escena» sería
+      // anunciar la llegada de alguien que ya estaba. `characterRevealed`/`entityRevealed` solo
+      // llegan en `false` desde `reveal` (m6); ausentes (sucesos viejos, o los que escribe
+      // `raiseLiveBodies` por cada cuerpo) siguen leyéndose como una entrada de verdad.
+      if (p.templateRevealed && p.characterRevealed === false && p.entityRevealed !== true) {
+        return `Se enseñan los números de ${p.characterName}`;
+      }
+      // «Garrik entra en escena», con su ficha del mundo si también se reveló (spec §3.2).
+      return p.entityName && p.entityName !== p.characterName
+        ? `${p.characterName} entra en escena — es ${p.entityName}`
+        : `${p.characterName} entra en escena`;
+    case "NPC_HIDDEN":
+      return `${p.characterName} se oculta de la mesa`;
     case "ENTITY_RETYPED": {
       // **Los dos tipos, traducidos** (I16). El payload guarda claves —`NPC`, `DOCUMENT`— porque un
       // registro guarda datos; la forma legible se compone aquí, que es donde vive el español, y
@@ -361,6 +377,10 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
       return `Pasa el turno (asalto ${p.round})`;
     case "ROUND_ADVANCED":
       return `Asalto ${p.to}`;
+    case "COMBATANT_LEFT":
+      // Sacar del combate (spec §3.3). Sin nombre si el personaje está oculto para la mesa
+      // (E-PM-6): el payload no se filtra por espectador.
+      return p.characterName ? `${p.characterName} sale del combate` : "Alguien sale del combate";
     case "COMBATANT_SIDE_CHANGED":
       // **El vocabulario en español se escribe una sola vez**, en `dominio/combate.ts`: ningún
       // valor de enumeración llega a la pantalla, ni siquiera dentro de una frase de registro.

@@ -84,6 +84,12 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   COMBATANT_SIDE_CHANGED: "sistema",
   ENCOUNTER_CANCELLED: "sello",
   ACTIVE_TURN_SHIFTED: "sistema",
+  // PNJ del mundo y la mesa (E-PM, spec §3.2): revelar es el mundo hablando, ocultar es andamiaje.
+  NPC_REVEALED: "narracion",
+  NPC_HIDDEN: "sistema",
+  // Sacar del combate (E-PM, spec §3.3): el sistema contando un reajuste de la mesa, con
+  // COMBATANT_SIDE_CHANGED y ACTIVE_TURN_SHIFTED.
+  COMBATANT_LEFT: "sistema",
 };
 
 /**
@@ -110,9 +116,11 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
     // **47 con `ACTION_SPENT`** (paso 2, tarea A2): gastar la economía del turno, **48 con
     // `ITEM_QUANTITY_CHANGED`** (D-CF-14, commit 4, M2B-8): el `PATCH` de cantidad de una pila
     // ya puesta, **49 con `CHARACTER_DIED`** (D-CF-14, commit 5, J5): la muerte deja de
-    // derivarse en silencio, y **50 con `XP_AWARDED`** (puerta de efectos §5 bis, D-CF-68/69,
-    // 2026-09-13): dar XP es un hecho propio de la crónica.
-    expect(GAME_EVENT_TYPES).toHaveLength(50);
+    // derivarse en silencio, **50 con `XP_AWARDED`** (puerta de efectos §5 bis, D-CF-68/69,
+    // 2026-09-13): dar XP es un hecho propio de la crónica, **52 con `NPC_REVEALED` y
+    // `NPC_HIDDEN`** (PNJ del mundo y la mesa, 2026-09-14): revelar y ocultar una criatura, y
+    // **53 con `COMBATANT_LEFT`** (spec §3.3): sacar del combate.
+    expect(GAME_EVENT_TYPES).toHaveLength(53);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

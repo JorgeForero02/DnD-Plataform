@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { encounterSchema, encounterStatusSchema } from "@dnd/shared";
 import { EncountersService } from "./encounters.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -46,13 +47,20 @@ describe("EncountersService", () => {
       create: jest.fn(),
       update: jest.fn(),
     },
-    character: { findMany: jest.fn() },
+    // `findFirst` es del Task 2 (`removeCombatant`, E-PM-6): lee visibilidad y nombre del
+    // personaje que sale para decidir si `characterName` viaja en `COMBATANT_LEFT`.
+    character: { findMany: jest.fn(), findFirst: jest.fn() },
     combatant: {
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      // Task 2: `removeCombatant` borra la fila dentro de la transacción (`recolocar` renumera
+      // lo que queda).
+      delete: jest.fn(),
+      // m1 (ola de cierre): recuento tomado YA con el candado, dentro de `antesDeLeer`.
+      count: jest.fn(),
     },
     rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
@@ -120,6 +128,9 @@ describe("EncountersService", () => {
     service = ref.get(EncountersService);
     jest.clearAllMocks();
     events.record.mockResolvedValue({ id: "ev1" });
+    // m1 (ola de cierre): por defecto quedan de sobra — las pruebas de la carrera de
+    // `removeCombatant` lo sobrescriben a 1 para forzar el 409 tomado ya con el candado.
+    prisma.combatant.count.mockResolvedValue(2);
     membership.requireDM.mockResolvedValue(undefined);
     membership.requireMember.mockResolvedValue(undefined);
     prisma.campaignMember.findMany.mockResolvedValue([{ userId: "dm" }]);
@@ -265,6 +276,10 @@ describe("EncountersService", () => {
           // Paso 1, tarea 16: `setSide` lee el bando de antes en la misma transacción, para que
           // su suceso pueda decir **de qué lado a cuál**.
           findFirst: prisma.combatant.findFirst,
+          // Task 2: `removeCombatant` borra dentro de `recolocar`.
+          delete: prisma.combatant.delete,
+          // m1 (ola de cierre): recuento tomado ya con el candado, dentro de `antesDeLeer`.
+          count: prisma.combatant.count,
         },
         rollRequest: { create: prisma.rollRequest.create },
         campaign: { findUniqueOrThrow: prisma.campaign.findUniqueOrThrow },
@@ -1879,6 +1894,256 @@ describe("EncountersService", () => {
       const normal = await service.end(dmId, campaignId, sessionId2, encId2);
 
       expect(normal.xpPropuesto).not.toHaveProperty("sinTabla");
+    });
+  });
+
+  describe("removeCombatant() — sacar del combate (spec §3.3, E-PM-7)", () => {
+    // `character` hace falta desde que `removeCombatant` devuelve por `get()` (patrón P3): esa
+    // lectura filtra por `canView`, que lo mira — igual que ya hacía la fixture de `advanceTurn`
+    // más arriba. No cambia lo que estas pruebas miden (el avance de turno al sacar a alguien),
+    // solo completa la fila para que la relectura no reviente.
+    const filas = (ids: string[]) =>
+      ids.map((id, i) => ({
+        id,
+        characterId: `ch-${id}`,
+        initiative: 20 - i * 5,
+        groupKey: id,
+        position: i,
+        side: "ENEMY",
+        character: { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 },
+      }));
+
+    it("404 si el combatiente no es de este encuentro", async () => {
+      prisma.combatant.findFirst.mockResolvedValue(null);
+      await expect(service.removeCombatant("dm", "c1", "s1", "e1", "x")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("409 si el encuentro no está ACTIVE", async () => {
+      prisma.combatant.findFirst.mockResolvedValue({ id: "a", encounterId: "e1" });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "e1",
+        status: "PREPARING",
+        round: 1,
+        activePosition: 0,
+        combatants: filas(["a", "b"]),
+      });
+      await expect(service.removeCombatant("dm", "c1", "s1", "e1", "a")).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it("409 al último combatiente: se termina el combate, no se vacía", async () => {
+      prisma.combatant.findFirst.mockResolvedValue({ id: "a", encounterId: "e1" });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "e1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: filas(["a"]),
+      });
+      await expect(service.removeCombatant("dm", "c1", "s1", "e1", "a")).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.combatant.delete).not.toHaveBeenCalled();
+    });
+
+    it("sacar a quien NO tiene el turno: el turno se sigue por identidad y no se escribe suceso de turno", async () => {
+      // a (pos 0) tiene el turno; se saca a b (pos 1); c pasa de pos 2 a 1
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: "b",
+        encounterId: "e1",
+        characterId: "ch-b",
+      });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "e1",
+        status: "ACTIVE",
+        round: 2,
+        activePosition: 0,
+        combatants: filas(["a", "b", "c"]),
+      });
+      prisma.character.findFirst.mockResolvedValue({
+        id: "ch-b",
+        name: "Bandido",
+        visibility: "PLAYERS",
+      });
+      prisma.combatant.findMany.mockResolvedValue(
+        filas(["a", "c"]).map((f, i) => ({ ...f, position: i })),
+      );
+      await service.removeCombatant("dm", "c1", "s1", "e1", "b");
+      expect(prisma.combatant.delete).toHaveBeenCalledWith({ where: { id: "b" } });
+      const tipos = events.record.mock.calls.map((c: any) => c[2].payload.type);
+      expect(tipos).toEqual(["COMBATANT_LEFT"]);
+      expect(events.record.mock.calls[0][2].payload.characterName).toBe("Bandido");
+      expect(prisma.encounter.update).toHaveBeenCalledWith({
+        where: { id: "e1" },
+        data: { activePosition: 0 },
+      });
+    });
+
+    it("sacar a quien tiene el turno (solo en su posición) avanza al siguiente con TURN_ADVANCED, sin subir asalto", async () => {
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: "a",
+        encounterId: "e1",
+        characterId: "ch-a",
+      });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "e1",
+        status: "ACTIVE",
+        round: 2,
+        activePosition: 0,
+        combatants: filas(["a", "b", "c"]),
+      });
+      prisma.character.findFirst.mockResolvedValue({
+        id: "ch-a",
+        name: "Garrik",
+        visibility: "DM_ONLY",
+      });
+      prisma.combatant.findMany.mockResolvedValue(
+        filas(["b", "c"]).map((f, i) => ({ ...f, position: i })),
+      );
+      await service.removeCombatant("dm", "c1", "s1", "e1", "a");
+      const tipos = events.record.mock.calls.map((c: any) => c[2].payload.type);
+      expect(tipos).toEqual(["COMBATANT_LEFT", "TURN_ADVANCED"]);
+      expect(events.record.mock.calls[0][2].payload.characterName).toBeUndefined(); // oculto: «Alguien»
+      expect(prisma.encounter.update).toHaveBeenCalledWith({
+        where: { id: "e1" },
+        data: { activePosition: 0, round: 2 },
+      });
+      expect(clock.advance).not.toHaveBeenCalled();
+      expect(prisma.combatant.updateMany).toHaveBeenCalledWith({
+        where: { encounterId: "e1", position: 0 },
+        data: { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 },
+      });
+    });
+
+    it("sacar al último de la vuelta cuando le toca sube de asalto UNA vez y avanza el reloj seis segundos", async () => {
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: "c",
+        encounterId: "e1",
+        characterId: "ch-c",
+      });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "e1",
+        status: "ACTIVE",
+        round: 2,
+        activePosition: 2,
+        combatants: filas(["a", "b", "c"]),
+      });
+      prisma.character.findFirst.mockResolvedValue({
+        id: "ch-c",
+        name: "Orco",
+        visibility: "PLAYERS",
+      });
+      prisma.combatant.findMany.mockResolvedValue(filas(["a", "b"]));
+      clock.advance.mockResolvedValue({ to: 66 });
+      await service.removeCombatant("dm", "c1", "s1", "e1", "c");
+      const tipos = events.record.mock.calls.map((c: any) => c[2].payload.type);
+      expect(tipos).toEqual(["COMBATANT_LEFT", "TURN_ADVANCED", "ROUND_ADVANCED"]);
+      expect(prisma.encounter.update).toHaveBeenCalledWith({
+        where: { id: "e1" },
+        data: { activePosition: 0, round: 3 },
+      });
+      expect(clock.advance).toHaveBeenCalledTimes(1);
+    });
+
+    it("sacar a uno de un grupo que tiene el turno: el turno se queda en el grupo", async () => {
+      const character = { visibility: "PLAYERS", ownerId: "dm", currentHp: 10 };
+      const grupo = [
+        {
+          id: "g1",
+          characterId: "ch-g1",
+          initiative: 15,
+          groupKey: "SRD:goblin",
+          position: 0,
+          side: "ENEMY",
+          character,
+        },
+        {
+          id: "g2",
+          characterId: "ch-g2",
+          initiative: 15,
+          groupKey: "SRD:goblin",
+          position: 0,
+          side: "ENEMY",
+          character,
+        },
+        {
+          id: "p",
+          characterId: "ch-p",
+          initiative: 10,
+          groupKey: "p",
+          position: 1,
+          side: "ALLY",
+          character,
+        },
+      ];
+      prisma.combatant.findFirst.mockResolvedValue({
+        id: "g1",
+        encounterId: "e1",
+        characterId: "ch-g1",
+      });
+      prisma.encounter.findFirst.mockResolvedValue({
+        id: "e1",
+        status: "ACTIVE",
+        round: 1,
+        activePosition: 0,
+        combatants: grupo,
+      });
+      prisma.character.findFirst.mockResolvedValue({
+        id: "ch-g1",
+        name: "Goblin 1",
+        visibility: "PLAYERS",
+      });
+      prisma.combatant.findMany.mockResolvedValue(grupo.filter((g) => g.id !== "g1"));
+      await service.removeCombatant("dm", "c1", "s1", "e1", "g1");
+      const tipos = events.record.mock.calls.map((c: any) => c[2].payload.type);
+      expect(tipos).toEqual(["COMBATANT_LEFT"]);
+      expect(prisma.encounter.update).toHaveBeenCalledWith({
+        where: { id: "e1" },
+        data: { activePosition: 0 },
+      });
+    });
+
+    describe("m1 (ola de cierre) — la carrera bajo el candado", () => {
+      it("dos DELETE a la vez sobre un encuentro de dos: el que pierde encuentra uno solo y se para en 409", async () => {
+        prisma.combatant.findFirst.mockResolvedValue({ id: "a", encounterId: "e1" });
+        prisma.encounter.findFirst.mockResolvedValue({
+          id: "e1",
+          status: "ACTIVE",
+          round: 1,
+          activePosition: 0,
+          combatants: filas(["a", "b"]),
+        });
+        // La otra transacción ya ganó la carrera y borró a "b": bajo el candado solo queda "a".
+        prisma.combatant.count.mockResolvedValue(1);
+        await expect(service.removeCombatant("dm", "c1", "s1", "e1", "a")).rejects.toThrow(
+          ConflictException,
+        );
+        expect(prisma.combatant.delete).not.toHaveBeenCalled();
+      });
+
+      it("un doble DELETE del mismo combatiente: P2025 se traduce a 404, no revienta como 500", async () => {
+        prisma.combatant.findFirst.mockResolvedValue({ id: "a", encounterId: "e1" });
+        prisma.encounter.findFirst.mockResolvedValue({
+          id: "e1",
+          status: "ACTIVE",
+          round: 1,
+          activePosition: 0,
+          combatants: filas(["a", "b", "c"]),
+        });
+        prisma.combatant.count.mockResolvedValue(3);
+        prisma.combatant.delete.mockRejectedValue(
+          new Prisma.PrismaClientKnownRequestError("Record not found", {
+            code: "P2025",
+            clientVersion: "test",
+          }),
+        );
+        await expect(service.removeCombatant("dm", "c1", "s1", "e1", "a")).rejects.toThrow(
+          NotFoundException,
+        );
+      });
     });
   });
 });

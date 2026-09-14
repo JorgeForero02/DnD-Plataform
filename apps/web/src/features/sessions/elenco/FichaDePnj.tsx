@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { CombatantSide } from "@dnd/shared";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import { useCharacterSheet, useConditions } from "../../character-sheet/hooks";
@@ -6,6 +7,7 @@ import { NOMBRE_BANDO } from "../../../dominio/combate";
 import { Retrato, BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./CorregirBando";
+import { useAccionesDeMesa } from "./AccionesDeMesa";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -57,6 +59,7 @@ export function FichaDePnj({
   miId,
   turnoActual = false,
   enCombate = false,
+  combateEnMarcha = false,
   sessionId,
   encounterId,
   combatanteId,
@@ -74,6 +77,8 @@ export function FichaDePnj({
   miId?: string;
   turnoActual?: boolean;
   enCombate?: boolean;
+  /** El encuentro está `ACTIVE`, no solo abierto (I1). Ver `AccionesDeMesa.ts`. */
+  combateEnMarcha?: boolean;
   /** La sesión del encuentro — la ruta de `setSide` cuelga de ella. */
   sessionId?: string;
   /** El encuentro en marcha. */
@@ -114,6 +119,24 @@ export function FichaDePnj({
     nombre: pnj.name,
   });
 
+  /**
+   * **Revelar/ocultar/sacar del combate** (PNJ del mundo y la mesa, spec §3.2/§3.3, E-PM-11).
+   * A diferencia del bando, esto se ofrece con `esDm` —no `puedeManejarlo`—: revelar o sacar del
+   * combate es una decisión de mesa, no del dueño de un PNJ cedido.
+   */
+  const { acciones: accionesDeMesa, error: errorDeMesa } = useAccionesDeMesa({
+    campaignId,
+    characterId: pnj.id,
+    nombre: pnj.name,
+    esDm,
+    visibility: pnj.visibility,
+    sessionId,
+    encounterId,
+    combatanteId,
+    enCombate,
+    combateEnMarcha,
+  });
+
   return (
     <li
       className={[
@@ -129,7 +152,21 @@ export function FichaDePnj({
       <div className="flex items-center gap-s2">
         <Retrato personaje={pnj} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-title text-chrome-md leading-tight text-text">{pnj.name}</p>
+          <p className="truncate font-title text-chrome-md leading-tight text-text">
+            {/* **E-PM-12**: el nombre enlaza a la ficha del mundo cuando el servidor manda
+                `entityId` —ya redactado por `entityIdsVisibleFor` (E-PM-10): si no llega, quien
+                mira no puede ver esa ficha y el nombre se queda como texto plano. */}
+            {pnj.entityId ? (
+              <Link
+                to={`/campaigns/${campaignId}/entidades/${pnj.entityId}`}
+                className="underline-offset-2 hover:underline"
+              >
+                {pnj.name}
+              </Link>
+            ) : (
+              pnj.name
+            )}
+          </p>
           <p
             className={[
               "truncate font-chrome text-chrome-xs",
@@ -167,6 +204,8 @@ export function FichaDePnj({
           // ya tenía `<CorregirBando />` cuando vivía aparte.
           accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
           errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
+          accionesDeMesa={accionesDeMesa}
+          errorDeMesa={errorDeMesa}
         />
       )}
     </li>

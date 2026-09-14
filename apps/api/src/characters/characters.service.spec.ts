@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, BadRequestException } from "@nestjs/common";
 import { CharactersService } from "./characters.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -19,6 +19,8 @@ describe("CharactersService", () => {
     user: { findUnique: jest.fn() },
     // Reglas de la mesa (D-CF-53): `create()` lee `tableRules` para fijar el nivel de nacimiento.
     campaign: { findUnique: jest.fn() },
+    // PNJ del mundo y la mesa (Task 0): `entity-link.ts` consulta esto para validar y redactar.
+    entity: { findFirst: jest.fn(), findMany: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireMember: jest.fn(), requireDM: jest.fn(), getMembership: jest.fn() };
@@ -44,6 +46,9 @@ describe("CharactersService", () => {
     // Por defecto, sin reglas de la mesa (LIBRE/nivelInicial 1) — el estado de toda campaña que
     // no ha tocado esa columna.
     prisma.campaign.findUnique.mockResolvedValue({ id: "c1", tableRules: {} });
+    // Por defecto, sin enlaces que redactar — así las pruebas que no tocan `entityId` no tienen
+    // que saber que `redactarEnlaces` existe.
+    prisma.entity.findMany.mockResolvedValue([]);
   });
 
   function txMock(updateResult: unknown) {
@@ -61,6 +66,16 @@ describe("CharactersService", () => {
         visibility: "PLAYERS",
       }),
     });
+  });
+
+  it("PM-1 (cierre, 2026-09-14): create() no devuelve entityId — es una respuesta de mutación, no una de las seis lecturas que lo redactan", async () => {
+    prisma.character.create.mockResolvedValue({ id: "ch1", name: "Aragorn", entityId: "e1" });
+    const result = await service.create("p1", "c1", {
+      name: "Aragorn",
+      level: 3,
+      visibility: "PLAYERS",
+    } as any);
+    expect("entityId" in (result as object)).toBe(false);
   });
 
   it("create ignora el level del cuerpo y pone el nivelInicial de la mesa", async () => {
@@ -206,7 +221,9 @@ describe("CharactersService", () => {
         },
         tx,
       );
-      expect(result).toBe(archivado);
+      // PM-1 (cierre, 2026-09-14): ya no es la misma referencia — `sinEntityId` copia la fila
+      // para quitarle el campo —, pero sigue siendo el mismo contenido.
+      expect(result).toEqual(archivado);
     });
 
     it("archive() rechaza a quien no es dueño ni DM — misma regla que editar", async () => {
@@ -214,6 +231,16 @@ describe("CharactersService", () => {
       membership.getMembership.mockResolvedValue({ role: "PLAYER" });
       await expect(service.archive("p1", "c1", "ch1")).rejects.toBeInstanceOf(ForbiddenException);
       expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    it("PM-1 (cierre, 2026-09-14): archive() no devuelve entityId aunque el personaje esté enlazado", async () => {
+      const enlazado = { ...activo, entityId: "e1" };
+      prisma.character.findFirst.mockResolvedValue(enlazado);
+      const tx = txMock({ ...archivado, entityId: "e1" });
+      prisma.transaction.mockImplementation((fn: (t: unknown) => unknown) => fn(tx));
+
+      const result = await service.archive("dm1", "c1", "ch1");
+      expect("entityId" in (result as object)).toBe(false);
     });
 
     it("archive() sobre uno ya archivado es idempotente: no vuelve a emitir el suceso", async () => {
@@ -245,7 +272,98 @@ describe("CharactersService", () => {
         },
         tx,
       );
-      expect(result).toBe(activo);
+      // PM-1 (cierre, 2026-09-14): ya no es la misma referencia — `sinEntityId` copia la fila
+      // para quitarle el campo —, pero sigue siendo el mismo contenido.
+      expect(result).toEqual(activo);
+    });
+  });
+
+  describe("entityId — el puente con la ficha del mundo (spec §3.1, §4)", () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+      prisma.character.findFirst.mockResolvedValue({
+        id: "ch1",
+        ownerId: "pl",
+        visibility: "PLAYERS",
+        entityId: null,
+      });
+      prisma.character.update.mockImplementation(async ({ data }: any) => ({
+        id: "ch1",
+        ownerId: "pl",
+        visibility: "PLAYERS",
+        entityId: data.entityId ?? null,
+      }));
+    });
+
+    it("el dueño no puede enlazar: 403", async () => {
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      await expect(service.update("pl", "c1", "ch1", { entityId: "e1" })).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("el DM enlaza solo con una ficha NPC de la campaña: 400 si no", async () => {
+      prisma.entity.findFirst.mockResolvedValue(null);
+      await expect(service.update("dm", "c1", "ch1", { entityId: "e1" })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.character.update).not.toHaveBeenCalled();
+    });
+
+    it("el DM enlaza, y `null` desenlaza sin consultar la ficha", async () => {
+      prisma.entity.findFirst.mockResolvedValue({
+        id: "e1",
+        type: "NPC",
+        visibility: "DM_ONLY",
+        createdById: "dm",
+        grants: [],
+      });
+      prisma.entity.findMany.mockResolvedValue([
+        { id: "e1", visibility: "DM_ONLY", createdById: "dm", grants: [] },
+      ]);
+      await service.update("dm", "c1", "ch1", { entityId: "e1" });
+      expect(prisma.character.update).toHaveBeenCalledWith({
+        where: { id: "ch1" },
+        data: { entityId: "e1" },
+      });
+      prisma.entity.findFirst.mockClear();
+      await service.update("dm", "c1", "ch1", { entityId: null });
+      expect(prisma.entity.findFirst).not.toHaveBeenCalled();
+      expect(prisma.character.update).toHaveBeenLastCalledWith({
+        where: { id: "ch1" },
+        data: { entityId: null },
+      });
+    });
+
+    it("get(): el jugador no recibe el entityId de una ficha que no ve; el DM sí", async () => {
+      prisma.character.findFirst.mockResolvedValue({
+        id: "ch1",
+        ownerId: "dm",
+        visibility: "PLAYERS",
+        entityId: "e1",
+      });
+      prisma.entity.findMany.mockResolvedValue([
+        { id: "e1", visibility: "DM_ONLY", createdById: "dm", grants: [] },
+      ]);
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      expect((await service.get("pl", "c1", "ch1")).entityId).toBeNull();
+      membership.getMembership.mockResolvedValue({ role: "DM" });
+      expect((await service.get("dm", "c1", "ch1")).entityId).toBe("e1");
+    });
+
+    it("list(): redacta con una sola consulta a las fichas", async () => {
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      prisma.character.findMany.mockResolvedValue([
+        { id: "a", ownerId: "dm", visibility: "PLAYERS", entityId: "vis" },
+        { id: "b", ownerId: "dm", visibility: "PLAYERS", entityId: "oculta" },
+      ]);
+      prisma.entity.findMany.mockResolvedValue([
+        { id: "vis", visibility: "PLAYERS", createdById: "dm", grants: [] },
+        { id: "oculta", visibility: "DM_ONLY", createdById: "dm", grants: [] },
+      ]);
+      const filas = await service.list("pl", "c1");
+      expect(filas.map((f) => f.entityId)).toEqual(["vis", null]);
+      expect(prisma.entity.findMany).toHaveBeenCalledTimes(1);
     });
   });
 });

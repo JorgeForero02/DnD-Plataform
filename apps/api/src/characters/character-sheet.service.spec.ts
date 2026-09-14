@@ -128,6 +128,9 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     // Por defecto, en el encuentro: es el caso de mesa —el objetivo está delante— y es el que
     // ejercitan todas las pruebas de ataque escritas antes de que existiera la regla.
     combatant: { findFirst: jest.fn().mockResolvedValue({ id: "comb1" }) },
+    // PNJ del mundo y la mesa (Task 0): `getSheet` redacta `entityId` con esto. Sin fichas por
+    // defecto, que es el estado de todas las pruebas escritas antes de que `entityId` existiera.
+    entity: { findMany: jest.fn().mockResolvedValue([]) },
     transaction: jest.fn(),
   };
   // Reglas de la mesa (Tarea 4): `updateSheet` escribe en `this.prisma.transaction(...)`. Por
@@ -4386,5 +4389,18 @@ describe("getSheet — el marcador de XP (spec §5b.4, E-PE-10)", () => {
     const res = await service.getSheet("p1", "c1", "ch1");
 
     expect(res).not.toHaveProperty("xp");
+  });
+
+  it("getSheet(): el jugador no recibe el entityId de una ficha del mundo que no ve", async () => {
+    const { service, prisma, membership } = montar();
+    prisma.character.findFirst.mockResolvedValue(personaje({ entityId: "e1" }));
+    prisma.entity.findMany.mockResolvedValue([
+      { id: "e1", visibility: "DM_ONLY", createdById: "dm", grants: [] },
+    ]);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    const hoja = await service.getSheet("pl", "c1", "ch1");
+
+    expect(hoja.character.entityId).toBeNull();
   });
 });

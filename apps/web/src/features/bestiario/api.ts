@@ -42,6 +42,11 @@ export interface NpcEnLaMesa {
    * agotamiento. El máximo vive en la hoja, que es su fuente única.
    */
   conditions?: { key: string; level: number | null }[];
+  /**
+   * **La ficha del mundo de la que este cuerpo es** (PNJ del mundo y la mesa, spec §3.1). `null`
+   * si no tiene o si quien mira no puede ver la ficha — el servidor la redacta (spec §4).
+   */
+  entityId?: string | null;
 }
 
 export function fetchStatblocks(campaignId: string): Promise<StatblocksResponse> {
@@ -93,5 +98,49 @@ export function instantiateNpc(
   return apiFetch<NpcEnLaMesa[]>(`/campaigns/${campaignId}/npcs`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+/**
+ * PNJ del mundo y la mesa (spec §3.2) — **revelar es una sola acción**: la instancia, su ficha
+ * del mundo y la plantilla creada suben de visibilidad en una transacción (E-PM-2/E-PM-3). El
+ * `revealed` que devuelve dice qué subió de verdad, no que se pidiera subir.
+ */
+export function revealNpc(
+  campaignId: string,
+  characterId: string,
+): Promise<{
+  id: string;
+  name: string;
+  visibility: string;
+  entityId: string | null;
+  revealed: { character: boolean; entity: boolean; template: boolean };
+}> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/reveal`, {
+    method: "POST",
+  });
+}
+
+/**
+ * T3 (cierre, 2026-09-14) — revela un grupo entero (una casilla de la tira de iniciativa) en una
+ * sola llamada. Misma lógica que `revealNpc`, fila por fila, dentro de una única transacción.
+ */
+export function revealNpcs(
+  campaignId: string,
+  characterIds: string[],
+): Promise<{ revealed: string[] }> {
+  return apiFetch(`/campaigns/${campaignId}/characters/reveal-many`, {
+    method: "POST",
+    body: JSON.stringify({ characterIds }),
+  });
+}
+
+/** Ocultar baja **solo la instancia** de la mesa (E-PM-4): la ficha del mundo no se toca. */
+export function hideNpc(
+  campaignId: string,
+  characterId: string,
+): Promise<{ id: string; name: string; visibility: string }> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/hide`, {
+    method: "POST",
   });
 }

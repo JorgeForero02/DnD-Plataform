@@ -48,6 +48,11 @@ export interface Character {
    * razón que `statblockRef`: los mocks que no la necesitan no tienen que declararla.
    */
   xp?: number;
+  /**
+   * **La ficha del mundo de la que este cuerpo es** (PNJ del mundo y la mesa, spec §3.1). `null`
+   * si no tiene o si quien mira no puede ver la ficha — el servidor la redacta (spec §4).
+   */
+  entityId?: string | null;
 }
 
 export function fetchCharacters(campaignId: string): Promise<Character[]> {

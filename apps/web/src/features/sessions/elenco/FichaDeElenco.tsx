@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { CombatantSide } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
@@ -15,6 +16,7 @@ import { IconoEscudo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./CorregirBando";
+import { useAccionesDeMesa } from "./AccionesDeMesa";
 
 /**
  * Un personaje en la mesa: retrato, quién lo lleva, puntos de golpe, condiciones y —solo para el
@@ -73,6 +75,7 @@ export function FichaDeElenco({
   conMandos = false,
   turnoActual = false,
   enCombate = false,
+  combateEnMarcha = false,
   bando,
   sessionId,
   encounterId,
@@ -91,6 +94,8 @@ export function FichaDeElenco({
   turnoActual?: boolean;
   /** Hay encuentro activo: la duración de una condición se puede contar en asaltos. */
   enCombate?: boolean;
+  /** El encuentro está `ACTIVE`, no solo abierto (I1). Ver `AccionesDeMesa.ts`. */
+  combateEnMarcha?: boolean;
   /**
    * El bando de este personaje EN EL ENCUENTRO en marcha (`Combatant.side`), no una propiedad
    * suya. `undefined` cuando no hay encuentro o este personaje no combate: entonces no hay nada
@@ -147,6 +152,24 @@ export function FichaDeElenco({
     nombre: personaje.name,
   });
 
+  /**
+   * **Solo «Sacar del combate»** (PNJ del mundo y la mesa, spec §3.2/§3.3, E-PM-11): revelar y
+   * ocultar son solo de PNJ y criaturas, así que aquí no se manda `visibility` — un personaje de
+   * jugador no la tiene. `esDm: conMandos` porque `conMandos` YA es «esDm» en el único sitio que
+   * lo enciende, igual que ya hace `soyDm` más abajo.
+   */
+  const { acciones: accionesDeMesa, error: errorDeMesa } = useAccionesDeMesa({
+    campaignId,
+    characterId: personaje.id,
+    nombre: personaje.name,
+    esDm: conMandos,
+    sessionId,
+    encounterId,
+    combatanteId,
+    enCombate,
+    combateEnMarcha,
+  });
+
   return (
     <li
       className={[
@@ -173,7 +196,20 @@ export function FichaDeElenco({
         <Retrato personaje={personaje} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-title text-chrome-md leading-tight text-text">
-            {personaje.name}
+            {/* m3 (ola de cierre, 2026-09-14): un PNJ jugable (spec §2, sin `statblockRef`) TAMBIÉN
+                tiene ficha del mundo (E-PM-13) — el mismo enlace que ya pinta `FichaDePnj.tsx`
+                para que un jugador que ve a este personaje tenga por dónde llegar. Sin
+                `entityId` (ya redactado por `entityIdsVisibleFor`, E-PM-10), texto plano. */}
+            {personaje.entityId ? (
+              <Link
+                to={`/campaigns/${campaignId}/entidades/${personaje.entityId}`}
+                className="underline-offset-2 hover:underline"
+              >
+                {personaje.name}
+              </Link>
+            ) : (
+              personaje.name
+            )}
           </p>
           <p className="truncate font-data text-chrome-xs text-muted">
             {[descriptor, `Nivel ${personaje.level}`].filter(Boolean).join(" · ")}
@@ -267,6 +303,8 @@ export function FichaDeElenco({
           // asaltos.
           accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
           errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
+          accionesDeMesa={accionesDeMesa}
+          errorDeMesa={errorDeMesa}
         />
       )}
     </li>

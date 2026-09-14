@@ -178,4 +178,25 @@ export class EncountersController {
   ) {
     return this.encounters.cancel(req.user.id, campaignId, sessionId, encounterId);
   }
+
+  /**
+   * PNJ del mundo y la mesa (spec §3.3) — sacar del combate. Responde con el encuentro entero
+   * (E-PM-8), como `setSide`: la tira lo consume tal cual.
+   */
+  @Delete(":encounterId/combatants/:combatantId")
+  removeCombatant(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("sessionId") sessionId: string,
+    @Param("encounterId") encounterId: string,
+    @Param("combatantId") combatantId: string,
+  ) {
+    return this.encounters.removeCombatant(
+      req.user.id,
+      campaignId,
+      sessionId,
+      encounterId,
+      combatantId,
+    );
+  }
 }

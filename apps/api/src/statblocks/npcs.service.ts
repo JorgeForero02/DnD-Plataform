@@ -1,12 +1,35 @@
-import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
-import { expresionDePgDe, pgMediosDe, type InstantiateNpcInput, type Statblock } from "@dnd/shared";
-import type { Prisma } from "@prisma/client";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
+import {
+  expresionDePgDe,
+  origenDeRef,
+  pgMediosDe,
+  type InstantiateNpcInput,
+  type RevealManyInput,
+  type Statblock,
+  type Visibility,
+} from "@dnd/shared";
+import type { Character, Entity, EntityVisibilityGrant, Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
-import { canView, type Viewer } from "../common/visibility";
+import {
+  audienciaDeSuceso,
+  canView,
+  comoRecursoVisible,
+  loVeLaMesa,
+  POR_DEBAJO_DE_LA_MESA,
+  type Viewer,
+} from "../common/visibility";
+import { entityIdsVisibleFor, requireNpcEntity } from "../common/entity-link";
 import { rollExpression, type Roller } from "../dice/dice";
 import { PrismaService } from "../prisma/prisma.service";
 import { DICE_ROLLER } from "../rolls/rolls.service";
 import { condicionesActivas } from "../character-state/conditions/vencimiento";
+import { GameEventsService } from "../game-events/game-events.service";
 import { StatblocksService } from "./statblocks.service";
 
 // Tarea 2D.4 — **bajar un statblock a la mesa**.
@@ -27,6 +50,7 @@ export class NpcsService {
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
     private readonly statblocks: StatblocksService,
+    private readonly gameEvents: GameEventsService,
     // Mismo patrón que el resto de la fase: inyectable solo en pruebas para fijar la semilla.
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
   ) {}
@@ -45,6 +69,10 @@ export class NpcsService {
         `No existe ningún statblock con la referencia «${input.ref}» en esta campaña.`,
       );
     }
+
+    // PNJ del mundo y la mesa (Task 0, spec §3.1): «¿de qué ficha del mundo es?», validado antes
+    // de crear nada — media tanda entrando enlazada y media sin enlazar sería peor que ninguna.
+    if (input.entityId) await requireNpcEntity(this.prisma, campaignId, input.entityId);
 
     const nombreBase = input.name ?? statblock.name;
     const filas: Prisma.CharacterUncheckedCreateInput[] = [];
@@ -72,6 +100,7 @@ export class NpcsService {
         int: statblock.abilities.int,
         wis: statblock.abilities.wis,
         cha: statblock.abilities.cha,
+        entityId: input.entityId ?? null,
       });
     }
 
@@ -89,6 +118,8 @@ export class NpcsService {
       statblockRef: c.statblockRef,
       currentHp: c.currentHp,
       visibility: c.visibility,
+      // El DM lo ve siempre: `requireDM`, unas líneas arriba, ya decidió quién pregunta.
+      entityId: c.entityId,
     }));
   }
 
@@ -118,6 +149,13 @@ export class NpcsService {
     for (const ref of new Set(filas.map((f) => f.statblockRef).filter((r): r is string => !!r))) {
       if (await this.statblocks.puedeVerStatblock(campaignId, ref, viewer)) refsVisibles.add(ref);
     }
+    // PNJ del mundo y la mesa (spec §4): la existencia del enlace no puede filtrar que «Alguien»
+    // es Garrik. Una sola consulta para toda la lista, igual que con las plantillas.
+    const enlacesVisibles = await entityIdsVisibleFor(
+      this.prisma,
+      viewer,
+      filas.map((f) => f.entityId),
+    );
 
     return filas
       .filter((f) =>
@@ -165,6 +203,9 @@ export class NpcsService {
           key: c.key,
           level: c.level,
         })),
+
+        // Spec §4: la existencia del enlace no puede filtrar que «Alguien» es Garrik.
+        entityId: f.entityId && enlacesVisibles.has(f.entityId) ? f.entityId : null,
       }));
   }
 
@@ -181,6 +222,204 @@ export class NpcsService {
     // Ninguna criatura entra a la mesa con cero puntos de golpe: una tirada desastrosa la dejaría
     // inconsciente antes de que nadie la vea, que no es lo que nadie quiso al pulsar el botón.
     return Math.max(1, resultado.total);
+  }
+
+  /**
+   * «Por debajo de la mesa» (E-PM-2, **enmendado por I2** en la ola de cierre del 2026-09-14):
+   * `DM_ONLY`, `OWNER_DM` y `SPECIFIC_PLAYERS`, para las tres columnas por igual.
+   *
+   * E-PM-2 decía que la instancia y la plantilla «no admiten `SPECIFIC_PLAYERS`», pero eso es
+   * la pantalla (`CHARACTER_VISIBILITIES`, `NIVELES_DE_CRIATURA`), no el servidor:
+   * `createCharacterSchema.visibility` y `campaignStatblock.visibility` son `visibilitySchema`
+   * entero, así que una fila SÍ puede llegar en `SPECIFIC_PLAYERS` — y antes de este arreglo se
+   * quedaba invisible para siempre, porque `sePuedeRevelar` decía que sí y `reveal` no la tocaba.
+   * `POR_DEBAJO_DE_LA_MESA` vive en `common/visibility.ts` para que `raiseLiveBodies`
+   * (`entity-link.ts`) no pueda tener una lista distinta.
+   */
+  private static readonly BELOW_TABLE: Visibility[] = POR_DEBAJO_DE_LA_MESA;
+
+  /**
+   * **Revelar es una sola acción** (spec §3.2): sube la instancia a `PLAYERS`, y con ella la ficha
+   * del mundo si está por debajo y la plantilla creada si está oculta. Una transacción, un botón,
+   * tres columnas. Idempotente: lo que ya se ve no se toca, y si nada cambia no hay suceso.
+   */
+  async reveal(userId: string, campaignId: string, characterId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    const character = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character) throw new NotFoundException("Character not found");
+
+    return this.prisma.transaction((tx) => this.revealInTx(tx, userId, campaignId, character));
+  }
+
+  /**
+   * T3 (cierre, 2026-09-14): el cuerpo de {@link reveal}, extraído para que `revealMany` lo
+   * reutilice fila por fila dentro de su propia transacción — la misma lógica, un `NPC_REVEALED`
+   * por criatura (la línea del hilo ya existe; no hace falta inventar un suceso de grupo).
+   */
+  private async revealInTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    character: Character,
+  ) {
+    const characterId = character.id;
+    const revealed = { character: false, entity: false, template: false };
+    let fila = character;
+    if (!loVeLaMesa(character.visibility)) {
+      // m2 (ola de cierre): `updateMany` condicional en vez de `update` a secas — dos
+      // «Revelar» a la vez pasan los dos el `if` de fuera (que lee con `this.prisma`, antes de
+      // la transacción), pero solo uno de los dos encuentra la fila todavía «por debajo de la
+      // mesa» aquí dentro. El otro ve `count: 0` y no escribe su «entra en escena».
+      const { count } = await tx.character.updateMany({
+        where: { id: characterId, visibility: { in: NpcsService.BELOW_TABLE } },
+        data: { visibility: "PLAYERS" },
+      });
+      if (count === 1) {
+        fila = { ...character, visibility: "PLAYERS" as Visibility };
+        revealed.character = true;
+      }
+    }
+
+    let entityName: string | undefined;
+    let entidadSubida: (Entity & { grants: EntityVisibilityGrant[] }) | null = null;
+    if (character.entityId) {
+      const entity = await tx.entity.findFirst({
+        where: { id: character.entityId, campaignId },
+        include: { grants: true },
+      });
+      if (entity) {
+        entityName = entity.name;
+        if (!loVeLaMesa(entity.visibility)) {
+          entidadSubida = await tx.entity.update({
+            where: { id: entity.id },
+            data: { visibility: "PLAYERS" },
+            include: { grants: true },
+          });
+          revealed.entity = true;
+        }
+      }
+    }
+
+    const origen = character.statblockRef ? origenDeRef(character.statblockRef) : null;
+    if (origen?.source === "CAMPAIGN") {
+      const plantilla = await tx.campaignStatblock.findFirst({
+        where: { id: origen.id, campaignId },
+      });
+      if (plantilla && !loVeLaMesa(plantilla.visibility)) {
+        await tx.campaignStatblock.update({
+          where: { id: plantilla.id },
+          data: { visibility: "PLAYERS" },
+        });
+        revealed.template = true;
+      }
+    }
+
+    if (revealed.character || revealed.entity || revealed.template) {
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: "PLAYERS",
+          payload: {
+            type: "NPC_REVEALED",
+            characterName: character.name,
+            entityName,
+            templateRevealed: revealed.template || undefined,
+            // m6 (ola de cierre): `false` explícito, no `|| undefined` — `linea-de-log.ts`
+            // necesita distinguir «esta columna ya estaba» de «no se sabe» (sucesos viejos).
+            characterRevealed: revealed.character,
+            entityRevealed: revealed.entity,
+          },
+        },
+        tx,
+      );
+    }
+    if (entidadSubida) {
+      // E-PM-3: `world-builder.ts` cuenta lo revelado por las filas ENTITY_REVEALED; esta puerta
+      // no puede revelar una ficha sin que el motor de reglas se entere.
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "campaign",
+          subjectId: entidadSubida.id,
+          ...audienciaDeSuceso(comoRecursoVisible(entidadSubida)),
+          payload: { type: "ENTITY_REVEALED", entityName: entidadSubida.name },
+        },
+        tx,
+      );
+    }
+
+    return {
+      id: fila.id,
+      name: fila.name,
+      visibility: fila.visibility,
+      entityId: fila.entityId,
+      revealed,
+    };
+  }
+
+  /**
+   * T3 (cierre, 2026-09-14): revela un grupo entero en una sola transacción — una casilla de la
+   * tira de iniciativa es un turno, y un turno es un grupo. Un `NPC_REVEALED` por fila, con la
+   * misma lógica que `reveal()` (`revealInTx`): sube su instancia si estaba por debajo de la
+   * mesa, y con ella su ficha del mundo y su plantilla si estaban ocultas. Un personaje que ya
+   * está en la mesa no escribe nada — `revealInTx` ya es idempotente por fila.
+   */
+  async revealMany(userId: string, campaignId: string, input: RevealManyInput) {
+    await this.membership.requireDM(campaignId, userId);
+
+    return this.prisma.transaction(async (tx) => {
+      const revealed: string[] = [];
+      for (const characterId of input.characterIds) {
+        const character = await tx.character.findFirst({
+          where: { id: characterId, campaignId },
+        });
+        if (!character) throw new NotFoundException("Character not found");
+        const resultado = await this.revealInTx(tx, userId, campaignId, character);
+        revealed.push(resultado.id);
+      }
+      return { revealed };
+    });
+  }
+
+  /** Ocultar baja **solo la instancia** (spec §3.2): lo que la mesa ya leyó, leído está. */
+  async hide(userId: string, campaignId: string, characterId: string) {
+    await this.membership.requireDM(campaignId, userId);
+    const character = await this.prisma.character.findFirst({
+      where: { id: characterId, campaignId },
+    });
+    if (!character) throw new NotFoundException("Character not found");
+    // m9 (ola de cierre): antes solo se saltaba con `DM_ONLY`; una fila `OWNER_DM` —invisible
+    // para la mesa igual que `DM_ONLY`— se bajaba igualmente y escribía «se oculta de la mesa»
+    // sin que la mesa la hubiera visto nunca. Mismo predicado que I2, `!loVeLaMesa`: si la mesa
+    // no la ve, no hay nada que ocultar DE la mesa.
+    if (!loVeLaMesa(character.visibility)) {
+      return { id: character.id, name: character.name, visibility: character.visibility };
+    }
+    return this.prisma.transaction(async (tx) => {
+      const fila = await tx.character.update({
+        where: { id: characterId },
+        data: { visibility: "DM_ONLY" },
+      });
+      // E-PM-4: DM_ONLY, y existe para que el canal en vivo despierte la pantalla del jugador.
+      await this.gameEvents.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: characterId,
+          visibility: "DM_ONLY",
+          payload: { type: "NPC_HIDDEN", characterName: character.name },
+        },
+        tx,
+      );
+      return { id: fila.id, name: fila.name, visibility: fila.visibility };
+    });
   }
 
   private async viewerFor(userId: string, campaignId: string): Promise<Viewer> {

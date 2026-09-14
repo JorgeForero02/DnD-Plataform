@@ -20,6 +20,13 @@ import { useApplyDamage, useDamagePreview } from "../hooks";
 // entonces el nombre del objetivo o la cifra sería la misma fuga que el servidor evita al
 // devolver 404 en vez de 403. Por eso, sin preview, esta bandeja solo dice «Daño pendiente» — ni
 // un dato más — y sin botón.
+//
+// **«Aplicado» sale de `pendingDamage.appliedEventId`, que es de todos** (ola de arreglos 1). El
+// candado de un solo uso vive en el propio payload del suceso (§4b.6) y el sondeo del hilo lo
+// trae a TODOS los espectadores, incluido el atacante que recibe 404 en el preview: así el
+// atacante ve que el DM ya aplicó su daño sin que nadie le cuente el nombre ni la cifra. El
+// `canApply` del preview sigue valiendo para el DM y el dueño entre el clic y la siguiente
+// lectura del hilo — `useApplyDamage` invalida el preview para eso.
 
 type PendingDamage = NonNullable<
   Extract<GameEventPayload, { type: "ABILITY_ROLL" }>["pendingDamage"]
@@ -45,6 +52,7 @@ export function BandejaDeDano({
   const aplicar = useApplyDamage(campaignId);
 
   const es404 = preview.error instanceof ApiError && preview.error.status === 404;
+  const yaAplicado = Boolean(pendingDamage.appliedEventId);
 
   // Cualquier otro código (500, un fallo de red…) sigue siendo un fallo de verdad, no «no hay
   // nada que enseñar»: aquí no se inventa una frase de error genérica sin saber qué pasó, así que
@@ -54,7 +62,7 @@ export function BandejaDeDano({
   if (preview.isError || !preview.data) {
     return (
       <p className="my-s2 border-y border-copper/25 py-s2 font-chrome text-chrome-sm text-muted">
-        Daño pendiente
+        {yaAplicado ? "Aplicado" : "Daño pendiente"}
       </p>
     );
   }
@@ -62,6 +70,7 @@ export function BandejaDeDano({
   const p = preview.data;
   const { modifier, reason, taken } = p.resulting;
   const nombreModificador = modifier ? NOMBRE_MODIFICADOR_DE_DANO[modifier] : null;
+  const aplicado = yaAplicado || !p.canApply;
 
   return (
     <div className="my-s2 flex flex-col gap-s2 border-y border-copper/25 py-s2">
@@ -71,7 +80,7 @@ export function BandejaDeDano({
         {nombreModificador && ` · ${nombreModificador}`}
         {nombreModificador && reason && ` (${reason})`}
       </p>
-      {p.canApply ? (
+      {!aplicado ? (
         <div>
           <Button
             variant="secondary"

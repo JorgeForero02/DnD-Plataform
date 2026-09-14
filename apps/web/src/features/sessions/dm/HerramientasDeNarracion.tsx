@@ -17,7 +17,8 @@ import { IconoAscenso } from "../../level-up/IconoAscenso";
 import { useCampaign } from "../../campaigns/hooks";
 import { reglasCompletas } from "../../campaigns/reglas";
 
-// **La columna del DM: las SEIS herramientas de narración, y las seis hacen algo.**
+// **La columna del DM: las SEIS herramientas de narración de la maqueta —y las seis hacen algo—,
+// más la séptima («Dar XP») que solo aparece cuando la mesa progresa por experiencia (E-PE-8).**
 //
 // La auditoría del 2026-09-04 lo midió: de las seis de la maqueta
 // (`prototipo/src/features/HerramientasDeNarracion.tsx:19-46`) en la mesa había **dos**, y
@@ -27,7 +28,7 @@ import { reglasCompletas } from "../../campaigns/reglas";
 //
 // ## La rejilla es la de la maqueta; el cableado es el del servidor
 //
-// Ninguna de las seis abre una pantalla nueva: **cada una monta lo que ya existía**, dentro de un
+// Ninguna de las siete abre una pantalla nueva: **cada una monta lo que ya existía**, dentro de un
 // cajón lateral. Ese es el trabajo de la sustitución —la maqueta es presentación sin datos, así
 // que lo que falta es enchufarla a la columna de datos que se conserva—, y por eso aquí no hay ni
 // una llamada HTTP ni una regla de juego.
@@ -310,6 +311,11 @@ export function HerramientasDeNarracion({
         subtitulo="El servidor no sube el nivel: avisa en la hoja y lo pulsa el DM."
         size="lg"
       >
+        {/* **El diálogo no se cierra solo al dar** (ola de arreglos 1): `DarXp` pinta «Dados N PX
+            a …» y vacía el formulario, y esa frase es la confirmación que el DM tiene que leer
+            antes de cerrar. Cerrarlo en `onHecho` habría sido sustituir una falta de señal por
+            otra —el diálogo desaparece y nada dice si se dio o no—; con el formulario vacío, un
+            segundo clic ya no puede repetir el reparto. */}
         <DarXp campaignId={campaignId} />
       </Dialog>
     </div>

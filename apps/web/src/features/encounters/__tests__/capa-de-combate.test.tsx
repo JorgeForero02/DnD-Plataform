@@ -4,9 +4,11 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
 import { TiraDeIniciativa } from "../TiraDeIniciativa";
+import { CapaDeCombate } from "../CapaDeCombate";
 import * as encountersApi from "../api";
 import * as characterSheetApi from "../../character-sheet/api";
 import * as charactersApi from "../../characters/api";
+import * as bestiarioApi from "../../bestiario/api";
 import type { Character } from "../../characters/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import { useAuthStore } from "../../../store/auth.store";
@@ -391,47 +393,124 @@ describe("la propuesta de terminar y los caídos", () => {
 
 // Puerta de efectos §5 bis (E-PE-9) — al terminar, si la respuesta trae `xpPropuesto` aparece
 // «Repartir la experiencia» con `DarXp` prellenado; sin él, no aparece nada nuevo.
+//
+// **Se monta `CapaDeCombate`, no la tira sola** (ola de arreglos 1, Critical C1). La versión
+// anterior de estas pruebas montaba `TiraDeIniciativa` con un `encuentro` estático y nunca
+// refetcheaba, así que no podía ver el fallo real: `useEndEncounter` invalida `current`, el
+// servidor devuelve `null` para un encuentro `ENDED`, la capa desmontaba la tira y la propuesta
+// —que vivía en el `useState` de la tira— se iba con ella antes de que el DM la leyera. Aquí
+// `fetchCurrentEncounter` devuelve el encuentro y luego `null`, como en la aplicación real.
 describe("la propuesta de experiencia al terminar el combate", () => {
+  const XP_PROPUESTO = {
+    total: 100,
+    porCabeza: 100,
+    destinatarios: [{ characterId: "p-thora", name: "Thora Piedrahonda" }],
+    desglose: [
+      { characterId: "g1", name: "Goblin", cr: 0.25, xp: 50 },
+      { characterId: "g2", name: "Goblin", cr: 0.25, xp: 50 },
+    ],
+  };
+
+  function montarCapa() {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <CapaDeCombate
+            campaignId="c1"
+            sessionId="s1"
+            personajes={[THORA, GOBLIN_A, GOBLIN_B]}
+            pnjs={[KLARG]}
+            esDm
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  /** Termina el combate desde la tira montada dentro de la capa, pasando por la confirmación. */
+  async function terminarElCombate() {
+    fireEvent.click(await screen.findByRole("button", { name: "Terminar el combate" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Terminar el combate" }));
+  }
+
   beforeEach(() => {
     vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([THORA]);
+    vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
+    // El encuentro existe… hasta que se termina: la segunda lectura de `current` es `null`.
+    vi.spyOn(encountersApi, "fetchCurrentEncounter")
+      .mockResolvedValueOnce(ENCUENTRO)
+      .mockResolvedValue(null);
   });
 
-  it("con xpPropuesto en la respuesta, aparece «Repartir la experiencia» con DarXp prellenado", async () => {
+  it("con xpPropuesto, «Repartir la experiencia» SIGUE en la mesa cuando `current` ya devuelve null y la tira se ha ido", async () => {
     vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({
       id: "e1",
       status: "ENDED",
-      xpPropuesto: {
-        total: 100,
-        porCabeza: 100,
-        destinatarios: [{ characterId: "p-thora", name: "Thora Piedrahonda" }],
-        desglose: [
-          { characterId: "g1", name: "Goblin", cr: 0.25, xp: 50 },
-          { characterId: "g2", name: "Goblin", cr: 0.25, xp: 50 },
-        ],
-      },
+      xpPropuesto: XP_PROPUESTO,
     });
-    montarTira();
+    montarCapa();
+    await terminarElCombate();
 
-    fireEvent.click(screen.getByRole("button", { name: "Terminar el combate" }));
-    const dialogo = await screen.findByRole("dialog");
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Terminar el combate" }));
-
-    expect(await screen.findByText("Repartir la experiencia")).toBeInTheDocument();
+    // La tira se desmonta con el `null` del refetch — eso es lo que pasa de verdad…
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Orden de turnos" })).not.toBeInTheDocument(),
+    );
+    // …y la propuesta se queda, con `DarXp` prellenado.
+    expect(screen.getByText("Repartir la experiencia")).toBeInTheDocument();
     expect(
-      await screen.findByText("Propuesto por el combate: 100 PX (2 goblins · VD 1/4)"),
+      screen.getByText("Propuesto por el combate: 100 PX (2 Goblin · VD 1/4)"),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Thora Piedrahonda")).toBeChecked();
+    expect(await screen.findByLabelText("Thora Piedrahonda")).toBeChecked();
+    // Y debajo, la mesa en reposo del DM: la capa sigue siendo la misma capa.
+    expect(screen.getByText("La mesa no está en combate.")).toBeInTheDocument();
+  });
+
+  it("al dar la experiencia el bloque se va y queda la frase de lo que se dio", async () => {
+    vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({
+      id: "e1",
+      status: "ENDED",
+      xpPropuesto: XP_PROPUESTO,
+    });
+    const dar = vi.spyOn(charactersApi, "awardXp").mockResolvedValue({ awarded: [] });
+    montarCapa();
+    await terminarElCombate();
+
+    expect(await screen.findByLabelText("Thora Piedrahonda")).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+
+    await waitFor(() =>
+      expect(dar).toHaveBeenCalledWith("c1", { characterIds: ["p-thora"], amount: 100 }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("Dados 100 PX a Thora Piedrahonda");
+    expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
+  });
+
+  it("«Ahora no» retira el bloque sin dar nada", async () => {
+    vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({
+      id: "e1",
+      status: "ENDED",
+      xpPropuesto: XP_PROPUESTO,
+    });
+    const dar = vi.spyOn(charactersApi, "awardXp").mockResolvedValue({ awarded: [] });
+    montarCapa();
+    await terminarElCombate();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Ahora no" }));
+    expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
+    expect(dar).not.toHaveBeenCalled();
   });
 
   it("sin xpPropuesto en la respuesta, no aparece", async () => {
     vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({ id: "e1", status: "ENDED" });
-    montarTira();
-
-    fireEvent.click(screen.getByRole("button", { name: "Terminar el combate" }));
-    const dialogo = await screen.findByRole("dialog");
-    fireEvent.click(within(dialogo).getByRole("button", { name: "Terminar el combate" }));
+    montarCapa();
+    await terminarElCombate();
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Orden de turnos" })).not.toBeInTheDocument(),
+    );
     expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
   });
 });

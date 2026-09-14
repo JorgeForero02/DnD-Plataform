@@ -21,6 +21,7 @@ import {
   NOMBRE_PG,
   NOMBRE_PROGRESION,
   AVISO_NO_RETROACTIVO,
+  AVISO_PROGRESION_INMEDIATA,
 } from "./reglas";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
@@ -265,6 +266,9 @@ export function ReglasDeLaMesa({
         onChange={(progresion) =>
           setBorrador({ ...borrador, progresion: progresion as Progresion })
         }
+        // El aviso de arriba («valen para los que se creen a partir de ahora») no alcanza a esta
+        // regla, y se dice aquí, debajo de ella, en vez de dejar que se lea lo contrario.
+        nota={AVISO_PROGRESION_INMEDIATA}
       />
 
       {error && (
@@ -293,6 +297,7 @@ function GrupoDeRadios<T extends string>({
   valor,
   disabled,
   onChange,
+  nota,
 }: {
   legend: string;
   name: string;
@@ -300,6 +305,8 @@ function GrupoDeRadios<T extends string>({
   valor: T;
   disabled: boolean;
   onChange: (v: T) => void;
+  /** Una línea bajo el grupo, para lo que el aviso general del bloque no dice de esta regla. */
+  nota?: string;
 }) {
   return (
     <fieldset className="mt-s3 rounded-radius-sm border border-muted bg-surface p-s3">
@@ -340,6 +347,7 @@ function GrupoDeRadios<T extends string>({
           },
         )}
       </div>
+      {nota && <p className="mt-s2 font-chrome text-chrome-xs text-muted">{nota}</p>}
     </fieldset>
   );
 }

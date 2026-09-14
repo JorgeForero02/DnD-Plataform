@@ -261,7 +261,11 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
         ? `Recibe la condición «${nombreCondicion(p.key)}», nivel ${p.level}`
         : `Recibe la condición «${nombreCondicion(p.key)}»`;
     case "CONDITION_REMOVED":
-      return `Se le quita la condición «${nombreCondicion(p.key)}»`;
+      // **Con su causa, si la trae** (puerta de efectos §5.3, ola de arreglos 1): retirar por
+      // descanso escribe `reason: "Descanso largo"`, y sin pintarlo la crónica no distinguía esa
+      // retirada de una hecha a mano por el DM — «lo que retira lo dice la crónica». Mismo patrón
+      // que `HP_CHANGED`: guion largo y el motivo tal cual.
+      return `Se le quita la condición «${nombreCondicion(p.key)}»${p.reason ? ` — ${p.reason}` : ""}`;
     case "ENTITY_OPENED":
       return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
@@ -382,6 +386,16 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
       const gana = p.amount >= 0;
       const cantidad = Math.abs(p.amount);
       const motivo = p.reason ? ` — ${p.reason}` : "";
+      // **`amount` es el delta EFECTIVO** (ola de arreglos 1 de la API): con el total ya a 0 y un
+      // premio negativo, el servidor escribe 0 — y «Gana 0 PX» leería como que pasó algo. Se dice
+      // lo que pasó: nada, porque no había de dónde quitar.
+      if (p.amount === 0) {
+        if (ctx?.sujeto) {
+          const sujetoDeLaFrase = ctx.sujetoEnCabecera ? "" : `${ctx.sujeto} `;
+          return `${sujetoDeLaFrase}no cambia de PX: ya estaba a 0${motivo}`;
+        }
+        return `No cambia de PX: ya estaba a 0${motivo}`;
+      }
       if (ctx?.sujeto) {
         const verbo = gana ? "gana" : "pierde";
         // **La cabecera ya dijo quién es**, como en `HP_CHANGED`.

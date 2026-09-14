@@ -198,18 +198,24 @@ test("la condición «hasta el próximo descanso largo»: aguanta un descanso co
   await abrirPestana(dm, "Estado");
 
   const condicionesDm = dm.locator('section[aria-label="condiciones"]');
+  // **La condición aplicada es un `<li>` de la lista; `getByText("Asustado")` a secas casa TAMBIÉN
+  // con la `<option>` del `<select>` «Nueva condición»** (Playwright no excluye `<option>` del
+  // motor de texto), así que aquí se busca la fila, no el texto — y `toHaveCount(0)` sobre la fila
+  // sí puede llegar a cero, cosa que sobre el texto era imposible mientras la opción siguiera ahí.
+  const asustadoDm = condicionesDm.getByRole("listitem").filter({ hasText: "Asustado" });
   await dm.getByLabel("Nueva condición").selectOption({ label: "Asustado" });
   await dm.getByRole("radio", { name: /Hasta el próximo descanso largo/ }).check();
   await condicionesDm.getByRole("button", { name: "Aplicar condición" }).click();
-  await expect(condicionesDm.getByText("Asustado")).toBeVisible();
-  await expect(condicionesDm.getByText(/hasta descanso largo/)).toBeVisible();
+  await expect(asustadoDm).toBeVisible();
+  await expect(asustadoDm).toContainText("hasta descanso largo");
 
   // --- El `expect` que mira al OTRO contexto: B no ha tocado nada y su hoja ya lo dice. ---
   await jugador.reload();
   await abrirPestana(jugador, "Estado");
   const condicionesJugador = jugador.locator('section[aria-label="condiciones"]');
-  await expect(condicionesJugador.getByText("Asustado")).toBeVisible({ timeout: 15_000 });
-  await expect(condicionesJugador.getByText(/hasta descanso largo/)).toBeVisible();
+  const asustadoJugador = condicionesJugador.getByRole("listitem").filter({ hasText: "Asustado" });
+  await expect(asustadoJugador).toBeVisible({ timeout: 15_000 });
+  await expect(asustadoJugador).toContainText("hasta descanso largo");
 
   // --- Un descanso corto no la toca: solo el largo mira `expiresOnRest === "SHORT"` en el
   //     servidor (`rest.service.ts`), y aquí se puso "hasta el próximo descanso LARGO". ---
@@ -217,26 +223,33 @@ test("la condición «hasta el próximo descanso largo»: aguanta un descanso co
   await dm.getByRole("button", { name: "Descanso corto" }).click();
   await expect(dm.getByRole("alert")).toHaveCount(0);
   await abrirPestana(dm, "Estado");
-  await expect(condicionesDm.getByText("Asustado")).toBeVisible();
-  await expect(condicionesDm.getByText(/hasta descanso largo/)).toBeVisible();
+  await expect(asustadoDm).toBeVisible();
+  await expect(asustadoDm).toContainText("hasta descanso largo");
 
   // --- El descanso largo sí la retira. ---
   await abrirPestana(dm, "Recursos");
   await dm.getByRole("button", { name: "Descanso largo" }).click();
   await expect(dm.getByRole("alert")).toHaveCount(0);
   await abrirPestana(dm, "Estado");
-  await expect(condicionesDm.getByText("Asustado")).toHaveCount(0);
+  await expect(asustadoDm).toHaveCount(0);
 
   // --- Y otra vez el otro contexto: B, sin recargar a mano nada más que la propia página, ve lo
   //     mismo que acaba de pasar en la del DM. ---
   await jugador.reload();
   await abrirPestana(jugador, "Estado");
-  await expect(condicionesJugador.getByText("Asustado")).toHaveCount(0);
+  await expect(asustadoJugador).toHaveCount(0);
 
-  // --- El hilo de la sesión dice «Descanso largo», no la clave cruda `LONG`. ---
+  // --- El hilo de la sesión dice «Descanso largo», no la clave cruda `LONG` — y la retirada de
+  //     la condición dice POR QUÉ (spec §5.3: «lo que retira lo dice la crónica»), que es lo que
+  //     distingue esta retirada de una hecha a mano por el DM. ---
   await abrirLaMesa(dm, campaignId);
   const sucesos = dm.getByRole("list", { name: "Sucesos de la sesión" });
-  await expect(sucesos.getByText("Descanso largo")).toBeVisible({ timeout: 15_000 });
+  await expect(sucesos.getByText("Descanso largo", { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    sucesos.getByText("Se le quita la condición «Asustado» — Descanso largo"),
+  ).toBeVisible();
 
   await dmContext.close();
   await jugadorContext.close();
@@ -354,10 +367,14 @@ test("la bandeja de daño: el DM ve «Aplicar», A no; al aplicar, los dos ven �
   expect(Number.isFinite(pgAntes)).toBe(true);
 
   await dm.getByRole("button", { name: botonAplicar }).click();
-  await expect(dm.getByText("Aplicado")).toBeVisible({ timeout: 10_000 });
+  // El DM lo ve por el preview releído (`useApplyDamage` lo invalida) y por `appliedEventId`.
+  await expect(dm.getByText("Aplicado", { exact: true })).toBeVisible({ timeout: 10_000 });
 
   // --- Otra vez el `expect` que mira al otro contexto: A ve «Aplicado» sin haber pulsado nada. ---
-  await expect(a.getByText("Aplicado")).toBeVisible({ timeout: 20_000 });
+  // A recibe 404 en el preview SIEMPRE (no es dueño del goblin ni DM), así que lo que le enseña
+  // «Aplicado» no es el preview sino `pendingDamage.appliedEventId`, el candado que viaja en el
+  // propio suceso del hilo y que el canal en vivo le trae al invalidar el registro.
+  await expect(a.getByText("Aplicado", { exact: true })).toBeVisible({ timeout: 20_000 });
 
   await expect
     .poll(

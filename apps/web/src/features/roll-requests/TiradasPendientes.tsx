@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { EffectApplied, RollAudience, RollResult } from "@dnd/shared";
+import type { EffectApplied, EffectWarning, RollAudience, RollResult } from "@dnd/shared";
 import { Button, Panel } from "../../ui";
 import { ApiError } from "../../lib/api";
 import { DadoDibujado } from "../rolls/DadoDibujado";
@@ -44,14 +44,16 @@ function mensajeDeError(error: unknown): string {
  * **La puerta de efectos** (§4.3): si la salvación respondida traía un efecto pendiente
  * (`RollRequest.pendingEffect`), el servidor ya lo aplicó al responder y esto dice qué pasó de
  * verdad — no lo que se esperaba. `delta` con el signo tipográfico «−», no un guion: es el mismo
- * carácter que usa el resto de la hoja para restar puntos de golpe.
+ * carácter que usa el resto de la hoja para restar puntos de golpe. **Y con el signo REAL** (ola
+ * de arreglos 1): el esquema admite `signo: 1` —una curación por salvación (§4.4)—, y pintarla
+ * siempre con «−» la habría leído como daño.
  *
  * Tres frases, no una interpolación genérica: `delta === 0` con `saved` es «sin daño» y no
  * «Aplicado: −0 PG», que leería como que algo pasó cuando no pasó nada.
  */
 function fraseEfectoAplicado(efecto: EffectApplied): string {
   if (efecto.saved && efecto.delta === 0) return "Salvó: sin daño";
-  const cifra = `−${Math.abs(efecto.delta)} PG`;
+  const cifra = `${efecto.delta > 0 ? "+" : "−"}${Math.abs(efecto.delta)} PG`;
   return efecto.saved ? `Aplicado: ${cifra} (salvó, mitad)` : `Aplicado: ${cifra} (falló)`;
 }
 
@@ -75,6 +77,12 @@ interface Respondida {
    * que sobreviva al mismo sondeo que ya limpia la petición de `pendientes`.
    */
   effectApplied?: EffectApplied;
+  /**
+   * Ola de arreglos 1 de la API: la tirada quedó escrita y la petición cerrada, pero el efecto
+   * NO se pudo aplicar. Se pinta el `message` del servidor tal cual, junto a la tirada: el jugador
+   * no debe volver a tirar, y el DM aplica el daño a mano.
+   */
+  effectWarning?: EffectWarning;
 }
 
 export function TiradasPendientes({ campaignId }: { campaignId: string }) {
@@ -159,6 +167,7 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
               resultado,
               esDeEncuentro,
               effectApplied: resultado.effectApplied,
+              effectWarning: resultado.effectWarning,
             },
             ...actuales,
           ]),
@@ -309,6 +318,16 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
                 {r.effectApplied && (
                   <p className="mt-1 text-center font-chrome text-chrome-xs text-muted">
                     {fraseEfectoAplicado(r.effectApplied)}
+                  </p>
+                )}
+                {/* El efecto que NO se aplicó: la tirada vale y la petición está cerrada, así que
+                    no se ofrece volver a tirar — se dice lo que pasó y quién lo arregla. */}
+                {r.effectWarning && (
+                  <p
+                    role="alert"
+                    className="mt-1 text-center font-chrome text-chrome-xs text-warning-text"
+                  >
+                    {r.effectWarning.message}
                   </p>
                 )}
               </div>

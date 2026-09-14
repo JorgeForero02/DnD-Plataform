@@ -388,5 +388,78 @@ describe("TiradasPendientes", () => {
       expect(screen.queryByText(/^Aplicado:/)).not.toBeInTheDocument();
       expect(screen.queryByText(/^Salvó:/)).not.toBeInTheDocument();
     });
+
+    // Ola de arreglos 1 de la API: `effectWarning` en vez de `effectApplied` cuando la tirada se
+    // escribió y la petición se cerró pero el efecto no se pudo aplicar. La pantalla pinta el
+    // mensaje del servidor tal cual y NO vuelve a ofrecer «Tirar»: la petición ya está cerrada.
+    it("con effectWarning se pinta el aviso del servidor junto a la tirada y no se vuelve a ofrecer tirar", async () => {
+      vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PENDIENTE]);
+      vi.spyOn(rollRequestsApi, "answerRollRequest").mockResolvedValue({
+        revealed: true,
+        eventId: "ev-8",
+        expression: "1d20+5",
+        audience: "PUBLIC",
+        rolls: [3],
+        kept: [3],
+        dropped: [],
+        modifier: 5,
+        total: 8,
+        dc: 15,
+        natural: "NONE",
+        outcome: "FAILURE",
+        effectWarning: {
+          code: "EFECTO_NO_APLICADO",
+          message: "La tirada vale, pero el daño no se pudo aplicar: el DM lo pone a mano.",
+        },
+      });
+
+      pintar();
+
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Tirar: Percepción para ver si oís al posadero",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "La tirada vale, pero el daño no se pudo aplicar: el DM lo pone a mano.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/^Aplicado:/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Tirar: Percepción para ver si oís al posadero" }),
+      ).not.toBeInTheDocument();
+    });
+
+    // Minor de la revisión: una curación por salvación (`delta > 0`, §4.4) no se lee como daño.
+    it("un delta positivo se pinta con «+», no con «−»", async () => {
+      vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PENDIENTE]);
+      vi.spyOn(rollRequestsApi, "answerRollRequest").mockResolvedValue({
+        revealed: true,
+        eventId: "ev-9",
+        expression: "1d20+5",
+        audience: "PUBLIC",
+        rolls: [3],
+        kept: [3],
+        dropped: [],
+        modifier: 5,
+        total: 8,
+        dc: 15,
+        natural: "NONE",
+        outcome: "FAILURE",
+        effectApplied: { delta: 9, saved: false },
+      });
+
+      pintar();
+
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Tirar: Percepción para ver si oís al posadero",
+        }),
+      );
+
+      expect(await screen.findByText("Aplicado: +9 PG (falló)")).toBeInTheDocument();
+    });
   });
 });

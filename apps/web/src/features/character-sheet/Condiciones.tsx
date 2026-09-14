@@ -168,7 +168,12 @@ function SelectorDeDuracion({
 const OPCIONES_MODO_DE_DURACION: Record<ModoDeDuracion, { etiqueta: string; frase: string }> = {
   RELOJ: {
     etiqueta: "Por reloj",
-    frase: "Un tiempo de juego concreto; se retira sola cuando el reloj de la campaña lo alcanza.",
+    // **Lo que hace el servidor, no lo que suena bien**: al cumplirse el tiempo la condición se
+    // marca vencida y deja de calcularse, pero NO se retira — sigue en la lista hasta que el DM la
+    // quite o la renueve (D-2C-2, y la frase de la fila vencida más abajo dice lo mismo). Y con
+    // el desplegable en «Indefinida», que es el valor por defecto, no hay tiempo que cumplir.
+    frase:
+      "Un tiempo de juego, o indefinida. Al cumplirse se marca vencida y sigue en la lista hasta que la quites o la renueves.",
   },
   SHORT: HASTA_EL_DESCANSO.SHORT,
   LONG: HASTA_EL_DESCANSO.LONG,
@@ -304,6 +309,10 @@ export function Condiciones({
             className="rounded-radius-sm border border-warning-text px-s2 py-0.5 font-chrome text-chrome-xs text-warning-text"
           >
             {tituloDe(c)}
+            {/* Spec §5.4: «hasta descanso corto/largo» también en el chip de la cabecera de la
+                hoja, no solo en la línea de la tarjeta y en el chip del elenco. Misma tabla
+                (`HASTA_EL_DESCANSO`), nunca la clave cruda. */}
+            {c.expiresOnRest && ` · ${HASTA_EL_DESCANSO[c.expiresOnRest].corto}`}
           </li>
         ))}
       </ul>
@@ -458,6 +467,25 @@ export function Condiciones({
                 placeholder="Bendición"
               />
             )}
+          </div>
+          {/* El mismo efecto, antes de aplicarla: la pregunta de la mesa es «¿qué hace
+              envenenado?», y se hace mirando el selector. */}
+          {efectoDeLaNueva && (
+            <p className="font-chrome text-chrome-xs text-muted">{efectoDeLaNueva}</p>
+          )}
+          {/* **Cuánto dura, al aplicarla.** Por defecto por reloj — indefinida, que es lo que
+              esta pantalla hacía antes de 2C — y desde la puerta de efectos (E-PE-7), también
+              «hasta el próximo descanso corto/largo», el suceso en vez del número.
+              **Va ANTES del botón, también en el DOM** (ola de arreglos 1): un usuario de teclado
+              o de lector de pantalla tiene que encontrarse la elección de duración antes de
+              llegar a «Aplicar», no después de haberlo pulsado. */}
+          <SelectorDeModoDeDuracion
+            modo={modo}
+            onCambiarModo={setModo}
+            duracion={duracion}
+            onCambiarDuracion={setDuracion}
+          />
+          <div className="flex items-center gap-s2">
             <Button
               type="button"
               variant="secondary"
@@ -496,20 +524,6 @@ export function Condiciones({
               Aplicar
             </Button>
           </div>
-          {/* **Cuánto dura, al aplicarla.** Por defecto por reloj — indefinida, que es lo que
-              esta pantalla hacía antes de 2C — y desde la puerta de efectos (E-PE-7), también
-              «hasta el próximo descanso corto/largo», el suceso en vez del número. */}
-          <SelectorDeModoDeDuracion
-            modo={modo}
-            onCambiarModo={setModo}
-            duracion={duracion}
-            onCambiarDuracion={setDuracion}
-          />
-          {/* El mismo efecto, antes de aplicarla: la pregunta de la mesa es «¿qué hace
-              envenenado?», y se hace mirando el selector. */}
-          {efectoDeLaNueva && (
-            <p className="font-chrome text-chrome-xs text-muted">{efectoDeLaNueva}</p>
-          )}
         </div>
       )}
     </div>

@@ -17,11 +17,13 @@ const PENDING_DAMAGE = {
   amount: 11,
 };
 
-function renderBandeja() {
+function renderBandeja(
+  pendingDamage: typeof PENDING_DAMAGE & { appliedEventId?: string } = PENDING_DAMAGE,
+) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <BandejaDeDano campaignId="c1" rollEventId="roll1" pendingDamage={PENDING_DAMAGE} />
+      <BandejaDeDano campaignId="c1" rollEventId="roll1" pendingDamage={pendingDamage} />
     </QueryClientProvider>,
   );
 }
@@ -87,6 +89,42 @@ describe("BandejaDeDano — la línea del preview", () => {
     expect(await screen.findByText("Daño pendiente")).toBeInTheDocument();
     expect(screen.queryByText(/Espectro/)).not.toBeInTheDocument();
     expect(screen.queryByText(/11/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  // Ola de arreglos 1 (I1) — el hueco por el que pasó el fallo: tras aplicar con éxito el preview
+  // no se invalidaba, `canApply` seguía en `true` y el botón se quedaba. Aquí el segundo
+  // `fetchDamagePreview` devuelve el estado real del servidor —ya aplicado— y la bandeja lo dice.
+  it("aplicar con éxito: se relee el preview, dice «Aplicado» y el botón se va", async () => {
+    const previewSpy = vi
+      .spyOn(sessionsApi, "fetchDamagePreview")
+      .mockResolvedValueOnce(PREVIEW_CON_RESISTENCIA)
+      .mockResolvedValue({ ...PREVIEW_CON_RESISTENCIA, canApply: false, appliedEventId: "hp1" });
+    vi.spyOn(sessionsApi, "applyDamage").mockResolvedValue({ hpEventId: "hp1" });
+
+    renderBandeja();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Aplicar el daño a Espectro" }));
+
+    expect(await screen.findByText("Aplicado")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Aplicar el daño a Espectro" }),
+    ).not.toBeInTheDocument();
+    expect(previewSpy).toHaveBeenCalledTimes(2);
+  });
+
+  // Ola de arreglos 1 (I2) — el atacante recibe 404 en el preview SIEMPRE, y aun así tiene que
+  // ver que su daño ya se aplicó: el candado viaja en el propio suceso, que el hilo trae a todos.
+  it("404 del preview pero `appliedEventId` en el suceso: dice «Aplicado», sin nombre ni cifra", async () => {
+    vi.spyOn(sessionsApi, "fetchDamagePreview").mockRejectedValue(
+      new ApiError("No encontrado", 404),
+    );
+
+    renderBandeja({ ...PENDING_DAMAGE, appliedEventId: "hp1" });
+
+    expect(await screen.findByText("Aplicado")).toBeInTheDocument();
+    expect(screen.queryByText("Daño pendiente")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Espectro/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

@@ -1,6 +1,7 @@
 import type {
   CreateRollRequestInput,
   EffectApplied,
+  EffectWarning,
   RollAudience,
   RollMode,
   RollResult,
@@ -109,15 +110,21 @@ export function answerRollRequest(
   // (`RollRequest.pendingEffect`), el servidor lo aplica en la misma transacción y lo devuelve
   // aquí — `undefined` cuando no había nada que aplicar. El daño de una salvación se tira UNA
   // vez, no dos: al pedirla, no al responderla, y esto es lo que dice qué pasó de verdad.
-): Promise<RollResult & { effectApplied?: EffectApplied }> {
-  return apiFetch<RollResult & { effectApplied?: EffectApplied }>(
-    `/campaigns/${campaignId}/roll-requests/${requestId}/roll`,
-    {
-      method: "POST",
-      body: JSON.stringify({ spendInspiration }),
-    },
-  );
+  // **O `effectWarning`** (ola de arreglos 1 de la API): la tirada quedó escrita y la petición
+  // cerrada, pero el efecto NO se pudo aplicar — el jugador no debe volver a tirar y el DM aplica
+  // el daño a mano. Nunca llegan los dos a la vez.
+): Promise<RespuestaDeTirada> {
+  return apiFetch<RespuestaDeTirada>(`/campaigns/${campaignId}/roll-requests/${requestId}/roll`, {
+    method: "POST",
+    body: JSON.stringify({ spendInspiration }),
+  });
 }
+
+/** Lo que devuelve `POST .../roll-requests/:id/roll`: la tirada, y lo que pasó con su efecto. */
+export type RespuestaDeTirada = RollResult & {
+  effectApplied?: EffectApplied;
+  effectWarning?: EffectWarning;
+};
 
 /** Una fila de la tabla «Typical Difficulty Classes» del SRD 5.1. El rótulo lo pone la pantalla. */
 export interface FilaDeGuiaDeCd {

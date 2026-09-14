@@ -133,6 +133,60 @@ describe("los catorce tipos que el motor añadió y nadie tradujo", () => {
     ).toBe("Pasan 8 h 30 min, a paso lento (16 millas)");
   });
 
+  // Puerta de efectos §5.3 (ola de arreglos 1, I6): «lo que retira lo dice la crónica». El
+  // descanso escribe `reason: "Descanso largo"` y la línea tiene que llevarlo; sin motivo, la
+  // frase de siempre.
+  it("una condición retirada dice por qué, si el suceso lo trae", () => {
+    expect(
+      lineaDeLog({ type: "CONDITION_REMOVED", key: "frightened", reason: "Descanso largo" }),
+    ).toBe("Se le quita la condición «Asustado» — Descanso largo");
+    expect(lineaDeLog({ type: "CONDITION_REMOVED", key: "frightened" })).toBe(
+      "Se le quita la condición «Asustado»",
+    );
+  });
+
+  // Puerta de efectos §5 bis — la frase del XP en sus cuatro formas, y el cero (ola de arreglos
+  // 1 de la API: `amount` es el delta efectivo, así que con el total a 0 un premio negativo
+  // escribe 0 y la frase no puede decir «Gana 0 PX»).
+  it("el XP se cuenta con signo, motivo y sujeto, y el cero dice que no cambió nada", () => {
+    expect(lineaDeLog({ type: "XP_AWARDED", characterId: "c1", amount: 450, xpTotal: 450 })).toBe(
+      "Gana 450 PX (total 450)",
+    );
+    expect(
+      lineaDeLog({
+        type: "XP_AWARDED",
+        characterId: "c1",
+        amount: -50,
+        xpTotal: 400,
+        reason: "Error al sumar",
+      }),
+    ).toBe("Pierde 50 PX (total 400) — Error al sumar");
+    expect(
+      lineaDeLog(
+        { type: "XP_AWARDED", characterId: "c1", amount: 100, xpTotal: 500 },
+        { sujeto: "Elara" },
+      ),
+    ).toBe("Elara gana 100 PX (total 500)");
+    expect(
+      lineaDeLog(
+        { type: "XP_AWARDED", characterId: "c1", amount: 100, xpTotal: 500 },
+        { sujeto: "Elara", sujetoEnCabecera: true },
+      ),
+    ).toBe("gana 100 PX (total 500)");
+    expect(lineaDeLog({ type: "XP_AWARDED", characterId: "c1", amount: 0, xpTotal: 0 })).toBe(
+      "No cambia de PX: ya estaba a 0",
+    );
+    expect(
+      lineaDeLog(
+        { type: "XP_AWARDED", characterId: "c1", amount: 0, xpTotal: 0 },
+        { sujeto: "Elara" },
+      ),
+    ).toBe("Elara no cambia de PX: ya estaba a 0");
+    expect(
+      lineaDeLog({ type: "XP_AWARDED", characterId: "c1", amount: 0, xpTotal: 0 }),
+    ).not.toMatch(/Gana 0/);
+  });
+
   it("una condición vencida se dice por su nombre, igual que una aplicada", () => {
     expect(lineaDeLog({ type: "CONDITION_EXPIRED", key: "poisoned", expiredAtClock: 120 })).toBe(
       "Vence la condición «Envenenado»",

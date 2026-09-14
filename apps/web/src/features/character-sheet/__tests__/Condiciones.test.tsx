@@ -482,4 +482,41 @@ describe("Condiciones — hasta el próximo descanso (E-PE-7)", () => {
     expect(entrada).toHaveTextContent("hasta descanso corto");
     expect(screen.queryByText(/\bSHORT\b/)).toBeNull();
   });
+
+  // Ola de arreglos 1 (I5) — spec §5.4: «y el chip de la cabecera de la hoja también». El sufijo
+  // estaba en la tarjeta y en el chip del elenco, pero no en la variante `chips` que monta
+  // `Cabecera.tsx`, que es justo la que la spec nombra.
+  it("variante chips: el chip de la cabecera también dice «hasta descanso largo»", async () => {
+    mockConditions([{ ...fila("frightened"), expiresOnRest: "LONG" }]);
+    renderCondiciones({ variante: "chips" });
+
+    const lista = await screen.findByRole("list", { name: "condiciones activas" });
+    expect(within(lista).getByRole("listitem")).toHaveTextContent(
+      "Asustado · hasta descanso largo",
+    );
+    expect(screen.queryByText(/\bLONG\b/)).toBeNull();
+  });
+
+  // Ola de arreglos 1 (I3) — la frase de «Por reloj» prometía que la condición «se retira sola»,
+  // y el servidor no la retira: la marca vencida y la deja en la lista (D-2C-2). Si el texto
+  // explica una regla del servidor y discrepan, miente el texto.
+  it("la frase de «Por reloj» dice que se marca vencida y sigue en la lista, no que se retira sola", async () => {
+    pintar([]);
+
+    const radio = await screen.findByRole("radio", { name: /Por reloj/ });
+    expect(radio).toHaveAccessibleName(/se marca vencida/);
+    expect(radio).toHaveAccessibleName(/sigue en la lista/);
+    expect(screen.queryByText(/se retira sola cuando el reloj/)).toBeNull();
+  });
+
+  // Ola de arreglos 1 (I4, a11y) — el grupo de radios se había colocado DEBAJO de «Aplicar»: en
+  // el orden de tabulación se llegaba al botón sin saber que existía la elección de duración.
+  it("los radios de duración van antes de «Aplicar condición» en el DOM", async () => {
+    pintar([]);
+
+    const radio = await screen.findByRole("radio", { name: /Por reloj/ });
+    const boton = screen.getByRole("button", { name: "Aplicar condición" });
+    // `DOCUMENT_POSITION_FOLLOWING` (4): el botón viene después del radio.
+    expect(radio.compareDocumentPosition(boton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

@@ -1267,9 +1267,11 @@ a short or long rest» o «until you finish a long rest» como duración, y eso 
 segundos, es un suceso — declarar «envenenado dura una hora» sería inventar una cifra que el
 manual no da. `RestService.rest` la resuelve: al declarar un descanso corto retira las `SHORT`; al
 declarar uno largo retira las `SHORT` **y** las `LONG`, con un `CONDITION_REMOVED` por cada una
-que cae (su `reason` guarda «Descanso corto»/«Descanso largo», aunque el hilo hoy solo pinta el
-nombre de la condición retirada, no el motivo) — y el propio `REST_DECLARED` de la misma
-transacción es el que el hilo sí traduce como «Descanso corto»/«Descanso largo».
+que cae, cuyo `reason` guarda «Descanso corto»/«Descanso largo» **y el hilo lo pinta** («Se le
+quita la condición «Asustado» — Descanso largo», `apps/web/src/features/sessions/linea-de-log.ts`, desde la ola de
+arreglos 1 de la puerta de efectos; antes solo salía el nombre y una retirada por descanso era
+indistinguible de una hecha a mano) — además del propio `REST_DECLARED` de la misma transacción,
+que el hilo traduce como «Descanso corto»/«Descanso largo».
 **Excluyente con `expiresAtClock`** —una
 condición dura por reloj o hasta un descanso, nunca las dos—, y eso lo garantiza el esquema Zod
 (`applyConditionSchema`, con un `.refine`), **no esta columna**: una `TEXT?` no impide por sí sola

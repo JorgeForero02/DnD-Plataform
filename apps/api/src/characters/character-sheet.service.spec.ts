@@ -2221,6 +2221,28 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
         { attackRollEventId: "ev-atk-1" },
       );
     });
+
+    // Menor 2 del barrido PE-1: `attackRollEventId` de OTRO ataque del mismo personaje no puede
+    // cobrarse contra este. Antes solo casaba por `rollEventId` en el `ATTACK_RESOLVED`; nada
+    // impedía citar la tirada de un arco para cobrar el daño de la espada.
+    it("attackRollEventId de otro ataque del mismo personaje → 400 y sin pendingDamage", async () => {
+      const { service, rolls, prisma } = conEspada();
+      prisma.gameEvent.findFirst.mockImplementation(({ where }: { where: { type: string } }) =>
+        Promise.resolve(where.type === "ABILITY_ROLL" ? { attackRef: "SRD:shortbow" } : null),
+      );
+
+      await expect(
+        service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+          part: "DAMAGE",
+          spendInspiration: false,
+          mode: "NORMAL",
+          versatile: false,
+          attackRollEventId: "ev-atk-arco",
+        }),
+      ).rejects.toThrow("Esa tirada de ataque no es de este ataque.");
+
+      expect(rolls.roll).not.toHaveBeenCalled();
+    });
   });
 
   // Fix round 1 (M6) — el nombre de mesa, sea quien sea quien tira.

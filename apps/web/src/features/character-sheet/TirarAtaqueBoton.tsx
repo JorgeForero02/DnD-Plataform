@@ -386,6 +386,10 @@ export function TirarAtaqueBoton({
                   />
                   {veredicto && (
                     <p
+                      // Menor 6 del barrido PE-1: el e2e leía este veredicto adivinando por
+                      // texto («Impacta»/«Falla»/«¡Crítico!»), acoplado a la frase legible. El
+                      // atributo lleva el valor del servidor tal cual, sin traducir.
+                      data-veredicto={veredicto}
                       className={`mt-1 font-chrome text-chrome-sm font-semibold ${
                         veredicto === "MISS" ? "text-muted" : "text-accent-text"
                       }`}

@@ -1,6 +1,7 @@
 import { CLAVE_AYUDA } from "@dnd/shared";
 import { useState } from "react";
 import { IconoQuitar } from "../../ui/Iconos";
+import { GrupoDeRadios } from "../../ui/GrupoDeRadios";
 import { useApplyCondition, useConditions, useGameClock, useRemoveCondition } from "./hooks";
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
@@ -181,10 +182,11 @@ const OPCIONES_MODO_DE_DURACION: Record<ModoDeDuracion, { etiqueta: string; fras
 
 /**
  * Cuánto dura una condición al aplicarla: tres radios con su frase, no un desplegable
- * (`docs/04-convenciones.md`, «opciones con significado»). Markup copiado de `GrupoDeRadios`
- * (`features/campaigns/ReglasDeLaMesa.tsx:271`) — no se importa, es de otra feature. El
- * `<select>` de tiempos solo se pinta bajo «Por reloj», y es el mismo `SelectorDeDuracion` de
- * siempre, con el mismo `aria-label="Duración"` que ya usaba el spec de e2e.
+ * (`docs/04-convenciones.md`, «opciones con significado»). Los radios son `GrupoDeRadios`
+ * (`ui/GrupoDeRadios.tsx`, barrido PE-1, menor 4 — antes vivían copiados aquí). El `<select>` de
+ * tiempos solo se pinta bajo «Por reloj», fuera de ese `fieldset` (el de siempre no lleva
+ * legend propia); es el mismo `SelectorDeDuracion` de siempre, con el mismo
+ * `aria-label="Duración"` que ya usaba el spec de e2e.
  */
 function SelectorDeModoDeDuracion({
   modo,
@@ -198,45 +200,15 @@ function SelectorDeModoDeDuracion({
   onCambiarDuracion: (key: string) => void;
 }) {
   return (
-    <fieldset className="rounded-radius-sm border border-muted bg-surface p-s2">
-      <legend className="px-1 font-chrome text-chrome-sm text-text">Cuánto dura</legend>
-      <div className="space-y-1">
-        {(
-          Object.entries(OPCIONES_MODO_DE_DURACION) as [
-            ModoDeDuracion,
-            { etiqueta: string; frase: string },
-          ][]
-        ).map(([clave, opcion]) => {
-          const elegida = modo === clave;
-          return (
-            <label
-              key={clave}
-              className={[
-                "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
-                elegida
-                  ? "border-accent bg-[color:var(--accent-tint)]"
-                  : "border-transparent hover:bg-bg",
-              ].join(" ")}
-            >
-              <input
-                type="radio"
-                name="modo-de-duracion"
-                checked={elegida}
-                onChange={() => onCambiarModo(clave)}
-                className="mt-1 accent-[var(--accent)]"
-              />
-              <span className="min-w-0">
-                <span className="block font-chrome text-chrome-sm text-text">
-                  {opcion.etiqueta}
-                </span>
-                <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
-                  {opcion.frase}
-                </span>
-              </span>
-            </label>
-          );
-        })}
-      </div>
+    <>
+      <GrupoDeRadios
+        legend="Cuánto dura"
+        name="modo-de-duracion"
+        className="rounded-radius-sm border border-muted bg-surface p-s2"
+        opciones={OPCIONES_MODO_DE_DURACION}
+        valor={modo}
+        onChange={onCambiarModo}
+      />
       {modo === "RELOJ" && (
         <div className="mt-1">
           <SelectorDeDuracion
@@ -247,7 +219,7 @@ function SelectorDeModoDeDuracion({
           />
         </div>
       )}
-    </fieldset>
+    </>
   );
 }
 

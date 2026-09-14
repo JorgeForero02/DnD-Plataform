@@ -33,9 +33,18 @@ export class XpService {
       throw new BadRequestException("Un PNJ de statblock no acumula XP: sus números salen del VD.");
     }
 
+    // **Orden fijo, por `id`, no el que mandó el cliente** — mismo criterio que
+    // `destinatariosOrdenados` en `ActivitiesService`: cada fila se bloquea con `FOR UPDATE` en
+    // este mismo bucle, y dos peticiones concurrentes con los mismos personajes en orden inverso
+    // (`["X","Y"]` y `["Y","X"]`) tomarían esos candados cruzados — interbloqueo de Postgres, no
+    // solo una carrera.
+    const personajesOrdenados = [...personajes].sort((a, b) =>
+      a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+    );
+
     return this.prisma.transaction(async (tx) => {
       const awarded: { characterId: string; xp: number }[] = [];
-      for (const p of personajes) {
+      for (const p of personajesOrdenados) {
         // **La suma la hace la base, en la misma sentencia que escribe** (ola de arreglos 1,
         // Important 2 de la revisión de API). Leer `xp` fuera de la transacción y escribir el
         // absoluto dentro perdía una de dos concesiones concurrentes —el DM confirmando la

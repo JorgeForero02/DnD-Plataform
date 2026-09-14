@@ -25,6 +25,7 @@ export { Toolbar, ListRow } from "./Collection";
 // directas que ya existen; el barril las toma de su casa nueva.
 export { FilterChip } from "./FilterChip";
 export { EmptyState } from "./EmptyState";
+export { GrupoDeRadios } from "./GrupoDeRadios";
 export {
   LegalNotice,
   SRD_URL,

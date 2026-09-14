@@ -2709,6 +2709,29 @@ export class CharacterSheetService {
       audience: input.audience ?? audienciaPorDefecto,
     } as const;
 
+    // **La tirada de ataque citada tiene que ser DE ESTE ataque.** Sin esto, `attackRollEventId`
+    // solo casaba por `rollEventId` en el `ATTACK_RESOLVED` de abajo: nada impedía cobrar el daño
+    // de la ballesta citando la tirada de la espada, siempre que las dos fueran del mismo
+    // personaje. Mismo `attackRef` que ya usa `esCriticoDesdeLaTirada` (M6/R3) para casar el
+    // crítico — el `ref` REAL de la fila, no el del visor de quien pregunta.
+    if (input.attackRollEventId) {
+      const tiradaDeAtaque = await this.prisma.gameEvent.findFirst({
+        where: {
+          id: input.attackRollEventId,
+          campaignId,
+          subjectType: "character",
+          subjectId: characterId,
+          type: "ABILITY_ROLL",
+        },
+        select: { attackRef: true },
+      });
+      // Histórico sin `attackRef` (anterior a la columna, R3): no hay con qué comparar, así que
+      // no se rechaza — igual que `esCriticoDesdeLaTirada` cae a otro criterio en ese caso.
+      if (tiradaDeAtaque?.attackRef != null && tiradaDeAtaque.attackRef !== refReal) {
+        throw new BadRequestException("Esa tirada de ataque no es de este ataque.");
+      }
+    }
+
     // Spec §4b.4 (E-PE-5): el daño de un ataque RESUELTO contra un objetivo sabe a quién le toca.
     // Solo si la tirada citada tiene un ATTACK_RESOLVED colgando y el veredicto fue HIT o
     // CRITICAL; un daño tirado al aire, o sobre un fallo, no lleva `pendingDamage`.

@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AwardXpInput, XpPropuesto } from "@dnd/shared";
 import { vdLegible } from "@dnd/shared";
-import { Button, Field, fieldControlClass } from "../../../ui";
+import { Button, Field, fieldControlClass, GrupoDeRadios } from "../../../ui";
 import { ApiError } from "../../../lib/api";
 import { useCharacters, charactersKey } from "../../characters/hooks";
 import { awardXp } from "../../characters/api";
@@ -258,43 +258,13 @@ export function DarXp({
         )}
       </fieldset>
 
-      <fieldset className="rounded-radius-sm border border-muted bg-surface p-s3">
-        <legend className="px-1 font-chrome text-chrome-sm text-text">Reparto</legend>
-        <div className="space-y-1">
-          {(Object.entries(NOMBRE_REPARTO) as [Reparto, { etiqueta: string; frase: string }][]).map(
-            ([clave, opcion]) => {
-              const elegida = reparto === clave;
-              return (
-                <label
-                  key={clave}
-                  className={[
-                    "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
-                    elegida
-                      ? "border-accent bg-[color:var(--accent-tint)]"
-                      : "border-transparent hover:bg-bg",
-                  ].join(" ")}
-                >
-                  <input
-                    type="radio"
-                    name="dar-xp-reparto"
-                    checked={elegida}
-                    onChange={() => setReparto(clave)}
-                    className="mt-1 accent-[var(--accent)]"
-                  />
-                  <span className="min-w-0">
-                    <span className="block font-chrome text-chrome-sm text-text">
-                      {opcion.etiqueta}
-                    </span>
-                    <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
-                      {opcion.frase}
-                    </span>
-                  </span>
-                </label>
-              );
-            },
-          )}
-        </div>
-      </fieldset>
+      <GrupoDeRadios
+        legend="Reparto"
+        name="dar-xp-reparto"
+        opciones={NOMBRE_REPARTO}
+        valor={reparto}
+        onChange={setReparto}
+      />
 
       <Field label="Cantidad" error={errorDeCantidad ?? undefined}>
         <input

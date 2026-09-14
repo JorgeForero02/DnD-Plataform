@@ -25,6 +25,7 @@ import {
 } from "./reglas";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
+import { GrupoDeRadios } from "../../ui/GrupoDeRadios";
 
 /**
  * Task 5 (spec 2026-09-12, D-CF-53) — el bloque «Reglas de la mesa» en los ajustes de campaña.
@@ -81,6 +82,7 @@ export function ReglasDeLaMesa({
       <GrupoDeRadios
         legend="Características"
         name="reglas-caracteristicas"
+        className="mt-s3 rounded-radius-sm border border-muted bg-surface p-s3"
         opciones={NOMBRE_METODO}
         valor={borrador.abilities.metodo}
         disabled={disabled}
@@ -182,6 +184,7 @@ export function ReglasDeLaMesa({
       <GrupoDeRadios
         legend="Puntos de golpe de los niveles siguientes"
         name="reglas-pg"
+        className="mt-s3 rounded-radius-sm border border-muted bg-surface p-s3"
         opciones={NOMBRE_PG}
         valor={borrador.pgNivelesSiguientes}
         disabled={disabled}
@@ -221,6 +224,7 @@ export function ReglasDeLaMesa({
       <GrupoDeRadios
         legend="Oro inicial"
         name="reglas-oro"
+        className="mt-s3 rounded-radius-sm border border-muted bg-surface p-s3"
         opciones={NOMBRE_ORO}
         valor={borrador.oroInicial.modo}
         disabled={disabled}
@@ -260,6 +264,7 @@ export function ReglasDeLaMesa({
       <GrupoDeRadios
         legend="Progresión"
         name="reglas-progresion"
+        className="mt-s3 rounded-radius-sm border border-muted bg-surface p-s3"
         opciones={NOMBRE_PROGRESION}
         valor={borrador.progresion}
         disabled={disabled}
@@ -282,73 +287,6 @@ export function ReglasDeLaMesa({
         </Button>
       </div>
     </section>
-  );
-}
-
-/**
- * Radios con su frase (docs/04-convenciones.md, «opciones con significado como radios con
- * explicación y no en un desplegable»): mismo patrón que `InterruptorDeSobrecarga`, genérico
- * sobre el vocabulario legible de `reglas.ts`.
- */
-function GrupoDeRadios<T extends string>({
-  legend,
-  name,
-  opciones,
-  valor,
-  disabled,
-  onChange,
-  nota,
-}: {
-  legend: string;
-  name: string;
-  opciones: Record<T, { etiqueta: string; frase: string }>;
-  valor: T;
-  disabled: boolean;
-  onChange: (v: T) => void;
-  /** Una línea bajo el grupo, para lo que el aviso general del bloque no dice de esta regla. */
-  nota?: string;
-}) {
-  return (
-    <fieldset className="mt-s3 rounded-radius-sm border border-muted bg-surface p-s3">
-      <legend className="px-1 font-chrome text-chrome-sm text-text">{legend}</legend>
-      <div className="space-y-1">
-        {(Object.entries(opciones) as [T, { etiqueta: string; frase: string }][]).map(
-          ([clave, opcion]) => {
-            const elegida = valor === clave;
-            return (
-              <label
-                key={clave}
-                className={[
-                  "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
-                  elegida
-                    ? "border-accent bg-[color:var(--accent-tint)]"
-                    : "border-transparent hover:bg-bg",
-                  disabled ? "cursor-not-allowed opacity-60" : "",
-                ].join(" ")}
-              >
-                <input
-                  type="radio"
-                  name={name}
-                  checked={elegida}
-                  disabled={disabled}
-                  onChange={() => onChange(clave)}
-                  className="mt-1 accent-[var(--accent)]"
-                />
-                <span className="min-w-0">
-                  <span className="block font-chrome text-chrome-sm text-text">
-                    {opcion.etiqueta}
-                  </span>
-                  <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
-                    {opcion.frase}
-                  </span>
-                </span>
-              </label>
-            );
-          },
-        )}
-      </div>
-      {nota && <p className="mt-s2 font-chrome text-chrome-xs text-muted">{nota}</p>}
-    </fieldset>
   );
 }
 

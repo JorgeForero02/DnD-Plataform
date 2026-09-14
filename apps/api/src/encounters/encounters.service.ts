@@ -7,12 +7,16 @@ import {
 } from "@nestjs/common";
 import {
   SEGUNDOS_POR_ASALTO,
+  tableRulesSchema,
+  vdEnTabla,
+  xpPorVd,
   type CombatantSide,
   type EconomiaDelTurno,
   type GastarInput,
   type SetInitiativeInput,
   type SetSideInput,
   type StartEncounterInput,
+  type XpPropuesto,
 } from "@dnd/shared";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -21,6 +25,7 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollsService } from "../rolls/rolls.service";
 import { GameClockService } from "../game-clock/game-clock.service";
+import { StatblocksService } from "../statblocks/statblocks.service";
 import { canView, loVeLaMesa } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
 
@@ -174,6 +179,7 @@ export class EncountersService {
     private readonly sheets: CharacterSheetService,
     private readonly rolls: RollsService,
     private readonly clock: GameClockService,
+    private readonly statblocks: StatblocksService,
   ) {}
 
   private async sesion(campaignId: string, sessionId: string) {
@@ -486,6 +492,63 @@ export class EncountersService {
     if (!encounter) throw new NotFoundException("Encounter not found");
     if (encounter.status !== "ACTIVE") throw new ConflictException("Este encuentro no está activo");
 
+    // Puerta de efectos §5 bis (D-CF-68, spec §5b.3). **Se PROPONE, no se aplica**: SRD 5.1,
+    // Monsters · Experience Points: «Typically, XP is awarded for defeating the monster, although
+    // the GM may also award XP for neutralizing the threat posed by the monster in some other
+    // manner.» Un reparto automático contradiría ese «typically» — el DM confirma (o edita) en
+    // «Dar XP». Se lee ANTES de la transacción: no cambia nada, así que no hace falta bloquear.
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { tableRules: true },
+    });
+    const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
+    let xpPropuesto: XpPropuesto | undefined;
+    if (regla.progresion === "XP") {
+      const combatientes = await this.prisma.combatant.findMany({
+        where: { encounterId: encounter.id },
+        include: {
+          character: { select: { id: true, name: true, statblockRef: true, archivedAt: true } },
+        },
+      });
+      const desglose: XpPropuesto["desglose"] = [];
+      // Ola de arreglos 1 (Important 1 de la revisión de API). **Un VD que no está en la tabla no
+      // impide cerrar el combate.** `statblock.schema.ts` acepta cualquier `cr` de 0 a 30 (2,5 o
+      // 0,75 desde el editor de campaña) y `xpPorVd` lanza `RangeError` para lo que no sea una de
+      // sus 34 claves; propagarlo convertía una propuesta que solo es informativa en un 500 sobre
+      // `end()`. Ese combatiente sale de la suma y entra en `sinTabla`, para que el DM vea por
+      // qué la cifra no lo cuenta y lo añada a mano en «Dar XP».
+      const sinTabla: NonNullable<XpPropuesto["sinTabla"]> = [];
+      for (const c of combatientes.filter((c) => c.side === "ENEMY" && c.character.statblockRef)) {
+        const sb = await this.statblocks.resolver(campaignId, c.character.statblockRef!);
+        if (!sb) continue;
+        const fila = { characterId: c.character.id, name: c.character.name, cr: sb.cr };
+        if (!vdEnTabla(sb.cr)) {
+          sinTabla.push(fila);
+          continue;
+        }
+        desglose.push({ ...fila, xp: xpPorVd(sb.cr) });
+      }
+      // D-CF-69: solo `ALLY` sin `statblockRef` puede recibir XP — un PNJ jugable no tiene nivel
+      // al que avanzar, y `NEUTRAL` nunca fue del bando que ganó el combate.
+      const destinatarios = combatientes
+        .filter((c) => c.side === "ALLY" && !c.character.statblockRef && !c.character.archivedAt)
+        .map((c) => ({ characterId: c.character.id, name: c.character.name }));
+      const total = desglose.reduce((s, d) => s + d.xp, 0);
+      // Con algo que proponer O algo que explicar (`sinTabla`), y alguien a quien dárselo. Un
+      // combate donde todos los VD están fuera de tabla propone 0 y dice por qué, en vez de
+      // callarse como si no hubiera habido enemigos.
+      xpPropuesto =
+        (total > 0 || sinTabla.length > 0) && destinatarios.length > 0
+          ? {
+              total,
+              porCabeza: Math.floor(total / destinatarios.length),
+              destinatarios,
+              desglose,
+              ...(sinTabla.length > 0 ? { sinTabla } : {}),
+            }
+          : undefined;
+    }
+
     return this.prisma.transaction(async (tx) => {
       const cerrado = await tx.encounter.update({
         where: { id: encounter.id },
@@ -509,7 +572,13 @@ export class EncountersService {
         },
         tx,
       );
-      return { id: cerrado.id, status: cerrado.status };
+      // `end()` ya exige DM (arriba), así que la propuesta —que nombra al enemigo y su VD— solo
+      // la ve él: no viaja por el suceso de la mesa, solo por esta respuesta HTTP.
+      return {
+        id: cerrado.id,
+        status: cerrado.status,
+        ...(xpPropuesto ? { xpPropuesto } : {}),
+      };
     });
   }
 

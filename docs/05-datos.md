@@ -1229,3 +1229,95 @@ sueltos, que ya viven en el propio `GameEvent`. `chosen` se pone al elegir un in
 personaje: el jugador ya fijó sus seis números (E-RM-13), y solo el DM puede seguir corrigiéndolos
 directamente porque `OVERRIDABLE_KEYS` nunca incluyó ninguna `ability.*`. Cuelga de `Character` con
 `onDelete: Cascade`, igual que el resto de su estado mutable.
+
+## La puerta de efectos: tres columnas y un suceso nuevo (spec 2026-09-12, D-CF-68/D-CF-69)
+
+Tres columnas y un tipo de suceso más, todos de la misma tanda (2026-09-13): un daño de salvación
+que se tira una vez y se aplica luego, una condición que dura hasta un descanso en vez de un
+número de segundos, y la experiencia como algo que la hoja cuenta. Las tres migraciones son
+aditivas —columna nueva o valor de enum nuevo, nunca se toca una fila existente— así que ninguna
+campaña ni personaje que ya existiera cambia de comportamiento el día que se aplican.
+
+### `RollRequest.pendingEffect` (migración `20260913200000_roll_request_pending_effect`)
+
+`Json?`, por defecto ausente. El daño (o la curación) de una actividad de salvación —«el clérigo
+lanza `cure wounds` y pide una Sabiduría»— se tira **una sola vez**, en `ActivitiesService.usar`,
+y viaja aquí hasta que `RollRequestsService.answer` cierra la petición y lo aplica con
+`changeHpFromEffect` **dentro de la misma transacción**. La forma es `PendingSaveEffect`
+(`packages/shared/src/roll-request.schema.ts`, `pendingSaveEffectSchema`): `amount` (el entero ya
+tirado o calculado), `signo` (`-1` daña, `1` cura — el mismo vocabulario que `dados.signo` del
+catálogo de actividades), `tipoDeDano` (solo con `signo: -1`), `siSalva` (`"ninguno"` | `"mitad"`,
+qué le pasa a `amount` si la tirada tiene éxito — SRD 5.1, *Fireball*: «half as much damage on a
+successful one»), `actividadKey` (con qué se cita en la traza y en el `reason` de `changeHp`) y
+`actorCharacterId` (quién firma el cambio de PG cuando se aplique: el actor de la actividad, no
+quien responde la salvación). **No es del esquema público de crear una petición**
+(`createRollRequestSchema`): nadie que llame a `POST /campaigns/:id/roll-requests` puede
+inventarse un daño pendiente para otro personaje — solo lo escribe
+`RollRequestsService.createFromEffect`, con lo que la actividad ya calculó dentro de su propia
+transacción. `null` en cualquier petición corriente, que sigue siendo la inmensa mayoría: solo pide
+un valor de la hoja. **Revertir**: `ALTER TABLE "RollRequest" DROP COLUMN "pendingEffect";` — sin
+más filas que depender de ella, no hay nada que migrar hacia atrás.
+
+### `CharacterCondition.expiresOnRest` (migración `20260913200100_condition_expires_on_rest`)
+
+`TEXT?`, vocabulario cerrado `"SHORT" | "LONG"` (validado por Zod y el servicio, no por un enum de
+Postgres — el mismo motivo que ya vale para `expiryEdge`: un enum de base se añade pero no se
+edita ni se borra). SRD 5.1, *Resting*: docenas de condiciones usan literalmente «until you finish
+a short or long rest» o «until you finish a long rest» como duración, y eso no es un número de
+segundos, es un suceso — declarar «envenenado dura una hora» sería inventar una cifra que el
+manual no da. `RestService.rest` la resuelve: al declarar un descanso corto retira las `SHORT`; al
+declarar uno largo retira las `SHORT` **y** las `LONG`, con un `CONDITION_REMOVED` por cada una
+que cae, cuyo `reason` guarda «Descanso corto»/«Descanso largo» **y el hilo lo pinta** («Se le
+quita la condición «Asustado» — Descanso largo», `apps/web/src/features/sessions/linea-de-log.ts`, desde la ola de
+arreglos 1 de la puerta de efectos; antes solo salía el nombre y una retirada por descanso era
+indistinguible de una hecha a mano) — además del propio `REST_DECLARED` de la misma transacción,
+que el hilo traduce como «Descanso corto»/«Descanso largo».
+**Excluyente con `expiresAtClock`** —una
+condición dura por reloj o hasta un descanso, nunca las dos—, y eso lo garantiza el esquema Zod
+(`applyConditionSchema`, con un `.refine`), **no esta columna**: una `TEXT?` no impide por sí sola
+que las dos lleguen puestas a la vez, así que quien lea la base directamente no puede fiarse de la
+columna sola para esa regla. `null` es el caso de siempre: sin duración por descanso, ninguna
+declaración de descanso la toca. **Revertir**: `ALTER TABLE "CharacterCondition" DROP COLUMN
+"expiresOnRest";`.
+
+### `Character.xp`, el suceso `XP_AWARDED` y `ABILITY_ROLL.pendingDamage` (migración `20260913200200_character_xp`)
+
+**`Character.xp`** (`Int @default(0)`): la experiencia acumulada, solo significa algo con la regla
+de la mesa `tableRules.progresion = "XP"` (por defecto `"HITO"`, para que ninguna campaña que ya
+existiera cambie de comportamiento — D-CF-53). SRD 5.1, *Beyond 1st Level*: «A character who
+reaches a specified experience point total advances in capability». **El nivel no sube solo**
+(D-CF-66): esta columna cuenta, y subir el nivel lo sigue pulsando el DM desde `level-up`, igual
+que en modo `HITO`. La sube `XpService.award` (`POST /campaigns/:id/xp`, solo DM), que reparte por
+cabeza —`amount` es cuánto se lleva CADA personaje elegido, nunca el total de la mesa— y rechaza
+con 400 a cualquier destinatario con `statblockRef`: un PNJ de statblock no tiene nivel al que
+subir, así que acumularle XP no significa nada. `getSheet` calcula, solo en modo `XP`, `xp.actual`
+(esta columna), `xp.siguiente` (el umbral del nivel siguiente, `null` a nivel máximo) y
+`xp.nivelPorXp` (a qué nivel correspondería ya ese total) — los tres se leen de la tabla de
+umbrales del SRD, ninguno se guarda aparte. **Revertir**: `ALTER TABLE "Character" DROP COLUMN
+"xp";` (el valor `XP_AWARDED` que esta misma migración añade a `GameEventType` se queda: Postgres
+no permite quitar un valor de un enum sin reescribir el tipo entero, así que revertir la columna no
+revierte el enum).
+
+**El suceso `XP_AWARDED`** (mismo `GameEventType`, sin columna propia): «Elara gana 300 PX» es un
+hecho propio de la crónica, no un eco de `HP_CHANGED` con otro nombre — llevan cosas que un cambio
+de PG no tiene. Payload: `characterId`, `amount` (lo que se llevó ESE personaje, ya dividido si el
+reparto era «a repartir entre los elegidos»), `xpTotal` (el `xp` resultante, para que la traza no
+tenga que sumar) y `reason` opcional (el motivo que el DM haya escrito). Uno por personaje
+premiado, nunca un suceso colectivo con una lista dentro — es el mismo criterio que ya separa un
+`HP_CHANGED` por objetivo en un `fireball`.
+
+**`ABILITY_ROLL.pendingDamage`** (payload de un suceso `ABILITY_ROLL` que ya existía; no es
+columna propia ni parte de esta migración de base, pero nace de la misma tanda y solo tiene sentido
+leído junto a `RollRequest.pendingEffect`, arriba): el daño de un **ataque resuelto contra un
+objetivo** — a diferencia de `pendingEffect`, que es el de una actividad de salvación. Forma:
+`targetCharacterId`, `attackResolvedEventId` (la tirada de ataque que se cobra), `damageType`,
+`amount` (el `total` de la tirada de daño — nunca lo que mandara quien la pidió: lo pone
+`RollsService.roll`, no el cliente) y `appliedEventId` opcional, que es el candado de un solo uso:
+vacío hasta que `CharacterSheetService.applyPendingDamage` lo rellena con el `id` del `HP_CHANGED`
+que acaba de escribir, dentro de la misma transacción — un segundo intento de aplicar la misma
+tirada encuentra el candado puesto y no duplica el golpe (`jsonb_set … WHERE appliedEventId IS
+NULL`, la misma idea que ya usa una fila `UNIQUE` para lo mismo, pero sobre un campo dentro de un
+`Json`). Sin `targetCharacterId` —un daño tirado al aire, sin objetivo— no hay `pendingDamage` en
+absoluto: la bandeja de daño (`damage-tray.controller.ts`) trata esa ausencia exactamente igual que
+un objetivo que no se puede ver, con el mismo 404, para que preguntar por el daño de una tirada
+ajena no delate si esa tirada tenía objetivo o no.

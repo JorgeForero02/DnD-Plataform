@@ -1,6 +1,12 @@
 import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import type { Character, Prisma } from "@prisma/client";
-import type { Actividad, AbilityKey, TraceStep, UsarActividadInput } from "@dnd/shared";
+import type {
+  Actividad,
+  AbilityKey,
+  PendingSaveEffect,
+  TraceStep,
+  UsarActividadInput,
+} from "@dnd/shared";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
@@ -80,6 +86,14 @@ export class ActivitiesService {
    * objetivos en orden inverso (`["X","Y"]` y `["Y","X"]`) tomarían esos candados cruzados —
    * interbloqueo de Postgres. `destinatariosOrdenados` es el único sitio que decide ese orden, y
    * lo usan tanto `dados` como `effects[]`.
+   *
+   * **Puerta de efectos (spec 2026-09-13, §3) — `changeHpFromEffect` y `createFromEffect` la
+   * aceptan sin repetir la suya.** Aquí arriba ya se comprobó `canView` sobre cada objetivo
+   * (`requireVisibleCharacter`) y `requireOwnerOrDM` sobre el actor: eso ES la autorización de
+   * este efecto, y las dos puertas de abajo no la vuelven a pedir — antes llamaban a `create` y
+   * `changeHp`, que sí la piden, y con eso un clérigo no podía curar a otro jugador (`create`
+   * exige DM y `changeHp` exige dueño-o-DM sobre el objetivo). Las dos puertas nuevas son
+   * privadas por transacción: exigen `tx` y ningún controlador las importa.
    */
   async usar(
     userId: string,
@@ -128,7 +142,6 @@ export class ActivitiesService {
     const ctx = await this.contextoDeDerivacion(userId, campaignId, actor);
     const traza: TraceStep[] = [];
     let cd: number | undefined;
-    let avisoEfecto: string | undefined;
 
     const resultado = await this.prisma.transaction(async (tx) => {
       const consumo = await this.consumir(tx, actor.id, actividad.consumption);
@@ -170,32 +183,41 @@ export class ActivitiesService {
           const resuelto = resolverOrigen(actividad.salvacion.cd, ctx);
           traza.push(resuelto.paso);
           cd = resuelto.valor;
-          if (objetivos.length > 0) {
-            await this.rollRequests.create(
-              userId,
-              campaignId,
-              {
-                characterIds: destinatarios.map((o) => o.id),
-                key: `save.${actividad.salvacion.ability}`,
-                label: `Salvación de ${actividad.salvacion.ability} — ${actividadKey}`,
-                dc: resuelto.valor,
-                mode: "NORMAL",
-                audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
-              },
-              tx,
-            );
-          }
-          // **I5 (vuelta de arreglo 1).** Una salvación con `dados` promete daño o curación —
-          // `siSalva` decide si la mitad o nada— y esta tarea NO lo aplica: hacerlo exige saber
-          // quién salvó y quién no, y eso solo se sabe al RESPONDER la petición
-          // (`RollRequestsService.answer`), que hoy no llama a nada de daño. Callarlo sería peor
-          // que no aplicarlo: la mesa vería un `fireball` que no quema a nadie sin que nadie se
-          // lo dijera. El aviso es la mitad de trabajo que sí le toca a esta tarea.
+          // Puerta de efectos §4.2 (tarea 2) — el I5 de la vuelta de arreglo 1 queda cerrado
+          // aquí: el daño (o curación) de una salvación con `dados` se tira UNA sola vez, ahora,
+          // y no una vez por cada objetivo que responda. SRD 5.1, *Damage Rolls*: «If a spell or
+          // other effect deals damage to more than one target at the same time, roll the damage
+          // once for all of them» — un solo `fireball` no tira 8d6 dos veces
+          // porque haya dos objetivos. El total viaja en `pendingEffect`, guardado en la
+          // `RollRequest`, y `RollRequestsService.answer` decide al responder si se aplica
+          // entero, mitad (`siSalva: "mitad"`) o nada, según si esa tirada concreta superó la CD.
+          let pendingEffect: PendingSaveEffect | undefined;
           if (actividad.dados) {
-            avisoEfecto =
-              "Esta salvación tiene daño o curación asociados que A7 NO aplica solo: repártelos " +
-              "a mano al leer quién salvó (siSalva decide si es la mitad o nada). Aplicarlo solo, " +
-              "al responder la petición, es tarea de quien construya esa pantalla.";
+            const { total, pasos } = this.tirarDados(actividad.dados, ctx);
+            traza.push(...pasos);
+            pendingEffect = {
+              amount: total,
+              signo: actividad.dados.signo,
+              // Solo un daño lleva tipo: una curación por salvación (spec §4.4) no tiene «tipo de
+              // daño» que guardar, y el esquema lo dice — el dato guardado no lo contradice.
+              ...(actividad.dados.signo < 0 && actividad.dados.tipoDeDano
+                ? { tipoDeDano: actividad.dados.tipoDeDano }
+                : {}),
+              siSalva: actividad.salvacion.siSalva,
+              actividadKey,
+              actorCharacterId: actor.id,
+            };
+          }
+          if (objetivos.length > 0) {
+            await this.rollRequests.createFromEffect(tx, userId, campaignId, {
+              characterIds: destinatarios.map((o) => o.id),
+              key: `save.${actividad.salvacion.ability}`,
+              label: `Salvación de ${actividad.salvacion.ability} — ${actividadKey}`,
+              dc: resuelto.valor,
+              mode: "NORMAL",
+              audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+              ...(pendingEffect ? { pendingEffect } : {}),
+            });
           }
           break;
         }
@@ -204,19 +226,13 @@ export class ActivitiesService {
           traza.push(...pasos);
           const delta = actividad.dados.signo * total;
           for (const destino of destinatarios) {
-            await this.characterSheet.changeHp(
-              userId,
-              campaignId,
-              destino.id,
-              {
-                delta,
-                reason: `Actividad: ${actividadKey}`,
-                ...(delta < 0 && actividad.dados.tipoDeDano
-                  ? { damageType: actividad.dados.tipoDeDano }
-                  : {}),
-              },
-              tx,
-            );
+            await this.characterSheet.changeHpFromEffect(tx, userId, campaignId, destino.id, {
+              delta,
+              reason: `Actividad: ${actividadKey}`,
+              ...(delta < 0 && actividad.dados.tipoDeDano
+                ? { damageType: actividad.dados.tipoDeDano }
+                : {}),
+            });
           }
           break;
         }
@@ -282,7 +298,7 @@ export class ActivitiesService {
     // error: se calla.
     await this.gastarActivacion(userId, campaignId, actor, actividad);
 
-    return { aviso: avisoEfecto, cd, traza: traza.length > 0 ? traza : undefined };
+    return { cd, traza: traza.length > 0 ? traza : undefined };
   }
 
   /**

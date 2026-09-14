@@ -1,5 +1,10 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { MembershipService } from "../campaigns/membership.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { EncountersService } from "../encounters/encounters.service";
@@ -22,11 +27,17 @@ describe("RollRequestsService", () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    // Puerta de efectos §4.3 (tarea 2): `answer` lee el total de la salvación del suceso escrito,
+    // no de `resultado` (E-PE-6, `RollResult` puede venir `revealed: false`).
+    gameEvent: { findUnique: jest.fn() },
     transaction: jest.fn(),
   };
+  // El mock de `prisma.transaction` ejecuta su callback pasándole `prisma` — así que `tx` en las
+  // pruebas de abajo ES `prisma`, la misma identidad que ya usaba el resto del fichero.
+  const tx = prisma;
   const membership = { requireDM: jest.fn(), requireMember: jest.fn() };
   const rolls = { roll: jest.fn() };
-  const sheets = { getSheet: jest.fn() };
+  const sheets = { getSheet: jest.fn(), changeHpFromEffect: jest.fn() };
   // Tarea 3: `answer` escribe la iniciativa en el combatiente cuando la petición viene de un
   // encuentro (`peticion.encounterId`). Ninguna de las peticiones de este fichero lleva
   // `encounterId`, así que esta rama no se ejerce aquí — sí en `iniciativa-pedida.e2e-spec.ts`,
@@ -64,7 +75,12 @@ describe("RollRequestsService", () => {
     }));
     rolls.roll.mockResolvedValue({ revealed: true, eventId: "e1", total: 17 });
     sheets.getSheet.mockResolvedValue(
-      hojaCon({ "skill.perception": { key: "skill.perception", total: 5, steps: [] } }),
+      hojaCon({
+        "skill.perception": { key: "skill.perception", total: 5, steps: [] },
+        // Puerta de efectos §4.3: las pruebas de `pendingEffect` piden `save.dex` para tirar la
+        // salvación antes de decidir si el efecto se aplica.
+        "save.dex": { key: "save.dex", total: 2, steps: [] },
+      }),
     );
   });
 
@@ -151,6 +167,75 @@ describe("RollRequestsService", () => {
         }),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.rollRequest.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("createFromEffect (segunda puerta, spec §3.2)", () => {
+    it("sin requireDM: un jugador crea la petición si los personajes están en la campaña y no archivados", async () => {
+      const tx = {
+        character: { findMany: jest.fn().mockResolvedValue([{ id: "b" }]) },
+        campaignMember: { findUnique: jest.fn() },
+        rollRequest: {
+          create: jest.fn().mockResolvedValue({ id: "r1" }),
+        },
+      };
+
+      const r = await service.createFromEffect(tx as never, "jugador-a", "c1", {
+        characterIds: ["b"],
+        key: "save.dex",
+        label: "Salvación",
+        dc: 15,
+        mode: "NORMAL",
+        audience: "PUBLIC",
+      });
+
+      expect(r).toHaveLength(1);
+      expect(tx.campaignMember.findUnique).not.toHaveBeenCalled();
+      expect(tx.rollRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ requestedById: "jugador-a" }) }),
+      );
+    });
+
+    it("404 si algún personaje no está en la campaña o está archivado", async () => {
+      const tx = {
+        character: { findMany: jest.fn().mockResolvedValue([]) },
+        campaignMember: { findUnique: jest.fn() },
+        rollRequest: { create: jest.fn() },
+      };
+
+      await expect(
+        service.createFromEffect(tx as never, "a", "c1", {
+          characterIds: ["zz"],
+          key: "save.dex",
+          label: "S",
+          mode: "NORMAL",
+          audience: "PUBLIC",
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(tx.rollRequest.create).not.toHaveBeenCalled();
+    });
+
+    // Mutación (informe de la tarea 1): `personajes.length === 0` en vez de
+    // `personajes.length !== input.characterIds.length` deja pasar el caso de arriba igual —
+    // `[]` también tiene longitud 0 —, así que hace falta un caso donde SE ENCUENTRE ALGO pero no
+    // TODO, o el mutante sobrevive sin que ninguna prueba lo note.
+    it("404 también si se encuentra ALGUNO pero no TODOS los personajes pedidos", async () => {
+      const tx = {
+        character: { findMany: jest.fn().mockResolvedValue([{ id: "b" }]) },
+        campaignMember: { findUnique: jest.fn() },
+        rollRequest: { create: jest.fn() },
+      };
+
+      await expect(
+        service.createFromEffect(tx as never, "a", "c1", {
+          characterIds: ["b", "zz"],
+          key: "save.dex",
+          label: "S",
+          mode: "NORMAL",
+          audience: "PUBLIC",
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(tx.rollRequest.create).not.toHaveBeenCalled();
     });
   });
 
@@ -382,6 +467,200 @@ describe("RollRequestsService", () => {
           data: expect.objectContaining({ resolvedEventId: "e1" }),
         }),
       );
+    });
+  });
+
+  // Puerta de efectos §4.3 (tarea 2) — el daño de la salvación se tiró UNA vez en `usar` y viaja
+  // en `pendingEffect`; `answer` decide aquí, dentro de la MISMA transacción que cierra la
+  // petición, si se aplica entero, mitad o nada.
+  describe("answer aplica pendingEffect (spec §4.3)", () => {
+    const base = {
+      id: "r1",
+      campaignId: "c1",
+      characterId: "b",
+      requestedById: "a",
+      key: "save.dex",
+      label: "S",
+      dc: 15,
+      mode: "NORMAL",
+      audience: "PUBLIC",
+      resolvedAt: null,
+      cancelledAt: null,
+      encounterId: null,
+      character: { id: "b", ownerId: "u-b" },
+    };
+    const efecto = {
+      amount: 21,
+      signo: -1,
+      tipoDeDano: "FIRE",
+      siSalva: "mitad",
+      actividadKey: "fireball",
+      actorCharacterId: "a",
+    };
+
+    function conTotal(total: number) {
+      prisma.rollRequest.findFirst.mockResolvedValue({ ...base, pendingEffect: efecto });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: true,
+        eventId: "ev1",
+        total,
+        expression: "1d20+2",
+        audience: "PUBLIC",
+        rolls: [],
+        kept: [],
+        dropped: [],
+        modifier: 2,
+      });
+      tx.gameEvent.findUnique.mockResolvedValue({ payload: { type: "ABILITY_ROLL", total } });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+    }
+
+    it("falla (14 < 15): daño entero, firmado por quien lanzó, citando la salvación", async () => {
+      conTotal(14);
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).toHaveBeenCalledWith(tx, "a", "c1", "b", {
+        delta: -21,
+        reason: "Actividad: fireball (falló)",
+        damageType: "FIRE",
+        rollEventId: "ev1",
+      });
+      expect(r.effectApplied).toEqual({ delta: -21, saved: false });
+    });
+
+    it("empata (15 >= 15): salva, mitad redondeada abajo (floor(21/2) = 10)", async () => {
+      conTotal(15);
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).toHaveBeenCalledWith(
+        tx,
+        "a",
+        "c1",
+        "b",
+        expect.objectContaining({ delta: -10, reason: "Actividad: fireball (salvó, mitad)" }),
+      );
+      expect(r.effectApplied).toEqual({ delta: -10, saved: true });
+    });
+
+    it("salva con siSalva ninguno: no toca los PG y effectApplied dice delta 0", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({
+        ...base,
+        pendingEffect: { ...efecto, siSalva: "ninguno" },
+      });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: true,
+        eventId: "ev1",
+        total: 20,
+        expression: "1d20+2",
+        audience: "PUBLIC",
+        rolls: [],
+        kept: [],
+        dropped: [],
+        modifier: 2,
+      });
+      tx.gameEvent.findUnique.mockResolvedValue({ payload: { type: "ABILITY_ROLL", total: 20 } });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(r.effectApplied).toEqual({ delta: 0, saved: true });
+    });
+
+    it("sin pendingEffect no cambia nada: ni changeHp ni effectApplied", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({ ...base, pendingEffect: null });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: true,
+        eventId: "ev1",
+        total: 10,
+        expression: "1d20+2",
+        audience: "PUBLIC",
+        rolls: [],
+        kept: [],
+        dropped: [],
+        modifier: 2,
+      });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(r.effectApplied).toBeUndefined();
+    });
+
+    it("si la petición se cerró en la carrera (count 0) no aplica el efecto", async () => {
+      conTotal(14);
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.answer("u-b", "c1", "r1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+    });
+
+    // Ola de arreglos 1 (Important 3 de la revisión de API). La tirada ya está escrita en su
+    // propia transacción cuando se abre la del cierre; si el efecto falla dentro y con él se
+    // deshace el cierre, la petición queda abierta con un d20 ya gastado y el reintento tira otro.
+    // El modo de fallo menos malo: la petición se cierra igual, los PG no se tocan, y la respuesta
+    // avisa para que nadie vuelva a tirar.
+    it("si falla SOLO el efecto, la petición se cierra igual (segundo updateMany) y la respuesta trae effectWarning en vez de effectApplied", async () => {
+      conTotal(14);
+      sheets.changeHpFromEffect.mockRejectedValue(
+        new BadRequestException("No se pueden gestionar los PG: la plantilla es del DM."),
+      );
+      // La transacción de verdad deshace el primer cierre al lanzar: el doble simula ese rollback
+      // devolviendo el error del callback y dejando el `updateMany` de fuera como el que cuenta.
+      let intentos = 0;
+      prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+        intentos += 1;
+        return fn(prisma);
+      });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(intentos).toBe(1);
+      // Dos cierres: el de dentro de la transacción (deshecho) y el de rescate, con la misma
+      // condición `resolvedAt: null` en el `where` y la misma tirada como `resolvedEventId`.
+      expect(tx.rollRequest.updateMany).toHaveBeenCalledTimes(2);
+      expect(tx.rollRequest.updateMany.mock.calls[1][0]).toEqual({
+        where: { id: "r1", resolvedAt: null },
+        data: expect.objectContaining({ resolvedEventId: "ev1" }),
+      });
+      expect(r.effectApplied).toBeUndefined();
+      expect(r.effectWarning).toEqual({
+        code: "EFECTO_NO_APLICADO",
+        message: expect.stringMatching(/a mano/),
+      });
+      // Y la tirada sigue siendo la respuesta: el jugador ve su d20, no un error.
+      expect(r.eventId).toBe("ev1");
+    });
+
+    it("un pendingEffect que no pasa el esquema es un 409 ANTES de tirar: ni d20 gastado ni petición cerrada", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({
+        ...base,
+        pendingEffect: { amount: "veintiuno", signo: 3 },
+      });
+
+      await expect(
+        service.answer("u-b", "c1", "r1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(rolls.roll).not.toHaveBeenCalled();
+      expect(tx.rollRequest.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("un pendingEffect sin CD en la petición no se traga en silencio: cierra con effectWarning y no toca los PG", async () => {
+      conTotal(14);
+      prisma.rollRequest.findFirst.mockResolvedValue({ ...base, dc: null, pendingEffect: efecto });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(r.effectWarning?.code).toBe("EFECTO_NO_APLICADO");
     });
   });
 });

@@ -12,11 +12,13 @@ import {
   CLAVE_AYUDA,
   CLAVE_ESTABLE,
   CLAVE_MUY_CARGADO,
+  nivelPorXp,
   normalizeOverride,
   ORDEN_DE_CARACTERISTICAS,
   overrideValueSchema,
   RANGO_DE_ANULACION,
   tableRulesSchema,
+  umbralDeNivel,
 } from "@dnd/shared";
 import type {
   AbilityKey,
@@ -24,6 +26,8 @@ import type {
   AttackVerdict,
   ContentRefInput,
   ResolvedItem,
+  DamagePreview,
+  DamageType,
   DerivationWarning,
   ChangeHpInput,
   ResolveAttackInput,
@@ -109,6 +113,7 @@ import {
 import { rollSuggestionsFor } from "../character-state/roll-mode/suggested-roll-mode";
 import { canView, loVeLaMesa, Viewer } from "../common/visibility";
 import {
+  requireOwnerOrDM,
   requireVisibleCharacter,
   viewerFor,
   viewerForCharacterOwner,
@@ -123,6 +128,27 @@ import {
 
 /** El personaje tal y como sale de la base, con las columnas que hacen falta para derivar. */
 type FilaPersonaje = Character;
+
+/**
+ * Tarea 3 de la puerta de efectos (spec §4b.4). La forma que `rolls.service.ts` escribe dentro de
+ * `ABILITY_ROLL.pendingDamage` — no se importa de `@dnd/shared` porque el esquema no exporta un
+ * tipo propio para ese campo anidado, solo el `ABILITY_ROLL` entero.
+ */
+type PendingDamage = {
+  targetCharacterId: string;
+  attackResolvedEventId: string;
+  damageType: DamageType;
+  amount: number;
+  appliedEventId?: string;
+};
+
+/**
+ * Spec §4b.5. **El mismo mensaje para «no existe» y para «existe pero no te toca ver esto».**
+ * Un objetivo que ya se resolvió `NotFoundException` en `damagePreview` (un espectador que no es
+ * dueño ni DM) tiene que sonar exactamente igual que una tirada que nunca tuvo daño pendiente: si
+ * sonaran distinto, la propia forma del error confirmaría que hay algo que ver detrás.
+ */
+const SIN_DANO_PENDIENTE = "Esa tirada no tiene daño pendiente.";
 
 type ResultadoConstruccion = { build: CharacterBuild } | { reason: string };
 
@@ -688,6 +714,28 @@ export class CharacterSheetService {
     }
     const respuesta = await this.buildResponse(userId, character);
     const derivado = await this.loQueDerivanLasCondiciones(character, respuesta.sheet);
+
+    // Puerta de efectos §5 bis (E-PE-10, D-CF-68/D-CF-69). **Solo en modo `XP`**: con `HITO` —el
+    // defecto, para que una campaña que ya existe no cambie (D-CF-53)— la hoja no enseña un
+    // marcador que no significa nada. Mismo helper que `updateSheet` para leer la regla. **Y
+    // nunca para un PNJ de statblock** (D-CF-69): no acumula XP —`XpService.award` lo rechaza—,
+    // así que su hoja no enseña un marcador a cero ni gasta la consulta a la campaña.
+    const campaign = character.statblockRef
+      ? null
+      : await this.prisma.campaign.findUnique({
+          where: { id: campaignId },
+          select: { tableRules: true },
+        });
+    const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
+    const xp =
+      campaign && regla.progresion === "XP"
+        ? {
+            actual: character.xp,
+            siguiente: umbralDeNivel(character.level + 1),
+            nivelPorXp: nivelPorXp(character.xp),
+          }
+        : undefined;
+
     return {
       ...respuesta,
       sheet:
@@ -699,6 +747,7 @@ export class CharacterSheetService {
           : respuesta.sheet,
       effectiveSpeeds: derivado.effectiveSpeeds,
       rollSuggestions: derivado.rollSuggestions,
+      ...(xp ? { xp } : {}),
     };
   }
 
@@ -1451,6 +1500,30 @@ export class CharacterSheetService {
   }
 
   /**
+   * **La hoja sin recortar por visibilidad, para operar con sus números.** Mismo espectador que
+   * `caDelObjetivo` —del servidor, no de nadie con sesión: `{ ownerId, role: "DM" }`—, y la misma
+   * garantía: nunca se devuelve al cliente ni se guarda, solo entra en una cuenta (máximo de PG,
+   * modificadores de daño). Lanza el mismo 400 que `construirODenegar` cuando no hay hoja que
+   * derivar. **Quien llame aquí tiene que haber autorizado ya**: esta función no comprueba
+   * nada, a propósito, y por eso es privada.
+   */
+  private async hojaDelServidor(
+    character: FilaPersonaje,
+    tx?: Prisma.TransactionClient,
+  ): Promise<CharacterSheet> {
+    const { items } = await this.equipoEquipado(character.ownerId, character, tx);
+    const resultado = await this.hojaOMotivo(
+      espectadorDelServidor(character),
+      character,
+      items,
+      tx,
+    );
+    if (!("sheet" in resultado))
+      throw new BadRequestException(`No se pueden gestionar los PG: ${resultado.reason}`);
+    return resultado.sheet;
+  }
+
+  /**
    * La hoja de un PNJ instanciado. Fase 2D.
    *
    * **El agotamiento, las condiciones y las anulaciones del DM le aplican igual**, y eso no es un
@@ -1605,7 +1678,20 @@ export class CharacterSheetService {
     const character = filas[0];
     if (!character) throw new NotFoundException("Character not found");
 
-    const sheet = await this.construirODenegar(userId, character, tx);
+    // **La hoja del OBJETIVO se deriva con un espectador del servidor, no con `userId`.** Ola de
+    // arreglos 1 de la puerta de efectos (Critical 1 de la revisión de API, 2026-09-13). Quien
+    // llega aquí ya está autorizado —`changeHp` por `requireEditable`, la segunda puerta
+    // (`changeHpFromEffect`, spec §3.1) por `canView` + `requireOwnerOrDM` en su llamador— y lo
+    // único que se necesita de la hoja son NÚMEROS: el máximo de PG y los modificadores de daño.
+    // Derivarla con el actor como espectador rompía la segunda puerta en el caso de mesa más
+    // normal: un jugador impacta a un PNJ con statblock de campaña (`DM_ONLY` por defecto,
+    // `statblock.schema.ts`) y el DM pulsa «Aplicar», o responde la salvación por el bicho — el
+    // actor que firma es el jugador, `resolverParaHoja(viewer)` devolvía `{ oculto }` y salía un
+    // 400 «No se pueden gestionar los PG» con la tirada ya escrita. `caDelObjetivo` ya usaba este
+    // mismo espectador para la CA por la misma razón: «da igual quién mira, se usa el estado
+    // real». `userId` sigue siendo quien FIRMA el suceso y quien ve la respuesta
+    // (`buildResponse`, que sí redacta).
+    const sheet = await this.hojaDelServidor(character, tx);
     const maxHp = sheet.derived.maxHp.total;
     const before = character.currentHp ?? maxHp;
 
@@ -1853,7 +1939,12 @@ export class CharacterSheetService {
     });
 
     const sessionIdHp = await this.sesionActiva(campaignId, tx);
-    await this.events.record(
+    // Tarea 3 de la puerta de efectos (spec §4b.6, E-PE-4). **Se guarda el evento entero, no solo
+    // su id**: `applyPendingDamage` necesita el `id` del `HP_CHANGED` que se acaba de escribir
+    // para marcarlo como `appliedEventId` de la tirada de daño — el candado de un solo uso vive
+    // sobre ESE id, y `changeHp`/`changeHpFromEffect` de siempre no lo necesitan ni lo pierden:
+    // `hpEventId` es un campo más en la respuesta, aditivo.
+    const eventoHp = await this.events.record(
       userId,
       campaignId,
       {
@@ -1921,7 +2012,203 @@ export class CharacterSheetService {
       ...respuesta,
       ...(damageTrace ? { damageTrace } : {}),
       ...(concentrationSave ? { concentrationSave } : {}),
+      // Tarea 3 de la puerta de efectos — aditivo, ver el comentario de `eventoHp` arriba.
+      hpEventId: eventoHp.id,
     };
+  }
+
+  /**
+   * **La segunda puerta** (spec puerta de efectos §3.1, D-P2-11): «vengo de un efecto ya
+   * autorizado». Quien llama —hoy solo `ActivitiesService.usar` y `RollRequestsService.answer`—
+   * ya comprobó con `canView` que el actor ve al objetivo y con `requireOwnerOrDM` que puede usar
+   * la actividad; aquí NO se vuelve a autorizar. **Exige `tx`**: sin transacción ajena no hay
+   * forma de llamarla, y eso es lo que impide que un controlador la pulse. Ningún controlador la
+   * importa (`__tests__/puertas-sin-ruta.spec.ts`). El `HP_CHANGED` lo firma `actorUserId`, quien
+   * usó la actividad: la crónica dice quién causó el cambio, no quién pulsó.
+   */
+  async changeHpFromEffect(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    campaignId: string,
+    targetCharacterId: string,
+    input: ChangeHpInput,
+  ) {
+    return this.changeHpEnTransaccion(tx, actorUserId, campaignId, targetCharacterId, input);
+  }
+
+  /**
+   * Tarea 3 de la puerta de efectos (spec §4b.4) — de dónde sale un `pendingDamage`, y con qué se
+   * queda escrito. Sin fila, o sin `pendingDamage` en su `payload`, es exactamente el mismo 404
+   * que un objetivo que no se ve (`SIN_DANO_PENDIENTE`): un daño tirado al aire, o sobre un fallo,
+   * nunca tuvo esta clave (E-PE-5), así que preguntar por su bandeja es indistinguible de
+   * preguntar por una tirada que no existe.
+   */
+  private async pendingDamageDeLaTirada(
+    campaignId: string,
+    rollEventId: string,
+  ): Promise<{ actorUserId: string; pendingDamage: PendingDamage }> {
+    const evento = await this.prisma.gameEvent.findFirst({
+      where: { id: rollEventId, campaignId, type: "ABILITY_ROLL" },
+      select: { actorUserId: true, payload: true },
+    });
+    const pendingDamage = (evento?.payload as { pendingDamage?: PendingDamage } | undefined)
+      ?.pendingDamage;
+    if (!evento || !pendingDamage) {
+      throw new NotFoundException(SIN_DANO_PENDIENTE);
+    }
+    return { actorUserId: evento.actorUserId, pendingDamage };
+  }
+
+  /**
+   * Los modificadores de daño del objetivo, **exactamente igual que la pieza C de
+   * `changeHpEnTransaccion`** (tarea 2.5.1): un PNJ con statblock los saca de su plantilla; un
+   * personaje jugador, de sus rasgos. Dos fuentes, una forma — la misma regla, no una segunda
+   * copia que se desalinee el día que la primera cambie. Sin `userId`: quién pregunta ya se
+   * comprobó antes (`requireOwnerOrDM`) y los modificadores no dependen de quién mira.
+   */
+  private async modificadoresDeDano(campaignId: string, target: FilaPersonaje) {
+    if (target.statblockRef && this.statblocks) {
+      return (
+        (await this.statblocks.resolver(campaignId, target.statblockRef))?.damageModifiers ?? []
+      );
+    }
+    return (await this.hojaDelServidor(target)).damageModifiers;
+  }
+
+  /**
+   * De qué `TraceStep` sale el modificador que se enseña. **Se lee del ÚLTIMO paso**, no del
+   * primero que aparezca: con resistencia y vulnerabilidad a la vez, el SRD las encadena en ese
+   * orden (`apply-damage-modifiers.ts`) y lo que queda vigente es lo último aplicado. Solo el
+   * `base` (sin modificadores) da `null`.
+   */
+  private modificadorDeLaTraza(steps: TraceStep[]): DamagePreview["resulting"]["modifier"] {
+    const CLAVE_A_MODIFICADOR: Record<string, DamagePreview["resulting"]["modifier"]> = {
+      "damage.modifier.immune": "immune",
+      "damage.modifier.resist": "resistant",
+      "damage.modifier.vulnerable": "vulnerable",
+    };
+    const ultimo = steps[steps.length - 1];
+    return CLAVE_A_MODIFICADOR[ultimo.labelKey] ?? null;
+  }
+
+  /**
+   * Tarea 3 de la puerta de efectos (spec §4b.4/§4b.5, E-PE-2) — la bandeja de daño, antes de
+   * pulsar nada.
+   *
+   * **404 y no 403** cuando quien pregunta no es dueño ni DM del objetivo (spec §4b.5): un 403
+   * confirmaría que la tirada SÍ tiene daño pendiente contra un objetivo real, y con él viajaría
+   * si es resistente, vulnerable o inmune — enseñarle eso a quien no puede aplicar el daño es
+   * filtrar la misma información por otra puerta. Quien SÍ puede aplicar (dueño o DM) ve el
+   * desglose completo; nadie más ve ni que exista.
+   */
+  async damagePreview(
+    userId: string,
+    campaignId: string,
+    rollEventId: string,
+  ): Promise<DamagePreview> {
+    await this.membership.requireMember(campaignId, userId);
+    const { pendingDamage } = await this.pendingDamageDeLaTirada(campaignId, rollEventId);
+
+    const target = await this.prisma.character.findFirst({
+      where: { id: pendingDamage.targetCharacterId, campaignId },
+    });
+    if (!target) throw new NotFoundException(SIN_DANO_PENDIENTE);
+    try {
+      await requireOwnerOrDM(this.membership, campaignId, userId, target, SIN_DANO_PENDIENTE);
+    } catch (e) {
+      // **Solo el 403 se convierte en 404.** Un fallo de base o un error de programación no es
+      // «sin daño pendiente»: se propaga, o se escondería detrás de un 404 que parece legítimo.
+      if (e instanceof ForbiddenException) throw new NotFoundException(SIN_DANO_PENDIENTE);
+      throw e;
+    }
+
+    const modificadores = await this.modificadoresDeDano(campaignId, target);
+    const trace = applyDamageModifiers(
+      pendingDamage.amount,
+      pendingDamage.damageType,
+      modificadores,
+    );
+    const absorbedByTemp = Math.min(target.tempHp, trace.total);
+    const taken = trace.total - absorbedByTemp;
+
+    return {
+      target: { id: target.id, name: target.name },
+      amount: pendingDamage.amount,
+      damageType: pendingDamage.damageType,
+      resulting: {
+        taken,
+        absorbedByTemp,
+        modifier: this.modificadorDeLaTraza(trace.steps),
+        reason: trace.notes[0] ?? null,
+      },
+      canApply: !pendingDamage.appliedEventId,
+      appliedEventId: pendingDamage.appliedEventId ?? null,
+    };
+  }
+
+  /**
+   * Tarea 3 de la puerta de efectos (spec §4b.6, E-PE-2/E-PE-4) — el «aplicar» de un solo clic.
+   *
+   * **Aquí el 403 SÍ se ve** (spec §6): a diferencia de `damagePreview`, quien pulsa este botón ya
+   * sabe que la tirada existe y contra quién — es el propio atacante, normalmente—, así que negar
+   * con un 403 no le enseña nada que no supiera. Solo dueño o DM del OBJETIVO puede aplicar: el
+   * atacante no lo es por defecto, y esa es justo la comprobación que hace de esto «uno solo
+   * puede pulsar el botón», no un descuido.
+   *
+   * **Doble candado contra el doble clic.** La comprobación de `appliedEventId` de aquí es barata
+   * y sale antes de abrir la transacción — un rechazo rápido para el caso normal—, pero el que de
+   * verdad protege es el `$executeRaw` de abajo, con su `WHERE … IS NULL` dentro de la MISMA
+   * transacción que el `HP_CHANGED`: dos peticiones a la vez pueden pasar las dos la comprobación
+   * barata, y solo una gana la fila.
+   */
+  async applyPendingDamage(userId: string, campaignId: string, rollEventId: string) {
+    await this.membership.requireMember(campaignId, userId);
+    const { actorUserId, pendingDamage } = await this.pendingDamageDeLaTirada(
+      campaignId,
+      rollEventId,
+    );
+
+    const target = await this.prisma.character.findFirst({
+      where: { id: pendingDamage.targetCharacterId, campaignId },
+    });
+    if (!target) throw new NotFoundException(SIN_DANO_PENDIENTE);
+    await requireOwnerOrDM(this.membership, campaignId, userId, target);
+
+    if (pendingDamage.appliedEventId) {
+      throw new ConflictException("Ese daño ya se aplicó.");
+    }
+
+    const resuelto = await this.prisma.gameEvent.findFirst({
+      where: { id: pendingDamage.attackResolvedEventId, campaignId, type: "ATTACK_RESOLVED" },
+      select: { payload: true },
+    });
+    const attackName = (resuelto?.payload as { attackName?: string } | undefined)?.attackName;
+    // `pendingDamage` garantiza que el `ATTACK_RESOLVED` existe (E-PE-5: sin él no se escribe la
+    // clave). Si no aparece, la tirada está rota y la crónica no escribe un «Ataque: ?» para
+    // disimularlo: es el mismo 404 que una tirada sin daño pendiente.
+    if (!attackName) throw new NotFoundException(SIN_DANO_PENDIENTE);
+
+    return this.prisma.transaction(async (tx) => {
+      const resultado = await this.changeHpFromEffect(tx, actorUserId, campaignId, target.id, {
+        delta: -pendingDamage.amount,
+        damageType: pendingDamage.damageType,
+        rollEventId,
+        reason: `Ataque: ${attackName}`,
+      });
+      const hpEventId = resultado.hpEventId;
+      // **E-PE-4: el candado real.** `jsonb_set` sobre el propio `payload`, con el `WHERE` que
+      // exige que `appliedEventId` siga sin poner — 0 filas afectadas es la otra petición que
+      // ganó la carrera, no un fallo de esta.
+      const marcado = await tx.$executeRaw`
+        UPDATE "GameEvent"
+        SET payload = jsonb_set(payload, '{pendingDamage,appliedEventId}', to_jsonb(${hpEventId}::text))
+        WHERE id = ${rollEventId} AND payload->'pendingDamage'->>'appliedEventId' IS NULL
+      `;
+      if (marcado === 0) {
+        throw new ConflictException("Ese daño ya se aplicó.");
+      }
+      return { ...resultado, appliedEventId: hpEventId };
+    });
   }
 
   async setHp(userId: string, campaignId: string, characterId: string, input: SetHpInput) {
@@ -2397,6 +2684,29 @@ export class CharacterSheetService {
       audience: input.audience ?? audienciaPorDefecto,
     } as const;
 
+    // Spec §4b.4 (E-PE-5): el daño de un ataque RESUELTO contra un objetivo sabe a quién le toca.
+    // Solo si la tirada citada tiene un ATTACK_RESOLVED colgando y el veredicto fue HIT o
+    // CRITICAL; un daño tirado al aire, o sobre un fallo, no lleva `pendingDamage`.
+    const veredicto = input.attackRollEventId
+      ? await this.prisma.gameEvent.findFirst({
+          where: {
+            campaignId,
+            type: "ATTACK_RESOLVED",
+            payload: { path: ["rollEventId"], equals: input.attackRollEventId },
+          },
+          select: { id: true, subjectId: true, payload: true },
+        })
+      : null;
+    const v = (veredicto?.payload as { verdict?: string } | undefined)?.verdict;
+    const pendingDamage =
+      veredicto && (v === "HIT" || v === "CRITICAL")
+        ? {
+            targetCharacterId: veredicto.subjectId,
+            attackResolvedEventId: veredicto.id,
+            damageType: dano.type,
+          }
+        : undefined;
+
     try {
       // **D-OP-15: la tirada que se está cobrando queda escrita, con índice único detrás.** El
       // cuarto argumento **solo se pasa cuando hay algo que decir**: un `undefined` explícito
@@ -2404,6 +2714,7 @@ export class CharacterSheetService {
       const tirada = await (input.attackRollEventId
         ? this.rolls.roll(userId, campaignId, peticion, {
             attackRollEventId: input.attackRollEventId,
+            ...(pendingDamage ? { pendingDamage } : {}),
           })
         : this.rolls.roll(userId, campaignId, peticion));
       // **`trace` solo viaja cuando hay algo que explicar** (mismo criterio que el cuarto
@@ -2743,8 +3054,7 @@ export class CharacterSheetService {
    */
   private async caDelObjetivo(target: FilaPersonaje): Promise<number> {
     const { items } = await this.equipoEquipado(target.ownerId, target);
-    const viewerOmnisciente: Viewer = { userId: target.ownerId, role: "DM", isAdmin: false };
-    const resultado = await this.hojaOMotivo(viewerOmnisciente, target, items);
+    const resultado = await this.hojaOMotivo(espectadorDelServidor(target), target, items);
     if (!("sheet" in resultado)) {
       // **El motivo NO viaja, y esto lo encontró la revisión de cierre como fuga real.** Los
       // `reason` de `hojaOMotivo` están escritos para que los lea el dueño o el DM sobre su
@@ -2773,7 +3083,7 @@ export class CharacterSheetService {
    * `PATCH` → `fetchAc`, y si el segundo `fetchAc` fallaba, la ficha se quedaba enseñando la CA
    * vieja aunque el servidor ya hubiera escrito el cambio.
    *
-   * **Reutiliza `construirODenegar`**, el mismo camino que ya usan `getSheet` y `changeHp`: no
+   * **Reutiliza `construirODenegar`**, el mismo camino que ya usan `getSheet` y `updateSheet`: no
    * hay una segunda fórmula de CA, solo un segundo llamante. `null` cuando no hay hoja que
    * derivar —un PNJ sin plantilla, por ejemplo—, que es un hueco tan legítimo como el que ya deja
    * `equipoEquipado` con un objeto no resoluble: equipar no tiene por qué fallar por eso.
@@ -2796,6 +3106,15 @@ export class CharacterSheetService {
       throw e;
     }
   }
+}
+
+/**
+ * El espectador del servidor: ve la plantilla entera de un personaje **para calcular con ella**,
+ * nunca para enseñarla. Lo usan `caDelObjetivo` y `hojaDelServidor`; un `Viewer` así no sale de
+ * este fichero ni se guarda en ningún sitio.
+ */
+function espectadorDelServidor(character: FilaPersonaje): Viewer {
+  return { userId: character.ownerId, role: "DM", isAdmin: false };
 }
 
 /** `1d8` + 3 → `1d8+3`; + 0 → `1d8`; − 1 → `1d8-1`. El evaluador no entiende un `+0`. */

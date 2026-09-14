@@ -140,6 +140,10 @@ export const GAME_EVENT_TYPES = [
   // responder «¿de qué murió Elara?»: ni la fecha, ni la causa, ni si fue una tirada la que lo
   // decidió.
   "CHARACTER_DIED",
+  // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13). **Dar XP es un hecho propio, no un
+  // eco de HP_CHANGED**: la crónica dice «Elara gana 450 PX», y el motivo (si el DM lo escribió)
+  // viaja con el suceso, no en el margen de otro.
+  "XP_AWARDED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -300,6 +304,22 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     natural: z.enum(["NONE", "ONE", "TWENTY"]).default("NONE"),
     outcome: z.enum(["NO_DC", "SUCCESS", "FAILURE"]).default("NO_DC"),
     reason,
+    /**
+     * Spec §4b.4 (E-PE-3, E-PE-5). **Lo que solo pone el servidor**: el daño de un ataque
+     * RESUELTO —veredicto `HIT` o `CRITICAL`— sabe a quién le toca, sin que el cliente tenga que
+     * declararlo. `amount` lo rellena `RollsService.roll` con el `total` de la propia tirada —el
+     * llamador nunca lo manda—, y `appliedEventId` queda vacío hasta que la bandeja de daño lo
+     * marca al aplicarse (§4b.6): es el candado de un solo uso, sobre el propio `payload`.
+     */
+    pendingDamage: z
+      .object({
+        targetCharacterId: z.string().min(1),
+        attackResolvedEventId: z.string().min(1),
+        damageType: damageTypeSchema,
+        amount: z.number().int().min(0),
+        appliedEventId: z.string().min(1).optional(),
+      })
+      .optional(),
   }),
   // --- Muerte (2A.7) ---
   z.object({
@@ -719,6 +739,21 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     name: z.string().min(1).max(120),
     cause: z.enum(["death_saves", "massive_damage", "exhaustion"]),
     rollEventId: z.string().min(1).optional(),
+  }),
+  /**
+   * Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13). `xpTotal` es el total DESPUÉS del
+   * premio —igual que `HP_CHANGED.to`—, para que la línea de tiempo no tenga que sumar `amount`
+   * sobre lecturas anteriores para saber cuánto XP tiene alguien ahora. `amount` puede ser
+   * negativo (el DM corrige un error), y por eso no basta con "gana": la frase legible
+   * (`lineaDeLog`, `apps/web`) mira el signo. **Es el delta EFECTIVO, no el pedido**: con 20 PX y
+   * un −50 se escribe −20, porque el total no baja de 0 — la misma regla que `HP_CHANGED.delta`.
+   */
+  z.object({
+    type: z.literal("XP_AWARDED"),
+    characterId: z.string().min(1),
+    amount: z.number().int(),
+    xpTotal: z.number().int().min(0),
+    reason,
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

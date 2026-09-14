@@ -54,6 +54,16 @@ export function nombreSello(k: string): string {
   return NOMBRE_SELLO[k as SessionNoteKind] ?? `Sin traducir: ${k}`;
 }
 
+/**
+ * Tarea 7 de la puerta de efectos (spec §4 bis §4b.5). El modificador de daño que enseña la
+ * bandeja, **escrito una sola vez**: `resistant`/`vulnerable`/`immune` no llegan a la pantalla.
+ */
+export const NOMBRE_MODIFICADOR_DE_DANO: Record<"resistant" | "vulnerable" | "immune", string> = {
+  resistant: "resistencia",
+  vulnerable: "vulnerabilidad",
+  immune: "inmunidad",
+};
+
 /** «1h 47m». Sin segundos: en la mesa nadie los mira, y parpadeando molestan. */
 export function duracionDesde(inicio: string | null, ahora: number): string {
   if (!inicio) return "";

@@ -65,6 +65,17 @@ uno a uno en [06-pendientes.md](./06-pendientes.md). **Sin desplegar**: producci
 y el despliegue lo lanza el autor a mano, como siempre. **Fusionada a `main` el 2026-09-13
 (`d7ec2b3`); producción sigue en `6d2b2ca`.**
 
+**La tanda «puerta de efectos» quedó cerrada el 2026-09-14 en la rama
+`puerta-de-efectos/antes-del-paso-3`** (14 commits sobre `0ca530c`; [plan](./superpowers/plans/2026-09-13-puerta-de-efectos.md);
+[07-historial.md](./07-historial.md), «La puerta de efectos»; D-CF-68/69 y E-PE-1..14 en
+[decisiones.md](./decisiones.md)): la segunda puerta (P2-4), el daño de la salvación (P2-5), la
+bandeja de daño, «hasta el próximo descanso» y la experiencia con «Dar XP». La revisión de la rama
+entera cazó cuatro críticos que ninguna tarea vio (el visor del actor en la puerta, el `DICE_ROLLER`
+sin proveedor, la propuesta de XP que se desmontaba, y un e2e que pasaba por suerte); dos olas los
+cerraron. **Sin fusionar ni desplegar: la fusión la decide el autor.** Lo abierto en
+[06-pendientes.md](./06-pendientes.md), «Dejado por puerta de efectos». **Lo siguiente es el paso 3**,
+con sus propias reglas de proceso (D-CF-65 no las anticipa).
+
 **La tanda «reglas de la mesa» quedó cerrada el 2026-09-13 en la rama
 `reglas-de-la-mesa/antes-del-paso-3`** (15 commits sobre `27304e1`; [plan](./superpowers/plans/2026-09-13-reglas-de-la-mesa.md);
 [07-historial.md](./07-historial.md), «Reglas de la mesa»; E-RM-1..16 en [decisiones.md](./decisiones.md)):

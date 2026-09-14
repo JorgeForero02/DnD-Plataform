@@ -393,3 +393,130 @@ describe("Condiciones — la concentración (ficha M17)", () => {
     expect(screen.queryByText("Envenenado")).toBeNull();
   });
 });
+
+// --- Tarea 6 (puerta de efectos, E-PE-7) — «hasta el próximo descanso corto/largo» ---
+//
+// El servidor ya acepta `expiresOnRest` en vez de `durationSeconds` (commits 64a51c2, fc8b369).
+// Lo que se prueba aquí es el lado de pantalla: tres radios con su frase en vez de un
+// desplegable, que solo uno de los dos campos viaje al aplicar, y que la clave cruda `SHORT`/
+// `LONG` no se pinte nunca — ni en la línea de la condición.
+describe("Condiciones — hasta el próximo descanso (E-PE-7)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("el formulario ofrece tres radios, y con «Por reloj» está el selector de tiempos", async () => {
+    pintar([]);
+
+    expect(await screen.findByRole("radio", { name: /Por reloj/ })).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: /Hasta el próximo descanso corto/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: /Hasta el próximo descanso largo/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Duración")).toBeInTheDocument();
+  });
+
+  it("al marcar «Hasta el próximo descanso largo» el selector de tiempos desaparece", async () => {
+    pintar([]);
+
+    fireEvent.click(await screen.findByRole("radio", { name: /Hasta el próximo descanso largo/ }));
+
+    expect(screen.queryByLabelText("Duración")).not.toBeInTheDocument();
+  });
+
+  it("aplicar con el radio largo manda expiresOnRest: LONG y ningún durationSeconds", async () => {
+    pintar([]);
+    const aplicar = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("blinded"));
+
+    fireEvent.click(await screen.findByRole("radio", { name: /Hasta el próximo descanso largo/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar condición" }));
+
+    await waitFor(() => expect(aplicar).toHaveBeenCalled());
+    // (campaignId, characterId, key, level, note, durationSeconds, expiresOnRest)
+    expect(aplicar.mock.calls[0][5]).toBeUndefined();
+    expect(aplicar.mock.calls[0][6]).toBe("LONG");
+  });
+
+  it("aplicar con el radio corto manda expiresOnRest: SHORT", async () => {
+    pintar([]);
+    const aplicar = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("blinded"));
+
+    fireEvent.click(await screen.findByRole("radio", { name: /Hasta el próximo descanso corto/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar condición" }));
+
+    await waitFor(() => expect(aplicar).toHaveBeenCalled());
+    expect(aplicar.mock.calls[0][5]).toBeUndefined();
+    expect(aplicar.mock.calls[0][6]).toBe("SHORT");
+  });
+
+  it("por reloj sigue sin mandar expiresOnRest", async () => {
+    pintar([]);
+    const aplicar = vi
+      .spyOn(characterSheetApi, "applyCondition")
+      .mockResolvedValue(fila("blinded"));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Aplicar condición" }));
+
+    await waitFor(() => expect(aplicar).toHaveBeenCalled());
+    expect(aplicar.mock.calls[0][6]).toBeUndefined();
+  });
+
+  it("una condición con expiresOnRest: LONG pinta «hasta descanso largo» y nunca la clave cruda", async () => {
+    pintar([{ ...fila("poisoned"), expiresOnRest: "LONG" }]);
+
+    const entrada = await screen.findByRole("listitem");
+    expect(entrada).toHaveTextContent("hasta descanso largo");
+    expect(screen.queryByText(/\bLONG\b/)).toBeNull();
+  });
+
+  it("una condición con expiresOnRest: SHORT pinta «hasta descanso corto» y nunca la clave cruda", async () => {
+    pintar([{ ...fila("poisoned"), expiresOnRest: "SHORT" }]);
+
+    const entrada = await screen.findByRole("listitem");
+    expect(entrada).toHaveTextContent("hasta descanso corto");
+    expect(screen.queryByText(/\bSHORT\b/)).toBeNull();
+  });
+
+  // Ola de arreglos 1 (I5) — spec §5.4: «y el chip de la cabecera de la hoja también». El sufijo
+  // estaba en la tarjeta y en el chip del elenco, pero no en la variante `chips` que monta
+  // `Cabecera.tsx`, que es justo la que la spec nombra.
+  it("variante chips: el chip de la cabecera también dice «hasta descanso largo»", async () => {
+    mockConditions([{ ...fila("frightened"), expiresOnRest: "LONG" }]);
+    renderCondiciones({ variante: "chips" });
+
+    const lista = await screen.findByRole("list", { name: "condiciones activas" });
+    expect(within(lista).getByRole("listitem")).toHaveTextContent(
+      "Asustado · hasta descanso largo",
+    );
+    expect(screen.queryByText(/\bLONG\b/)).toBeNull();
+  });
+
+  // Ola de arreglos 1 (I3) — la frase de «Por reloj» prometía que la condición «se retira sola»,
+  // y el servidor no la retira: la marca vencida y la deja en la lista (D-2C-2). Si el texto
+  // explica una regla del servidor y discrepan, miente el texto.
+  it("la frase de «Por reloj» dice que queda marcada en la lista sin quitarse, no que se retira sola", async () => {
+    pintar([]);
+
+    const radio = await screen.findByRole("radio", { name: /Por reloj/ });
+    expect(radio).toHaveAccessibleName(/queda marcada en la lista/);
+    expect(radio).toHaveAccessibleName(/sin quitarse/);
+    expect(screen.queryByText(/se retira sola cuando el reloj/)).toBeNull();
+  });
+
+  // Ola de arreglos 1 (I4, a11y) — el grupo de radios se había colocado DEBAJO de «Aplicar»: en
+  // el orden de tabulación se llegaba al botón sin saber que existía la elección de duración.
+  it("los radios de duración van antes de «Aplicar condición» en el DOM", async () => {
+    pintar([]);
+
+    const radio = await screen.findByRole("radio", { name: /Por reloj/ });
+    const boton = screen.getByRole("button", { name: "Aplicar condición" });
+    // `DOCUMENT_POSITION_FOLLOWING` (4): el botón viene después del radio.
+    expect(radio.compareDocumentPosition(boton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

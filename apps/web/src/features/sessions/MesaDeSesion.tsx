@@ -13,9 +13,7 @@ import { HerramientasDeNarracion } from "./dm/HerramientasDeNarracion";
 import { ConsultaDelMundo } from "./dm/ConsultaDelMundo";
 import { TallerDelDM } from "./taller/TallerDelDM";
 import { PanelDeDadosDeLaMesa } from "../rolls/panel/PanelDeDadosDeLaMesa";
-import { TiraDeIniciativa } from "../encounters/TiraDeIniciativa";
-import { EmpezarCombate } from "../encounters/EmpezarCombate";
-import { useCurrentEncounter } from "../encounters/hooks";
+import { CapaDeCombate } from "../encounters/CapaDeCombate";
 import { HojaCalculada } from "../character-sheet/HojaCalculada";
 import { PaginaDeInventario } from "../inventory/PaginaDeInventario";
 import { Dialog } from "../../ui/Dialog";
@@ -23,7 +21,6 @@ import { useMyRole } from "../campaigns/members";
 import { useCampaign } from "../campaigns/hooks";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
-import type { NpcEnLaMesa } from "../bestiario/api";
 import type { Character } from "../characters/api";
 import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { useAuthStore } from "../../store/auth.store";
@@ -343,57 +340,6 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
           onCerrar={() => setDadosPuestos(false)}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * **El combate, como capa sobre la mesa.**
- *
- * Tres estados, y los tres se ven sin salir de aquí: sin encuentro el DM ve «Entrar en combate» y
- * el jugador no ve nada —no hay combate que anunciar—; con encuentro activo, la tira de
- * iniciativa; y cuando termina, la tira desaparece sola en el siguiente sondeo.
- *
- * **El jugador no ve el botón, y no es esconder un botón:** `EncountersService.start` exige DM.
- * Lo que decide es el servidor; esto solo evita prometer lo que va a rechazar.
- */
-function CapaDeCombate({
-  campaignId,
-  sessionId,
-  personajes,
-  pnjs,
-  esDm,
-}: {
-  campaignId: string;
-  sessionId: string;
-  personajes: Character[];
-  pnjs: NpcEnLaMesa[];
-  esDm: boolean;
-}) {
-  const { data: encuentro } = useCurrentEncounter(campaignId, sessionId);
-
-  if (encuentro) {
-    return (
-      <TiraDeIniciativa
-        campaignId={campaignId}
-        sessionId={sessionId}
-        encuentro={encuentro}
-        personajes={personajes}
-        pnjs={pnjs}
-        esDm={esDm}
-      />
-    );
-  }
-  if (!esDm) return null;
-  return (
-    <div className="flex items-center gap-s3 rounded-radius-sm border border-muted bg-surface px-s3 py-s2">
-      <span className="font-chrome text-chrome-xs text-muted">La mesa no está en combate.</span>
-      <EmpezarCombate
-        campaignId={campaignId}
-        sessionId={sessionId}
-        personajes={personajes}
-        pnjs={pnjs}
-      />
     </div>
   );
 }

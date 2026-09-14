@@ -4,6 +4,8 @@ import {
   SEGUNDOS_POR_DIA,
   SEGUNDOS_POR_HORA,
   type DeclareRestInput,
+  type RestKind,
+  type Visibility,
 } from "@dnd/shared";
 import { condicionVencida } from "../conditions/vencimiento";
 import type { Character, CharacterResource, Prisma } from "@prisma/client";
@@ -101,6 +103,7 @@ export class RestService {
         if (input.spendHitDice) {
           await this.gastarDadosDeGolpe(tx, character, recursos, input.spendHitDice);
         }
+        await this.retirarCondicionesPorDescanso(tx, userId, campaignId, character, "SHORT");
       } else if (input.interrupted) {
         // **Interrumpido: no repone nada.** «The characters must begin the rest again to gain any
         // benefit from it» — no hay medio descanso largo. Queda escrito en la línea de tiempo para
@@ -130,6 +133,7 @@ export class RestService {
         });
         await this.recuperarMitadDadosDeGolpe(tx, recursos);
         await this.bajarAgotamiento(tx, characterId, campaignId);
+        await this.retirarCondicionesPorDescanso(tx, userId, campaignId, character, "LONG");
         // **La marca del descanso largo va con el reloj de la campaña**, no con la hora del
         // servidor: lo que la regla cuenta son 24 horas *de juego*. Con `Date.now()`, una sesión
         // de cuatro horas reales que cubre tres días de viaje habría bloqueado dos descansos que
@@ -356,6 +360,44 @@ export class RestService {
         where: { id: condicion.id },
         data: { level: condicion.level - 1 },
       });
+    }
+  }
+
+  /**
+   * Spec puerta de efectos §5.3. SRD 5.1 usa «until you finish a short or long rest» y «until you
+   * finish a long rest» como duración literal de decenas de efectos. Un descanso largo incluye lo
+   * que un corto repone (misma lógica que `reponerPorTipo`), así que retira SHORT y LONG.
+   * **Retirar = borrar la fila y escribir CONDITION_REMOVED**, una por condición: el descanso lo
+   * declara alguien a propósito y lo que retira lo dice la crónica — no queda «vencida».
+   */
+  private async retirarCondicionesPorDescanso(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    campaignId: string,
+    character: { id: string; visibility: Visibility },
+    kind: RestKind,
+  ): Promise<void> {
+    const tipos: RestKind[] = kind === "LONG" ? ["SHORT", "LONG"] : ["SHORT"];
+    const filas = await tx.characterCondition.findMany({
+      where: { characterId: character.id, expiresOnRest: { in: tipos } },
+    });
+    for (const fila of filas) {
+      await tx.characterCondition.delete({ where: { id: fila.id } });
+      await this.events.record(
+        userId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: character.id,
+          visibility: character.visibility,
+          payload: {
+            type: "CONDITION_REMOVED",
+            key: fila.key,
+            reason: kind === "LONG" ? "Descanso largo" : "Descanso corto",
+          },
+        },
+        tx,
+      );
     }
   }
 }

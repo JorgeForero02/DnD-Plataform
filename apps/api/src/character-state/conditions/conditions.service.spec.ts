@@ -684,3 +684,82 @@ describe("condiciones con duración (2C.4)", () => {
     expect(lista[1]).toMatchObject({ key: "prone", expired: false });
   });
 });
+
+describe("condiciones hasta el próximo descanso (puerta de efectos §5, tarea 4)", () => {
+  // SRD 5.1, "Resting": "until you finish a short or long rest" / "until you finish a long
+  // rest" son una duración literal, y una duración que resuelve el propio descanso, no el
+  // reloj. `expiresOnRest` es lo que la modela; `expiresAtClock` sigue siendo `null` porque no
+  // hay ningún instante que calcular.
+
+  let service: ConditionsService;
+  const character = {
+    id: "ch1",
+    ownerId: "owner1",
+    campaignId: "cmp1",
+    visibility: "PLAYERS",
+  };
+  const prisma = {
+    character: { findFirst: jest.fn() },
+    characterCondition: {
+      findMany: jest.fn(),
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
+    },
+    campaign: { findUniqueOrThrow: jest.fn() },
+    user: { findUnique: jest.fn() },
+    transaction: jest.fn(),
+  };
+  const membership = { requireMember: jest.fn(), getMembership: jest.fn() };
+  const events = { record: jest.fn() };
+
+  beforeEach(async () => {
+    const ref = await Test.createTestingModule({
+      providers: [
+        ConditionsService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: MembershipService, useValue: membership },
+        { provide: GameEventsService, useValue: events },
+        { provide: StatblocksService, useValue: { resolver: jest.fn().mockResolvedValue(null) } },
+      ],
+    }).compile();
+    service = ref.get(ConditionsService);
+    jest.resetAllMocks();
+    membership.requireMember.mockResolvedValue({ role: "DM" });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    prisma.character.findFirst.mockResolvedValue(character);
+    prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    prisma.campaign.findUniqueOrThrow.mockResolvedValue({ id: "cmp1", clockSeconds: 1000 });
+    prisma.characterCondition.upsert.mockResolvedValue({ id: "cc1" });
+    prisma.characterCondition.findMany.mockResolvedValue([]);
+    prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
+  });
+
+  it("apply con expiresOnRest: LONG escribe expiresOnRest: LONG y expiresAtClock: null, en create y en update", async () => {
+    await service.apply("dm", "cmp1", "ch1", { key: "poisoned", expiresOnRest: "LONG" });
+    expect(prisma.characterCondition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ expiresOnRest: "LONG", expiresAtClock: null }),
+        update: expect.objectContaining({ expiresOnRest: "LONG", expiresAtClock: null }),
+      }),
+    );
+  });
+
+  it("apply sin expiresOnRest escribe expiresOnRest: null — igual que expiresAtClock, siempre se escribe", async () => {
+    await service.apply("dm", "cmp1", "ch1", { key: "poisoned" });
+    expect(prisma.characterCondition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ expiresOnRest: null }),
+        update: expect.objectContaining({ expiresOnRest: null }),
+      }),
+    );
+  });
+
+  it("list devuelve expiresOnRest", async () => {
+    prisma.characterCondition.findMany.mockResolvedValue([
+      { id: "a", key: "frightened", expiresAtClock: null, expiresOnRest: "LONG" },
+    ]);
+    const lista = await service.list("dm", "cmp1", "ch1");
+    expect(lista[0]).toMatchObject({ key: "frightened", expiresOnRest: "LONG" });
+  });
+});

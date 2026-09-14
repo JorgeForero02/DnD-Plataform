@@ -9,7 +9,7 @@ import {
   useConditions,
   useGameClock,
 } from "../../character-sheet/hooks";
-import { nombreCondicion } from "../../character-sheet/vocabulario";
+import { HASTA_EL_DESCANSO, nombreCondicion } from "../../character-sheet/vocabulario";
 import { describirRestante } from "../../character-sheet/duraciones";
 import { IconoEscudo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
@@ -300,6 +300,8 @@ export function Condiciones({
     level: number | null;
     expiresAtClock?: number | null;
     expired?: boolean;
+    /** La puerta de efectos (§5.4): «hasta descanso corto/largo» en vez de una cuenta atrás. */
+    expiresOnRest?: "SHORT" | "LONG" | null;
   }[];
 }) {
   // El reloj solo se pide si hay algo que contar: una condición viva con caducidad.
@@ -330,9 +332,18 @@ export function Condiciones({
               {vencida ? (
                 <span className="ml-1">· vencida</span>
               ) : (
-                restante != null && (
-                  <span className="ml-1 text-muted">· {describirRestante(restante)}</span>
-                )
+                <>
+                  {restante != null && (
+                    <span className="ml-1 text-muted">· {describirRestante(restante)}</span>
+                  )}
+                  {/* La puerta de efectos: «hasta descanso corto/largo», nunca `SHORT`/`LONG`
+                      crudo — la misma tabla que usa la línea de la condición en la hoja. */}
+                  {c.expiresOnRest && (
+                    <span className="ml-1 text-muted">
+                      · {HASTA_EL_DESCANSO[c.expiresOnRest].corto}
+                    </span>
+                  )}
+                </>
               )}
             </li>
           );

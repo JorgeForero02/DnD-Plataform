@@ -7,6 +7,7 @@ import { fetchSessions, createSession, updateSession, deleteSession } from "./ap
 import * as sessionsApi from "./api";
 import * as logApi from "./log-api";
 import { SONDEO_DE_RED_DE_SEGURIDAD_MS } from "../../lib/sondeo";
+import { sheetKey } from "../character-sheet/hooks";
 
 export const sessionsKey = (campaignId: string) => ["campaigns", campaignId, "sessions"] as const;
 
@@ -146,4 +147,49 @@ export function useMinutoActual(activo: boolean): number {
     return () => clearInterval(t);
   }, [activo]);
   return ahora;
+}
+
+// --- La bandeja de daño (tarea 7 de la puerta de efectos, spec §4 bis §4b.5) ---
+
+export const damagePreviewKey = (campaignId: string, rollEventId: string) =>
+  ["campaigns", campaignId, "rolls", rollEventId, "damage-preview"] as const;
+
+/**
+ * El preview de la bandeja. **`retry: false`, explícito**: un 404 es la respuesta esperada para
+ * quien no puede aplicar (§4b.5), no un fallo de red que merezca reintentarse. El `queryClient`
+ * de la aplicación ya trae `retry: false` por defecto, así que aquí no cambia nada — se deja
+ * escrito porque esta consulta lo NECESITA, y si algún día el defecto global cambia, esta no.
+ *
+ * `error` viaja tal cual en el resultado de la consulta: es `BandejaDeDano` quien decide que un
+ * 404 se lee como «no hay preview que enseñar» y cualquier otro código como fallo de verdad —
+ * aquí no se filtra nada, porque distinguir eso es su trabajo, no el de este hook.
+ */
+export function useDamagePreview(campaignId: string, rollEventId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: damagePreviewKey(campaignId, rollEventId),
+    queryFn: () => sessionsApi.fetchDamagePreview(campaignId, rollEventId),
+    enabled,
+    retry: false,
+  });
+}
+
+/**
+ * El clic de «Aplicar». Al conseguirlo invalida el log —el `HP_CHANGED` nuevo tiene que verse— y
+ * la hoja del objetivo —sus PG cambiaron—, exactamente el mismo par que ya invalida
+ * `character-sheet/hooks.ts` para cualquier otra mutación que toque PG. **Y el propio preview**
+ * (ola de arreglos 1): sin esto, con `staleTime` de 30 s y la `<li>` sin remontar, `canApply`
+ * seguía en `true`, el botón se quedaba y un segundo clic devolvía el 409 «ya se aplicó» como si
+ * fuera un error.
+ */
+export function useApplyDamage(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { rollEventId: string; targetCharacterId: string }) =>
+      sessionsApi.applyDamage(campaignId, v.rollEventId),
+    onSuccess: (_data, v) => {
+      void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
+      void qc.invalidateQueries({ queryKey: sheetKey(campaignId, v.targetCharacterId) });
+      void qc.invalidateQueries({ queryKey: damagePreviewKey(campaignId, v.rollEventId) });
+    },
+  });
 }

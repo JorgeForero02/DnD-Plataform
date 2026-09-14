@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { Encounter } from "@dnd/shared";
+import type { Encounter, XpPropuesto } from "@dnd/shared";
 import {
   useAdvanceTurn,
   useCancelEncounter,
@@ -44,6 +44,7 @@ export function TiraDeIniciativa({
   personajes,
   pnjs = [],
   esDm,
+  onXpPropuesto,
 }: {
   campaignId: string;
   sessionId: string;
@@ -61,6 +62,14 @@ export function TiraDeIniciativa({
    */
   pnjs?: NpcEnLaMesa[];
   esDm: boolean;
+  /**
+   * Puerta de efectos §5 bis (E-PE-9) — lo que `EncountersService.end()` propone en modo XP al
+   * terminar el combate. **La tira no se lo queda**: en cuanto el encuentro termina, el servidor
+   * devuelve `null` en `current` y `CapaDeCombate` desmonta esta tira con todo su estado, así
+   * que guardarlo aquí era pintarlo un instante y perderlo (ola de arreglos 1). Se entrega al
+   * padre, que sigue montado cuando el combate ya no existe.
+   */
+  onXpPropuesto?: (propuesta: XpPropuesto) => void;
 }) {
   const pasarTurno = useAdvanceTurn(campaignId, sessionId);
   const terminar = useEndEncounter(campaignId, sessionId);
@@ -263,7 +272,12 @@ export function TiraDeIniciativa({
               variant="primary"
               disabled={terminar.isPending}
               onClick={() =>
-                terminar.mutate(encuentro.id, { onSuccess: () => setTerminando(false) })
+                terminar.mutate(encuentro.id, {
+                  onSuccess: (res) => {
+                    setTerminando(false);
+                    if (res.xpPropuesto) onXpPropuesto?.(res.xpPropuesto);
+                  },
+                })
               }
             >
               Terminar el combate

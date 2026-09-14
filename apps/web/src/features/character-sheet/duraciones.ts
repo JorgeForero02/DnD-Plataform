@@ -16,6 +16,17 @@
 // esquema compartido las declara pendientes por el mismo motivo. Quien las necesite hoy aplica
 // la condición como indefinida y la quita cuando el suceso ocurre, que es lo honesto.
 
+/**
+ * Cómo se cuenta cuánto dura una condición, al aplicarla (E-PE-7).
+ *
+ * `"RELOJ"` es el selector de siempre, de segundos de juego. `"SHORT"`/`"LONG"` son el suceso
+ * —«hasta el próximo descanso corto/largo»— que la puerta de efectos añadió al esquema
+ * compartido (`applyConditionSchema.expiresOnRest`): no es un número de segundos, así que no vive
+ * en `DURACIONES_DE_CONDICION`, la tabla de arriba lo dice desde 2C.4. Su vocabulario legible
+ * está en `vocabulario.ts` (`HASTA_EL_DESCANSO`).
+ */
+export type ModoDeDuracion = "RELOJ" | "SHORT" | "LONG";
+
 /** Una opción del selector de duración. `segundos: null` es «indefinida». */
 export interface DuracionDeCondicion {
   /** Clave estable del selector; nunca se pinta. */

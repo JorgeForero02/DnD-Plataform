@@ -5,6 +5,7 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { UserOrIpThrottlerGuard } from "./common/user-or-ip-throttler.guard";
 import { PrismaModule } from "./prisma/prisma.module";
+import { DiceModule } from "./dice/dice.module";
 import { HealthModule } from "./health/health.module";
 import { AuthModule } from "./auth/auth.module";
 import { CampaignsModule } from "./campaigns/campaigns.module";
@@ -46,6 +47,8 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
       { name: "default", ttl: RATE_LIMIT_WINDOW_MS, limit: DEFAULT_RATE_LIMIT },
     ]),
     PrismaModule,
+    // El tirador de producción, global y sustituible en un e2e (ver `dice.module.ts`).
+    DiceModule,
     HealthModule,
     UsersModule,
     AuthModule,

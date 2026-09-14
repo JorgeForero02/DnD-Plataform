@@ -113,6 +113,9 @@ enum GameEventType {
   ITEM_QUANTITY_CHANGED
   // D-CF-14, commit 5 (J5, 2026-09-11): la muerte se derivaba al leer y nunca se registraba.
   CHARACTER_DIED
+  // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13): dar XP es un hecho propio de la
+  // crónica, no un eco de HP_CHANGED.
+  XP_AWARDED
 }
 
 enum ResourceReset {
@@ -672,6 +675,13 @@ model Character {
   /// del SRD vive en codigo y no tiene fila a la que apuntar.
   statblockRef String?
 
+  /// Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13). SRD 5.1, *Beyond 1st Level*: «A
+  /// character who reaches a specified experience point total advances in capability.» **El
+  /// nivel NO sube solo** (D-CF-66): esta columna cuenta, y subirlo lo pulsa el DM. Existe en
+  /// las dos modalidades de la regla de la mesa (`progresion: HITO | XP`) — cambiar la regla no
+  /// pierde ni borra XP, solo decide si la mesa lo ve.
+  xp Int @default(0)
+
   // Cuando termino el ultimo descanso largo, **en segundos del reloj de la campana** (2C.3).
   // El SRD: «a character can't benefit from more than one long rest in a 24-hour period», y sin
   // este dato esa regla no se puede comprobar — hoy se puede descansar largo tres veces seguidas
@@ -794,6 +804,16 @@ model CharacterCondition {
   expiryEdge     String?
   // El combatiente cuyo turno corta la condicion. Solo tiene sentido con `expiryEdge`.
   sourceCharacterId String?
+  // **Hasta el proximo descanso corto o largo** (puerta de efectos §5, 2026-09-13). SRD 5.1,
+  // "Resting": docenas de condiciones usan literalmente "until you finish a short or long rest"
+  // o "until you finish a long rest" como su duracion, y eso no es un numero de segundos, es un
+  // suceso. "SHORT" | "LONG", texto y no un enum de Postgres por el mismo motivo que
+  // `expiryEdge`: lo valida Zod y el servicio.
+  //
+  // **Excluyente con `expiresAtClock`**: una condicion dura por reloj o hasta un descanso, nunca
+  // las dos. Eso lo garantiza el esquema Zod (`applyConditionSchema`, `.refine`), NO esta
+  // columna -- una `TEXT?` no impide que ambas lleguen puestas a la vez.
+  expiresOnRest  String?
   note           String?
   appliedById    String
   createdAt      DateTime  @default(now())
@@ -873,6 +893,12 @@ model RollRequest {
   /// `resolvedAt` puesto y `resolvedEventId` nulo, esto es lo que separa «lo anularon» de
   /// «lo respondí yo»: sin ella la pantalla del jugador le diría que tiró él.
   cancelledAt     DateTime?
+  /// Puerta de efectos §4.2 (2026-09-13): el daño (o curación) de una actividad de salvación,
+  /// tirado UNA vez en `ActivitiesService.usar` y aplicado por `RollRequestsService.answer` al
+  /// cerrar esta petición. Forma de `PendingSaveEffect` (`packages/shared/src/roll-request.schema.ts`,
+  /// `pendingSaveEffectSchema`). `null` en cualquier petición que no venga de una salvación con
+  /// dados — la inmensa mayoría, que solo pide un valor de la hoja.
+  pendingEffect   Json?
   campaign        Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   character       Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
 

@@ -253,15 +253,19 @@ export const helpSchema = z.object({
 });
 export type HelpInput = z.infer<typeof helpSchema>;
 
-export const applyConditionSchema = z.object({
+/** El vocabulario de `DeclareRestInput.kind`, exportado para que quien module «hasta el próximo
+ * descanso» (esta condición, y quien la lea) no repita el literal `"SHORT" | "LONG"` a mano. */
+export type RestKind = "SHORT" | "LONG";
+
+export const applyConditionObjectSchema = z.object({
   key: z.string().min(1).max(60),
   /** Solo el agotamiento tiene nivel, de 1 a 6. */
   level: z.number().int().min(1).max(6).optional(),
   note: z.string().max(280).optional(),
   /**
-   * **Cuánto dura, en segundos de juego** (2C.4). Sin esto la condición es indefinida y la quita
-   * el DM a mano, que es como funcionaba hasta 2C y sigue siendo lo correcto para «envenenado
-   * hasta que alguien te cure».
+   * **Cuánto dura, en segundos de juego** (2C.4). Sin esto ni sin `expiresOnRest` la condición es
+   * indefinida y la quita el DM a mano, que es como funcionaba hasta 2C y sigue siendo lo correcto
+   * para «envenenado hasta que alguien te cure».
    *
    * **Segundos y no un vocabulario cerrado de duraciones**, y eso se decidió mirando la fuente:
    * las duraciones del SRD son 1 asalto, 1 minuto, 10 minutos, 1 hora, 8 horas, 24 horas, 7 días,
@@ -269,14 +273,43 @@ export const applyConditionSchema = z.object({
    * enum con esos nueve obligaría a migrarlo el día que un objeto dure 3 días, y la pantalla
    * puede ofrecer los nueve botones igual.
    *
-   * Lo que **no** entra aquí es «hasta el próximo descanso largo» ni «mientras te concentres»:
-   * esas no son duraciones, son sucesos, y modelarlas como un número sería mentir. Están
-   * declaradas como pendientes.
+   * Lo que no entra aquí es «hasta el próximo descanso» —eso es `expiresOnRest`, un suceso y no
+   * un número— ni «mientras te concentres», que sigue declarada como pendiente.
    *
    * El tope es un año, el mismo del reloj: más que eso no es una condición, es un cambio de
    * personaje.
    */
   durationSeconds: z.number().int().positive().max(31_536_000).optional(),
+  /**
+   * **Hasta el próximo descanso corto o largo** (puerta de efectos, §5, 2026-09-13). SRD 5.1,
+   * *Resting*: docenas de condiciones y efectos usan literalmente «until you finish a short or
+   * long rest» o «until you finish a long rest» como su duración — no es un número de segundos,
+   * es un suceso de la mesa, y modelarlo como `durationSeconds` habría sido mentir sobre cuándo
+   * se va a caducar solo.
+   *
+   * **Excluyente con `durationSeconds`** (ver el `.refine` de abajo): una condición dura por
+   * reloj o hasta un descanso, nunca las dos cosas a la vez. La base de datos no lo garantiza —la
+   * columna es una simple `TEXT?`—, así que esta es la única cerradura real.
+   */
+  expiresOnRest: z.enum(["SHORT", "LONG"]).optional(),
+});
+
+/**
+ * Una condición dura por reloj (`durationSeconds`) o hasta un descanso (`expiresOnRest`), nunca
+ * las dos a la vez — declarar ambas sería decir dos cosas distintas sobre cuándo se apaga.
+ * Exportada para que quien recorte el esquema (`applyConditionSchema.omit(...)` en el
+ * controlador) pueda volver a aplicar la misma regla sobre el recorte.
+ */
+export function unaSolaDuracion(v: {
+  durationSeconds?: number;
+  expiresOnRest?: RestKind;
+}): boolean {
+  return !(v.durationSeconds !== undefined && v.expiresOnRest !== undefined);
+}
+
+export const applyConditionSchema = applyConditionObjectSchema.refine(unaSolaDuracion, {
+  message: "Una condición dura por reloj o hasta un descanso, no las dos.",
+  path: ["expiresOnRest"],
 });
 export type ApplyConditionInput = z.infer<typeof applyConditionSchema>;
 

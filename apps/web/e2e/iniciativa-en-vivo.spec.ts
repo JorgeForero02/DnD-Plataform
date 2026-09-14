@@ -59,7 +59,9 @@ async function crearPersonajeConHoja(
         abilities: { str: 12, dex: 14, con: 14, int: 15, wis: 10, cha: 8 },
         race: { source: "SRD", key: "human" },
         class: { source: "SRD", key: "fighter" },
-        level: 8,
+        // Sin `level`: desde D-CF-66 (`4ea688c`, reglas de la mesa) el nivel lo fija solo el DM y el
+        // `PATCH` del dueño con `level` responde 403 — este helper lo llama la jugadora. El nivel no
+        // pinta nada en lo que la prueba mide (la petición de iniciativa y su panel a 390 px).
         choices: { "fighter-skills": ["athletics", "perception"] },
       },
     },

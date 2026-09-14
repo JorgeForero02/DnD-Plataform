@@ -130,18 +130,39 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 
 ## Encontrado por el autor en producción y decidido con el controlador (2026-09-13, tarde)
 
-## XP: no existe; se sube por hito (2026-09-13)
+## Dejado por «puerta de efectos» (2026-09-14) — cerrada en rama, sin fusionar ni desplegar
 
-**Abierta, decidida para la tanda «puerta de efectos».** No hay columna de experiencia, tabla de
-umbrales (*Character Advancement*: 300, 900, 2 700 … 355 000) ni XP por VD (*Experience Points by
-Challenge Rating*; el VD ya está en cada statblock). Hoy subir de nivel es por hito: lo pulsa el DM
-(D-CF-66). Alcance: `Character.xp`, «dar XP» a uno o varios desde la mesa, la hoja enseña
-«1 250 / 2 700» y **avisa** que toca subir sin subir sola (avisar y dejar), y una regla de la mesa
-`HITO` / `XP`. Dos preguntas para los cuatro pasos antes de planificar: (1) ¿reparto automático de la
-suma de VD al terminar un combate, o siempre a mano? (2) ¿XP también para PNJ jugables? Cabe en
-puerta de efectos porque comparte `character-sheet.service`, la mesa, el hilo y el fin de combate
-(`encounters.service`), y no toca el catálogo del paso 3. Se añade a la spec de puerta de efectos
-antes de escribir su plan.
+Rama `puerta-de-efectos/antes-del-paso-3`; revisión Opus de la rama entera en dos mitades
+(`.superpowers/sdd/2026-09-13-puerta-de-efectos/review-api-final.md`: 3 críticos, 3 importantes,
+14 menores; `review-web-final.md`: 1 crítico, 10 importantes, 15 menores) — **los 17 críticos e
+importantes cerrados en la ola 1** (`5b71c07`, `54379a0`; re-revisión `re-review-wave-1.md`: 17/17,
+0 nuevos) y tres fallos de Playwright en la ola 2 (`49d6e46`). P2-4, P2-5 y «XP: no existe» están
+archivadas en [`_archivo/pendientes-cerrados-2026-09-14-puerta-de-efectos.md`](./_archivo/pendientes-cerrados-2026-09-14-puerta-de-efectos.md).
+Lo que queda:
+
+### PE-1 · Menores aplazados de las dos revisiones y de la re-revisión (con su línea en los informes)
+
+| | Qué | Coste |
+|---|---|---|
+| API | `rollAttack` (DAMAGE) acepta un `attackRollEventId` de **otro** ataque del mismo personaje para colgar `pendingDamage`; casar también por `attackRef` — toca el camino M6/R3, muy probado | 30 min |
+| API | `pendingDamage.targetCharacterId` viaja en el `ABILITY_ROLL` del daño con la visibilidad del **atacante** (spec §4b.4, a propósito: es un id, no un nombre; la web con 404 no lo resuelve) — declarar en `decisiones.md` si se acepta | 10 min |
+| API | Con el visor del servidor en `changeHpEnTransaccion`, **el dueño de un PNJ jugable con plantilla `DM_ONLY` ya puede cambiarle los PG** (antes 400); la respuesta sigue redactada; solo los PG máximos son inferibles curando de más, igual que ya lo eran por `HP_CHANGED.from/to`. Declararlo como decisión | 10 min |
+| API | `answer()` convierte un fallo transitorio de la base al aplicar el efecto en «aplica el DM a mano» (`effectWarning`) sin reintentar | — |
+| API | `XpService.award` bloquea las filas en el orden de entrada (interbloqueo teórico si dos DM premian a la vez en orden cruzado); ordenar por `id` como `destinatariosOrdenados` | 10 min |
+| Web | El espacio fino de miles (U+202F) en `frasesDeXp` rompería los `getByText` de e2e/RTL si se cambiara; queda el espacio normal | — |
+| Web | Con la tirada a ciegas, «salvó/falló» de `effectApplied` revela el resultado al que responde — decisión de producto | — |
+| Web | La bandeja pide el preview también en tarjetas ya aplicadas (quitarlo perdería la línea del daño reducido para el DM) | — |
+| Web | `GrupoDeRadios` existe tres veces (`ReglasDeLaMesa`, `Condiciones`, `DarXp`): subir a `ui/` | 30 min |
+| Web | `DarXp` dentro de `CapaDeCombate` no va con `key` por propuesta: dos combates seguidos reutilizan el estado del formulario | 5 min |
+| e2e | El bucle «hasta impactar» de `puerta-de-efectos.spec.ts` es probabilístico (CA 1, tope 10); un `data-*` en `TirarAtaqueBoton` lo haría determinista | 20 min |
+| e2e | `iniciativa-en-vivo.spec.ts` estaba **rojo en `main` desde D-CF-66** (`4ea688c`): la jugadora fijaba `level: 8` por el `PATCH` y ahora es 403; se quitó el `level` del helper en esta rama (`8b6…`, ver historial) | hecho |
+
+### PE-2 · Un e2e de concurrencia real para `apply-damage` y `POST /xp`
+
+Las unitarias prueban el orden de las sentencias (`jsonb_set … WHERE appliedEventId IS NULL`,
+`FOR UPDATE`), no el bloqueo de Postgres. Un e2e con dos `POST …/apply-damage` en paralelo (uno
+201, uno 409) y dos `POST /xp` cruzados cerraría la duda. 40 min. Misma deuda que la de
+`ability-rolls` en RM-2.
 
 ## Desplegar `main` (`84ed965`): reglas de la mesa + desbordes — lo hace el autor, a mano
 
@@ -949,45 +970,6 @@ LANZADAS**, porque esa función no distingue «empuñar» de «lanzar»: solo mi
 furia se lleva el +2 sin merecerlo. No es arreglable dentro de `character-sheet.service.ts`:
 `rollAttack` no tiene un modo «arrojado» del que depender — hace falta que `rules/attacks.ts`
 distinga las dos formas del mismo arma, que es un cambio de forma, no de un `if`.
-
-### P2-4 · La autorización de `changeHp` y el `requireDM` de `RollRequestsService.create` dejan inusables media docena de conjuros de clérigo (2026-09-07)
-
-**DECIDIDO por el autor el 2026-09-07: se construye la segunda puerta** (opción A de las tres que
-se le plantearon; ver `D-P2-11` en [decisiones.md](./decisiones.md)). Sigue **abierto** porque falta
-implementarlo: es su propia tarea, no entra en la tanda corta de arreglos. Las otras dos opciones
-quedaron descartadas y no se re-litigan — «solo el DM, y el clérigo le pide la curación» esquiva hoy
-una puerta que el paso 3 necesita igualmente para el daño con salvación, las condiciones sobre un
-enemigo y los PG temporales sobre un compañero; y aflojar `requireEditable` a secas abriría el
-`PATCH` de cualquier personaje ajeno.
-
-**Medido el 2026-09-07 al decidirlo, y la ficha original se quedaba corta: la puerta está cerrada
-por los dos lados.** En `roll-requests.service.ts:114` —remedido el 2026-09-08; la cita anterior
-decía `:104`—, incluso la ruta interna que recibe un `tx`
-—la que usa el motor— vuelve a comprobar `miembro.role !== "DM"`. No hay rendija por la que entre
-una actividad de jugador hoy.
-
-**El estado original de la ficha, que sigue siendo la descripción del problema.** `changeHp` exige dueño-o-DM
-(`character-sheet.service.ts`, `autorizarEdicionConCliente` / `requireEditable`): un clérigo no
-puede curar al personaje de otro jugador con una actividad, porque el objetivo de la curación no es
-quien la usa. Y `RollRequestsService.create` empieza por `requireDM`
-(`roll-requests.service.ts:78`): toda actividad de salvación —`salvacion`— es hoy exclusiva del DM,
-así que un jugador no puede lanzar un conjuro que pida tirada de salvación a otro personaje.
-
-Sin arreglarlo, media docena de conjuros de clérigo nacen inusables el día que el paso 3 los
-importe. **El arreglo propuesto es una segunda entrada** en los dos servicios, cuyo permiso no sea
-«puedes editar esta ficha» sino «vienes de un efecto ya autorizado sobre un objetivo que `canView`
-te deja ver» — el mismo desdoblamiento que ya existe entre `record` y `recordFromEngine`
-(`docs/01-arquitectura.md`). Aflojar `requireEditable` a secas abriría el `PATCH` de cualquier
-personaje ajeno; llamar con el id del DM sería un diputado confundido de manual.
-
-### P2-5 · El daño de una actividad de salvación no se aplica al responderla (2026-09-07)
-
-**Abierto, decisión de una funcionalidad y no de pegamento.** `ActivitiesService.usar` crea la
-petición de tirada de una `salvacion` con su `dc` y sus `dados`, pero `RollRequestsService.answer`
-no aplica el daño ni la mitad al recibir la respuesta: hoy `usar` devuelve un aviso de que el daño
-no se aplica solo, y la mesa lo arbitra a mano leyendo el resultado de la tirada. Cablear
-`salvacion.siSalva` (`z.enum(["ninguno", "mitad"])`, `packages/shared/src/activity.schema.ts`)
-dentro de `answer()` es la tarea que falta, no un arreglo de esta tanda.
 
 ### P2-9 · No hay ninguna puerta para ceder un PNJ a un jugador (2026-09-07)
 

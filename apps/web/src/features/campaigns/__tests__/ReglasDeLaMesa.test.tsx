@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReglasDeLaMesa } from "../ReglasDeLaMesa";
-import { reglasCompletas, AVISO_NO_RETROACTIVO } from "../reglas";
+import { reglasCompletas, AVISO_NO_RETROACTIVO, AVISO_PROGRESION_INMEDIATA } from "../reglas";
 import * as hooks from "../hooks";
 import * as characterSheetHooks from "../../character-sheet/hooks";
 
@@ -78,6 +78,17 @@ describe("ReglasDeLaMesa", () => {
     expect(screen.getByText(AVISO_NO_RETROACTIVO)).toBeVisible();
   });
 
+  // Ola de arreglos 1 (I7) — el aviso general del bloque era falso para «Progresión», que cambia
+  // la mesa entera al guardar. Se acota el general a las reglas de creación y la progresión lleva
+  // el suyo, debajo de su grupo.
+  it("el aviso «a partir de ahora» se acota a la creación, y «Progresión» dice que vale para toda la mesa ya", () => {
+    montar({ campaignId: "c1", reglas: reglasCompletas({}), disabled: false });
+    expect(AVISO_NO_RETROACTIVO).toMatch(/reglas de creación/);
+    const grupo = screen.getByRole("group", { name: "Progresión" });
+    expect(grupo).toHaveTextContent(AVISO_PROGRESION_INMEDIATA);
+    expect(grupo).not.toHaveTextContent(AVISO_NO_RETROACTIVO);
+  });
+
   it("con dados enseña expresión, intentos y la casilla de asignación; con oro fijo, la cantidad", () => {
     montar({ campaignId: "c1", reglas: reglasCompletas({}), disabled: false });
     expect(screen.queryByLabelText("Expresión de dados")).toBeNull();
@@ -110,6 +121,23 @@ describe("ReglasDeLaMesa", () => {
       expect.anything(),
     );
     expect(await screen.findByRole("alert")).toHaveTextContent("4d");
+  });
+
+  // Puerta de efectos §5 bis (D-CF-53/D-CF-68) — la regla de progresión.
+  it("hay dos radios «Por hito» / «Por experiencia», y guardar manda «progresion»", () => {
+    mutate.mockReset();
+    montar({ campaignId: "c1", reglas: reglasCompletas({ progresion: "XP" }), disabled: false });
+
+    expect(screen.getByRole("radio", { name: /Por experiencia/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Por hito/ })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Por hito/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar las reglas" }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      { tableRules: expect.objectContaining({ progresion: "HITO" }) },
+      expect.anything(),
+    );
   });
 
   it("el botón de guardar no se deshabilita para un jugador: los controles sí, con el motivo a la vista", () => {

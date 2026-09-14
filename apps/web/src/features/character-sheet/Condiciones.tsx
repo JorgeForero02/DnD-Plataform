@@ -5,6 +5,7 @@ import { useApplyCondition, useConditions, useGameClock, useRemoveCondition } fr
 import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import {
+  HASTA_EL_DESCANSO,
   NOMBRE_CONDICION,
   PREFIJO_CONCENTRACION,
   claveDeConcentracion,
@@ -16,6 +17,7 @@ import {
   DURACION_INDEFINIDA,
   describirRestante,
   segundosDeDuracion,
+  type ModoDeDuracion,
 } from "./duraciones";
 import type { ConditionRow } from "./api";
 
@@ -157,6 +159,98 @@ function SelectorDeDuracion({
   );
 }
 
+/**
+ * Qué dice cada modo del grupo de radios de abajo (E-PE-7). «Por reloj» es el de siempre —un
+ * número de segundos de juego, con el `<select>` de `SelectorDeDuracion` debajo—; los otros dos
+ * son el suceso que la puerta de efectos añadió al servidor, y su etiqueta y frase **son las
+ * mismas de `HASTA_EL_DESCANSO`**: no se escribe una segunda versión aquí.
+ */
+const OPCIONES_MODO_DE_DURACION: Record<ModoDeDuracion, { etiqueta: string; frase: string }> = {
+  RELOJ: {
+    etiqueta: "Por reloj",
+    // **Lo que hace el servidor, no lo que suena bien**: al cumplirse el tiempo la condición se
+    // marca vencida y deja de calcularse, pero NO se retira — sigue en la lista hasta que el DM la
+    // quite o la renueve (D-2C-2, y la frase de la fila vencida más abajo dice lo mismo). Y con
+    // el desplegable en «Indefinida», que es el valor por defecto, no hay tiempo que cumplir.
+    frase:
+      "Un tiempo de juego, o indefinida. Al cumplirse la hora queda marcada en la lista, sin quitarse, hasta que la quites o la renueves.",
+  },
+  SHORT: HASTA_EL_DESCANSO.SHORT,
+  LONG: HASTA_EL_DESCANSO.LONG,
+};
+
+/**
+ * Cuánto dura una condición al aplicarla: tres radios con su frase, no un desplegable
+ * (`docs/04-convenciones.md`, «opciones con significado»). Markup copiado de `GrupoDeRadios`
+ * (`features/campaigns/ReglasDeLaMesa.tsx:271`) — no se importa, es de otra feature. El
+ * `<select>` de tiempos solo se pinta bajo «Por reloj», y es el mismo `SelectorDeDuracion` de
+ * siempre, con el mismo `aria-label="Duración"` que ya usaba el spec de e2e.
+ */
+function SelectorDeModoDeDuracion({
+  modo,
+  onCambiarModo,
+  duracion,
+  onCambiarDuracion,
+}: {
+  modo: ModoDeDuracion;
+  onCambiarModo: (m: ModoDeDuracion) => void;
+  duracion: string;
+  onCambiarDuracion: (key: string) => void;
+}) {
+  return (
+    <fieldset className="rounded-radius-sm border border-muted bg-surface p-s2">
+      <legend className="px-1 font-chrome text-chrome-sm text-text">Cuánto dura</legend>
+      <div className="space-y-1">
+        {(
+          Object.entries(OPCIONES_MODO_DE_DURACION) as [
+            ModoDeDuracion,
+            { etiqueta: string; frase: string },
+          ][]
+        ).map(([clave, opcion]) => {
+          const elegida = modo === clave;
+          return (
+            <label
+              key={clave}
+              className={[
+                "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
+                elegida
+                  ? "border-accent bg-[color:var(--accent-tint)]"
+                  : "border-transparent hover:bg-bg",
+              ].join(" ")}
+            >
+              <input
+                type="radio"
+                name="modo-de-duracion"
+                checked={elegida}
+                onChange={() => onCambiarModo(clave)}
+                className="mt-1 accent-[var(--accent)]"
+              />
+              <span className="min-w-0">
+                <span className="block font-chrome text-chrome-sm text-text">
+                  {opcion.etiqueta}
+                </span>
+                <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
+                  {opcion.frase}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {modo === "RELOJ" && (
+        <div className="mt-1">
+          <SelectorDeDuracion
+            id="duracion-condicion"
+            etiqueta="Duración"
+            valor={duracion}
+            onChange={onCambiarDuracion}
+          />
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 export function Condiciones({
   campaignId,
   characterId,
@@ -177,6 +271,9 @@ export function Condiciones({
   // texto de una condición; la clave se queda con el identificador normalizado.
   const [conjuro, setConjuro] = useState("");
   const [duracion, setDuracion] = useState(DURACION_INDEFINIDA.key);
+  // Cómo se cuenta la duración de la que se va a aplicar (E-PE-7). Por defecto «por reloj», que
+  // es lo que esta pantalla hacía antes de la puerta de efectos.
+  const [modo, setModo] = useState<ModoDeDuracion>("RELOJ");
   // La duración con la que se renovará cada condición vencida, por clave. Se lleva aparte de la
   // del formulario de arriba porque son dos decisiones distintas: renovar «envenenado» una hora
   // no tiene por qué cambiar lo que el DM iba a aplicar después.
@@ -212,6 +309,10 @@ export function Condiciones({
             className="rounded-radius-sm border border-warning-text px-s2 py-0.5 font-chrome text-chrome-xs text-warning-text"
           >
             {tituloDe(c)}
+            {/* Spec §5.4: «hasta descanso corto/largo» también en el chip de la cabecera de la
+                hoja, no solo en la línea de la tarjeta y en el chip del elenco. Misma tabla
+                (`HASTA_EL_DESCANSO`), nunca la clave cruda. */}
+            {c.expiresOnRest && ` · ${HASTA_EL_DESCANSO[c.expiresOnRest].corto}`}
           </li>
         ))}
       </ul>
@@ -254,6 +355,10 @@ export function Condiciones({
                     }`}
                   >
                     {tituloDe(c)}
+                    {/* La puerta de efectos (§5.4): «hasta descanso corto/largo», nunca la clave
+                        cruda `SHORT`/`LONG` — se lee de `HASTA_EL_DESCANSO`, la misma tabla que
+                        pinta el radio de aplicarla y el chip del elenco. */}
+                    {c.expiresOnRest && ` · ${HASTA_EL_DESCANSO[c.expiresOnRest].corto}`}
                   </span>
                   {vencida ? (
                     // **El texto dice la verdad**: no se quita sola. El servidor deja de
@@ -362,14 +467,25 @@ export function Condiciones({
                 placeholder="Bendición"
               />
             )}
-            {/* **Cuánto dura, al aplicarla.** Por defecto indefinida, que es lo que esta
-                pantalla hacía antes de 2C: se pone y la quita el DM. */}
-            <SelectorDeDuracion
-              id="duracion-condicion"
-              etiqueta="Duración"
-              valor={duracion}
-              onChange={setDuracion}
-            />
+          </div>
+          {/* El mismo efecto, antes de aplicarla: la pregunta de la mesa es «¿qué hace
+              envenenado?», y se hace mirando el selector. */}
+          {efectoDeLaNueva && (
+            <p className="font-chrome text-chrome-xs text-muted">{efectoDeLaNueva}</p>
+          )}
+          {/* **Cuánto dura, al aplicarla.** Por defecto por reloj — indefinida, que es lo que
+              esta pantalla hacía antes de 2C — y desde la puerta de efectos (E-PE-7), también
+              «hasta el próximo descanso corto/largo», el suceso en vez del número.
+              **Va ANTES del botón, también en el DOM** (ola de arreglos 1): un usuario de teclado
+              o de lector de pantalla tiene que encontrarse la elección de duración antes de
+              llegar a «Aplicar», no después de haberlo pulsado. */}
+          <SelectorDeModoDeDuracion
+            modo={modo}
+            onCambiarModo={setModo}
+            duracion={duracion}
+            onCambiarDuracion={setDuracion}
+          />
+          <div className="flex items-center gap-s2">
             <Button
               type="button"
               variant="secondary"
@@ -381,8 +497,12 @@ export function Condiciones({
                   note: nueva === OPCION_CONCENTRACION ? conjuro : undefined,
                   level: nueva === "exhaustion" ? Number(nivel) : undefined,
                   // `undefined` y no `null`: una condición indefinida **no manda el campo**, que
-                  // es lo que el esquema del servidor espera para dejar la caducidad vacía.
-                  durationSeconds: segundosDeDuracion(duracion) ?? undefined,
+                  // es lo que el esquema del servidor espera para dejar la caducidad vacía. Y
+                  // `durationSeconds`/`expiresOnRest` son exclusivos (E-PE-7): solo viaja el que
+                  // corresponda al modo elegido en el grupo de radios.
+                  durationSeconds:
+                    modo === "RELOJ" ? (segundosDeDuracion(duracion) ?? undefined) : undefined,
+                  expiresOnRest: modo === "RELOJ" ? undefined : modo,
                 })
               }
               // **Sin conjuro no se aplica**, y el botón lo dice en vez de dejar aplicar una
@@ -404,11 +524,6 @@ export function Condiciones({
               Aplicar
             </Button>
           </div>
-          {/* El mismo efecto, antes de aplicarla: la pregunta de la mesa es «¿qué hace
-              envenenado?», y se hace mirando el selector. */}
-          {efectoDeLaNueva && (
-            <p className="font-chrome text-chrome-xs text-muted">{efectoDeLaNueva}</p>
-          )}
         </div>
       )}
     </div>

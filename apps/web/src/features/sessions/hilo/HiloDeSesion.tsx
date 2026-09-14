@@ -374,6 +374,7 @@ export function HiloDeSesion({
               <Fragment key={e.id}>
                 {franja}
                 <MensajeDelHilo
+                  campaignId={campaignId}
                   evento={e}
                   autor={nombreDe.get(e.actorUserId) ?? "Alguien"}
                   personaje={vozDe(e)}

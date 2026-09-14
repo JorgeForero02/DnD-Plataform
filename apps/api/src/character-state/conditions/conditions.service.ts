@@ -282,6 +282,11 @@ export class ConditionsService {
       }
     }
 
+    // **Hasta el próximo descanso** (puerta de efectos §5, 2026-09-13). `applyConditionSchema`
+    // ya garantiza que no llega junto a `durationSeconds`, así que aquí no hay nada que decidir
+    // entre los dos: se escribe lo que venga, o `null`.
+    const expiresOnRest = input.expiresOnRest ?? null;
+
     const condition = await tx.characterCondition.upsert({
       where: { characterId_key: { characterId, key: input.key } },
       create: {
@@ -291,6 +296,7 @@ export class ConditionsService {
         note: input.note ?? null,
         appliedById: userId,
         expiresAtClock,
+        expiresOnRest,
       },
       update: {
         level: input.level ?? null,
@@ -299,7 +305,10 @@ export class ConditionsService {
         // **Se escribe siempre, también cuando es `null`.** Volver a aplicar una condición sin
         // duración tiene que dejarla indefinida: si el `null` no se escribiera, heredaría en
         // silencio la caducidad de la vez anterior y se apagaría sola sin que nadie lo pidiera.
+        // Lo mismo aplica a `expiresOnRest`: renovar `poisoned` sin volver a pedir «hasta el
+        // próximo descanso» tiene que dejarla indefinida, no arrastrar el descanso anterior.
         expiresAtClock,
+        expiresOnRest,
       },
     });
     await this.events.record(

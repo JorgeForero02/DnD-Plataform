@@ -53,6 +53,9 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   TEMP_MODIFIER_GRANTED: "personaje",
   TEMP_MODIFIER_EXPIRED: "personaje",
   LEVEL_CHANGED: "personaje",
+  // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13): dar XP le pasa a alguien de la mesa,
+  // igual que subir de nivel.
+  XP_AWARDED: "personaje",
   CONDITION_APPLIED: "personaje",
   CONDITION_REMOVED: "personaje",
   CONDITION_EXPIRED: "personaje",
@@ -106,9 +109,10 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
     // alguien añade un tipo y no lo clasifica, esta cuenta lo dice antes que el `switch`.
     // **47 con `ACTION_SPENT`** (paso 2, tarea A2): gastar la economía del turno, **48 con
     // `ITEM_QUANTITY_CHANGED`** (D-CF-14, commit 4, M2B-8): el `PATCH` de cantidad de una pila
-    // ya puesta, y **49 con `CHARACTER_DIED`** (D-CF-14, commit 5, J5): la muerte deja de
-    // derivarse en silencio.
-    expect(GAME_EVENT_TYPES).toHaveLength(49);
+    // ya puesta, **49 con `CHARACTER_DIED`** (D-CF-14, commit 5, J5): la muerte deja de
+    // derivarse en silencio, y **50 con `XP_AWARDED`** (puerta de efectos §5 bis, D-CF-68/69,
+    // 2026-09-13): dar XP es un hecho propio de la crónica.
+    expect(GAME_EVENT_TYPES).toHaveLength(50);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

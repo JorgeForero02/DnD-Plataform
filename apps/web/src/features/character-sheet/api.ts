@@ -238,6 +238,15 @@ export interface SheetResponse {
    * aparecer en su bandeja y el DM no sabía por qué. Es la ficha del §8 de la auditoría.
    */
   concentrationSave?: { requestId: string; dc: number };
+
+  /**
+   * Puerta de efectos §5 bis (E-PE-10, D-CF-68) — **solo llega con la mesa en modo `XP`**
+   * (`tableRules.progresion`, D-CF-53): en `HITO`, que es el defecto, el servidor no la manda y
+   * la hoja no pinta un marcador que no significaría nada. `nivelPorXp` es el nivel que el XP
+   * acumulado ya alcanza según la tabla del SRD; puede ser mayor que `character.level` — eso es
+   * justo el aviso de «puedes subir», no un error.
+   */
+  xp?: { actual: number; siguiente: number | null; nivelPorXp: number };
 }
 
 // --- Anulaciones manuales (solo DM; el servidor lo impone) ---
@@ -543,6 +552,13 @@ export interface ConditionRow {
    */
   expiresAtClock?: number | null;
   /**
+   * **La puerta de efectos** (§5.4): el suceso que la retira sola, en vez de un número de
+   * segundos — exclusivo con `expiresAtClock` en el servidor (`applyConditionSchema`). `null` o
+   * ausente si la condición es indefinida o cuenta por reloj. La forma legible vive en
+   * `vocabulario.ts` (`HASTA_EL_DESCANSO`); esta clave **nunca** se pinta cruda.
+   */
+  expiresOnRest?: "SHORT" | "LONG" | null;
+  /**
    * **Derivado en el servidor**, nunca aquí: `expired` es una resta contra el reloj de la
    * campaña que `ConditionsService.list` hace al leer. La pantalla no vuelve a calcularlo —si
    * lo hiciera habría dos verdades y una acabaría discrepando—; solo lo pinta.
@@ -570,6 +586,11 @@ export function fetchConditions(campaignId: string, characterId: string): Promis
  * `durationSeconds` son **segundos de juego** y solo viaja si la condición tiene duración: una
  * condición indefinida **no manda el campo**, que es lo que el esquema compartido espera
  * (`applyConditionSchema`, opcional) y lo que deja la caducidad en `null` en la base.
+ *
+ * `expiresOnRest` es la puerta de efectos (§5.4): «hasta el próximo descanso corto/largo», y es
+ * **exclusivo** con `durationSeconds` — el esquema compartido rechaza mandar los dos. Quien llama
+ * decide cuál de los dos manda según el modo elegido en pantalla; aquí no se arbitra nada, solo
+ * se manda lo que llega, y `JSON.stringify` se come el que quede `undefined`.
  */
 export function applyCondition(
   campaignId: string,
@@ -578,10 +599,11 @@ export function applyCondition(
   level?: number,
   note?: string,
   durationSeconds?: number,
+  expiresOnRest?: "SHORT" | "LONG",
 ): Promise<ConditionRow> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/conditions/${key}`, {
     method: "PUT",
-    body: JSON.stringify({ level, note, durationSeconds }),
+    body: JSON.stringify({ level, note, durationSeconds, expiresOnRest }),
   });
 }
 

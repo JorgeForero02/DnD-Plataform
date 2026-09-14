@@ -15,6 +15,14 @@ import { randomInt } from "node:crypto";
 export type Roller = (sides: number) => number;
 
 /**
+ * Token del tirador. `Roller` es un alias de tipo y Nest solo vería `Function`, así que se
+ * inyecta por token. **Lo provee `DiceModule` (global) con `defaultRoller`**; hasta la ola de
+ * arreglos 1 de la puerta de efectos no lo proveía nadie, y un `overrideProvider` en un e2e era
+ * un no-op silencioso (ver `dice.module.ts`).
+ */
+export const DICE_ROLLER = "DICE_ROLLER";
+
+/**
  * El tirador por defecto usa `crypto.randomInt`, que es uniforme por construcción.
  * `Math.random()` habría bastado estadísticamente, pero el sesgo de módulo que aparece al
  * escalarlo a mano es justo el tipo de detalle que nadie revisa y que hace que un d20 saque

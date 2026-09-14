@@ -10,6 +10,7 @@ import {
 import {
   VISIBILIDAD_POR_AUDIENCIA,
   type CreateRollInput,
+  type DamageType,
   type GameEventType,
   type ListRollsInput,
   type Role,
@@ -23,6 +24,7 @@ import {
   dadosTirados,
   type DiceRollResult,
   type Roller,
+  DICE_ROLLER,
 } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
 import { DmTablesService } from "../dm-tables/dm-tables.service";
@@ -31,8 +33,13 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CLAVE_INSPIRACION } from "../character-state/resources/resources.service";
 
-/** Token del tirador. Solo lo rellena una prueba; en producción no hay proveedor. */
-export const DICE_ROLLER = "DICE_ROLLER";
+/**
+ * Token del tirador. Vive en `dice/dice.ts` y lo provee `DiceModule` (global) con el tirador de
+ * producción; se re-exporta desde aquí porque es donde todos lo importaban. Una prueba lo
+ * sustituye con `overrideProvider(DICE_ROLLER)`, que desde la ola de arreglos 1 de la puerta de
+ * efectos SÍ tiene algo que sustituir.
+ */
+export { DICE_ROLLER } from "../dice/dice";
 
 // Tarea 2A.13 — el servidor tira, y la tirada queda escrita.
 //
@@ -75,9 +82,9 @@ export class RollsService {
      * Inyectable para que las pruebas puedan fijar los dados sin tocar el azar real.
      *
      * Va por **token y opcional** a propósito: `Roller` es un alias de tipo, así que Nest solo
-     * ve `Function` y trataría de resolverlo como una dependencia que no existe. Sin proveedor,
-     * queda `undefined` y el evaluador usa su tirador por defecto —`crypto.randomInt`—, que es
-     * lo que corre en producción.
+     * ve `Function` y trataría de resolverlo como una dependencia que no existe. `DiceModule`
+     * (global) lo provee con `defaultRoller` —`crypto.randomInt`, lo que corre en producción—;
+     * sigue `@Optional()` para que un servicio construido a mano en una unitaria no lo necesite.
      */
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
   ) {}
@@ -90,13 +97,23 @@ export class RollsService {
    *   problema que este campo cierra. `attackRef` (migración 7, fix round 1, M6): el `ref` del
    *   arma de una tirada de ATAQUE, para que su daño se pueda casar por identidad estable y no
    *   por el nombre que lleva `label` — que cambia si el DM identifica el objeto entre las dos
-   *   tiradas.
+   *   tiradas. `pendingDamage` (spec §4b.4, E-PE-3): a quién le toca este daño, sin `amount` ni
+   *   `appliedEventId` — los pone este servicio, no quien llama, porque son «lo que solo pone el
+   *   servidor» tanto como el resto de este campo.
    */
   async roll(
     userId: string,
     campaignId: string,
     input: PeticionDeTirada,
-    interno?: { attackRollEventId?: string; attackRef?: string },
+    interno?: {
+      attackRollEventId?: string;
+      attackRef?: string;
+      pendingDamage?: {
+        targetCharacterId: string;
+        attackResolvedEventId: string;
+        damageType: DamageType;
+      };
+    },
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
 
@@ -186,6 +203,11 @@ export class RollsService {
             natural,
             outcome,
             ...(input.label ? { reason: input.label } : {}),
+            // Spec §4b.4, E-PE-3 — «lo que solo pone el servidor»: `amount` es el `total` de ESTA
+            // tirada, nunca lo que dijera quien la pidió.
+            ...(interno?.pendingDamage
+              ? { pendingDamage: { ...interno.pendingDamage, amount: resultado.total } }
+              : {}),
           },
         },
         tx,

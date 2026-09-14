@@ -16,6 +16,40 @@ describe("NPC_REVEALED y NPC_HIDDEN tienen frase", () => {
       "Bandido se oculta de la mesa",
     );
   });
+
+  // m6 (ola de cierre, 2026-09-14): si SOLO subió la plantilla —criatura y ficha del mundo ya
+  // visibles—, «entra en escena» anunciaría la llegada de alguien que ya estaba.
+  it("con SOLO `templateRevealed`, dice que se enseñan sus números — no que entra en escena", () => {
+    expect(
+      lineaDeLog({
+        type: "NPC_REVEALED",
+        characterName: "Bandido",
+        templateRevealed: true,
+        characterRevealed: false,
+        entityRevealed: false,
+      }),
+    ).toBe("Se enseñan los números de Bandido");
+  });
+
+  // Los sucesos que sí suben la instancia (`characterRevealed` ausente o `true`, o los que
+  // escribe `raiseLiveBodies` por cada cuerpo vivo, que nunca manda estos dos campos) se siguen
+  // leyendo como la entrada de verdad, con o sin `templateRevealed`.
+  it("con `templateRevealed` Y la instancia también subiendo, sigue siendo una entrada en escena", () => {
+    expect(
+      lineaDeLog({
+        type: "NPC_REVEALED",
+        characterName: "Bandido",
+        templateRevealed: true,
+        characterRevealed: true,
+      }),
+    ).toBe("Bandido entra en escena");
+  });
+
+  it("sin `characterRevealed`/`entityRevealed` (sucesos viejos, o los de `raiseLiveBodies`), sigue leyéndose como entrada", () => {
+    expect(
+      lineaDeLog({ type: "NPC_REVEALED", characterName: "Bandido", templateRevealed: true }),
+    ).toBe("Bandido entra en escena");
+  });
 });
 
 // PNJ del mundo y la mesa (spec §3.3, Task 2). `removeCombatant` escribe COMBATANT_LEFT con

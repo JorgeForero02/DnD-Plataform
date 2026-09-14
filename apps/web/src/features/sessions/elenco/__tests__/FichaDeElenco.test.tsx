@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Encounter } from "@dnd/shared";
 import { FichaDeElenco } from "../FichaDeElenco";
@@ -76,18 +77,21 @@ function montar(props: Partial<Parameters<typeof FichaDeElenco>[0]> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <FichaDeElenco
-        campaignId="c1"
-        personaje={CORVIN}
-        puedeCambiarPg={false}
-        conMandos
-        enCombate
-        bando="ALLY"
-        sessionId="s1"
-        encounterId="enc-1"
-        combatanteId="cb-corvin"
-        {...props}
-      />
+      <MemoryRouter>
+        <FichaDeElenco
+          campaignId="c1"
+          personaje={CORVIN}
+          puedeCambiarPg={false}
+          conMandos
+          enCombate
+          combateEnMarcha
+          bando="ALLY"
+          sessionId="s1"
+          encounterId="enc-1"
+          combatanteId="cb-corvin"
+          {...props}
+        />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -297,5 +301,24 @@ describe("un personaje a 0 PG", () => {
     montar();
     await screen.findByRole("img", { name: /42 de 58 puntos de golpe/ });
     expect(screen.queryByLabelText("Salvaciones contra muerte")).not.toBeInTheDocument();
+  });
+});
+
+// m3 (ola de cierre, 2026-09-14) — un PNJ jugable (sin `statblockRef`) también tiene ficha del
+// mundo (E-PM-13), y hasta este arreglo solo `FichaDePnj.tsx` pintaba el enlace. Mismo patrón que
+// `FichaDePnj.test.tsx` («el nombre enlaza a la ficha del mundo», E-PM-12).
+describe("el nombre enlaza a la ficha del mundo (m3, E-PM-13)", () => {
+  it("con `entityId` el nombre es un enlace a su ficha", async () => {
+    montar({ personaje: { ...CORVIN, entityId: "ent-1" } });
+
+    const enlace = await screen.findByRole("link", { name: "Corvin Vhael" });
+    expect(enlace).toHaveAttribute("href", "/campaigns/c1/entidades/ent-1");
+  });
+
+  it("sin `entityId` el nombre es texto plano", async () => {
+    montar({ personaje: { ...CORVIN, entityId: null } });
+
+    expect(await screen.findByText("Corvin Vhael")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Corvin Vhael" })).not.toBeInTheDocument();
   });
 });

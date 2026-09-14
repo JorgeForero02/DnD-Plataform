@@ -271,6 +271,15 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
     case "ENTITY_REVEALED":
       return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una entrada del mundo";
     case "NPC_REVEALED":
+      // m6 (ola de cierre, 2026-09-14): si SOLO subió la plantilla —la criatura y su ficha del
+      // mundo ya estaban a la vista—, esto no es una entrada en escena: ya estaba. Caso raro
+      // (una criatura visible con la plantilla todavía oculta), pero «entra en escena» sería
+      // anunciar la llegada de alguien que ya estaba. `characterRevealed`/`entityRevealed` solo
+      // llegan en `false` desde `reveal` (m6); ausentes (sucesos viejos, o los que escribe
+      // `raiseLiveBodies` por cada cuerpo) siguen leyéndose como una entrada de verdad.
+      if (p.templateRevealed && p.characterRevealed === false && p.entityRevealed !== true) {
+        return `Se enseñan los números de ${p.characterName}`;
+      }
       // «Garrik entra en escena», con su ficha del mundo si también se reveló (spec §3.2).
       return p.entityName && p.entityName !== p.characterName
         ? `${p.characterName} entra en escena — es ${p.entityName}`

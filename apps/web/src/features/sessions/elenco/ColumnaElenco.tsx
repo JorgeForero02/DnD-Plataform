@@ -93,6 +93,11 @@ export function ColumnaElenco({
   // a `ACTIVE` porque un orden de `PREPARING` sería un orden que aún no existe; el bando, en
   // cambio, ya existe desde que se creó el encuentro.
   const enCombate = Boolean(encuentro);
+  // **`combateEnMarcha` SÍ distingue `PREPARING` de `ACTIVE`** (I1, ola de cierre): a diferencia
+  // de `enCombate`, esto gobierna «Sacar del combate» (`AccionesDeMesa.ts`), que el servidor
+  // rechaza con 409 fuera de `ACTIVE` (spec §3.3) — un encuentro `PREPARING` se cancela, no se
+  // vacía.
+  const combateEnMarcha = encuentro?.status === "ACTIVE";
   const deQuienEsElTurno = new Set(
     encuentro && encuentro.activePosition !== null
       ? encuentro.combatants
@@ -171,6 +176,7 @@ export function ColumnaElenco({
                 destacado
                 turnoActual={deQuienEsElTurno.has(p.id)}
                 enCombate={enCombate}
+                combateEnMarcha={combateEnMarcha}
               />
             ))}
           </ul>
@@ -189,6 +195,7 @@ export function ColumnaElenco({
                     puedeCambiarPg={false}
                     turnoActual={deQuienEsElTurno.has(p.id)}
                     enCombate={enCombate}
+                    combateEnMarcha={combateEnMarcha}
                   />
                 ))}
               </ul>
@@ -217,6 +224,7 @@ export function ColumnaElenco({
                 puedeCambiarPg={!esDm && p.ownerId === miId}
                 turnoActual={deQuienEsElTurno.has(p.id)}
                 enCombate={enCombate}
+                combateEnMarcha={combateEnMarcha}
                 bando={combatientePorPersonaje.get(p.id)?.side}
                 sessionId={sesion?.id}
                 encounterId={encuentro?.id}
@@ -251,6 +259,7 @@ export function ColumnaElenco({
                 miId={miId}
                 turnoActual={deQuienEsElTurno.has(pnj.id)}
                 enCombate={enCombate}
+                combateEnMarcha={combateEnMarcha}
                 sessionId={sesion?.id}
                 encounterId={encuentro?.id}
                 combatanteId={combatant.id}

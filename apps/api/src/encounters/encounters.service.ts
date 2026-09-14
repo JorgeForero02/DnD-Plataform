@@ -1118,7 +1118,26 @@ export class EncountersService {
 
     await this.prisma.transaction(async (tx) => {
       const filas = await recolocar(tx, encounterId, async () => {
-        await tx.combatant.delete({ where: { id: combatantId } });
+        // m1 (ola de cierre): los dos 409 de arriba se decidieron con una foto tomada ANTES del
+        // candado (`bloquearEncuentro`, dentro de `recolocar`). Dos `DELETE` a la vez sobre un
+        // encuentro con dos combatientes pasan los dos esa comprobación y lo vacían. Aquí, ya con
+        // el candado, se cuenta otra vez: quien pierde la carrera encuentra uno solo y se para.
+        const restantes = await tx.combatant.count({ where: { encounterId } });
+        if (restantes <= 1) {
+          throw new ConflictException(
+            "Es el último combatiente: termina el combate en vez de sacarlo.",
+          );
+        }
+        try {
+          await tx.combatant.delete({ where: { id: combatantId } });
+        } catch (error) {
+          // Un doble `DELETE` del mismo combatiente: el primero ya lo borró, y `delete` sobre una
+          // fila que ya no está es P2025, no un 500.
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+            throw new NotFoundException("Ese combatiente no está en este combate.");
+          }
+          throw error;
+        }
       });
       await this.events.record(
         userId,

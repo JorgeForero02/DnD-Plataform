@@ -19,6 +19,7 @@ import {
 import { z } from "zod";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, comoRecursoVisible } from "../common/visibility";
+import { raiseLiveBodies } from "../common/entity-link";
 import { viewerFor } from "../common/character-viewer";
 import { GameEventsService } from "../game-events/game-events.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -549,21 +550,52 @@ export class RulesEngineService {
             where: { id: effect.entityId, campaignId },
             select: { name: true },
           });
-          await this.prisma.entity.updateMany({
-            where: { id: effect.entityId, campaignId },
-            data: { visibility: effect.visibility },
-          });
-          if (effect.kind === "REVEAL_ENTITY") {
-            await this.gameEvents.recordFromEngine(delegatedByUserId, campaignId, {
-              subjectType: "campaign",
-              subjectId: effect.entityId,
-              visibility: effect.visibility,
-              payload: {
-                type: "ENTITY_REVEALED",
-                ...(ficha ? { entityName: ficha.name } : {}),
-              },
+          if (effect.kind === "HIDE_ENTITY") {
+            await this.prisma.entity.updateMany({
+              where: { id: effect.entityId, campaignId },
+              data: { visibility: effect.visibility },
             });
+            break;
           }
+          // I3 (ola de cierre, 2026-09-14): esta es la TERCERA puerta de revelar una ficha (junto
+          // a `EntitiesService.update` y `NpcsService.reveal`), y era la única que no subía los
+          // cuerpos vivos enlazados (E-PM-5) — una regla «al abrir el paso, revela a Garrik»
+          // revelaba la ficha y dejaba su cuerpo oculto en el orden de turnos. Envuelta en
+          // transacción, como hace `EntitiesService.update`, porque `raiseLiveBodies` ya no es un
+          // `updateMany` suelto: lee, sube cada cuerpo condicionalmente y escribe su suceso.
+          await this.prisma.transaction(async (tx) => {
+            await tx.entity.updateMany({
+              where: { id: effect.entityId, campaignId },
+              data: { visibility: effect.visibility },
+            });
+            await this.gameEvents.recordFromEngine(
+              delegatedByUserId,
+              campaignId,
+              {
+                subjectType: "campaign",
+                subjectId: effect.entityId,
+                visibility: effect.visibility,
+                payload: {
+                  type: "ENTITY_REVEALED",
+                  ...(ficha ? { entityName: ficha.name } : {}),
+                },
+              },
+              tx,
+            );
+            if (ficha && (effect.visibility === "PLAYERS" || effect.visibility === "PUBLIC")) {
+              await raiseLiveBodies(
+                tx,
+                {
+                  campaignId,
+                  entityId: effect.entityId,
+                  entityName: ficha.name,
+                  userId: delegatedByUserId,
+                },
+                this.gameEvents,
+                { fromRulesEngine: true },
+              );
+            }
+          });
           break;
         }
         case "SET_FLAG": {

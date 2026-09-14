@@ -234,7 +234,11 @@ describe("PNJ del mundo y la mesa — Task 0 (e2e)", () => {
       const statblocks = await request(s)
         .get(`/campaigns/${campaignId}/statblocks`)
         .set("Authorization", auth(tokenPL));
-      expect(statblocks.body.some((sb: any) => sb.ref === plantillaRef)).toBe(true);
+      expect(
+        [...statblocks.body.srd, ...statblocks.body.campaign].some(
+          (sb: any) => sb.ref === plantillaRef,
+        ),
+      ).toBe(true);
     });
 
     it("el registro tiene un NPC_REVEALED con entityName «Vela»", async () => {
@@ -268,7 +272,11 @@ describe("PNJ del mundo y la mesa — Task 0 (e2e)", () => {
       const statblocks = await request(s)
         .get(`/campaigns/${campaignId}/statblocks`)
         .set("Authorization", auth(tokenPL));
-      expect(statblocks.body.some((sb: any) => sb.ref === plantillaRef)).toBe(true);
+      expect(
+        [...statblocks.body.srd, ...statblocks.body.campaign].some(
+          (sb: any) => sb.ref === plantillaRef,
+        ),
+      ).toBe(true);
     });
 
     it("un segundo reveal: todo false y ningún suceso nuevo", async () => {

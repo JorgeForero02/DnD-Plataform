@@ -15,7 +15,14 @@ import {
 } from "@dnd/shared";
 import type { Entity, EntityVisibilityGrant, Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
-import { audienciaDeSuceso, canView, comoRecursoVisible, type Viewer } from "../common/visibility";
+import {
+  audienciaDeSuceso,
+  canView,
+  comoRecursoVisible,
+  loVeLaMesa,
+  POR_DEBAJO_DE_LA_MESA,
+  type Viewer,
+} from "../common/visibility";
 import { entityIdsVisibleFor, requireNpcEntity } from "../common/entity-link";
 import { rollExpression, type Roller } from "../dice/dice";
 import { PrismaService } from "../prisma/prisma.service";
@@ -216,13 +223,19 @@ export class NpcsService {
     return Math.max(1, resultado.total);
   }
 
-  /** Lo que «por debajo de la mesa» significa para cada columna (E-PM-2). */
-  private static readonly BELOW_TABLE_ENTITY = new Set<Visibility>([
-    "DM_ONLY",
-    "OWNER_DM",
-    "SPECIFIC_PLAYERS",
-  ]);
-  private static readonly BELOW_TABLE_ROW = new Set<Visibility>(["DM_ONLY", "OWNER_DM"]);
+  /**
+   * «Por debajo de la mesa» (E-PM-2, **enmendado por I2** en la ola de cierre del 2026-09-14):
+   * `DM_ONLY`, `OWNER_DM` y `SPECIFIC_PLAYERS`, para las tres columnas por igual.
+   *
+   * E-PM-2 decía que la instancia y la plantilla «no admiten `SPECIFIC_PLAYERS`», pero eso es
+   * la pantalla (`CHARACTER_VISIBILITIES`, `NIVELES_DE_CRIATURA`), no el servidor:
+   * `createCharacterSchema.visibility` y `campaignStatblock.visibility` son `visibilitySchema`
+   * entero, así que una fila SÍ puede llegar en `SPECIFIC_PLAYERS` — y antes de este arreglo se
+   * quedaba invisible para siempre, porque `sePuedeRevelar` decía que sí y `reveal` no la tocaba.
+   * `POR_DEBAJO_DE_LA_MESA` vive en `common/visibility.ts` para que `raiseLiveBodies`
+   * (`entity-link.ts`) no pueda tener una lista distinta.
+   */
+  private static readonly BELOW_TABLE: Visibility[] = POR_DEBAJO_DE_LA_MESA;
 
   /**
    * **Revelar es una sola acción** (spec §3.2): sube la instancia a `PLAYERS`, y con ella la ficha
@@ -239,12 +252,19 @@ export class NpcsService {
     return this.prisma.transaction(async (tx) => {
       const revealed = { character: false, entity: false, template: false };
       let fila = character;
-      if (NpcsService.BELOW_TABLE_ROW.has(character.visibility as Visibility)) {
-        fila = await tx.character.update({
-          where: { id: characterId },
+      if (!loVeLaMesa(character.visibility)) {
+        // m2 (ola de cierre): `updateMany` condicional en vez de `update` a secas — dos
+        // «Revelar» a la vez pasan los dos el `if` de fuera (que lee con `this.prisma`, antes de
+        // la transacción), pero solo uno de los dos encuentra la fila todavía «por debajo de la
+        // mesa» aquí dentro. El otro ve `count: 0` y no escribe su «entra en escena».
+        const { count } = await tx.character.updateMany({
+          where: { id: characterId, visibility: { in: NpcsService.BELOW_TABLE } },
           data: { visibility: "PLAYERS" },
         });
-        revealed.character = true;
+        if (count === 1) {
+          fila = { ...character, visibility: "PLAYERS" as Visibility };
+          revealed.character = true;
+        }
       }
 
       let entityName: string | undefined;
@@ -256,7 +276,7 @@ export class NpcsService {
         });
         if (entity) {
           entityName = entity.name;
-          if (NpcsService.BELOW_TABLE_ENTITY.has(entity.visibility as Visibility)) {
+          if (!loVeLaMesa(entity.visibility)) {
             entidadSubida = await tx.entity.update({
               where: { id: entity.id },
               data: { visibility: "PLAYERS" },
@@ -272,7 +292,7 @@ export class NpcsService {
         const plantilla = await tx.campaignStatblock.findFirst({
           where: { id: origen.id, campaignId },
         });
-        if (plantilla && NpcsService.BELOW_TABLE_ROW.has(plantilla.visibility as Visibility)) {
+        if (plantilla && !loVeLaMesa(plantilla.visibility)) {
           await tx.campaignStatblock.update({
             where: { id: plantilla.id },
             data: { visibility: "PLAYERS" },
@@ -294,6 +314,10 @@ export class NpcsService {
               characterName: character.name,
               entityName,
               templateRevealed: revealed.template || undefined,
+              // m6 (ola de cierre): `false` explícito, no `|| undefined` — `linea-de-log.ts`
+              // necesita distinguir «esta columna ya estaba» de «no se sabe» (sucesos viejos).
+              characterRevealed: revealed.character,
+              entityRevealed: revealed.entity,
             },
           },
           tx,
@@ -332,7 +356,11 @@ export class NpcsService {
       where: { id: characterId, campaignId },
     });
     if (!character) throw new NotFoundException("Character not found");
-    if (character.visibility === "DM_ONLY") {
+    // m9 (ola de cierre): antes solo se saltaba con `DM_ONLY`; una fila `OWNER_DM` —invisible
+    // para la mesa igual que `DM_ONLY`— se bajaba igualmente y escribía «se oculta de la mesa»
+    // sin que la mesa la hubiera visto nunca. Mismo predicado que I2, `!loVeLaMesa`: si la mesa
+    // no la ve, no hay nada que ocultar DE la mesa.
+    if (!loVeLaMesa(character.visibility)) {
       return { id: character.id, name: character.name, visibility: character.visibility };
     }
     return this.prisma.transaction(async (tx) => {

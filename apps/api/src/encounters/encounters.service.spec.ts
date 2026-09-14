@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { encounterSchema, encounterStatusSchema } from "@dnd/shared";
 import { EncountersService } from "./encounters.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -58,6 +59,8 @@ describe("EncountersService", () => {
       // Task 2: `removeCombatant` borra la fila dentro de la transacción (`recolocar` renumera
       // lo que queda).
       delete: jest.fn(),
+      // m1 (ola de cierre): recuento tomado YA con el candado, dentro de `antesDeLeer`.
+      count: jest.fn(),
     },
     rollRequest: { create: jest.fn() },
     user: { findUnique: jest.fn() },
@@ -125,6 +128,9 @@ describe("EncountersService", () => {
     service = ref.get(EncountersService);
     jest.clearAllMocks();
     events.record.mockResolvedValue({ id: "ev1" });
+    // m1 (ola de cierre): por defecto quedan de sobra — las pruebas de la carrera de
+    // `removeCombatant` lo sobrescriben a 1 para forzar el 409 tomado ya con el candado.
+    prisma.combatant.count.mockResolvedValue(2);
     membership.requireDM.mockResolvedValue(undefined);
     membership.requireMember.mockResolvedValue(undefined);
     prisma.campaignMember.findMany.mockResolvedValue([{ userId: "dm" }]);
@@ -272,6 +278,8 @@ describe("EncountersService", () => {
           findFirst: prisma.combatant.findFirst,
           // Task 2: `removeCombatant` borra dentro de `recolocar`.
           delete: prisma.combatant.delete,
+          // m1 (ola de cierre): recuento tomado ya con el candado, dentro de `antesDeLeer`.
+          count: prisma.combatant.count,
         },
         rollRequest: { create: prisma.rollRequest.create },
         campaign: { findUniqueOrThrow: prisma.campaign.findUniqueOrThrow },
@@ -2095,6 +2103,46 @@ describe("EncountersService", () => {
       expect(prisma.encounter.update).toHaveBeenCalledWith({
         where: { id: "e1" },
         data: { activePosition: 0 },
+      });
+    });
+
+    describe("m1 (ola de cierre) — la carrera bajo el candado", () => {
+      it("dos DELETE a la vez sobre un encuentro de dos: el que pierde encuentra uno solo y se para en 409", async () => {
+        prisma.combatant.findFirst.mockResolvedValue({ id: "a", encounterId: "e1" });
+        prisma.encounter.findFirst.mockResolvedValue({
+          id: "e1",
+          status: "ACTIVE",
+          round: 1,
+          activePosition: 0,
+          combatants: filas(["a", "b"]),
+        });
+        // La otra transacción ya ganó la carrera y borró a "b": bajo el candado solo queda "a".
+        prisma.combatant.count.mockResolvedValue(1);
+        await expect(service.removeCombatant("dm", "c1", "s1", "e1", "a")).rejects.toThrow(
+          ConflictException,
+        );
+        expect(prisma.combatant.delete).not.toHaveBeenCalled();
+      });
+
+      it("un doble DELETE del mismo combatiente: P2025 se traduce a 404, no revienta como 500", async () => {
+        prisma.combatant.findFirst.mockResolvedValue({ id: "a", encounterId: "e1" });
+        prisma.encounter.findFirst.mockResolvedValue({
+          id: "e1",
+          status: "ACTIVE",
+          round: 1,
+          activePosition: 0,
+          combatants: filas(["a", "b", "c"]),
+        });
+        prisma.combatant.count.mockResolvedValue(3);
+        prisma.combatant.delete.mockRejectedValue(
+          new Prisma.PrismaClientKnownRequestError("Record not found", {
+            code: "P2025",
+            clientVersion: "test",
+          }),
+        );
+        await expect(service.removeCombatant("dm", "c1", "s1", "e1", "a")).rejects.toThrow(
+          NotFoundException,
+        );
       });
     });
   });

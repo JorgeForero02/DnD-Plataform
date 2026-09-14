@@ -16,6 +16,7 @@ import {
   laAudienciaCrecio,
 } from "../common/visibility";
 import { viewerFor } from "../common/character-viewer";
+import { raiseLiveBodies } from "../common/entity-link";
 import { WorldStateService } from "../world-state/world-state.service";
 import { GameEventsService } from "../game-events/game-events.service";
 
@@ -330,39 +331,17 @@ export class EntitiesService {
         // PNJ del mundo y la mesa (spec §3.2, E-PM-5): revelar la ficha sube **todos sus cuerpos
         // vivos** en la campaña. Solo cuando la mesa entera pasa a verla: a `SPECIFIC_PLAYERS`
         // la audiencia crece pero no es «la mesa», y un cuerpo `PLAYERS` sería más público que su ficha.
+        //
+        // **`raiseLiveBodies` extraído en I3** (ola de cierre, 2026-09-14) a `common/entity-link.ts`:
+        // es el mismo bloque que ahora también llama el motor de reglas desde
+        // `rules-engine.service.ts` (`case "REVEAL_ENTITY"`), la tercera puerta de revelar que se
+        // quedaba fuera.
         if (entity.visibility === "PLAYERS" || entity.visibility === "PUBLIC") {
-          const cuerpos = await tx.character.findMany({
-            where: {
-              entityId,
-              campaignId,
-              archivedAt: null,
-              visibility: { in: ["DM_ONLY", "OWNER_DM"] },
-            },
-            select: { id: true, name: true, visibility: true },
-          });
-          if (cuerpos.length > 0) {
-            await tx.character.updateMany({
-              where: { id: { in: cuerpos.map((c) => c.id) } },
-              data: { visibility: "PLAYERS" },
-            });
-            for (const cuerpo of cuerpos) {
-              await this.gameEvents.record(
-                userId,
-                campaignId,
-                {
-                  subjectType: "character",
-                  subjectId: cuerpo.id,
-                  visibility: "PLAYERS",
-                  payload: {
-                    type: "NPC_REVEALED",
-                    characterName: cuerpo.name,
-                    entityName: entity.name,
-                  },
-                },
-                tx,
-              );
-            }
-          }
+          await raiseLiveBodies(
+            tx,
+            { campaignId, entityId, entityName: entity.name, userId },
+            this.gameEvents,
+          );
         }
       }
 

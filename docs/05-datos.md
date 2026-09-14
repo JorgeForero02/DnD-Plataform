@@ -1356,12 +1356,15 @@ un valor de enum exige reescribir el tipo entero, así que las tres se quedan si
 revierte la columna que las motivó):
 
 - **`NPC_REVEALED`** (`PLAYERS`, `subjectType: "character"`): «Garrik entra en escena» —o «…—
-  es Garrik el Herrero» si además subió la ficha del mundo. Lo escribe `NpcsService.reveal`
-  (`apps/api/src/statblocks/`, ruta en `NpcVisibilityController`, E-PM-1) cuando sube la
-  visibilidad de la instancia, de cada «cuerpo vivo» que comparte `entityId` (E-PM-5) y, si
-  corresponde, `EntitiesService.update` cuando sube la ficha misma — el mismo suceso que ya emitía
-  una ficha subida a mano, para que `rules-engine/world-builder.ts` no tenga que distinguir el
-  origen.
+  es Garrik el Herrero» si además subió la ficha del mundo. **Corregido en la ola de cierre
+  (2026-09-14, I4): esta frase mezclaba los dos caminos que lo escriben, y no es lo que hace
+  `reveal`.** Lo escribe `NpcsService.reveal` (`apps/api/src/statblocks/`, ruta en
+  `NpcVisibilityController`, E-PM-1) al subir la instancia — con su ficha del mundo y su
+  plantilla creada si estaban por debajo, en la misma transacción — y, aparte, `EntitiesService.
+  update`, **uno por cada «cuerpo vivo»** que comparte `entityId` (E-PM-5, extraído a
+  `raiseLiveBodies` en `common/entity-link.ts` — I3), al subir la ficha a `PLAYERS`/`PUBLIC`. El
+  mismo suceso que ya emitía una ficha subida a mano, para que `rules-engine/world-builder.ts` no
+  tenga que distinguir el origen.
 - **`NPC_HIDDEN`** (`DM_ONLY`): lo escribe `NpcsService.hide`, siempre, aunque su única audiencia
   sea el propio DM — el canal en vivo emite un aviso por cada suceso escrito sin mirar su
   visibilidad, y sin este suceso la pantalla del jugador seguiría enseñando al bicho hasta el

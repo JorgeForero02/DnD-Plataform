@@ -762,14 +762,25 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   }),
   /**
    * PNJ del mundo y la mesa (spec §3.2) — **una criatura entra en escena.** Lo escribe `reveal`
-   * (una transacción, tres columnas). `entityName` va si además subió la ficha del mundo;
-   * `templateRevealed` si subió la plantilla creada. Visibilidad `PLAYERS`: es el anuncio.
+   * (una transacción, tres columnas), y `EntitiesService.update`/el motor de reglas (uno por
+   * cuerpo vivo, E-PM-5). `entityName` va si además subió la ficha del mundo; `templateRevealed`
+   * si subió la plantilla creada. Visibilidad `PLAYERS`: es el anuncio.
+   *
+   * **`characterRevealed`/`entityRevealed`** (m6, ola de cierre, 2026-09-14): solo `reveal` los
+   * manda, y solo cuando valen `false` — «esta columna ya estaba, no subió con este suceso».
+   * Existen para que `linea-de-log.ts` pueda distinguir «SOLO subió la plantilla» (criatura y
+   * ficha ya visibles: no es una entrada en escena, aunque el suceso se siga escribiendo porque
+   * despierta el canal en vivo) de la entrada de verdad. Ausentes en todo lo demás —incluidos los
+   * sucesos ya escritos antes de este arreglo—, que es lo que hace que `linea-de-log.ts` los siga
+   * leyendo como «entra en escena» por defecto.
    */
   z.object({
     type: z.literal("NPC_REVEALED"),
     characterName: z.string().max(120),
     entityName: z.string().max(200).optional(),
     templateRevealed: z.boolean().optional(),
+    characterRevealed: z.boolean().optional(),
+    entityRevealed: z.boolean().optional(),
   }),
   /** Ocultar baja solo la instancia. `DM_ONLY`: existe para que el canal en vivo despierte a la mesa (E-PM-4). */
   z.object({

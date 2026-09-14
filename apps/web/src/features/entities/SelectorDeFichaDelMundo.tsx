@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useDeferredValue, useId, useState } from "react";
 import { Badge } from "../../ui/Badge";
 import { fieldControlClass } from "../../ui/Field";
 import { useEntities } from "./hooks";
@@ -29,7 +29,14 @@ export function SelectorDeFichaDelMundo({
   etiqueta?: string;
 }) {
   const [texto, setTexto] = useState("");
-  const { data } = useEntities(campaignId, "NPC", texto);
+  // m7 (ola de cierre, 2026-09-14): sin retardo, cada tecla era una petición al servidor —el
+  // resto del proyecto filtra en cliente para listas cortas (`PanelDeBestiario`, `RevelarAlgo`),
+  // pero aquí la búsqueda tiene que llegar al servidor (mira dentro del cuerpo de la ficha, no
+  // solo el nombre — el comentario de arriba lo dice). `useDeferredValue` deja que React teclee
+  // sin esperar a la respuesta y solo lanza la consulta cuando el tecleo se detiene, sin el
+  // temporizador a mano de un `setTimeout`.
+  const textoDiferido = useDeferredValue(texto);
+  const { data } = useEntities(campaignId, "NPC", textoDiferido);
   const fichas = data ?? [];
   const groupId = useId();
   const nombreDeGrupo = `ficha-del-mundo-${groupId}`;

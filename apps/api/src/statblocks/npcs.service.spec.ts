@@ -17,7 +17,14 @@ import { StatblocksService } from "./statblocks.service";
 describe("NpcsService", () => {
   let service: NpcsService;
   const prisma = {
-    character: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+    character: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      // m2 (ola de cierre): `reveal` sube la instancia con `updateMany` condicional.
+      updateMany: jest.fn(),
+    },
     campaign: { findUniqueOrThrow: jest.fn() },
     user: { findUnique: jest.fn() },
     // PNJ del mundo y la mesa (Task 0): `entity-link.ts` valida y redacta con esto.
@@ -307,6 +314,8 @@ describe("NpcsService", () => {
       membership.requireDM.mockResolvedValue({ role: "DM" });
       prisma.character.findFirst.mockResolvedValue(goblin);
       prisma.character.update.mockImplementation(async ({ data }: any) => ({ ...goblin, ...data }));
+      // m2: por defecto, la carrera la gana esta llamada — la fila sí estaba «por debajo».
+      prisma.character.updateMany.mockResolvedValue({ count: 1 });
       prisma.entity.findFirst.mockResolvedValue({
         id: "e1",
         name: "Garrik",
@@ -332,8 +341,8 @@ describe("NpcsService", () => {
     it("sube las tres columnas en una transacción y escribe NPC_REVEALED y ENTITY_REVEALED", async () => {
       const r = await service.reveal("dm", "c1", "g1");
       expect(prisma.transaction).toHaveBeenCalledTimes(1);
-      expect(prisma.character.update).toHaveBeenCalledWith({
-        where: { id: "g1" },
+      expect(prisma.character.updateMany).toHaveBeenCalledWith({
+        where: { id: "g1", visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] } },
         data: { visibility: "PLAYERS" },
       });
       expect(prisma.entity.update).toHaveBeenCalledWith(
@@ -371,6 +380,41 @@ describe("NpcsService", () => {
       const r = await service.reveal("dm", "c1", "g1");
       expect(r.revealed).toEqual({ character: false, entity: false, template: false });
       expect(prisma.character.update).not.toHaveBeenCalled();
+      expect(prisma.character.updateMany).not.toHaveBeenCalled();
+      expect(gameEvents.record).not.toHaveBeenCalled();
+    });
+
+    it("I2: una instancia SPECIFIC_PLAYERS sí se revela — sube a PLAYERS y escribe NPC_REVEALED", async () => {
+      prisma.character.findFirst.mockResolvedValue({ ...goblin, visibility: "SPECIFIC_PLAYERS" });
+      prisma.entity.findFirst.mockResolvedValue(null);
+      prisma.campaignStatblock.findFirst.mockResolvedValue(null);
+      const r = await service.reveal("dm", "c1", "g1");
+      expect(r.revealed.character).toBe(true);
+      expect(prisma.character.updateMany).toHaveBeenCalledWith({
+        where: { id: "g1", visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] } },
+        data: { visibility: "PLAYERS" },
+      });
+    });
+
+    it("m2: dos «Revelar» a la vez escriben NPC_REVEALED una sola vez — el segundo ve count 0", async () => {
+      // Entidad y plantilla ya visibles: aisla la carrera a la sola columna de la instancia.
+      prisma.entity.findFirst.mockResolvedValue({
+        id: "e1",
+        name: "Garrik",
+        visibility: "PLAYERS",
+        createdById: "dm",
+        grants: [],
+      });
+      prisma.campaignStatblock.findFirst.mockResolvedValue({
+        id: "sb1",
+        visibility: "PLAYERS",
+        createdById: "dm",
+      });
+      // La carrera ya la ganó otra transacción: bajo el candado del `updateMany` esta fila ya no
+      // está «por debajo de la mesa», así que el `count` que vuelve es 0.
+      prisma.character.updateMany.mockResolvedValue({ count: 0 });
+      const r = await service.reveal("dm", "c1", "g1");
+      expect(r.revealed).toEqual({ character: false, entity: false, template: false });
       expect(gameEvents.record).not.toHaveBeenCalled();
     });
 
@@ -407,6 +451,13 @@ describe("NpcsService", () => {
     });
 
     it("hide sobre uno ya oculto no escribe nada", async () => {
+      await service.hide("dm", "c1", "g1");
+      expect(prisma.character.update).not.toHaveBeenCalled();
+      expect(gameEvents.record).not.toHaveBeenCalled();
+    });
+
+    it("m9: hide sobre OWNER_DM tampoco escribe nada — la mesa nunca lo vio", async () => {
+      prisma.character.findFirst.mockResolvedValue({ ...goblin, visibility: "OWNER_DM" });
       await service.hide("dm", "c1", "g1");
       expect(prisma.character.update).not.toHaveBeenCalled();
       expect(gameEvents.record).not.toHaveBeenCalled();

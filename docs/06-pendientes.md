@@ -1011,7 +1011,7 @@ solo se puede probar con la API simulada**, y su recorrido de navegador mide la 
 mismo carril de datos (que la lista de PNJ llega al selector). Decidir si ceder un PNJ es una
 funcionalidad que se quiere —y con qué permiso— es del autor, no de un agente.
 
-### D-CF-81 · `entityId` en respuestas de mutación no pasa por la redacción (2026-09-14)
+### PM-1 · `entityId` en respuestas de mutación no pasa por la redacción (2026-09-14)
 
 **Abierto, declarado al escribir el plan (E-PM-10), no encontrado tarde.** Las seis rutas de
 LECTURA de `Character` redactan `entityId` con `entityIdsVisibleFor` (`apps/api/src/common/entity-link.ts`,
@@ -1022,15 +1022,17 @@ ESCRITURA (DM o dueño), sin pasar por el mismo helper. La fuga concreta: el due
 con una ficha del mundo que él no puede ver (`DM_ONLY`, por ejemplo) podría leer su `entityId` real
 en el cuerpo de una de esas respuestas, aunque las seis lecturas se lo den como `null`. Son quince
 lecturas de `Character` repartidas en cinco servicios; cubrirlas todas en esta tanda era perseguir
-la completitud (memoria del autor: «el riesgo es perseguir la completitud»).
+la completitud (memoria del autor: «el riesgo es perseguir la completitud»). Decisión:
+[D-CF-81](./decisiones.md) en [decisiones.md](./decisiones.md).
 
-### D-CF-83 · El nombre de un PNJ en el hilo no enlaza a su ficha del mundo (2026-09-14)
+### PM-2 · El nombre de un PNJ en el hilo no enlaza a su ficha del mundo (2026-09-14)
 
 **Abierto, declarado al escribir el plan (E-PM-12).** Desde esta tanda, el nombre de un PNJ en el
 **elenco** enlaza a `/campaigns/:id/entidades/:entityId` cuando llega `entityId` (spec §3.4). En el
 **hilo de la sesión** no: `apps/web/src/features/sessions/nombres-del-hilo.ts` resuelve nombres
 para las tarjetas de suceso, no rutas, y darle un enlace es tocar el renderizado de mensajes — una
-tanda con su propia ficha de diseño, no un añadido de esta.
+tanda con su propia ficha de diseño, no un añadido de esta. Decisión: [D-CF-83](./decisiones.md)
+en [decisiones.md](./decisiones.md).
 
 ### T3 · Revelar un grupo entero desde el orden de turnos, de un solo clic (2026-09-14)
 

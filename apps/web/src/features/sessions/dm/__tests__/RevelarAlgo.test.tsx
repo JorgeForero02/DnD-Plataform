@@ -91,13 +91,45 @@ it("confirmar sobre la criatura llama a revealNpc con su id", async () => {
   montar();
 
   const fila = (await screen.findByText("Goblin capataz")).closest("li")!;
-  // Primera pulsación: abre la confirmación en fila («¿Se lo enseñas a la mesa?»).
+  // Primera pulsación: abre la confirmación en fila («¿Se lo enseñas a la mesa? …», m4: con la
+  // frase de qué sube, no solo la pregunta — ver la prueba dedicada más abajo).
   fireEvent.click(within(fila).getByRole("button", { name: "Revelar a la mesa" }));
-  expect(within(fila).getByText("¿Se lo enseñas a la mesa?")).toBeInTheDocument();
+  expect(within(fila).getByText(/¿Se lo enseñas a la mesa\?/)).toBeInTheDocument();
   // Segunda pulsación: el botón del mismo rótulo, ya en modo confirmación, llama al servidor.
   fireEvent.click(within(fila).getByRole("button", { name: "Revelar a la mesa" }));
 
   await waitFor(() => expect(mutate).toHaveBeenCalledWith("n1"));
+});
+
+// m4 (ola de cierre, 2026-09-14): la cabecera de la herramienta dice «Revelar sube la ficha al
+// nivel “Jugadores”», que es cierto para una ficha del mundo pero no para una criatura — revelar
+// una sube tres columnas (instancia, ficha enlazada y plantilla), y hasta este arreglo la fila no
+// lo decía en ningún sitio salvo el menú del elenco.
+it("la confirmación sobre una criatura dice qué sube, con la misma frase que el menú del elenco", async () => {
+  vi.spyOn(entitiesHooks, "useAllEntities").mockReturnValue({
+    data: [],
+    isLoading: false,
+  } as any);
+  vi.spyOn(bestiarioHooks, "useNpcs").mockReturnValue({
+    data: [GOBLIN_OCULTO],
+    isLoading: false,
+  } as any);
+  vi.spyOn(bestiarioHooks, "useRevealNpc").mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+  } as any);
+
+  montar();
+
+  const fila = (await screen.findByText("Goblin capataz")).closest("li")!;
+  fireEvent.click(within(fila).getByRole("button", { name: "Revelar a la mesa" }));
+
+  expect(
+    within(fila).getByText(
+      "¿Se lo enseñas a la mesa? Sube a la mesa a esta criatura, su ficha del mundo y su plantilla si estaban ocultas.",
+    ),
+  ).toBeInTheDocument();
 });
 
 describe("el vacío distingue fichas y criaturas", () => {

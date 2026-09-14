@@ -59,6 +59,7 @@ export function FichaDePnj({
   miId,
   turnoActual = false,
   enCombate = false,
+  combateEnMarcha = false,
   sessionId,
   encounterId,
   combatanteId,
@@ -76,6 +77,8 @@ export function FichaDePnj({
   miId?: string;
   turnoActual?: boolean;
   enCombate?: boolean;
+  /** El encuentro está `ACTIVE`, no solo abierto (I1). Ver `AccionesDeMesa.ts`. */
+  combateEnMarcha?: boolean;
   /** La sesión del encuentro — la ruta de `setSide` cuelga de ella. */
   sessionId?: string;
   /** El encuentro en marcha. */
@@ -131,6 +134,7 @@ export function FichaDePnj({
     encounterId,
     combatanteId,
     enCombate,
+    combateEnMarcha,
   });
 
   return (

@@ -7,6 +7,7 @@ import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
 import { EXPLICACION_DE_NIVEL } from "../../entities/visibilidad";
 import { useNpcs, useRevealNpc } from "../../bestiario/hooks";
 import type { NpcEnLaMesa } from "../../bestiario/api";
+import { DESCRIPCION_REVELAR_CRIATURA } from "../elenco/AccionesDeMesa";
 import { Badge } from "../../../ui/Badge";
 import { Button, fieldControlClass } from "../../../ui";
 
@@ -189,8 +190,13 @@ function FilaDeCriatura({ campaignId, pnj }: { campaignId: string; pnj: NpcEnLaM
       <Badge visibility={pnj.visibility as Visibility} />
       {confirmando ? (
         <>
+          {/* m4 (ola de cierre, 2026-09-14): la cabecera de la herramienta dice «Revelar sube la
+              ficha al nivel “Jugadores”», que es cierto para una ficha del mundo pero no para una
+              criatura — revelar una sube tres columnas, y su fila no lo decía en ningún sitio.
+              Misma frase que ya usa el menú del elenco (`DESCRIPCION_REVELAR_CRIATURA`), una sola
+              vez (regla de la casa: una opción con significado lleva su frase). */}
           <span className="font-chrome text-chrome-xs text-copper-text">
-            ¿Se lo enseñas a la mesa?
+            ¿Se lo enseñas a la mesa? {DESCRIPCION_REVELAR_CRIATURA}
           </span>
           <Button
             type="button"

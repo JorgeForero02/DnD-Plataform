@@ -100,6 +100,25 @@ describe("SelectorDeFichaDelMundo", () => {
     expect(screen.getByText("No hay fichas de PNJ en el mundo todavía.")).toBeInTheDocument();
   });
 
+  // m7 (ola de cierre, 2026-09-14): antes `texto` entraba sin retardo en la clave de
+  // `useEntities` — una petición al servidor por tecla. `useDeferredValue` no cambia el
+  // contrato del componente (el input sigue siendo controlado y responde a cada tecla), así que
+  // lo que esta prueba demuestra es que tres teclas seguidas siguen llegando a la búsqueda de
+  // verdad — no que se pierda ninguna por el camino.
+  it("varias teclas seguidas no pierden ninguna: el filtro final es por el texto completo", () => {
+    mockearFichas([garrik, vela]);
+    render(<SelectorDeFichaDelMundo campaignId="c1" value={null} onChange={() => {}} />);
+    const buscador = screen.getByLabelText("Buscar una ficha del mundo");
+
+    fireEvent.change(buscador, { target: { value: "g" } });
+    fireEvent.change(buscador, { target: { value: "ga" } });
+    fireEvent.change(buscador, { target: { value: "gar" } });
+
+    expect(buscador).toHaveValue("gar");
+    expect(screen.getByText("Garrik")).toBeInTheDocument();
+    expect(screen.queryByText("Vela")).not.toBeInTheDocument();
+  });
+
   it("la etiqueta del fieldset se puede sobrescribir", () => {
     mockearFichas([garrik]);
     render(

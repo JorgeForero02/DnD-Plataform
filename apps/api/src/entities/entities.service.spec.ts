@@ -53,8 +53,13 @@ describe("EntitiesService", () => {
       entityVisibilityGrant: { deleteMany: jest.fn(), createMany: jest.fn() },
       entity: { update: jest.fn().mockResolvedValue(entityUpdateResult) },
       // PNJ del mundo y la mesa (E-PM-5): revelar la ficha sube sus cuerpos vivos. Vacío por
-      // defecto — las pruebas de esa simetría lo cambian.
-      character: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
+      // defecto — las pruebas de esa simetría lo cambian. `updateMany` responde `{ count: 1 }`
+      // por defecto: I3/m2 hacen que `raiseLiveBodies` la llame una vez por cuerpo y decida por
+      // el conteo si de verdad lo subió (la carrera la prueba m2 aparte, con `count: 0`).
+      character: {
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
     };
   }
 
@@ -256,16 +261,46 @@ describe("EntitiesService", () => {
           entityId: "e9",
           campaignId: "c1",
           archivedAt: null,
-          visibility: { in: ["DM_ONLY", "OWNER_DM"] },
+          // I2 (ola de cierre): `SPECIFIC_PLAYERS` es «por debajo de la mesa» igual que las otras
+          // dos — antes se quedaba fuera y un cuerpo así no subía nunca.
+          visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] },
         },
         select: { id: true, name: true, visibility: true },
       });
+      // m2 (ola de cierre): `raiseLiveBodies` sube CADA cuerpo con su propio `updateMany`
+      // condicional, no una foto y un `update` a ciegas — así el `count` de cada uno dice si de
+      // verdad ganó la carrera.
       expect(tx.character.updateMany).toHaveBeenCalledWith({
-        where: { id: { in: ["g1", "g2"] } },
+        where: { id: "g1", visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] } },
+        data: { visibility: "PLAYERS" },
+      });
+      expect(tx.character.updateMany).toHaveBeenCalledWith({
+        where: { id: "g2", visibility: { in: ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"] } },
         data: { visibility: "PLAYERS" },
       });
       const tipos = gameEvents.record.mock.calls.map((c: any) => c[2].payload.type);
       expect(tipos.filter((t: string) => t === "NPC_REVEALED")).toHaveLength(2);
+    });
+
+    it("m2: si otra transacción ya subió un cuerpo, este camino no repite su NPC_REVEALED", async () => {
+      prisma.entity.findFirst.mockResolvedValue(laFichaOculta);
+      const tx = txMock({ ...laFichaOculta, visibility: "PLAYERS", grants: [] });
+      tx.character.findMany.mockResolvedValue([
+        { id: "g1", name: "Bandido 1", visibility: "DM_ONLY" },
+        { id: "g2", name: "Bandido 2", visibility: "OWNER_DM" },
+      ]);
+      // "g2" ya lo subió otra transacción: su `updateMany` condicional ve 0 filas.
+      tx.character.updateMany.mockImplementation(({ where }: any) =>
+        Promise.resolve({ count: where.id === "g2" ? 0 : 1 }),
+      );
+      prisma.transaction.mockImplementation((fn: (t: unknown) => unknown) => fn(tx));
+
+      await service.update("dm1", "c1", "e9", { visibility: "PLAYERS" } as never);
+
+      const npcRevelados = gameEvents.record.mock.calls
+        .filter((c: any) => c[2].payload.type === "NPC_REVEALED")
+        .map((c: any) => c[2].subjectId);
+      expect(npcRevelados).toEqual(["g1"]);
     });
 
     it("bajar la visibilidad de la ficha no toca a sus cuerpos", async () => {

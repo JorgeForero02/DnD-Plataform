@@ -10,6 +10,15 @@ import { loVeLaMesa } from "@dnd/shared";
 // igual, con la única fuente de verdad ahora en `@dnd/shared`.
 export { loVeLaMesa };
 
+/**
+ * Los tres niveles que `loVeLaMesa` deja fuera, como lista — para el `where: { visibility: { in:
+ * ... } } }` de un `updateMany` de Prisma, que no acepta un predicado. Un solo sitio, así que
+ * `NpcsService.reveal`, `NpcsService.hide` y `raiseLiveBodies` (`entity-link.ts`) no pueden volver
+ * a discreparse sobre qué es «por debajo de la mesa» (I2, ola de cierre del 2026-09-14: antes
+ * dejaba fuera `SPECIFIC_PLAYERS`, y una fila así no se revelaba nunca).
+ */
+export const POR_DEBAJO_DE_LA_MESA: Visibility[] = ["DM_ONLY", "OWNER_DM", "SPECIFIC_PLAYERS"];
+
 export interface Viewer {
   userId: string;
   role: Role | null;

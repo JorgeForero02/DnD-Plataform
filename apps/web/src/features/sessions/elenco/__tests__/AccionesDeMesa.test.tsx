@@ -20,6 +20,7 @@ const base = {
   encounterId: "e1",
   combatanteId: "cb1",
   enCombate: true,
+  combateEnMarcha: true,
   esDm: true,
 };
 
@@ -60,6 +61,17 @@ describe("useAccionesDeMesa", () => {
     expect(fuera.result.current.acciones.map((a) => a.rotulo)).toEqual(["Revelar a la mesa"]);
   });
 
+  // I1 (ola de cierre, 2026-09-14): `enCombate` sigue en `true` en `PREPARING` (a propósito, ver
+  // `ColumnaElenco.tsx`), pero «Sacar del combate» exige `ACTIVE` en el servidor (spec §3.3) y
+  // respondía 409 si se pulsaba desde ahí. Con `combateEnMarcha: false` el ítem no se ofrece.
+  it("con el encuentro en PREPARING (`combateEnMarcha: false`) no ofrece «Sacar del combate»", () => {
+    const r = renderHook(
+      () => useAccionesDeMesa({ ...base, visibility: "DM_ONLY", combateEnMarcha: false }),
+      { wrapper: envoltorio },
+    );
+    expect(r.result.current.acciones.map((a) => a.rotulo)).toEqual(["Revelar a la mesa"]);
+  });
+
   it("quien no es DM no recibe ninguna", () => {
     const r = renderHook(() => useAccionesDeMesa({ ...base, esDm: false, visibility: "DM_ONLY" }), {
       wrapper: envoltorio,
@@ -92,5 +104,24 @@ describe("useAccionesDeMesa", () => {
     });
     act(() => r.result.current.acciones[0].onSelect());
     await waitFor(() => expect(r.result.current.error).toBe("Solo el DM"));
+  });
+
+  // m5 (ola de cierre, 2026-09-14): cada `useMutation` conserva su `isError` por su cuenta, así
+  // que un «Ocultar» rechazado seguía en pantalla tras un «Sacar del combate» que sí funcionó
+  // después — eran dos mutaciones distintas y ninguna limpiaba a la otra.
+  it("un error de «Ocultar» se limpia cuando «Sacar del combate» termina bien", async () => {
+    vi.mocked(bestiarioApi.hideNpc).mockRejectedValue(new Error("Solo el DM"));
+    vi.mocked(encountersApi.removeCombatant).mockResolvedValue({} as any);
+    const r = renderHook(() => useAccionesDeMesa({ ...base, visibility: "PLAYERS" }), {
+      wrapper: envoltorio,
+    });
+
+    // «Ocultar» falla y se ve en pantalla.
+    await act(async () => r.result.current.acciones[0].onSelect());
+    await waitFor(() => expect(r.result.current.error).toBe("Solo el DM"));
+
+    // «Sacar del combate» funciona: el error de «Ocultar» no se queda pegado.
+    await act(async () => r.result.current.acciones[1].onSelect());
+    await waitFor(() => expect(r.result.current.error).toBeNull());
   });
 });

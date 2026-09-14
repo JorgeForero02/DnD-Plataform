@@ -300,6 +300,22 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     natural: z.enum(["NONE", "ONE", "TWENTY"]).default("NONE"),
     outcome: z.enum(["NO_DC", "SUCCESS", "FAILURE"]).default("NO_DC"),
     reason,
+    /**
+     * Spec §4b.4 (E-PE-3, E-PE-5). **Lo que solo pone el servidor**: el daño de un ataque
+     * RESUELTO —veredicto `HIT` o `CRITICAL`— sabe a quién le toca, sin que el cliente tenga que
+     * declararlo. `amount` lo rellena `RollsService.roll` con el `total` de la propia tirada —el
+     * llamador nunca lo manda—, y `appliedEventId` queda vacío hasta que la bandeja de daño lo
+     * marca al aplicarse (§4b.6): es el candado de un solo uso, sobre el propio `payload`.
+     */
+    pendingDamage: z
+      .object({
+        targetCharacterId: z.string().min(1),
+        attackResolvedEventId: z.string().min(1),
+        damageType: damageTypeSchema,
+        amount: z.number().int().min(0),
+        appliedEventId: z.string().min(1).optional(),
+      })
+      .optional(),
   }),
   // --- Muerte (2A.7) ---
   z.object({

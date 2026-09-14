@@ -114,6 +114,29 @@ export const setHpSchema = z.object({
 export type SetHpInput = z.infer<typeof setHpSchema>;
 
 /**
+ * Spec §4b.4/§4b.5 (E-PE-2). **Lo que la bandeja de daño enseña antes de aplicar nada.** No es un
+ * esquema de entrada — nadie manda esto en un `body`, la ruta no lleva ninguno (`GET
+ * .../damage-preview`) — sino la forma de la respuesta: `target` con el nombre para el hilo,
+ * `resulting` con el mismo desglose que ya calcula `applyDamageModifiers` (cuánto se absorbe con
+ * PG temporales, cuánto se toma de verdad, y con qué modificador y motivo si el objetivo resiste,
+ * es vulnerable o inmune), y `canApply`/`appliedEventId` para que el botón sepa si ya se pulsó.
+ */
+export const damagePreviewSchema = z.object({
+  target: z.object({ id: z.string(), name: z.string() }),
+  amount: z.number().int().min(0),
+  damageType: damageTypeSchema,
+  resulting: z.object({
+    taken: z.number().int().min(0),
+    absorbedByTemp: z.number().int().min(0),
+    modifier: z.enum(["resistant", "vulnerable", "immune"]).nullable(),
+    reason: z.string().nullable(),
+  }),
+  canApply: z.boolean(),
+  appliedEventId: z.string().nullable(),
+});
+export type DamagePreview = z.infer<typeof damagePreviewSchema>;
+
+/**
  * Una tirada de salvación contra muerte.
  *
  * **Cuatro resultados y no dos**, porque el SRD los distingue: un 20 natural devuelve al

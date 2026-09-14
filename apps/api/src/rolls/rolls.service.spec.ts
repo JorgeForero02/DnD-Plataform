@@ -711,3 +711,50 @@ describe("gastar la inspiración en la misma tirada (plan 08, ficha I8)", () => 
     expect(prisma.characterResource.findUnique).not.toHaveBeenCalled();
   });
 });
+
+// Tarea 3 de la puerta de efectos (spec §4b.4, E-PE-3) — `pendingDamage`: el daño de un ataque
+// resuelto sabe a quién le toca, con `amount` puesto por ESTE servicio y nunca por quien llama.
+describe("interno.pendingDamage — lo que solo pone el servidor", () => {
+  it("con interno.pendingDamage, el payload escrito lleva pendingDamage con amount: total", async () => {
+    const { service, events } = montar(dadosFijos(5));
+    await service.roll(
+      "u1",
+      "c1",
+      { expression: "1d8+2", audience: "PUBLIC", mode: "NORMAL" },
+      {
+        attackRollEventId: "ev-atk-1",
+        pendingDamage: {
+          targetCharacterId: "t1",
+          attackResolvedEventId: "ar1",
+          damageType: "SLASHING",
+        },
+      },
+    );
+
+    expect(events.record).toHaveBeenCalledWith(
+      "u1",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          type: "ABILITY_ROLL",
+          pendingDamage: {
+            targetCharacterId: "t1",
+            attackResolvedEventId: "ar1",
+            damageType: "SLASHING",
+            // 1d8 fijo a 5 + 2 de modificador.
+            amount: 7,
+          },
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("sin interno.pendingDamage, el payload no lleva la clave", async () => {
+    const { service, events } = montar(dadosFijos(5));
+    await service.roll("u1", "c1", { expression: "1d8+2", audience: "PUBLIC", mode: "NORMAL" });
+
+    const payload = events.record.mock.calls[0][2].payload;
+    expect(payload.pendingDamage).toBeUndefined();
+  });
+});

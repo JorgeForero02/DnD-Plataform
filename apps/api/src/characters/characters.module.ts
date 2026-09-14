@@ -10,6 +10,7 @@ import { CharacterSheetService } from "./character-sheet.service";
 import { CharacterSheetController } from "./character-sheet.controller";
 import { AbilityRollsService } from "./ability-rolls.service";
 import { AbilityRollsController } from "./ability-rolls.controller";
+import { DamageTrayController } from "./damage-tray.controller";
 
 @Module({
   // `GameEventsModule` entra por 2A.7: los PG mutables y las salvaciones de muerte escriben
@@ -19,7 +20,12 @@ import { AbilityRollsController } from "./ability-rolls.controller";
   // `RollsModule` entra en 2B: tirar con un arma equipada compone la expresion en el servidor y
   // la ejecuta el mismo tirador que todo lo demas. No hay ciclo: `rolls` no importa `characters`.
   imports: [CampaignsModule, GameEventsModule, CharacterStateModule, RollsModule, StatblocksModule],
-  controllers: [CharactersController, CharacterSheetController, AbilityRollsController],
+  controllers: [
+    CharactersController,
+    CharacterSheetController,
+    AbilityRollsController,
+    DamageTrayController,
+  ],
   providers: [CharactersService, CharacterSheetService, AbilityRollsService],
   // 2C.5: la peticion de tirada deriva la hoja de quien tira **en el momento de tirar**, para que
   // el modificador sea el de ahora y no el de cuando el DM la pidio.

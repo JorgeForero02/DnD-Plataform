@@ -358,4 +358,147 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
     });
     expect(recurso?.current).toBe(1);
   });
+
+  // --- 7. La bandeja de daño (tarea 3, spec §4b.4-§4b.7) ---------------------------------------
+  //
+  // El daño de un ataque RESUELTO sabe a quién le toca sin que nadie lo declare, la mesa lo ve
+  // antes de aplicarlo —y solo dueño o DM del objetivo, o es filtrar por otra puerta—, y aplicarlo
+  // es un botón de un solo uso: el segundo clic es un 409, no un segundo golpe.
+  //
+  // El catálogo SRD no trae un «fantasma»: el brief acepta cualquier statblock con `RESISTANT` a
+  // `SLASHING`, y `SRD:wight` lo es —«de ataques no mágicos con armas que no sean de plata»—, así
+  // que hace de sustituto. A no necesita ser un guerrero de verdad para este bloque: solo necesita
+  // llevar la espada larga equipada, que es lo único de lo que depende el tipo de daño.
+  describe("la bandeja de daño (tarea 3, spec §4b.4-§4b.7)", () => {
+    let attackKey = "";
+    let fantasmaId = "";
+    let danoRollEventId = "";
+    let amountBandeja = 0;
+
+    it("A equipa una espada larga y el DM sube un SRD:wight (resistente a cortante) a la mesa", async () => {
+      const s = app.getHttpServer();
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters/${personajeA}/inventory`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          ref: { source: "SRD", key: "long-sword" },
+          location: "EQUIPPED",
+          slot: "MAIN_HAND",
+        });
+
+      const hoja = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      const ataque = hoja.body.attacks.find((a: { name: string }) => a.name === "Espada larga");
+      expect(ataque).toBeDefined();
+      attackKey = ataque.key;
+
+      const npc = await request(s)
+        .post(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ ref: "SRD:wight" });
+      fantasmaId = npc.body[0].id;
+      // `PLAYERS`: A tiene que poder verlo (y por tanto atacarlo, D-OP-11) sin montar un
+      // encuentro — este bloque no necesita esa maquinaria, solo el veredicto y el daño.
+      await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${fantasmaId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ visibility: "PLAYERS" });
+    });
+
+    it("A resuelve el ataque (impacta) y tira el daño citándolo: el ABILITY_ROLL trae pendingDamage con el wight como objetivo", async () => {
+      const s = app.getHttpServer();
+      // Natural 20: SRD 5.1, «impacta pase lo que pase» — así el veredicto nunca depende de la CA.
+      cola.push(20);
+      const resolve = await request(s)
+        .post(
+          `/campaigns/${campaignId}/characters/${personajeA}/sheet/attacks/${encodeURIComponent(attackKey)}/resolve`,
+        )
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ targetCharacterId: fantasmaId, mode: "NORMAL", spendInspiration: false });
+      expect(resolve.status).toBe(201);
+      expect(["HIT", "CRITICAL"]).toContain(resolve.body.verdict);
+
+      const dano = await request(s)
+        .post(
+          `/campaigns/${campaignId}/characters/${personajeA}/sheet/attacks/${encodeURIComponent(attackKey)}/roll`,
+        )
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          part: "DAMAGE",
+          spendInspiration: false,
+          mode: "NORMAL",
+          versatile: false,
+          attackRollEventId: resolve.body.roll.eventId,
+        });
+      expect(dano.status).toBe(201);
+      danoRollEventId = dano.body.eventId;
+      amountBandeja = dano.body.total;
+
+      const evento = await prisma.gameEvent.findFirst({ where: { id: danoRollEventId } });
+      const pendingDamage = (evento!.payload as { pendingDamage?: { targetCharacterId: string } })
+        .pendingDamage;
+      expect(pendingDamage?.targetCharacterId).toBe(fantasmaId);
+    });
+
+    it("A pide el preview de su propio daño: 404. El DM: 200, con la mitad exacta y el modificador", async () => {
+      const s = app.getHttpServer();
+      const comoA = await request(s)
+        .get(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-preview`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(comoA.status).toBe(404);
+
+      const comoDM = await request(s)
+        .get(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-preview`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(comoDM.status).toBe(200);
+      expect(comoDM.body.resulting.taken).toBe(Math.floor(amountBandeja / 2));
+      expect(comoDM.body.resulting.modifier).toBe("resistant");
+    });
+
+    it("A no puede aplicar (403); el DM sí (200), y el HP_CHANGED del wight lo firma A con esta tirada; el segundo clic del DM es 409", async () => {
+      const s = app.getHttpServer();
+      const comoA = await request(s)
+        .post(`/campaigns/${campaignId}/rolls/${danoRollEventId}/apply-damage`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({});
+      expect(comoA.status).toBe(403);
+
+      const comoDM = await request(s)
+        .post(`/campaigns/${campaignId}/rolls/${danoRollEventId}/apply-damage`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({});
+      expect(comoDM.status).toBe(201);
+
+      const hpChanged = await prisma.gameEvent.findFirst({
+        where: { campaignId, subjectId: fantasmaId, type: "HP_CHANGED" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(hpChanged).not.toBeNull();
+      expect(hpChanged!.actorUserId).toBe(userIdA);
+      expect((hpChanged!.payload as { rollEventId?: string }).rollEventId).toBe(danoRollEventId);
+
+      const segundoClic = await request(s)
+        .post(`/campaigns/${campaignId}/rolls/${danoRollEventId}/apply-damage`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({});
+      expect(segundoClic.status).toBe(409);
+    });
+
+    it("un daño tirado sin attackRollEventId no lleva pendingDamage: su preview es 404 hasta para el DM", async () => {
+      const s = app.getHttpServer();
+      const dano = await request(s)
+        .post(
+          `/campaigns/${campaignId}/characters/${personajeA}/sheet/attacks/${encodeURIComponent(attackKey)}/roll`,
+        )
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ part: "DAMAGE", spendInspiration: false, mode: "NORMAL", versatile: false });
+      expect(dano.status).toBe(201);
+
+      const preview = await request(s)
+        .get(`/campaigns/${campaignId}/rolls/${dano.body.eventId}/damage-preview`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(preview.status).toBe(404);
+    });
+  });
 });

@@ -10,6 +10,7 @@ import {
 import {
   VISIBILIDAD_POR_AUDIENCIA,
   type CreateRollInput,
+  type DamageType,
   type GameEventType,
   type ListRollsInput,
   type Role,
@@ -90,13 +91,23 @@ export class RollsService {
    *   problema que este campo cierra. `attackRef` (migración 7, fix round 1, M6): el `ref` del
    *   arma de una tirada de ATAQUE, para que su daño se pueda casar por identidad estable y no
    *   por el nombre que lleva `label` — que cambia si el DM identifica el objeto entre las dos
-   *   tiradas.
+   *   tiradas. `pendingDamage` (spec §4b.4, E-PE-3): a quién le toca este daño, sin `amount` ni
+   *   `appliedEventId` — los pone este servicio, no quien llama, porque son «lo que solo pone el
+   *   servidor» tanto como el resto de este campo.
    */
   async roll(
     userId: string,
     campaignId: string,
     input: PeticionDeTirada,
-    interno?: { attackRollEventId?: string; attackRef?: string },
+    interno?: {
+      attackRollEventId?: string;
+      attackRef?: string;
+      pendingDamage?: {
+        targetCharacterId: string;
+        attackResolvedEventId: string;
+        damageType: DamageType;
+      };
+    },
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
 
@@ -186,6 +197,11 @@ export class RollsService {
             natural,
             outcome,
             ...(input.label ? { reason: input.label } : {}),
+            // Spec §4b.4, E-PE-3 — «lo que solo pone el servidor»: `amount` es el `total` de ESTA
+            // tirada, nunca lo que dijera quien la pidió.
+            ...(interno?.pendingDamage
+              ? { pendingDamage: { ...interno.pendingDamage, amount: resultado.total } }
+              : {}),
           },
         },
         tx,

@@ -2050,6 +2050,111 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  // Tarea 3 de la puerta de efectos (spec §4b.4, E-PE-5) — el daño de un ataque RESUELTO sabe a
+  // quién le toca. Las tres pruebas comparten la misma forma: `gameEvent.findFirst` responde
+  // distinto según el `type` que pida cada consulta —`ABILITY_ROLL` (el crítico, ya existente) o
+  // `ATTACK_RESOLVED` (el veredicto, nuevo)—, exactamente como haría Postgres con el `where` real.
+  describe("pendingDamage — de qué ataque resuelto sale el daño", () => {
+    function mockearVeredicto(prisma: { gameEvent: { findFirst: jest.Mock } }, veredicto: unknown) {
+      prisma.gameEvent.findFirst.mockImplementation(({ where }: { where: { type: string } }) =>
+        Promise.resolve(
+          where.type === "ATTACK_RESOLVED"
+            ? veredicto
+            : { payload: { natural: "NONE", reason: RAZON_DEL_ATAQUE } },
+        ),
+      );
+    }
+
+    it("con veredicto HIT, rolls.roll lleva interno.pendingDamage con el objetivo y el tipo de daño del arma", async () => {
+      const { service, rolls, prisma } = conEspada();
+      mockearVeredicto(prisma, { id: "ar1", subjectId: "t1", payload: { verdict: "HIT" } });
+
+      await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        part: "DAMAGE",
+        spendInspiration: false,
+        mode: "NORMAL",
+        versatile: false,
+        attackRollEventId: "ev-atk-1",
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({ expression: "1d8+2" }),
+        {
+          attackRollEventId: "ev-atk-1",
+          pendingDamage: {
+            targetCharacterId: "t1",
+            attackResolvedEventId: "ar1",
+            damageType: "SLASHING",
+          },
+        },
+      );
+    });
+
+    it("con veredicto CRITICAL también lleva pendingDamage: crítico y objetivo no son excluyentes", async () => {
+      const { service, rolls, prisma } = conEspada();
+      mockearVeredicto(prisma, { id: "ar1", subjectId: "t1", payload: { verdict: "CRITICAL" } });
+
+      await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        part: "DAMAGE",
+        spendInspiration: false,
+        mode: "NORMAL",
+        versatile: false,
+        attackRollEventId: "ev-atk-1",
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.anything(),
+        expect.objectContaining({
+          pendingDamage: expect.objectContaining({ targetCharacterId: "t1" }),
+        }),
+      );
+    });
+
+    it("con veredicto MISS, el daño no lleva pendingDamage: un fallo no tiene a quién tocarle", async () => {
+      const { service, rolls, prisma } = conEspada();
+      mockearVeredicto(prisma, { id: "ar1", subjectId: "t1", payload: { verdict: "MISS" } });
+
+      await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        part: "DAMAGE",
+        spendInspiration: false,
+        mode: "NORMAL",
+        versatile: false,
+        attackRollEventId: "ev-atk-1",
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({ expression: "1d8+2" }),
+        { attackRollEventId: "ev-atk-1" },
+      );
+    });
+
+    it("sin ningún ATTACK_RESOLVED colgando de la tirada citada, tampoco lleva pendingDamage: un daño tirado al aire no tiene objetivo", async () => {
+      const { service, rolls, prisma } = conEspada();
+      mockearVeredicto(prisma, null);
+
+      await service.rollAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+        part: "DAMAGE",
+        spendInspiration: false,
+        mode: "NORMAL",
+        versatile: false,
+        attackRollEventId: "ev-atk-1",
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({ expression: "1d8+2" }),
+        { attackRollEventId: "ev-atk-1" },
+      );
+    });
+  });
+
   // Fix round 1 (M6) — el nombre de mesa, sea quien sea quien tira.
   it("fix round 1 (M6) — si el DM tira por el jugador con un arma sin identificar, la etiqueta pública lleva el alias", async () => {
     const { service, rolls, prisma, membership } = conEspada();
@@ -3925,6 +4030,250 @@ describe("armorClassInTransaction — M2B-11, fix de ronda 1 (Q-3)", () => {
 
     await expect(service.armorClassInTransaction("p1", personaje(), tx)).rejects.toThrow(
       "la base se cayó",
+    );
+  });
+});
+
+// Tarea 3 de la puerta de efectos (spec §4b.4-§4b.6) — la bandeja de daño: el daño de un ataque
+// resuelto sabe a quién le toca, se enseña antes de aplicarse, y se aplica una sola vez.
+describe("damagePreview — la bandeja de daño, antes de pulsar nada (spec §4b.4/§4b.5)", () => {
+  const RESISTENTE_A_CORTANTE = [
+    { damageType: "SLASHING" as const, effect: "RESIST" as const, note: "de ataques no mágicos" },
+  ];
+
+  /** Un fantasma de campaña —no del catálogo SRD— con sus propios `damageModifiers`. */
+  function montarConFantasma(damageModifiers: unknown[] = RESISTENTE_A_CORTANTE, tempHp = 0) {
+    const resolver = jest.fn().mockResolvedValue({ damageModifiers });
+    const montado = montar(undefined, {
+      resolver,
+      resolverParaHoja: jest.fn(),
+    } as unknown as { resolver: jest.Mock });
+    const target = personaje({
+      id: "fantasma1",
+      name: "Fantasma",
+      ownerId: "otro",
+      statblockRef: "CAMPAIGN:fantasma",
+      tempHp,
+    });
+    montado.prisma.character.findFirst.mockResolvedValue(target);
+    return { ...montado, target };
+  }
+
+  function conPendingDamage(
+    prisma: { gameEvent: { findFirst: jest.Mock } },
+    overrides: Record<string, unknown> = {},
+  ) {
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      actorUserId: "p1",
+      payload: {
+        pendingDamage: {
+          targetCharacterId: "fantasma1",
+          attackResolvedEventId: "ar1",
+          damageType: "SLASHING",
+          amount: 11,
+          ...overrides,
+        },
+      },
+    });
+  }
+
+  it("resistencia limpia: la mitad redondeada abajo, con el modificador y el motivo del libro", async () => {
+    const { service, prisma, membership } = montarConFantasma();
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const preview = await service.damagePreview("dm1", "c1", "roll1");
+
+    expect(preview.resulting).toEqual({
+      taken: 5,
+      absorbedByTemp: 0,
+      modifier: "resistant",
+      reason: "de ataques no mágicos",
+    });
+    expect(preview.target).toEqual({ id: "fantasma1", name: "Fantasma" });
+    expect(preview.canApply).toBe(true);
+    expect(preview.appliedEventId).toBeNull();
+  });
+
+  it("con PG temporales, absorben primero y solo el resto se toma de verdad", async () => {
+    // Mutación (Step 6 del brief): cambiar `Math.min(target.tempHp, trace.total)` por
+    // `trace.total` deja `absorbedByTemp` en 5 y `taken` en 0, y esta prueba se pone en rojo.
+    const { service, prisma, membership } = montarConFantasma(RESISTENTE_A_CORTANTE, 3);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const preview = await service.damagePreview("dm1", "c1", "roll1");
+
+    expect(preview.resulting).toEqual({
+      taken: 2,
+      absorbedByTemp: 3,
+      modifier: "resistant",
+      reason: "de ataques no mágicos",
+    });
+  });
+
+  it("inmune: nada llega a los PG, y el modificador lo dice", async () => {
+    const { service, prisma, membership } = montarConFantasma([
+      { damageType: "SLASHING", effect: "IMMUNE" },
+    ]);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const preview = await service.damagePreview("dm1", "c1", "roll1");
+
+    expect(preview.resulting.taken).toBe(0);
+    expect(preview.resulting.modifier).toBe("immune");
+  });
+
+  it("sin modificadores para ese tipo de daño, el modificador es null", async () => {
+    const { service, prisma, membership } = montarConFantasma([]);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const preview = await service.damagePreview("dm1", "c1", "roll1");
+
+    expect(preview.resulting.modifier).toBeNull();
+    expect(preview.resulting.taken).toBe(11);
+  });
+
+  it("un espectador que no es dueño ni DM del objetivo recibe 404, nunca 403 (spec §4b.5)", async () => {
+    // Un 403 confirmaría que la tirada tiene daño pendiente contra un objetivo real, y con él
+    // viajaría si resiste o no — la misma fuga que un 403 de `resolveAttack` ya cerró en 2.5.3.
+    const { service, prisma, membership } = montarConFantasma();
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(service.damagePreview("otro-jugador", "c1", "roll1")).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it("un daño ya aplicado se enseña con canApply:false y su appliedEventId", async () => {
+    const { service, prisma, membership } = montarConFantasma();
+    conPendingDamage(prisma, { appliedEventId: "hp1" });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    const preview = await service.damagePreview("dm1", "c1", "roll1");
+
+    expect(preview.canApply).toBe(false);
+    expect(preview.appliedEventId).toBe("hp1");
+  });
+
+  it("una tirada sin pendingDamage es 404: «esa tirada no tiene daño pendiente»", async () => {
+    const { service, prisma } = montarConFantasma();
+    prisma.gameEvent.findFirst.mockResolvedValue({ actorUserId: "p1", payload: {} });
+
+    await expect(service.damagePreview("dm1", "c1", "roll1")).rejects.toMatchObject({
+      status: 404,
+      message: "Esa tirada no tiene daño pendiente.",
+    });
+  });
+});
+
+describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6)", () => {
+  function conPendingDamage(
+    prisma: { gameEvent: { findFirst: jest.Mock } },
+    overrides: Record<string, unknown> = {},
+  ) {
+    prisma.gameEvent.findFirst.mockImplementation(({ where }: { where: { type?: string } }) =>
+      Promise.resolve(
+        where.type === "ATTACK_RESOLVED"
+          ? { payload: { attackName: "Mordisco" } }
+          : {
+              actorUserId: "p1",
+              payload: {
+                pendingDamage: {
+                  targetCharacterId: "wight1",
+                  attackResolvedEventId: "ar1",
+                  damageType: "NECROTIC",
+                  amount: 25,
+                  ...overrides,
+                },
+              },
+            },
+      ),
+    );
+  }
+
+  it("aplica el daño (reducido por resistencia) con changeHpFromEffect, y marca la tirada con el id del HP_CHANGED", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership, events } = montar(undefined, statblocks);
+    const target = personaje({
+      id: "wight1",
+      ownerId: "npc-owner",
+      statblockRef: "SRD:wight",
+      currentHp: 45,
+      tempHp: 0,
+    });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    const tx = montarTransaccion(prisma, target);
+    (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+
+    const res = await service.applyPendingDamage("dm1", "c1", "roll1");
+
+    // 25 de necrótico con resistencia: 12 de verdad (redondeado hacia abajo) — misma cuenta que
+    // la tarea 2.5.1 ya comprueba sobre `changeHp` directo.
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(45 - 12);
+    // El HP_CHANGED lo firma A —quien tiró el daño—, no el DM que pulsó el botón.
+    expect(events.record).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ type: "HP_CHANGED", reason: "Ataque: Mordisco" }),
+      }),
+      tx,
+    );
+    expect(res.appliedEventId).toBe("ev1");
+    expect((tx as unknown as { $executeRaw: jest.Mock }).$executeRaw).toHaveBeenCalled();
+  });
+
+  it("si el candado real (el UPDATE con jsonb_set) no marca ninguna fila, es 409", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership } = montar(undefined, statblocks);
+    const target = personaje({
+      id: "wight1",
+      ownerId: "npc-owner",
+      statblockRef: "SRD:wight",
+      currentHp: 45,
+      tempHp: 0,
+    });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    const tx = montarTransaccion(prisma, target);
+    (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(0);
+
+    await expect(service.applyPendingDamage("dm1", "c1", "roll1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it("un daño ya marcado con appliedEventId es 409 sin abrir la transacción (lectura barata)", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership } = montar(undefined, statblocks);
+    const target = personaje({ id: "wight1", ownerId: "npc-owner", statblockRef: "SRD:wight" });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma, { appliedEventId: "hp-viejo" });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+
+    await expect(service.applyPendingDamage("dm1", "c1", "roll1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.transaction).not.toHaveBeenCalled();
+  });
+
+  it("el atacante, si no es dueño ni DM del objetivo, no puede aplicar: 403 (aquí SÍ se ve, spec §6)", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership } = montar(undefined, statblocks);
+    const target = personaje({ id: "wight1", ownerId: "npc-owner", statblockRef: "SRD:wight" });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(service.applyPendingDamage("p1", "c1", "roll1")).rejects.toBeInstanceOf(
+      ForbiddenException,
     );
   });
 });

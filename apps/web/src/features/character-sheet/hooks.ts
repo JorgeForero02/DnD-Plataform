@@ -434,6 +434,8 @@ export function useApplyCondition(campaignId: string, characterId: string) {
       note?: string;
       /** Segundos de juego. Sin esto la condición es indefinida (2C.4). */
       durationSeconds?: number;
+      /** «Hasta el próximo descanso corto/largo» (puerta de efectos, §5.4). Exclusivo con `durationSeconds`. */
+      expiresOnRest?: "SHORT" | "LONG";
     }) =>
       characterSheetApi.applyCondition(
         campaignId,
@@ -442,6 +444,7 @@ export function useApplyCondition(campaignId: string, characterId: string) {
         vars.level,
         vars.note,
         vars.durationSeconds,
+        vars.expiresOnRest,
       ),
     onSuccess: () => {
       // **Y la hoja también.** Una condición no cambia solo su propia lista: cambia la velocidad

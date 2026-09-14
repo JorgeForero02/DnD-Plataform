@@ -271,6 +271,32 @@ export function nombreCausaVelocidad(sourceKey: string): string {
   return nombreCondicion(sourceKey);
 }
 
+/**
+ * **La puerta de efectos, §5.4/§4.3**: una condición puede durar «hasta el próximo descanso
+ * corto» o «largo» en vez de un número de segundos (decisión E-PE-7). El esquema compartido
+ * (`applyConditionSchema.expiresOnRest`) solo conoce `"SHORT" | "LONG"`, y esa clave **no llega
+ * nunca a la pantalla** — ni al radio que la elige, ni a la línea de la condición activa, ni al
+ * chip del elenco: los tres importan de aquí.
+ *
+ * `corto` es la frase breve para donde no cabe la explicación entera (la línea de la condición,
+ * el chip del retrato); `frase` es la explicación completa, para el radio que la elige.
+ */
+export const HASTA_EL_DESCANSO: Record<
+  "SHORT" | "LONG",
+  { etiqueta: string; frase: string; corto: string }
+> = {
+  SHORT: {
+    etiqueta: "Hasta el próximo descanso corto",
+    frase: "Se retira sola al declarar un descanso corto o largo completo.",
+    corto: "hasta descanso corto",
+  },
+  LONG: {
+    etiqueta: "Hasta el próximo descanso largo",
+    frase: "Se retira sola al declarar un descanso largo completo; un corto no la toca.",
+    corto: "hasta descanso largo",
+  },
+};
+
 export const NOMBRE_RESET_RECURSO: Record<string, string> = {
   NONE: "No se repone solo",
   SHORT_REST: "Descanso corto",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { RollAudience, RollResult } from "@dnd/shared";
+import type { EffectApplied, RollAudience, RollResult } from "@dnd/shared";
 import { Button, Panel } from "../../ui";
 import { ApiError } from "../../lib/api";
 import { DadoDibujado } from "../rolls/DadoDibujado";
@@ -40,6 +40,21 @@ function mensajeDeError(error: unknown): string {
   return "No se pudo tirar.";
 }
 
+/**
+ * **La puerta de efectos** (§4.3): si la salvación respondida traía un efecto pendiente
+ * (`RollRequest.pendingEffect`), el servidor ya lo aplicó al responder y esto dice qué pasó de
+ * verdad — no lo que se esperaba. `delta` con el signo tipográfico «−», no un guion: es el mismo
+ * carácter que usa el resto de la hoja para restar puntos de golpe.
+ *
+ * Tres frases, no una interpolación genérica: `delta === 0` con `saved` es «sin daño» y no
+ * «Aplicado: −0 PG», que leería como que algo pasó cuando no pasó nada.
+ */
+function fraseEfectoAplicado(efecto: EffectApplied): string {
+  if (efecto.saved && efecto.delta === 0) return "Salvó: sin daño";
+  const cifra = `−${Math.abs(efecto.delta)} PG`;
+  return efecto.saved ? `Aplicado: ${cifra} (salvó, mitad)` : `Aplicado: ${cifra} (falló)`;
+}
+
 /** Una petición ya respondida en esta sesión, con lo que salió. */
 interface Respondida {
   id: string;
@@ -53,6 +68,13 @@ interface Respondida {
    * aparecía en un rótulo que ya no describía nada pendiente.
    */
   esDeEncuentro: boolean;
+  /**
+   * La puerta de efectos (§4.3): lo que el servidor aplicó de verdad al responder esta salvación,
+   * o `undefined` si la petición no traía ningún `pendingEffect` (una prueba, una salvación sin
+   * daño detrás, o cualquier tirada libre). Se guarda aquí, junto al resto de la respuesta, para
+   * que sobreviva al mismo sondeo que ya limpia la petición de `pendientes`.
+   */
+  effectApplied?: EffectApplied;
 }
 
 export function TiradasPendientes({ campaignId }: { campaignId: string }) {
@@ -131,7 +153,13 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
       {
         onSuccess: (resultado) =>
           setRespondidas((actuales) => [
-            { id: peticion.id, etiqueta: peticion.label, resultado, esDeEncuentro },
+            {
+              id: peticion.id,
+              etiqueta: peticion.label,
+              resultado,
+              esDeEncuentro,
+              effectApplied: resultado.effectApplied,
+            },
             ...actuales,
           ]),
         onError: (e) =>
@@ -260,23 +288,31 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
               })}
             </ul>
 
-            {respondidasNormales.map((r) =>
-              r.resultado.revealed ? (
-                <div key={r.id} className="mt-s3">
-                  {/* El total en grande, igual que en la tarjeta de tirada libre: es lo que se
-                      canta en la mesa. El desglose de debajo dice de dónde salió — nunca un
-                      número solo. */}
-                  <p className="text-center font-data text-chrome-xl text-text">
-                    {r.resultado.total}
-                  </p>
-                  <ResultadoDeTirada resultado={r.resultado} etiqueta={r.etiqueta} />
-                </div>
-              ) : (
-                <div key={r.id} className="mt-s3">
+            {respondidasNormales.map((r) => (
+              <div key={r.id} className="mt-s3">
+                {r.resultado.revealed ? (
+                  <>
+                    {/* El total en grande, igual que en la tarjeta de tirada libre: es lo que se
+                        canta en la mesa. El desglose de debajo dice de dónde salió — nunca un
+                        número solo. */}
+                    <p className="text-center font-data text-chrome-xl text-text">
+                      {r.resultado.total}
+                    </p>
+                    <ResultadoDeTirada resultado={r.resultado} etiqueta={r.etiqueta} />
+                  </>
+                ) : (
                   <TiradaACiegas etiqueta={r.etiqueta} expresion={r.resultado.expression} />
-                </div>
-              ),
-            )}
+                )}
+                {/* **La puerta de efectos** (§4.3): qué aplicó de verdad el servidor al
+                    responder, no lo que se esperaba de la petición. Se pinta también con una
+                    tirada a ciegas — el daño no es secreto aunque el resultado lo sea. */}
+                {r.effectApplied && (
+                  <p className="mt-1 text-center font-chrome text-chrome-xs text-muted">
+                    {fraseEfectoAplicado(r.effectApplied)}
+                  </p>
+                )}
+              </div>
+            ))}
           </Panel>
         </section>
       )}

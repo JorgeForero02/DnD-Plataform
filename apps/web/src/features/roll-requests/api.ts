@@ -1,4 +1,10 @@
-import type { CreateRollRequestInput, RollAudience, RollMode, RollResult } from "@dnd/shared";
+import type {
+  CreateRollRequestInput,
+  EffectApplied,
+  RollAudience,
+  RollMode,
+  RollResult,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Tarea 2C.5 — el cliente HTTP de «el DM pide una tirada y al jugador le aparece».
@@ -99,11 +105,18 @@ export function answerRollRequest(
    * una salvación o una prueba, y una petición del DM es una de las dos últimas.
    */
   spendInspiration = false,
-): Promise<RollResult> {
-  return apiFetch<RollResult>(`/campaigns/${campaignId}/roll-requests/${requestId}/roll`, {
-    method: "POST",
-    body: JSON.stringify({ spendInspiration }),
-  });
+  // **La puerta de efectos** (§4.3): si la salvación respondida traía un efecto pendiente
+  // (`RollRequest.pendingEffect`), el servidor lo aplica en la misma transacción y lo devuelve
+  // aquí — `undefined` cuando no había nada que aplicar. El daño de una salvación se tira UNA
+  // vez, no dos: al pedirla, no al responderla, y esto es lo que dice qué pasó de verdad.
+): Promise<RollResult & { effectApplied?: EffectApplied }> {
+  return apiFetch<RollResult & { effectApplied?: EffectApplied }>(
+    `/campaigns/${campaignId}/roll-requests/${requestId}/roll`,
+    {
+      method: "POST",
+      body: JSON.stringify({ spendInspiration }),
+    },
+  );
 }
 
 /** Una fila de la tabla «Typical Difficulty Classes» del SRD 5.1. El rótulo lo pone la pantalla. */

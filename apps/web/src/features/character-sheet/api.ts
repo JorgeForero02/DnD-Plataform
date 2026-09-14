@@ -543,6 +543,13 @@ export interface ConditionRow {
    */
   expiresAtClock?: number | null;
   /**
+   * **La puerta de efectos** (§5.4): el suceso que la retira sola, en vez de un número de
+   * segundos — exclusivo con `expiresAtClock` en el servidor (`applyConditionSchema`). `null` o
+   * ausente si la condición es indefinida o cuenta por reloj. La forma legible vive en
+   * `vocabulario.ts` (`HASTA_EL_DESCANSO`); esta clave **nunca** se pinta cruda.
+   */
+  expiresOnRest?: "SHORT" | "LONG" | null;
+  /**
    * **Derivado en el servidor**, nunca aquí: `expired` es una resta contra el reloj de la
    * campaña que `ConditionsService.list` hace al leer. La pantalla no vuelve a calcularlo —si
    * lo hiciera habría dos verdades y una acabaría discrepando—; solo lo pinta.
@@ -570,6 +577,11 @@ export function fetchConditions(campaignId: string, characterId: string): Promis
  * `durationSeconds` son **segundos de juego** y solo viaja si la condición tiene duración: una
  * condición indefinida **no manda el campo**, que es lo que el esquema compartido espera
  * (`applyConditionSchema`, opcional) y lo que deja la caducidad en `null` en la base.
+ *
+ * `expiresOnRest` es la puerta de efectos (§5.4): «hasta el próximo descanso corto/largo», y es
+ * **exclusivo** con `durationSeconds` — el esquema compartido rechaza mandar los dos. Quien llama
+ * decide cuál de los dos manda según el modo elegido en pantalla; aquí no se arbitra nada, solo
+ * se manda lo que llega, y `JSON.stringify` se come el que quede `undefined`.
  */
 export function applyCondition(
   campaignId: string,
@@ -578,10 +590,11 @@ export function applyCondition(
   level?: number,
   note?: string,
   durationSeconds?: number,
+  expiresOnRest?: "SHORT" | "LONG",
 ): Promise<ConditionRow> {
   return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/conditions/${key}`, {
     method: "PUT",
-    body: JSON.stringify({ level, note, durationSeconds }),
+    body: JSON.stringify({ level, note, durationSeconds, expiresOnRest }),
   });
 }
 

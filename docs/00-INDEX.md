@@ -124,7 +124,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `5b71c07` **(rama `puerta-de-efectos/antes-del-paso-3`)** — instantánea de la
+> - **Generado sobre el commit** `49d6e46` **(rama `puerta-de-efectos/antes-del-paso-3`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no

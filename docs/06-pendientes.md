@@ -143,12 +143,12 @@ Lo que queda:
 | | Qué | Coste |
 |---|---|---|
 | API | `rollAttack` (DAMAGE) acepta un `attackRollEventId` de **otro** ataque del mismo personaje para colgar `pendingDamage`; casar también por `attackRef` — toca el camino M6/R3, muy probado | 30 min |
-| API | `pendingDamage.targetCharacterId` viaja en el `ABILITY_ROLL` del daño con la visibilidad del **atacante** (spec §4b.4, a propósito: es un id, no un nombre; la web con 404 no lo resuelve) — declarar en `decisiones.md` si se acepta | 10 min |
-| API | Con el visor del servidor en `changeHpEnTransaccion`, **el dueño de un PNJ jugable con plantilla `DM_ONLY` ya puede cambiarle los PG** (antes 400); la respuesta sigue redactada; solo los PG máximos son inferibles curando de más, igual que ya lo eran por `HP_CHANGED.from/to`. Declararlo como decisión | 10 min |
-| API | `answer()` convierte un fallo transitorio de la base al aplicar el efecto en «aplica el DM a mano» (`effectWarning`) sin reintentar | — |
+| API | ~~`pendingDamage.targetCharacterId` viaja en el `ABILITY_ROLL` del daño con la visibilidad del **atacante**~~ — **aceptado, D-CF-89 (2026-09-14)** | cerrada |
+| API | ~~El dueño de un PNJ jugable con plantilla `DM_ONLY` puede cambiarle los PG~~ — **aceptado, D-CF-90 (2026-09-14)** | cerrada |
+| API | ~~`answer()` no reintenta al fallar la aplicación del efecto~~ — **se deja, D-CF-91 (2026-09-14)** | cerrada |
 | API | `XpService.award` bloquea las filas en el orden de entrada (interbloqueo teórico si dos DM premian a la vez en orden cruzado); ordenar por `id` como `destinatariosOrdenados` | 10 min |
 | Web | El espacio fino de miles (U+202F) en `frasesDeXp` rompería los `getByText` de e2e/RTL si se cambiara; queda el espacio normal | — |
-| Web | Con la tirada a ciegas, «salvó/falló» de `effectApplied` revela el resultado al que responde — decisión de producto | — |
+| Web | Con la tirada a ciegas, «salvó/falló» de `effectApplied` revela el resultado al que responde — **decidido, D-CF-88: se oculta el veredicto**; código en el barrido tras 3A | 30 min |
 | Web | La bandeja pide el preview también en tarjetas ya aplicadas (quitarlo perdería la línea del daño reducido para el DM) | — |
 | Web | `GrupoDeRadios` existe tres veces (`ReglasDeLaMesa`, `Condiciones`, `DarXp`): subir a `ui/` | 30 min |
 | Web | `DarXp` dentro de `CapaDeCombate` no va con `key` por propuesta: dos combates seguidos reutilizan el estado del formulario | 5 min |

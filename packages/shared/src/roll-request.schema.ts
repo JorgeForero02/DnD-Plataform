@@ -120,8 +120,15 @@ export const pendingSaveEffectSchema = z.object({
 });
 export type PendingSaveEffect = z.infer<typeof pendingSaveEffectSchema>;
 
-/** Lo que `RollRequestsService.answer` aplicó al cerrar una petición con `pendingEffect`. */
-export type EffectApplied = { delta: number; saved: boolean };
+/**
+ * Lo que `RollRequestsService.answer` aplicó al cerrar una petición con `pendingEffect`.
+ *
+ * `saved` es opcional (D-CF-88): en una petición a ciegas (`audience: "BLIND"`, tirada
+ * `revealed: false`) no viaja en lo que se devuelve a quien respondió — SRD 5.1, *Unseen
+ * Attackers*: el daño se anuncia pero el veredicto de la salvación no. El DM lo sigue viendo
+ * por el `HP_CHANGED`/`reason` de siempre; `delta` sí viaja siempre.
+ */
+export type EffectApplied = { delta: number; saved?: boolean };
 
 /**
  * Lo que `answer` devuelve en vez de `effectApplied` cuando la tirada quedó escrita y la petición

@@ -465,9 +465,18 @@ export class RollRequestsService {
       };
     }
 
+    // **D-CF-88 — a ciegas, el veredicto no viaja a quien respondió.** `aplicarEfecto` siempre
+    // calcula `saved` (lo necesita para decidir entero/mitad/nada), pero una petición `BLIND`
+    // (`resultado.revealed === false`) no le enseña el total a quien tiró — mismo criterio que
+    // `verdict` en `attack.schema.ts` — y enseñarle si salvó sería la misma fuga con otro nombre.
+    // SRD 5.1, *Unseen Attackers*: el daño se anuncia, la salvación no. El `delta` sí viaja
+    // siempre; el DM sigue viendo el veredicto por el `HP_CHANGED`/`reason` de siempre.
+    const effectApplicadoParaResponder =
+      effectApplied && !resultado.revealed ? { delta: effectApplied.delta } : effectApplied;
+
     return {
       ...resultado,
-      ...(effectApplied ? { effectApplied } : {}),
+      ...(effectApplicadoParaResponder ? { effectApplied: effectApplicadoParaResponder } : {}),
       ...(effectWarning ? { effectWarning } : {}),
     };
   }

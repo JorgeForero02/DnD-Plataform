@@ -138,21 +138,21 @@ importantes cerrados en la ola 1** (`5b71c07`, `54379a0`; re-revisión `re-revie
 archivadas en [`_archivo/pendientes-cerrados-2026-09-14-puerta-de-efectos.md`](./_archivo/pendientes-cerrados-2026-09-14-puerta-de-efectos.md).
 Lo que queda:
 
-### PE-1 · Menores aplazados de las dos revisiones y de la re-revisión (con su línea en los informes)
+### PE-1 · Menores aplazados de las dos revisiones y de la re-revisión (con su línea en los informes) — cerrada el 2026-09-14
 
 | | Qué | Coste |
 |---|---|---|
-| API | `rollAttack` (DAMAGE) acepta un `attackRollEventId` de **otro** ataque del mismo personaje para colgar `pendingDamage`; casar también por `attackRef` — toca el camino M6/R3, muy probado | 30 min |
+| API | ~~`rollAttack` (DAMAGE) acepta un `attackRollEventId` de **otro** ataque del mismo personaje para colgar `pendingDamage`; casar también por `attackRef` — toca el camino M6/R3, muy probado~~ — **cerrada (2026-09-14, `pe-1/cierre`)** | cerrada |
 | API | ~~`pendingDamage.targetCharacterId` viaja en el `ABILITY_ROLL` del daño con la visibilidad del **atacante**~~ — **aceptado, D-CF-89 (2026-09-14)** | cerrada |
 | API | ~~El dueño de un PNJ jugable con plantilla `DM_ONLY` puede cambiarle los PG~~ — **aceptado, D-CF-90 (2026-09-14)** | cerrada |
 | API | ~~`answer()` no reintenta al fallar la aplicación del efecto~~ — **se deja, D-CF-91 (2026-09-14)** | cerrada |
-| API | `XpService.award` bloquea las filas en el orden de entrada (interbloqueo teórico si dos DM premian a la vez en orden cruzado); ordenar por `id` como `destinatariosOrdenados` | 10 min |
+| API | ~~`XpService.award` bloquea las filas en el orden de entrada (interbloqueo teórico si dos DM premian a la vez en orden cruzado); ordenar por `id` como `destinatariosOrdenados`~~ — **cerrada (2026-09-14, `pe-1/cierre`)** | cerrada |
 | Web | El espacio fino de miles (U+202F) en `frasesDeXp` rompería los `getByText` de e2e/RTL si se cambiara; queda el espacio normal | — |
-| Web | Con la tirada a ciegas, «salvó/falló» de `effectApplied` revela el resultado al que responde — **decidido, D-CF-88: se oculta el veredicto**; código en el barrido tras 3A | 30 min |
+| Web | ~~Con la tirada a ciegas, «salvó/falló» de `effectApplied` revela el resultado al que responde~~ — **decidido, D-CF-88: se oculta el veredicto; cerrada (2026-09-14, `pe-1/cierre`)** | cerrada |
 | Web | La bandeja pide el preview también en tarjetas ya aplicadas (quitarlo perdería la línea del daño reducido para el DM) | — |
-| Web | `GrupoDeRadios` existe tres veces (`ReglasDeLaMesa`, `Condiciones`, `DarXp`): subir a `ui/` | 30 min |
-| Web | `DarXp` dentro de `CapaDeCombate` no va con `key` por propuesta: dos combates seguidos reutilizan el estado del formulario | 5 min |
-| e2e | El bucle «hasta impactar» de `puerta-de-efectos.spec.ts` es probabilístico (CA 1, tope 10); un `data-*` en `TirarAtaqueBoton` lo haría determinista | 20 min |
+| Web | ~~`GrupoDeRadios` existe tres veces (`ReglasDeLaMesa`, `Condiciones`, `DarXp`): subir a `ui/`~~ — **cerrada (2026-09-14, `pe-1/cierre`)** | cerrada |
+| Web | ~~`DarXp` dentro de `CapaDeCombate` no va con `key` por propuesta: dos combates seguidos reutilizan el estado del formulario~~ — **cerrada (2026-09-14, `pe-1/cierre`)** | cerrada |
+| e2e | ~~El bucle «hasta impactar» de `puerta-de-efectos.spec.ts` es probabilístico (CA 1, tope 10); un `data-*` en `TirarAtaqueBoton` lo haría determinista~~ — **cerrada (2026-09-14, `pe-1/cierre`)** | cerrada |
 | e2e | `iniciativa-en-vivo.spec.ts` estaba **rojo en `main` desde D-CF-66** (`4ea688c`): la jugadora fijaba `level: 8` por el `PATCH` y ahora es 403; se quitó el `level` del helper en esta rama (`8b6…`, ver historial) | hecho |
 
 ### PE-2 · Un e2e de concurrencia real para `apply-damage` y `POST /xp` — **cerrada el 2026-09-14 en `pnj-del-mundo/cierre`**

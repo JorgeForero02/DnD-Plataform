@@ -346,9 +346,12 @@ test("la bandeja de daño: el DM ve «Aplicar», A no; al aplicar, los dos ven �
   for (let intento = 0; intento < 10 && !impacto; intento++) {
     await panel.getByRole("button", { name: "Atacar con Cimitarra" }).click();
     await panel.getByRole("option", { name: /Goblin/ }).click();
-    const veredicto = panel.getByText(/^Impacta$|^Falla$|^¡Crítico!$/);
+    // Menor 6 del barrido PE-1: se lee `data-veredicto` (HIT|MISS|CRITICAL, el valor del
+    // servidor) en vez de adivinar por la frase traducida — el tope de diez sigue de red de
+    // seguridad.
+    const veredicto = panel.locator("[data-veredicto]");
     await expect(veredicto).toBeVisible({ timeout: 10_000 });
-    impacto = (await veredicto.innerText()) !== "Falla";
+    impacto = (await veredicto.getAttribute("data-veredicto")) !== "MISS";
   }
   expect(impacto, "diez intentos con CA 1 y ninguno impactó").toBe(true);
 

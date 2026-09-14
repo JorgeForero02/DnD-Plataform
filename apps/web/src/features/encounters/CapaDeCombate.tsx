@@ -71,6 +71,12 @@ export function CapaDeCombate({
       <DarXp
         campaignId={campaignId}
         propuesta={propuestaXp}
+        // Menor 5 del barrido PE-1: `XpPropuesto` no lleva `encounterId` (no es del combate, es
+        // del reparto), así que la clave sale de a quién y cuánto propone — dos combates
+        // seguidos casi nunca proponen los mismos destinatarios con el mismo total, y con eso
+        // basta para que React monte un `DarXp` nuevo y no arrastre la elección o la cantidad
+        // del formulario anterior.
+        key={`${propuestaXp.total}:${propuestaXp.destinatarios.map((d) => d.characterId).join(",")}`}
         onHecho={(resumen) => {
           setPropuestaXp(null);
           setRepartido(resumen);

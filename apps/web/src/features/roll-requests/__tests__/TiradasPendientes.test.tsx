@@ -301,6 +301,30 @@ describe("TiradasPendientes", () => {
       expect(await screen.findByText("Aplicado: −14 PG (falló)")).toBeInTheDocument();
     });
 
+    // D-CF-88: a ciegas, `saved` no viaja a quien respondió (el DM lo sigue viendo por el
+    // `HP_CHANGED`/`reason` de siempre) — la frase no debe inventarse un veredicto.
+    it("a ciegas, sin saved: «Se aplicó el efecto», sin salvó ni falló", async () => {
+      vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PENDIENTE]);
+      vi.spyOn(rollRequestsApi, "answerRollRequest").mockResolvedValue({
+        revealed: false,
+        eventId: "ev-4b",
+        expression: "1d20+5",
+        audience: "BLIND",
+        effectApplied: { delta: -14 },
+      });
+
+      pintar();
+
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Tirar: Percepción para ver si oís al posadero",
+        }),
+      );
+
+      expect(await screen.findByText("Se aplicó el efecto")).toBeInTheDocument();
+      expect(screen.queryByText(/salvó|falló/i)).not.toBeInTheDocument();
+    });
+
     it("salvó con mitad de daño: «Aplicado: −7 PG (salvó, mitad)»", async () => {
       vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PENDIENTE]);
       vi.spyOn(rollRequestsApi, "answerRollRequest").mockResolvedValue({

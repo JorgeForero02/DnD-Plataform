@@ -132,6 +132,25 @@ describe("XpService.award", () => {
     );
   });
 
+  // Menor 3 del barrido PE-1: los personajes se bloquean (`FOR UPDATE`) en orden fijo por `id`,
+  // no en el orden en que `findMany` los devolvió ni en el que mandó el cliente — mismo criterio
+  // que `destinatariosOrdenados` en `ActivitiesService`, para no interbloquear con una petición
+  // concurrente que pida los mismos personajes en orden inverso.
+  it("bloquea los personajes por `id` ascendente, no en el orden que devolvió `findMany`", async () => {
+    const saldos = { a: 0, b: 0 };
+    const { service, prisma } = montar(saldos);
+    // `findMany` los devuelve en el orden «de la base» — aquí, deliberadamente al revés del
+    // alfabético — para que la prueba no dependa de que ya vinieran ordenados.
+    prisma.character.findMany.mockResolvedValue([personaje({ id: "b" }), personaje({ id: "a" })]);
+
+    await service.award("dm", "c1", { characterIds: ["b", "a"], amount: 10 });
+
+    const idsEnOrden = prisma.$queryRaw.mock.calls.map(
+      (llamada: [TemplateStringsArray, ...unknown[]]) => llamada[1],
+    );
+    expect(idsEnOrden).toEqual(["a", "b"]);
+  });
+
   it("amount -600 sobre xp 100: xp nunca baja de 0, y XP_AWARDED.amount es el delta EFECTIVO (-100) con xpTotal 0", async () => {
     // Hasta la ola de arreglos 1 el suceso decía «-600» con total 0: la crónica habría leído
     // «pierde 600 PX» sobre alguien que tenía 100. Se registra lo que de verdad se movió, como

@@ -545,6 +545,31 @@ describe("RollRequestsService", () => {
       expect(r.effectApplied).toEqual({ delta: -10, saved: true });
     });
 
+    // D-CF-88: a ciegas (`audience: "BLIND"`, tirada `revealed: false`), `effectApplied.saved`
+    // no viaja a quien respondió — el `delta` sí (SRD 5.1, *Unseen Attackers*: el daño se
+    // anuncia, la salvación no). El DM lo sigue viendo por el `HP_CHANGED`/`reason` de siempre.
+    it("a ciegas: effectApplied trae delta pero no saved", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({
+        ...base,
+        audience: "BLIND",
+        pendingEffect: efecto,
+      });
+      prisma.rollRequest.findUnique.mockResolvedValue({ resolvedAt: null, cancelledAt: null });
+      rolls.roll.mockResolvedValue({
+        revealed: false,
+        eventId: "ev1",
+        expression: "1d20+2",
+        audience: "BLIND",
+      });
+      tx.gameEvent.findUnique.mockResolvedValue({ payload: { type: "ABILITY_ROLL", total: 14 } });
+      tx.rollRequest.updateMany.mockResolvedValue({ count: 1 });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(r.effectApplied).toEqual({ delta: -21 });
+      expect(r.effectApplied).not.toHaveProperty("saved");
+    });
+
     it("salva con siSalva ninguno: no toca los PG y effectApplied dice delta 0", async () => {
       prisma.rollRequest.findFirst.mockResolvedValue({
         ...base,

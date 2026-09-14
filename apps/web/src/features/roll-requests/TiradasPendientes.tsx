@@ -50,8 +50,14 @@ function mensajeDeError(error: unknown): string {
  *
  * Tres frases, no una interpolación genérica: `delta === 0` con `saved` es «sin daño» y no
  * «Aplicado: −0 PG», que leería como que algo pasó cuando no pasó nada.
+ *
+ * **`saved` puede faltar** (D-CF-88): en una petición a ciegas el servidor no le dice a quien
+ * respondió si salvó — solo el `delta`, que sí se anuncia (SRD 5.1, *Unseen Attackers*). Con
+ * `saved === undefined` la frase no se inventa un veredicto: dice que el efecto se aplicó y
+ * calla el resultado de la tirada.
  */
 function fraseEfectoAplicado(efecto: EffectApplied): string {
+  if (efecto.saved === undefined) return "Se aplicó el efecto";
   if (efecto.saved && efecto.delta === 0) return "Salvó: sin daño";
   const cifra = `${efecto.delta > 0 ? "+" : "−"}${Math.abs(efecto.delta)} PG`;
   return efecto.saved ? `Aplicado: ${cifra} (salvó, mitad)` : `Aplicado: ${cifra} (falló)`;

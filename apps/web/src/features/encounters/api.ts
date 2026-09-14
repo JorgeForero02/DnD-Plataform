@@ -146,6 +146,21 @@ export function cancelEncounter(
 }
 
 /**
+ * Sacar del combate (spec §3.3). Solo DM; el servidor devuelve el encuentro entero (E-PM-8).
+ */
+export function removeCombatant(
+  campaignId: string,
+  sessionId: string,
+  encounterId: string,
+  combatantId: string,
+): Promise<Encounter> {
+  return apiFetch<Encounter>(
+    `${base(campaignId, sessionId)}/${encounterId}/combatants/${combatantId}`,
+    { method: "DELETE" },
+  );
+}
+
+/**
  * Paso 2, tarea A3 — gastar un trozo de la economía del turno propio (`EconomiaDeAccion.tsx`).
  * El servidor cuenta y avisa, nunca rechaza (tarea A2, `EncountersService.gastar`): la respuesta
  * trae la economía ya actualizada y si este gasto se ha pasado de lo que quedaba.

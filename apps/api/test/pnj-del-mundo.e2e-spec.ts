@@ -323,4 +323,163 @@ describe("PNJ del mundo y la mesa — Task 0 (e2e)", () => {
       expect(ids).toEqual(expect.arrayContaining([g1, g2]));
     });
   });
+
+  describe("Task 2 — sacar del combate", () => {
+    let sessionId = "";
+    let encounterId = "";
+    let g1 = ""; // SRD:goblin
+    let g2 = ""; // SRD:bandit
+    let g3 = ""; // SRD:ogre — los tres distintos para que cada uno tenga SU propia posición.
+
+    const encUrl = (suffix = "") =>
+      `/campaigns/${campaignId}/sessions/${sessionId}/encounters${suffix}`;
+    const combatantUrl = (cid: string) => encUrl(`/${encounterId}/combatants/${cid}`);
+
+    beforeAll(async () => {
+      const s = app.getHttpServer();
+      sessionId = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/sessions`)
+          .set("Authorization", auth(tokenDM))
+          .send({ title: "Sacar del combate", visibility: "PLAYERS" })
+      ).body.id;
+
+      g1 = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/npcs`)
+          .set("Authorization", auth(tokenDM))
+          .send({ ref: "SRD:goblin", count: 1 })
+      ).body[0].id;
+      g2 = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/npcs`)
+          .set("Authorization", auth(tokenDM))
+          .send({ ref: "SRD:bandit", count: 1 })
+      ).body[0].id;
+      g3 = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/npcs`)
+          .set("Authorization", auth(tokenDM))
+          .send({ ref: "SRD:ogre", count: 1 })
+      ).body[0].id;
+
+      // Los tres son del DM: `start()` tira por ellos en el servidor y el encuentro nace ACTIVE
+      // sin pedir ninguna iniciativa (ronda de arreglo P2, «con más de un DM»).
+      const r = await request(s)
+        .post(encUrl())
+        .set("Authorization", auth(tokenDM))
+        .send({ characterIds: [g1, g2, g3] });
+      expect(r.status).toBe(201);
+      expect(r.body.status).toBe("ACTIVE");
+      expect(r.body.combatants).toHaveLength(3);
+      const posiciones = [...new Set(r.body.combatants.map((c: any) => c.position))];
+      expect(posiciones).toHaveLength(3);
+      encounterId = r.body.id;
+    });
+
+    it("un jugador no puede sacar a nadie del combate: 403", async () => {
+      const actual = await request(app.getHttpServer())
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", auth(tokenDM));
+      const cualquiera = actual.body.combatants[0].id;
+      const r = await request(app.getHttpServer())
+        .delete(combatantUrl(cualquiera))
+        .set("Authorization", auth(tokenPL));
+      expect(r.status).toBe(403);
+    });
+
+    it("sacar al que NO tiene el turno: baja a dos, sigue el mismo turno por identidad, el asalto no cambia", async () => {
+      const s = app.getHttpServer();
+      const antes = await request(s)
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", auth(tokenDM));
+      const activoAntes = antes.body.combatants.find(
+        (c: any) => c.position === antes.body.activePosition,
+      );
+      const otro = antes.body.combatants.find((c: any) => c.id !== activoAntes.id);
+      expect(otro).toBeDefined();
+
+      const r = await request(s).delete(combatantUrl(otro.id)).set("Authorization", auth(tokenDM));
+      expect(r.status).toBe(200);
+      expect(r.body.combatants).toHaveLength(2);
+      expect(r.body.round).toBe(antes.body.round);
+      const activoDespues = r.body.combatants.find(
+        (c: any) => c.position === r.body.activePosition,
+      );
+      expect(activoDespues.characterId).toBe(activoAntes.characterId);
+    });
+
+    it("sacar al que tiene el turno cuando es el ÚLTIMO de la vuelta: el asalto sube UNA vez y el reloj avanza seis segundos, no doce", async () => {
+      const s = app.getHttpServer();
+
+      const relojAntes = await request(s)
+        .get(`/campaigns/${campaignId}/clock`)
+        .set("Authorization", auth(tokenDM));
+
+      // Quedan dos combatientes tras la prueba anterior: si el turno activo no está ya en la
+      // última posición, se avanza hasta dejarlo ahí.
+      let actual = await request(s)
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", auth(tokenDM));
+      const posiciones = (
+        [...new Set(actual.body.combatants.map((c: any) => c.position))] as number[]
+      ).sort((a, b) => a - b);
+      expect(posiciones).toHaveLength(2);
+      while (actual.body.activePosition !== posiciones[posiciones.length - 1]) {
+        await request(s)
+          .post(encUrl(`/${encounterId}/advance-turn`))
+          .set("Authorization", auth(tokenDM))
+          .expect(201);
+        actual = await request(s)
+          .get(encUrl(`/${encounterId}`))
+          .set("Authorization", auth(tokenDM));
+      }
+      const rondaAntes = actual.body.round;
+      const activo = actual.body.combatants.find(
+        (c: any) => c.position === actual.body.activePosition,
+      );
+
+      const r = await request(s)
+        .delete(combatantUrl(activo.id))
+        .set("Authorization", auth(tokenDM));
+      expect(r.status).toBe(200);
+      expect(r.body.round).toBe(rondaAntes + 1);
+      expect(r.body.activePosition).toBe(0);
+
+      const relojDespues = await request(s)
+        .get(`/campaigns/${campaignId}/clock`)
+        .set("Authorization", auth(tokenDM));
+      expect(relojDespues.body.seconds - relojAntes.body.seconds).toBe(6);
+    });
+
+    it("el registro tiene un COMBATANT_LEFT por cada sacado", async () => {
+      const eventos = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", auth(tokenDM));
+      const salidas = eventos.body.events.filter(
+        (e: any) => e.type === "COMBATANT_LEFT" && e.payload?.encounterId === encounterId,
+      );
+      expect(salidas).toHaveLength(2);
+    });
+
+    it("sacar al último combatiente: 409, el combate no se vacía solo", async () => {
+      const s = app.getHttpServer();
+      const actual = await request(s)
+        .get(encUrl(`/${encounterId}`))
+        .set("Authorization", auth(tokenDM));
+      expect(actual.body.combatants).toHaveLength(1);
+      const r = await request(s)
+        .delete(combatantUrl(actual.body.combatants[0].id))
+        .set("Authorization", auth(tokenDM));
+      expect(r.status).toBe(409);
+    });
+
+    it("los personajes sacados siguen en GET /npcs", async () => {
+      const npcs = await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenDM));
+      const ids = npcs.body.map((n: any) => n.id);
+      expect(ids).toEqual(expect.arrayContaining([g1, g2, g3]));
+    });
+  });
 });

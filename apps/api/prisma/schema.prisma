@@ -119,6 +119,8 @@ enum GameEventType {
   // PNJ del mundo y la mesa (2026-09-14): revelar y ocultar una criatura desde la mesa.
   NPC_REVEALED
   NPC_HIDDEN
+  // Sacar del combate (PNJ del mundo y la mesa, spec §3.3).
+  COMBATANT_LEFT
 }
 
 enum ResourceReset {

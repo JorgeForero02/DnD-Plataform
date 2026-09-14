@@ -875,6 +875,136 @@ export class EncountersService {
   }
 
   /**
+   * **Entrar en una posición del orden**: escribe el puntero (y el asalto si sube), los sucesos
+   * `TURN_ADVANCED` / `ROUND_ADVANCED` (+ seis segundos de reloj), corta las condiciones
+   * `sourceStart` y repone la economía de quien entra. Extraído de `advanceTurn` (PNJ del mundo y
+   * la mesa, E-PM-7) para que **sacar a quien tenía el turno sea el mismo código** y no un segundo
+   * avance que suba asalto dos veces. Los comentarios de cada bloque viven aquí, no en los
+   * llamadores.
+   *
+   * **Quiénes empiezan turno se leen de `tx`** (`combatant.findMany`) y no de una foto previa:
+   * `advanceTurn` tenía la foto de antes de tocar nada, pero `removeCombatant` ya ha borrado una
+   * fila para cuando llama aquí, así que la única lista fiable es la que queda de verdad.
+   */
+  private async empezarTurno(
+    tx: Prisma.TransactionClient,
+    p: {
+      userId: string;
+      campaignId: string;
+      sessionId: string;
+      encounterId: string;
+      toPosition: number;
+      roundBefore: number;
+      sube: boolean;
+    },
+  ): Promise<void> {
+    const nuevoAsalto = p.sube ? p.roundBefore + 1 : p.roundBefore;
+
+    // Ya no se recoge el resultado: la respuesta se compone fuera con `get()`, y quedarse la
+    // fila aquí solo invitaría a devolverla otra vez.
+    await tx.encounter.update({
+      where: { id: p.encounterId },
+      data: { activePosition: p.toPosition, round: nuevoAsalto },
+    });
+
+    await this.events.record(
+      p.userId,
+      p.campaignId,
+      {
+        sessionId: p.sessionId,
+        subjectType: "encounter",
+        subjectId: p.encounterId,
+        visibility: "PLAYERS",
+        payload: {
+          type: "TURN_ADVANCED",
+          encounterId: p.encounterId,
+          // **Sin posiciones, y es la MISMA fuga que esta tarea ya cerró una vez por otra
+          // puerta.** `get` renumera denso justo para que un jugador no pueda contar los huecos
+          // de los combatientes que no ve; este suceso es `PLAYERS` y viajaba con las
+          // posiciones **crudas** dentro del `payload`, que `GameEventsService.list` devuelve
+          // entero. Con un PJ visible y cuatro grupos ocultos, el registro le entregaba cinco
+          // posiciones distintas: cuántos enemigos escondidos hay, y en qué hueco del orden
+          // actúa cada uno. Lo midió la revisión de cierre contra Postgres real.
+          //
+          // Un `payload` **no se puede filtrar por espectador** —es un Json que se devuelve tal
+          // cual—, así que la única renumeración correcta sería por espectador y ahí no cabe.
+          // Y no hace falta: `linea-de-log.ts` ya las descartaba a propósito («el suceso trae
+          // posiciones, no personajes»), así que nadie las estaba leyendo. Es exactamente lo
+          // que se hizo con `combatantCount` en `ENCOUNTER_STARTED`.
+          round: nuevoAsalto,
+        },
+      },
+      tx,
+    );
+
+    if (p.sube) {
+      // Comparte la transacción con `GameClockService.advance`: el asalto que sube y los seis
+      // segundos que avanza el reloj se escriben juntos o no se escribe ninguno.
+      const avance = await this.clock.advance(
+        p.userId,
+        p.campaignId,
+        { kind: "TIME", seconds: SEGUNDOS_POR_ASALTO },
+        tx,
+      );
+      await this.events.record(
+        p.userId,
+        p.campaignId,
+        {
+          sessionId: p.sessionId,
+          subjectType: "encounter",
+          subjectId: p.encounterId,
+          visibility: "PLAYERS",
+          payload: {
+            type: "ROUND_ADVANCED",
+            encounterId: p.encounterId,
+            from: p.roundBefore,
+            to: nuevoAsalto,
+            clockSeconds: avance.to,
+          },
+        },
+        tx,
+      );
+    }
+
+    // **Aquí se cruza el borde de turno** (paso 1, tarea 4). Quien empieza turno corta las
+    // condiciones que esperaban justamente eso —hoy, la marca de la acción Ayudar, que el SRD
+    // mantiene hasta *«the start of your next turn»* de quien ayudó—.
+    //
+    // No se borran: se les pone `expiresAtClock` al reloj de este instante y se les quita el
+    // borde, así que a partir de aquí «¿está vencida?» vuelve a ser la resta de siempre y la
+    // condición **sigue en la hoja, marcada** (D-2C-2). Va dentro de esta transacción: si el
+    // turno no avanza, la ventaja no se pierde.
+    const empiezanTurno = (
+      await tx.combatant.findMany({
+        where: { encounterId: p.encounterId, position: p.toPosition },
+        select: { characterId: true },
+      })
+    ).map((c) => c.characterId);
+    if (empiezanTurno.length > 0) {
+      const reloj = await tx.campaign.findUniqueOrThrow({
+        where: { id: p.campaignId },
+        select: { clockSeconds: true },
+      });
+      await tx.characterCondition.updateMany({
+        where: { expiryEdge: "sourceStart", sourceCharacterId: { in: empiezanTurno } },
+        data: { expiryEdge: null, sourceCharacterId: null, expiresAtClock: reloj.clockSeconds },
+      });
+    }
+
+    // **Paso 2, tarea A1 — la economía del turno se repone al EMPEZAR, no al terminar.** SRD
+    // 5.1, «Reactions»: *«you regain your reaction at the start of your turn»*. Por eso esto
+    // toca a quien entra en `toPosition` y no a quien sale de `encounter.activePosition`: entre
+    // el final de un turno y el principio del siguiente nadie tiene reacción, y es justo lo que
+    // hace que solo se pueda reaccionar una vez por asalto. Se repone por `position`, no por
+    // fila, porque varios combatientes —seis goblins idénticos— comparten posición y actúan a
+    // la vez.
+    await tx.combatant.updateMany({
+      where: { encounterId: p.encounterId, position: p.toPosition },
+      data: { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 },
+    });
+  }
+
+  /**
    * Pasa de turno: recorre el orden guardado y **sube de asalto al llegar al final**.
    *
    * Subir de asalto avanza el reloj de campaña **seis segundos** (`SEGUNDOS_POR_ASALTO`,
@@ -905,129 +1035,128 @@ export class EncountersService {
     const indiceSiguiente = (actualIndex + 1) % posiciones.length;
     const sube = indiceSiguiente === 0;
     const toPosition = posiciones[indiceSiguiente];
-    const nuevoAsalto = sube ? encounter.round + 1 : encounter.round;
+
+    // **La transacción llama al mismo `empezarTurno` que usa `removeCombatant`** (E-PM-7): no
+    // hay dos caminos que puedan subir de asalto de formas distintas.
+    await this.prisma.transaction((tx) =>
+      this.empezarTurno(tx, {
+        userId,
+        campaignId,
+        sessionId,
+        encounterId: encounter.id,
+        toPosition,
+        roundBefore: encounter.round,
+        sube,
+      }),
+    );
+
+    return { ...(await this.get(userId, campaignId, sessionId, encounterId)), roundAdvanced: sube };
+  }
+
+  /**
+   * Sacar del combate (spec §3.3). Quita la fila, renumera denso con `recolocar`, y si era su
+   * turno y estaba solo en su posición, **avanza con `empezarTurno`** — el mismo código que
+   * «Pasar turno», así que no hay forma de subir asalto dos veces. El personaje sigue en la
+   * campaña con sus PG y condiciones. Si queda un solo bando, el combate NO termina solo
+   * (E-PM-7).
+   */
+  async removeCombatant(
+    userId: string,
+    campaignId: string,
+    sessionId: string,
+    encounterId: string,
+    combatantId: string,
+  ) {
+    await this.membership.requireDM(campaignId, userId);
+    await this.sesion(campaignId, sessionId);
+    const combatiente = await this.prisma.combatant.findFirst({
+      where: { id: combatantId, encounterId, encounter: { sessionId } },
+    });
+    if (!combatiente) throw new NotFoundException("Ese combatiente no está en este combate.");
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, sessionId },
+      include: { combatants: { orderBy: { position: "asc" } } },
+    });
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    if (encounter.status !== "ACTIVE")
+      throw new ConflictException(
+        "Solo se saca a alguien de un combate en marcha; uno que no ha empezado se cancela.",
+      );
+    if (encounter.combatants.length <= 1)
+      throw new ConflictException(
+        "Es el último combatiente: termina el combate en vez de sacarlo.",
+      );
+    // E-PM-6: el nombre solo viaja si la mesa puede verlo; el payload no se filtra por espectador.
+    const personaje = await this.prisma.character.findFirst({
+      where: { id: combatiente.characterId },
+      select: { id: true, name: true, visibility: true },
+    });
+    const nombreParaLaMesa =
+      personaje && (personaje.visibility === "PLAYERS" || personaje.visibility === "PUBLIC")
+        ? personaje.name
+        : undefined;
+
+    // Antes de tocar nada: quién tenía el turno, y quién iría después si el que sale era el
+    // único en su posición.
+    const posiciones = [...new Set(encounter.combatants.map((c) => c.position))].sort(
+      (a, b) => a - b,
+    );
+    const enElTurno = encounter.combatants.filter((c) => c.position === encounter.activePosition);
+    const saleConElTurno = enElTurno.some((c) => c.id === combatantId);
+    const soloEnSuPosicion = saleConElTurno && enElTurno.length === 1;
+    const indiceActual = posiciones.indexOf(encounter.activePosition);
+    const indiceSiguiente = (indiceActual + 1) % posiciones.length;
+    const sube = soloEnSuPosicion && indiceSiguiente === 0;
+    const siguienteRepresentante = encounter.combatants.find(
+      (c) => c.position === posiciones[indiceSiguiente] && c.id !== combatantId,
+    );
+    const representanteDelTurno =
+      enElTurno.find((c) => c.id !== combatantId) ??
+      encounter.combatants.find(
+        (c) => c.position === encounter.activePosition && c.id !== combatantId,
+      );
 
     await this.prisma.transaction(async (tx) => {
-      // Ya no se recoge el resultado: la respuesta se compone fuera con `get()`, y quedarse la
-      // fila aquí solo invitaría a devolverla otra vez.
-      await tx.encounter.update({
-        where: { id: encounter.id },
-        data: { activePosition: toPosition, round: nuevoAsalto },
+      const filas = await recolocar(tx, encounterId, async () => {
+        await tx.combatant.delete({ where: { id: combatantId } });
       });
-
       await this.events.record(
         userId,
         campaignId,
         {
           sessionId,
           subjectType: "encounter",
-          subjectId: encounter.id,
+          subjectId: encounterId,
           visibility: "PLAYERS",
-          payload: {
-            type: "TURN_ADVANCED",
-            encounterId: encounter.id,
-            // **Sin posiciones, y es la MISMA fuga que esta tarea ya cerró una vez por otra
-            // puerta.** `get` renumera denso justo para que un jugador no pueda contar los huecos
-            // de los combatientes que no ve; este suceso es `PLAYERS` y viajaba con las
-            // posiciones **crudas** dentro del `payload`, que `GameEventsService.list` devuelve
-            // entero. Con un PJ visible y cuatro grupos ocultos, el registro le entregaba cinco
-            // posiciones distintas: cuántos enemigos escondidos hay, y en qué hueco del orden
-            // actúa cada uno. Lo midió la revisión de cierre contra Postgres real.
-            //
-            // Un `payload` **no se puede filtrar por espectador** —es un Json que se devuelve tal
-            // cual—, así que la única renumeración correcta sería por espectador y ahí no cabe.
-            // Y no hace falta: `linea-de-log.ts` ya las descartaba a propósito («el suceso trae
-            // posiciones, no personajes»), así que nadie las estaba leyendo. Es exactamente lo
-            // que se hizo con `combatantCount` en `ENCOUNTER_STARTED`.
-            round: nuevoAsalto,
-          },
+          payload: { type: "COMBATANT_LEFT", encounterId, characterName: nombreParaLaMesa },
         },
         tx,
       );
 
-      if (sube) {
-        // Comparte la transacción con `GameClockService.advance`: el asalto que sube y los seis
-        // segundos que avanza el reloj se escriben juntos o no se escribe ninguno.
-        const avance = await this.clock.advance(
+      if (soloEnSuPosicion) {
+        const destino = filas.find((f) => f.id === siguienteRepresentante?.id);
+        const toPosition = destino?.position ?? filas[0]?.position ?? 0;
+        await this.empezarTurno(tx, {
           userId,
           campaignId,
-          { kind: "TIME", seconds: SEGUNDOS_POR_ASALTO },
-          tx,
-        );
-        await this.events.record(
-          userId,
-          campaignId,
-          {
-            sessionId,
-            subjectType: "encounter",
-            subjectId: encounter.id,
-            visibility: "PLAYERS",
-            payload: {
-              type: "ROUND_ADVANCED",
-              encounterId: encounter.id,
-              from: encounter.round,
-              to: nuevoAsalto,
-              clockSeconds: avance.to,
-            },
-          },
-          tx,
-        );
-      }
-
-      // **Aquí se cruza el borde de turno** (paso 1, tarea 4). Quien empieza turno corta las
-      // condiciones que esperaban justamente eso —hoy, la marca de la acción Ayudar, que el SRD
-      // mantiene hasta *«the start of your next turn»* de quien ayudó—.
-      //
-      // No se borran: se les pone `expiresAtClock` al reloj de este instante y se les quita el
-      // borde, así que a partir de aquí «¿está vencida?» vuelve a ser la resta de siempre y la
-      // condición **sigue en la hoja, marcada** (D-2C-2). Va dentro de esta transacción: si el
-      // turno no avanza, la ventaja no se pierde.
-      const empiezanTurno = encounter.combatants
-        .filter((c) => c.position === toPosition)
-        .map((c) => c.characterId);
-      if (empiezanTurno.length > 0) {
-        const reloj = await tx.campaign.findUniqueOrThrow({
-          where: { id: campaignId },
-          select: { clockSeconds: true },
+          sessionId,
+          encounterId,
+          toPosition,
+          roundBefore: encounter.round,
+          sube,
         });
-        await tx.characterCondition.updateMany({
-          where: { expiryEdge: "sourceStart", sourceCharacterId: { in: empiezanTurno } },
-          data: { expiryEdge: null, sourceCharacterId: null, expiresAtClock: reloj.clockSeconds },
+      } else {
+        // El turno se sigue por identidad, como en `setInitiative`: el número puede cambiar al
+        // renumerar.
+        const fila = filas.find((f) => f.id === representanteDelTurno?.id);
+        const nuevaActiva = fila?.position ?? encounter.activePosition;
+        await tx.encounter.update({
+          where: { id: encounterId },
+          data: { activePosition: nuevaActiva },
         });
       }
-
-      // **Paso 2, tarea A1 — la economía del turno se repone al EMPEZAR, no al terminar.** SRD
-      // 5.1, «Reactions»: *«you regain your reaction at the start of your turn»*. Por eso esto
-      // toca a quien entra en `toPosition` y no a quien sale de `encounter.activePosition`: entre
-      // el final de un turno y el principio del siguiente nadie tiene reacción, y es justo lo que
-      // hace que solo se pueda reaccionar una vez por asalto. Se repone por `position`, no por
-      // fila, porque varios combatientes —seis goblins idénticos— comparten posición y actúan a
-      // la vez.
-      await tx.combatant.updateMany({
-        where: { encounterId: encounter.id, position: toPosition },
-        data: { actionUsed: false, bonusUsed: false, reactionUsed: false, movementUsed: 0 },
-      });
-
-      // **El encuentro entero por `get()`, y `roundAdvanced` AL LADO** (ficha P3, 2026-09-08).
-      //
-      // Devolvía `{ ...actualizado, roundAdvanced }`: la fila cruda, sin `combatants` y sin
-      // `finalPropuesto`, mientras el cliente lo tipa como `Encounter`. Ahora sigue el patrón de
-      // `start()`, `current()`, `setSide()` y `forceStart()`.
-      //
-      // **Por qué al lado y no dentro ni derivado**, y lo decidió una medición: `roundAdvanced` no
-      // lo consume **ninguna** pantalla. Derivarlo obligaría a quien llama a recordar el asalto
-      // anterior para compararlo, o sea inventar trabajo para nadie; borrarlo tiraría un dato real
-      // que el servidor ya sabe y que cuatro pruebas fijan. Va fuera del objeto que valida contra
-      // `encounterSchema` porque **no es parte del encuentro**: es qué pasó en esta llamada.
-      //
-      // **La transacción devuelve solo el dato; `get()` se llama FUERA de ella.** Leer con
-      // `this.prisma` dentro de una transacción abierta pide una segunda conexión del pool
-      // mientras la primera sigue tomada, que es exactamente el defecto que este proyecto ya
-      // arregló tres veces (`3524ef7`, `85d0882`, `6b16804`). `setSide()` lo hace así.
-      // La transacción no devuelve nada: `sube` se calculó antes de abrirla y sigue en alcance.
     });
-
-    return { ...(await this.get(userId, campaignId, sessionId, encounterId)), roundAdvanced: sube };
+    return this.get(userId, campaignId, sessionId, encounterId);
   }
 
   /**

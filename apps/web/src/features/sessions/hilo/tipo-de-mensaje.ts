@@ -130,6 +130,11 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
       // Los dos últimos (paso 1, tarea 16) son el sistema contando un reajuste de la mesa, no una
       // persona hablando: el mismo cubo que pasar turno o subir de asalto.
       return "sistema";
+
+    // Sacar del combate (E-PM, spec §3.3): el sistema contando que alguien salió del orden, con
+    // COMBATANT_SIDE_CHANGED y ACTIVE_TURN_SHIFTED — no es el mundo hablando ni algo del personaje.
+    case "COMBATANT_LEFT":
+      return "sistema";
   }
 }
 

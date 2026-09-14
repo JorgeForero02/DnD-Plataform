@@ -100,6 +100,20 @@ export function useSetSide(campaignId: string, sessionId: string | undefined) {
   });
 }
 
+/**
+ * Sacar del combate (spec §3.3). Solo la usa el DM (`TiraDeIniciativa.tsx`): el servidor exige
+ * `requireDM` y responde 403 a cualquier otro. Invalida igual que `useSetSide` — cambia el mismo
+ * `Encounter` y escribe `COMBATANT_LEFT`, que el registro está mirando.
+ */
+export function useRemoveCombatant(campaignId: string, sessionId: string | undefined) {
+  const invalidar = useInvalidar(campaignId, sessionId);
+  return useMutation({
+    mutationFn: (p: { encounterId: string; combatantId: string }) =>
+      encountersApi.removeCombatant(campaignId, sessionId!, p.encounterId, p.combatantId),
+    onSuccess: invalidar,
+  });
+}
+
 export function useEndEncounter(campaignId: string, sessionId: string | undefined) {
   const invalidar = useInvalidar(campaignId, sessionId);
   return useMutation({

@@ -368,6 +368,10 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
       return `Pasa el turno (asalto ${p.round})`;
     case "ROUND_ADVANCED":
       return `Asalto ${p.to}`;
+    case "COMBATANT_LEFT":
+      // Sacar del combate (spec §3.3). Sin nombre si el personaje está oculto para la mesa
+      // (E-PM-6): el payload no se filtra por espectador.
+      return p.characterName ? `${p.characterName} sale del combate` : "Alguien sale del combate";
     case "COMBATANT_SIDE_CHANGED":
       // **El vocabulario en español se escribe una sola vez**, en `dominio/combate.ts`: ningún
       // valor de enumeración llega a la pantalla, ni siquiera dentro de una frase de registro.

@@ -147,6 +147,8 @@ export const GAME_EVENT_TYPES = [
   // PNJ del mundo y la mesa (2026-09-14, spec §3.2): revelar y ocultar una criatura desde la mesa.
   "NPC_REVEALED",
   "NPC_HIDDEN",
+  // Sacar del combate (spec §3.3): «Garrik sale del combate».
+  "COMBATANT_LEFT",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -773,6 +775,15 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("NPC_HIDDEN"),
     characterName: z.string().max(120),
+  }),
+  /**
+   * Sacar del combate (spec §3.3). `PLAYERS`; **`characterName` solo si el personaje es visible
+   * para la mesa en ese momento** (E-PM-6) — el payload no se filtra por espectador.
+   */
+  z.object({
+    type: z.literal("COMBATANT_LEFT"),
+    encounterId: z.string().min(1).max(60),
+    characterName: z.string().max(120).optional(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

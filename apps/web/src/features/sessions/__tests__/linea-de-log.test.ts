@@ -17,3 +17,16 @@ describe("NPC_REVEALED y NPC_HIDDEN tienen frase", () => {
     );
   });
 });
+
+// PNJ del mundo y la mesa (spec §3.3, Task 2). `removeCombatant` escribe COMBATANT_LEFT con
+// `characterName` solo si el personaje es visible para la mesa en ese momento (E-PM-6).
+describe("COMBATANT_LEFT tiene frase", () => {
+  it("COMBATANT_LEFT tiene frase, con y sin nombre", () => {
+    expect(lineaDeLog({ type: "COMBATANT_LEFT", encounterId: "e1", characterName: "Garrik" })).toBe(
+      "Garrik sale del combate",
+    );
+    expect(lineaDeLog({ type: "COMBATANT_LEFT", encounterId: "e1" })).toBe(
+      "Alguien sale del combate",
+    );
+  });
+});

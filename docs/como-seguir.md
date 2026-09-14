@@ -80,8 +80,7 @@ unitarias); producción sigue en `6d2b2ca` y el despliegue lo lanza el autor.** 
 `Character.entityId`, revelar en una acción sobre tres columnas, ocultar, sacar del combate, y la mesa
 que lo ofrece todo desde el menú «…». Una revisión de rama y una ola; e2e de API 17/17 y Playwright
 26/26 en lo tocado, con la prueba a dos navegadores. **Fusionada a `main` el mismo 2026-09-14 (`07c9a9d`) junto con su cierre `pnj-del-mundo/cierre`
-(PM-1, T3, PE-2 y el caso de la tarea 11, D-CF-87); producción sigue en `4830b8a` y el despliegue lo
-lanza el autor.** Queda PM-2 en [06-pendientes.md](./06-pendientes.md). **Y después el paso 3 en
+(PM-1, T3, PE-2 y el caso de la tarea 11, D-CF-87); **desplegada la noche del 14 (`b6bbeb0`, comprobado con `SOURCE_COMMIT` en el contenedor).** Queda PM-2 en [06-pendientes.md](./06-pendientes.md). **Y después el paso 3 en
 dos partes** ([orden que manda](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md), D-CF-70/71:
 **A** el libro de voz y con daño → elegir, lanzar y usar → la barra de acciones, y **se juega**;
 **B** el resto, en el orden que la partida pida), con sus propias reglas de proceso fijadas antes

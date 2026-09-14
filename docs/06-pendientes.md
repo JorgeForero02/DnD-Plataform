@@ -166,7 +166,7 @@ Las unitarias prueban el orden de las sentencias (`jsonb_set … WHERE appliedEv
 (exactamente un 2xx y un 409, un solo `HP_CHANGED`) y dos `POST /xp` iguales en `Promise.all` (los
 dos 2xx, XP final es la suma). Escrita, no corrida (la corre el orquestador).
 
-## Desplegar `main` (`84ed965`): reglas de la mesa + desbordes — lo hace el autor, a mano
+## Desplegar `main` (`84ed965`): reglas de la mesa + desbordes — **hecho el 2026-09-14 (`b6bbeb0` en producción, comprobado en el contenedor)**
 
 **Abierta, del autor.** `main` lleva dos tandas fusionadas el 2026-09-13 que producción (`6d2b2ca`) no
 tiene. Qué trae el despliegue: **una migración aditiva** (`20260913100000_table_rules`: tres columnas/

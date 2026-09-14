@@ -97,7 +97,17 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## PE-1 cerrada y fusionada (2026-09-14, noche) — sin desplegar
+## Despliegue de `main` `b6bbeb0` (2026-09-14, noche) — lo lanzó el autor
+
+Qué — `dnd.supportive.pro` sirve `b6bbeb0`: comprobado con `SOURCE_COMMIT` dentro del contenedor de
+la API en `vps1new` (`docker exec … env`), `/` 200 y `/api/health` ok. Entran de golpe: reglas de la
+mesa, desbordes, puerta de efectos, PNJ del mundo y la mesa + su cierre, PE-1. Las migraciones
+(`table_rules`, `roll_request_pending_effect`, `condition_expires_on_rest`, `character_xp`,
+`character_entity_id`, `npc_reveal_events`, `combatant_left_event`) las aplicó el arranque.
+Por qué — el autor: «ya desplegué». Antes de esto producción llevaba en `4830b8a` desde el 13.
+Revertir — redesplegar `4830b8a` desde Coolify; las migraciones son aditivas y no estorban.
+
+## PE-1 cerrada y fusionada (2026-09-14, noche) — desplegada esa misma noche (ver arriba)
 
 Qué — `pe-1/cierre` → `main` en `baea692`: los seis menores de código de «puerta de efectos» (a ciegas
 el veredicto no viaja, D-CF-88; el daño solo cobra la tirada de SU ataque, por `GameEvent.attackRef`;
@@ -106,7 +116,7 @@ el bucle «hasta impactar» del e2e lee `data-veredicto`), y las cuatro de produ
 autor sin código (D-CF-89..91). Rigor bajo a propósito: un brief, un implementador, pruebas solo donde
 cambió comportamiento; e2e de API 33/33 en los tres ficheros tocados, Playwright 7/7 en tres spec.
 Por qué — el autor: «es pequeño, debería salir rápido» — y salió en 2 h.
-Revertir — `git revert -m 1 baea692`. **Producción sigue en `4830b8a`.**
+Revertir — `git revert -m 1 baea692`.
 
 ## Fusión a `main` de «PNJ del mundo y la mesa» + su cierre (2026-09-14, tarde) — sin desplegar
 

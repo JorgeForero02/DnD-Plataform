@@ -1,0 +1,104 @@
+{
+  "_comentario": "GENERADO A MANO en la tarea 0 de 3A.1 (2026-09-14) — sin código, medición de la huella estructural sobre 319 conjuros (type:spell, rules:2014) y las cabeceras regulares del SRD 5.1 español. Claves: identificador de Foundry (system.identifier) o el nombre exacto de la aptitud de clase; valores: nombre español EXACTO tal como aparece en srd-5.1-es.txt. La sección 'conjuros' cubre los 20 de esta tarea más los 36 que caen en los 17 grupos de choque genuino (huella compartida en las dos fuentes). NO cubre los 22 conjuros 'solo en Foundry' que la medición encontró sin huella hermana en el lado español (no son un choque de nombre, son una huella sin pareja — al menos uno, produce-flame, resulta ser una discrepancia de DATOS entre Foundry y el SRD, ver el informe sección b) — quedan para que T1 los revise uno a uno. La sección 'aptitudesDeClase' cubre las 8 de esta tarea, emparejadas por (clase, nivel, posición en la tabla de la clase) — E-3A1-2 — no por huella.",
+
+  "conjuros": {
+    "magic-missile": "Proyectil mágico",
+    "fireball": "Bola de fuego",
+    "cure-wounds": "Curar heridas",
+    "fire-bolt": "Descarga de fuego",
+    "bless": "Bendición",
+    "shield": "Escudo",
+    "sleep": "Dormir",
+    "spiritual-weapon": "Arma espiritual",
+    "healing-word": "Palabra de curación",
+    "sacred-flame": "Llama sagrada",
+    "burning-hands": "Manos ardientes",
+    "hold-person": "Inmovilizar persona",
+    "revivify": "Revivir",
+    "magic-weapon": "Arma mágica",
+    "conjure-animals": "Conjurar animales",
+    "polymorph": "Polimorfar",
+    "counterspell": "Contrahechizo",
+    "lesser-restoration": "Restablecimiento menor",
+    "scorching-ray": "Rayo abrasador",
+    "mass-cure-wounds": "Curar heridas en masa",
+
+    "_choque_1_comentario": "Grupo de huella (2, div, self, -, V,S,-, minute, conc): detect-evil-and-good y detect-magic — se distinguen solo por el nombre, no por su huella",
+    "detect-evil-and-good": "Detectar el bien y el mal",
+    "detect-magic": "Detectar magia",
+
+    "_choque_2_comentario": "Grupo (2, trs, touch, -, V,S,M, hour, conc): barkskin, enhance-ability, spider-climb",
+    "barkskin": "Piel robliza",
+    "enhance-ability": "Potenciar característica",
+    "spider-climb": "Trepar cual arácnido",
+
+    "_choque_3_comentario": "Grupo (1, enc, ft30, V,S,M, minute, conc): bane, bless, hideous-laughter",
+    "bane": "Perdición",
+    "hideous-laughter": "Risa horrible",
+
+    "_choque_4_comentario": "Grupo (1, evo, self, V,S,-, inst): burning-hands, thunderwave",
+    "thunderwave": "Ola atronadora",
+
+    "_choque_5_comentario": "Grupo (0, evo, ft120, V,S,-, inst): eldritch-blast, fire-bolt — el nombre español de ninguno de los dos es el literal que se adivinaría",
+    "eldritch-blast": "Descarga sobrenatural",
+
+    "_choque_6_comentario": "Grupo (0, evo, ft60, V,S,-, inst): ray-of-frost, sacred-flame",
+    "ray-of-frost": "Rayo de escarcha",
+
+    "_choque_7_comentario": "Grupo (3, trs, ft30, V,S,M, hour): water-breathing, water-walk",
+    "water-breathing": "Respirar bajo el agua",
+    "water-walk": "Caminar sobre el agua",
+
+    "_choque_8_comentario": "Grupo (2, trs, touch, V,S,M, hour): darkvision, rope-trick",
+    "darkvision": "Visión en la oscuridad",
+    "rope-trick": "Truco de la cuerda",
+
+    "_choque_9_comentario": "Grupo (2, enc, ft60, V,S,-, minute): enthrall, zone-of-truth",
+    "enthrall": "Embelesar",
+    "zone-of-truth": "Zona de la verdad",
+
+    "_choque_10_comentario": "Grupo (2, trs, ft60, V,S,M, minute, conc): heat-metal, levitate",
+    "heat-metal": "Calentar metal",
+    "levitate": "Levitar",
+
+    "_choque_11_comentario": "Grupo (5, trs, touch, V,S,M, inst): awaken, reincarnate",
+    "awaken": "Despertar",
+    "reincarnate": "Reencarnar",
+
+    "_choque_12_comentario": "Grupo (2, div, self, V,S,M, inst): augury, locate-animals-or-plants",
+    "augury": "Augurio",
+    "locate-animals-or-plants": "Localizar animales o plantas",
+
+    "_choque_13_comentario": "Grupo (2, evo, self, V,S,M, minute, conc): flame-blade, gust-of-wind",
+    "flame-blade": "Hoja de fuego",
+    "gust-of-wind": "Ráfaga de viento",
+
+    "_choque_14_comentario": "Grupo (5, evo, ft120, V,S,M, minute, conc): arcane-hand, wall-of-force, wall-of-stone",
+    "arcane-hand": "Mano arcana",
+    "wall-of-force": "Muro de fuerza",
+    "wall-of-stone": "Muro de piedra",
+
+    "_choque_15_comentario": "Grupo (3, trs, self, V,S,-, minute): blink, speak-with-plants",
+    "blink": "Desplazamiento",
+    "speak-with-plants": "Hablar con las plantas",
+
+    "_choque_16_comentario": "locate-object comparte huella con 'Detectar pensamientos' (detect-thoughts) del lado español: es un choque ASIMÉTRICO (1 identificador de Foundry contra 2 nombres españoles) — señal de que a detect-thoughts o a locate-object les falla la conversión m→ft en algún punto de la huella; queda anotado en el informe, sección 'huella', como caso a revisar en T1, no resuelto por descarte de nombre",
+    "locate-object": "Localizar objeto",
+
+    "_choque_17_comentario": "mage-hand comparte huella con 'Mano de mago' de forma limpia; produce-flame NO tiene pareja española con esa misma huella (choque asimétrico, mismo tipo de caso que el anterior) — su nombre real es 'Crear llama', verificado en el SRD, pero su huella medida no coincidió con la de mage-hand y por tanto no salió listada como candidata automática; se añade aquí a mano",
+    "mage-hand": "Mano de mago",
+    "produce-flame": "Crear llama"
+  },
+
+  "aptitudesDeClase": {
+    "_comentario": "Emparejadas por (clase, nivel, posición en la tabla), no por huella — E-3A1-2. Las ocho de esta tarea.",
+    "barbarian:rage": "Furia",
+    "fighter:second-wind": "Tomar Aliento",
+    "rogue:sneak-attack": "Ataque Furtivo",
+    "paladin:lay-on-hands": "Imponer las Manos",
+    "cleric:channel-divinity-turn-undead": "Canalizar Divinidad: Expulsar Muertos Vivientes",
+    "monk:ki": "Ki",
+    "druid:wild-shape": "Forma Salvaje",
+    "fighter:action-surge": "Acción Súbita"
+  }
+}

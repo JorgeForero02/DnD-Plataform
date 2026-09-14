@@ -60,6 +60,11 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
       // hecho que la mesa puede querer leer y deshacer. Va con abrir, revelar y enlazar.
       return "narracion";
 
+    // PNJ del mundo y la mesa (E-PM: spec §3.2) — «Garrik entra en escena» es el mundo hablando,
+    // igual que revelar una ficha (E-PM-3); va con ENTITY_REVEALED.
+    case "NPC_REVEALED":
+      return "narracion";
+
     // Sentarse a la mesa es de la campana, no del mundo ni de un personaje: andamiaje. Y la
     // batuta (I19) es **direccion del DM**, no algo que la mesa vea pasar: su suceso va `DM_ONLY`,
     // asi que solo lo lee el, y lo que la mesa ve son los EFECTOS con su propia visibilidad.
@@ -69,6 +74,11 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
     case "MEMBER_JOINED":
     case "MEMBER_ROLE_CHANGED":
     case "DM_EXECUTED":
+      return "sistema";
+
+    // Ocultar (E-PM-4) es DM_ONLY y despierta el canal en vivo, pero no es el mundo hablando ni
+    // le pasa a nadie de la mesa que lo lea: andamiaje, con MEMBER_JOINED y DM_EXECUTED.
+    case "NPC_HIDDEN":
       return "sistema";
 
     // La iniciativa que reparte el sistema (2026-09-05) trae un número tirado, igual que las

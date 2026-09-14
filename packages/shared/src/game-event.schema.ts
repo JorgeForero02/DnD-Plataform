@@ -144,6 +144,9 @@ export const GAME_EVENT_TYPES = [
   // eco de HP_CHANGED**: la crónica dice «Elara gana 450 PX», y el motivo (si el DM lo escribió)
   // viaja con el suceso, no en el margen de otro.
   "XP_AWARDED",
+  // PNJ del mundo y la mesa (2026-09-14, spec §3.2): revelar y ocultar una criatura desde la mesa.
+  "NPC_REVEALED",
+  "NPC_HIDDEN",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -754,6 +757,22 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     amount: z.number().int(),
     xpTotal: z.number().int().min(0),
     reason,
+  }),
+  /**
+   * PNJ del mundo y la mesa (spec §3.2) — **una criatura entra en escena.** Lo escribe `reveal`
+   * (una transacción, tres columnas). `entityName` va si además subió la ficha del mundo;
+   * `templateRevealed` si subió la plantilla creada. Visibilidad `PLAYERS`: es el anuncio.
+   */
+  z.object({
+    type: z.literal("NPC_REVEALED"),
+    characterName: z.string().max(120),
+    entityName: z.string().max(200).optional(),
+    templateRevealed: z.boolean().optional(),
+  }),
+  /** Ocultar baja solo la instancia. `DM_ONLY`: existe para que el canal en vivo despierte a la mesa (E-PM-4). */
+  z.object({
+    type: z.literal("NPC_HIDDEN"),
+    characterName: z.string().max(120),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

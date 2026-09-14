@@ -151,4 +151,176 @@ describe("PNJ del mundo y la mesa — Task 0 (e2e)", () => {
       expect(r.body.map((c: any) => c.entityId)).toEqual([garrikId, garrikId]);
     });
   });
+
+  describe("Task 1 — revelar y ocultar", () => {
+    let velaEntityId = "";
+    let plantillaRef = "";
+    let velaCharacterId = "";
+
+    beforeAll(async () => {
+      const s = app.getHttpServer();
+      // Una plantilla propia de campaña, oculta: la tercera columna que `reveal` puede subir.
+      const plantilla = await request(s)
+        .post(`/campaigns/${campaignId}/statblocks`)
+        .set("Authorization", auth(tokenDM))
+        .send({
+          name: "Guardiana del faro",
+          size: "MEDIUM",
+          type: "HUMANOID",
+          ac: 13,
+          hitDiceCount: 4,
+          abilities: { str: 12, dex: 14, con: 12, int: 10, wis: 11, cha: 10 },
+          cr: 1,
+          visibility: "DM_ONLY",
+        });
+      expect(plantilla.status).toBe(201);
+      plantillaRef = plantilla.body.ref;
+
+      velaEntityId = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/entities`)
+          .set("Authorization", auth(tokenDM))
+          .send({ type: "NPC", name: "Vela", visibility: "DM_ONLY" })
+      ).body.id;
+
+      const instancia = await request(s)
+        .post(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenDM))
+        .send({ ref: plantillaRef, count: 1, entityId: velaEntityId });
+      expect(instancia.status).toBe(201);
+      velaCharacterId = instancia.body[0].id;
+    });
+
+    it("antes de reveal: el jugador no la lista, y la ficha del mundo le da 404", async () => {
+      const s = app.getHttpServer();
+      const npcs = await request(s)
+        .get(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenPL));
+      expect(npcs.body.some((n: any) => n.id === velaCharacterId)).toBe(false);
+      const ficha = await request(s)
+        .get(`/campaigns/${campaignId}/entities/${velaEntityId}`)
+        .set("Authorization", auth(tokenPL));
+      expect(ficha.status).toBe(404);
+    });
+
+    it("reveal: 403 al jugador, 200 al DM con las tres columnas subidas", async () => {
+      const s = app.getHttpServer();
+      const comoJugador = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${velaCharacterId}/reveal`)
+        .set("Authorization", auth(tokenPL));
+      expect(comoJugador.status).toBe(403);
+
+      const comoDM = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${velaCharacterId}/reveal`)
+        .set("Authorization", auth(tokenDM));
+      expect(comoDM.status).toBe(201);
+      expect(comoDM.body.revealed).toEqual({ character: true, entity: true, template: true });
+    });
+
+    it("después: el jugador ve la criatura con su statblockRef y entityId, la ficha y la plantilla", async () => {
+      const s = app.getHttpServer();
+      const npcs = await request(s)
+        .get(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenPL));
+      const vela = npcs.body.find((n: any) => n.id === velaCharacterId);
+      expect(vela.statblockRef).toBe(plantillaRef);
+      expect(vela.entityId).toBe(velaEntityId);
+
+      const ficha = await request(s)
+        .get(`/campaigns/${campaignId}/entities/${velaEntityId}`)
+        .set("Authorization", auth(tokenPL));
+      expect(ficha.status).toBe(200);
+
+      const statblocks = await request(s)
+        .get(`/campaigns/${campaignId}/statblocks`)
+        .set("Authorization", auth(tokenPL));
+      expect(statblocks.body.some((sb: any) => sb.ref === plantillaRef)).toBe(true);
+    });
+
+    it("el registro tiene un NPC_REVEALED con entityName «Vela»", async () => {
+      const s = app.getHttpServer();
+      const eventos = await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", auth(tokenDM));
+      const revelado = eventos.body.events.find(
+        (e: any) => e.type === "NPC_REVEALED" && e.payload?.entityName === "Vela",
+      );
+      expect(revelado).toBeDefined();
+    });
+
+    it("hide: la criatura deja de listarse al jugador, pero la ficha y la plantilla siguen visibles", async () => {
+      const s = app.getHttpServer();
+      const oculta = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${velaCharacterId}/hide`)
+        .set("Authorization", auth(tokenDM));
+      expect(oculta.status).toBe(201);
+
+      const npcs = await request(s)
+        .get(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenPL));
+      expect(npcs.body.some((n: any) => n.id === velaCharacterId)).toBe(false);
+
+      const ficha = await request(s)
+        .get(`/campaigns/${campaignId}/entities/${velaEntityId}`)
+        .set("Authorization", auth(tokenPL));
+      expect(ficha.status).toBe(200);
+
+      const statblocks = await request(s)
+        .get(`/campaigns/${campaignId}/statblocks`)
+        .set("Authorization", auth(tokenPL));
+      expect(statblocks.body.some((sb: any) => sb.ref === plantillaRef)).toBe(true);
+    });
+
+    it("un segundo reveal: todo false y ningún suceso nuevo", async () => {
+      const s = app.getHttpServer();
+      // Vuelve a revelar la instancia (la ficha y la plantilla ya están arriba desde antes).
+      await request(s)
+        .post(`/campaigns/${campaignId}/characters/${velaCharacterId}/reveal`)
+        .set("Authorization", auth(tokenDM))
+        .expect(201);
+      const antes = await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", auth(tokenDM));
+      const segundo = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${velaCharacterId}/reveal`)
+        .set("Authorization", auth(tokenDM));
+      expect(segundo.status).toBe(201);
+      expect(segundo.body.revealed).toEqual({ character: false, entity: false, template: false });
+      const despues = await request(s)
+        .get(`/campaigns/${campaignId}/events`)
+        .set("Authorization", auth(tokenDM));
+      expect(despues.body.events.length).toBe(antes.body.events.length);
+    });
+  });
+
+  describe("Task 1 bis — revelar desde la ficha", () => {
+    it("PATCH /entities/:id a PLAYERS sube a los goblins enlazados a esa ficha", async () => {
+      const s = app.getHttpServer();
+      const nidoEntityId = (
+        await request(s)
+          .post(`/campaigns/${campaignId}/entities`)
+          .set("Authorization", auth(tokenDM))
+          .send({ type: "NPC", name: "El nido", visibility: "DM_ONLY" })
+      ).body.id;
+
+      const instancia = await request(s)
+        .post(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenDM))
+        .send({ ref: "SRD:goblin", count: 2, entityId: nidoEntityId });
+      expect(instancia.status).toBe(201);
+      const [g1, g2] = instancia.body.map((c: any) => c.id);
+
+      const subida = await request(s)
+        .patch(`/campaigns/${campaignId}/entities/${nidoEntityId}`)
+        .set("Authorization", auth(tokenDM))
+        .send({ visibility: "PLAYERS" });
+      expect(subida.status).toBe(200);
+
+      const npcs = await request(s)
+        .get(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", auth(tokenPL));
+      const ids = npcs.body.map((n: any) => n.id);
+      expect(ids).toEqual(expect.arrayContaining([g1, g2]));
+    });
+  });
 });

@@ -52,6 +52,9 @@ describe("EntitiesService", () => {
     return {
       entityVisibilityGrant: { deleteMany: jest.fn(), createMany: jest.fn() },
       entity: { update: jest.fn().mockResolvedValue(entityUpdateResult) },
+      // PNJ del mundo y la mesa (E-PM-5): revelar la ficha sube sus cuerpos vivos. Vacío por
+      // defecto — las pruebas de esa simetría lo cambian.
+      character: { findMany: jest.fn().mockResolvedValue([]), updateMany: jest.fn() },
     };
   }
 
@@ -235,6 +238,45 @@ describe("EntitiesService", () => {
       await service.update("dm1", "c1", "e9", { visibility: "OWNER_DM" } as never);
 
       expect(gameEvents.record).toHaveBeenCalledTimes(1);
+    });
+
+    it("revelar la ficha desde el mundo sube sus cuerpos vivos y escribe un NPC_REVEALED por cuerpo (E-PM-5)", async () => {
+      prisma.entity.findFirst.mockResolvedValue(laFichaOculta);
+      const tx = txMock({ ...laFichaOculta, visibility: "PLAYERS", grants: [] });
+      tx.character.findMany.mockResolvedValue([
+        { id: "g1", name: "Bandido 1", visibility: "DM_ONLY" },
+        { id: "g2", name: "Bandido 2", visibility: "OWNER_DM" },
+      ]);
+      prisma.transaction.mockImplementation((fn: (t: unknown) => unknown) => fn(tx));
+
+      await service.update("dm1", "c1", "e9", { visibility: "PLAYERS" } as never);
+
+      expect(tx.character.findMany).toHaveBeenCalledWith({
+        where: {
+          entityId: "e9",
+          campaignId: "c1",
+          archivedAt: null,
+          visibility: { in: ["DM_ONLY", "OWNER_DM"] },
+        },
+        select: { id: true, name: true, visibility: true },
+      });
+      expect(tx.character.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ["g1", "g2"] } },
+        data: { visibility: "PLAYERS" },
+      });
+      const tipos = gameEvents.record.mock.calls.map((c: any) => c[2].payload.type);
+      expect(tipos.filter((t: string) => t === "NPC_REVEALED")).toHaveLength(2);
+    });
+
+    it("bajar la visibilidad de la ficha no toca a sus cuerpos", async () => {
+      const fichaVisible = { ...laFichaOculta, visibility: "PLAYERS" };
+      prisma.entity.findFirst.mockResolvedValue(fichaVisible);
+      const tx = txMock({ ...fichaVisible, visibility: "DM_ONLY", grants: [] });
+      prisma.transaction.mockImplementation((fn: (t: unknown) => unknown) => fn(tx));
+
+      await service.update("dm1", "c1", "e9", { visibility: "DM_ONLY" } as never);
+
+      expect(tx.character.findMany).not.toHaveBeenCalled();
     });
   });
 });

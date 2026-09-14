@@ -270,6 +270,13 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
       return p.entityName ? `Abre «${p.entityName}»` : "Abre una entrada del mundo";
     case "ENTITY_REVEALED":
       return p.entityName ? `Se revela «${p.entityName}»` : "Se revela una entrada del mundo";
+    case "NPC_REVEALED":
+      // «Garrik entra en escena», con su ficha del mundo si también se reveló (spec §3.2).
+      return p.entityName && p.entityName !== p.characterName
+        ? `${p.characterName} entra en escena — es ${p.entityName}`
+        : `${p.characterName} entra en escena`;
+    case "NPC_HIDDEN":
+      return `${p.characterName} se oculta de la mesa`;
     case "ENTITY_RETYPED": {
       // **Los dos tipos, traducidos** (I16). El payload guarda claves —`NPC`, `DOCUMENT`— porque un
       // registro guarda datos; la forma legible se compone aquí, que es donde vive el español, y

@@ -116,6 +116,9 @@ enum GameEventType {
   // Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13): dar XP es un hecho propio de la
   // crónica, no un eco de HP_CHANGED.
   XP_AWARDED
+  // PNJ del mundo y la mesa (2026-09-14): revelar y ocultar una criatura desde la mesa.
+  NPC_REVEALED
+  NPC_HIDDEN
 }
 
 enum ResourceReset {

@@ -313,6 +313,9 @@ test("la bandeja de daño: el DM ve «Aplicar», A no; al aplicar, los dos ven �
 
   // --- Combate: Kara es «ajena» (de A, no del DM), así que nace `PREPARING` y hace falta que A
   //     tire su iniciativa — mismo patrón que `iniciativa-en-vivo.spec.ts`. ---
+  // El DM sigue en la hoja del Goblin (pestaña «Estado») tras la anulación de arriba: «Sesiones»
+  // vive en la página de la campaña, no ahí.
+  await dm.goto(`/campaigns/${campaignId}`);
   await empezarSesion(dm, "La escaramuza de la bandeja");
   await abrirLaMesa(dm, campaignId);
   await abrirLaMesa(a, campaignId);
@@ -429,7 +432,9 @@ test("XP: la hoja dice «0 / 300 PX», el DM da 300 desde «Dar XP» y A ve «30
   await dm.getByRole("button", { name: "Dar XP" }).click();
   await expect(dm.getByRole("heading", { name: "Dar experiencia" })).toBeVisible();
   await dm.getByRole("checkbox", { name: "Elora" }).check();
-  await dm.getByLabel("Cantidad").fill("300");
+  // `getByLabel("Cantidad")` casa TAMBIÉN con las frases de los dos radios de reparto (ambas
+  // dicen «La cantidad es…»): hace falta el rol para llegar solo al campo numérico.
+  await dm.getByRole("spinbutton", { name: "Cantidad" }).fill("300");
   await dm.getByRole("button", { name: "Dar experiencia" }).click();
   await expect(dm.getByRole("alert")).toHaveCount(0);
 

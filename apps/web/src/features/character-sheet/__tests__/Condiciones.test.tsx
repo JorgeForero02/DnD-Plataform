@@ -500,12 +500,12 @@ describe("Condiciones — hasta el próximo descanso (E-PE-7)", () => {
   // Ola de arreglos 1 (I3) — la frase de «Por reloj» prometía que la condición «se retira sola»,
   // y el servidor no la retira: la marca vencida y la deja en la lista (D-2C-2). Si el texto
   // explica una regla del servidor y discrepan, miente el texto.
-  it("la frase de «Por reloj» dice que se marca vencida y sigue en la lista, no que se retira sola", async () => {
+  it("la frase de «Por reloj» dice que queda marcada en la lista sin quitarse, no que se retira sola", async () => {
     pintar([]);
 
     const radio = await screen.findByRole("radio", { name: /Por reloj/ });
-    expect(radio).toHaveAccessibleName(/se marca vencida/);
-    expect(radio).toHaveAccessibleName(/sigue en la lista/);
+    expect(radio).toHaveAccessibleName(/queda marcada en la lista/);
+    expect(radio).toHaveAccessibleName(/sin quitarse/);
     expect(screen.queryByText(/se retira sola cuando el reloj/)).toBeNull();
   });
 

@@ -173,7 +173,7 @@ const OPCIONES_MODO_DE_DURACION: Record<ModoDeDuracion, { etiqueta: string; fras
     // quite o la renueve (D-2C-2, y la frase de la fila vencida más abajo dice lo mismo). Y con
     // el desplegable en «Indefinida», que es el valor por defecto, no hay tiempo que cumplir.
     frase:
-      "Un tiempo de juego, o indefinida. Al cumplirse se marca vencida y sigue en la lista hasta que la quites o la renueves.",
+      "Un tiempo de juego, o indefinida. Al cumplirse la hora queda marcada en la lista, sin quitarse, hasta que la quites o la renueves.",
   },
   SHORT: HASTA_EL_DESCANSO.SHORT,
   LONG: HASTA_EL_DESCANSO.LONG,

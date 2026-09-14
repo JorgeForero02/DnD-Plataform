@@ -16,6 +16,7 @@ import { Panel } from "../../ui/Panel";
 import { DarTemporales } from "./DarTemporales";
 import { useMyRole } from "../campaigns/members";
 import { nombreCondicion } from "../character-sheet/vocabulario";
+import { SelectorDeFichaDelMundo } from "../entities/SelectorDeFichaDelMundo";
 import type { NpcEnLaMesa } from "./api";
 import {
   useCreateStatblock,
@@ -71,6 +72,7 @@ function Cifra({ rotulo, valor, sufijo }: { rotulo: string; valor: string; sufij
 }
 
 function FichaDeCriatura({
+  campaignId,
   statblock,
   puedeBajar,
   onBajar,
@@ -83,15 +85,21 @@ function FichaDeCriatura({
   onEditar,
   onBorrar,
 }: {
+  campaignId: string;
   statblock: Statblock;
   puedeBajar: boolean;
-  onBajar: (ref: string, cuantos: number) => void;
+  onBajar: (ref: string, cuantos: number, entityId: string | null) => void;
   bajando: boolean;
   onEditar?: () => void;
   onBorrar?: () => void;
 }) {
   const [cuantos, setCuantos] = useState(1);
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false);
+  // PNJ del mundo y la mesa (spec §3.1) — «¿de qué ficha del mundo es?», antes de bajarla. Es
+  // una elección LOCAL: no se guarda hasta que se pulsa «Bajar a la mesa», que es cuando de
+  // verdad nace el cuerpo que se puede enlazar.
+  const [mostrarSelector, setMostrarSelector] = useState(false);
+  const [fichaDelMundo, setFichaDelMundo] = useState<string | null>(null);
   const velocidad = statblock.speeds.walk ?? 0;
 
   return (
@@ -166,10 +174,16 @@ function FichaDeCriatura({
             <Button
               variant="secondary"
               disabled={bajando}
-              onClick={() => onBajar(statblock.ref, cuantos)}
+              onClick={() => onBajar(statblock.ref, cuantos, fichaDelMundo)}
             >
               <IconoEscudo className="mr-1 inline h-4 w-4" />
               Bajar a la mesa
+            </Button>
+            {/* PNJ del mundo y la mesa (spec §3.1) — «¿de qué ficha del mundo es?». Botón de
+                texto, no un campo más: la mayoría de las bajadas no enlazan con nada, y un campo
+                siempre visible pesaría igual que los que sí importan. */}
+            <Button variant="ghost" onClick={() => setMostrarSelector((v) => !v)}>
+              ¿De qué ficha del mundo es?
             </Button>
             {onEditar ? (
               <Button variant="ghost" onClick={onEditar}>
@@ -200,6 +214,15 @@ function FichaDeCriatura({
               )
             ) : null}
           </div>
+        ) : null}
+
+        {puedeBajar && mostrarSelector ? (
+          <SelectorDeFichaDelMundo
+            campaignId={campaignId}
+            value={fichaDelMundo}
+            onChange={setFichaDelMundo}
+            etiqueta="De qué ficha del mundo es"
+          />
         ) : null}
       </div>
     </article>
@@ -289,6 +312,10 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
   const [busqueda, setBusqueda] = useState("");
   // `null` = cerrado · `{}` = escribiendo una nueva · `{ statblock }` = editando esa.
   const [editando, setEditando] = useState<{ statblock?: Statblock } | null>(null);
+  // PNJ del mundo y la mesa (spec §3.1) — si la última bajada llevaba `entityId`, para elegir el
+  // mensaje de éxito correcto. `bajar.data` no lo dice: es la respuesta del servidor, sin el
+  // pedido que la causó.
+  const [ultimoConFicha, setUltimoConFicha] = useState(false);
 
   /** El id de base de una criatura propia, o `null` si es del libro (que no se toca). */
   const idDeCampana = (s: Statblock): string | null => {
@@ -359,8 +386,12 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
         {bajar.isSuccess ? (
           <p role="status" className="font-chrome text-chrome-sm text-muted">
             {bajar.data?.length === 1
-              ? `${bajar.data[0].name} está en la mesa. Solo lo ves tú hasta que le subas la visibilidad.`
-              : `${bajar.data?.length} criaturas están en la mesa. Solo las ves tú hasta que les subas la visibilidad.`}
+              ? ultimoConFicha
+                ? `${bajar.data[0].name} está en la mesa, enlazado con su ficha del mundo. Solo lo ves tú hasta que lo reveles.`
+                : `${bajar.data[0].name} está en la mesa. Solo lo ves tú hasta que le subas la visibilidad.`
+              : ultimoConFicha
+                ? `${bajar.data?.length} criaturas están en la mesa, enlazadas con su ficha del mundo. Solo las ves tú hasta que las reveles.`
+                : `${bajar.data?.length} criaturas están en la mesa. Solo las ves tú hasta que les subas la visibilidad.`}
           </p>
         ) : null}
 
@@ -398,7 +429,16 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
                   statblock={s}
                   puedeBajar={esDM && origenDeRef(s.ref) !== null}
                   bajando={bajar.isPending}
-                  onBajar={(ref, cuantos) => bajar.mutate({ ref, count: cuantos, hp: "AVERAGE" })}
+                  campaignId={campaignId}
+                  onBajar={(ref, cuantos, entityId) => {
+                    setUltimoConFicha(entityId !== null);
+                    bajar.mutate({
+                      ref,
+                      count: cuantos,
+                      hp: "AVERAGE",
+                      entityId: entityId ?? undefined,
+                    });
+                  }}
                   onEditar={esDM && id ? () => setEditando({ statblock: s }) : undefined}
                   onBorrar={esDM && id ? () => borrar.mutate(id) : undefined}
                 />

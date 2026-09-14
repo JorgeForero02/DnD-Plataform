@@ -6,6 +6,8 @@ import type { Statblock } from "@dnd/shared";
 import { PanelDeBestiario } from "../PanelDeBestiario";
 import * as bestiarioApi from "../api";
 import * as membersApi from "../../campaigns/members";
+import * as entitiesApi from "../../entities/api";
+import type { Entity } from "../../entities/api";
 import { useAuthStore } from "../../../store/auth.store";
 
 // Fase 2D — la mitad de pantalla del bestiario. Mismo molde que `PanelDeTablas.test.tsx`:
@@ -78,6 +80,17 @@ const dragoncillo: Statblock = {
   cr: 3,
 };
 
+const garrik: Entity = {
+  id: "garrik-id",
+  campaignId: "c1",
+  type: "NPC",
+  name: "Garrik",
+  tags: [],
+  visibility: "DM_ONLY",
+  createdById: "dm1",
+  createdAt: "2026-01-01",
+};
+
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
@@ -89,6 +102,7 @@ beforeEach(() => {
     campaign: [dragoncillo],
   });
   vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
+  vi.spyOn(entitiesApi, "fetchEntities").mockResolvedValue([garrik]);
 });
 
 describe("PanelDeBestiario — lo que la ficha enseña", () => {
@@ -311,5 +325,41 @@ describe("PanelDeBestiario — buscar y filtrar", () => {
       target: { value: "basilisco" },
     });
     expect(screen.getByText(/No hay ninguna criatura que se llame así/i)).toBeInTheDocument();
+  });
+});
+
+describe("PanelDeBestiario — «¿de qué ficha del mundo es?»", () => {
+  it("desplegar, elegir «Garrik» y «Bajar a la mesa» manda el entityId", async () => {
+    comoDm();
+    const spy = vi.spyOn(bestiarioApi, "instantiateNpc").mockResolvedValue([
+      {
+        id: "n1",
+        name: "Garrik 1",
+        statblockRef: "SRD:goblin",
+        currentHp: 7,
+        ownerId: "u-dm",
+        visibility: "DM_ONLY",
+        entityId: "garrik-id",
+      },
+    ]);
+    renderPanel();
+    await screen.findByText("Goblin");
+
+    // Índice 1: `criaturas` es `[...campaign, ...srd]` (dragoncillo primero), y este PNJ nace
+    // de la del SRD — igual que el resto de pruebas de esta sección (ver arriba, índice 1).
+    fireEvent.click(screen.getAllByRole("button", { name: /¿De qué ficha del mundo es\?/i })[1]);
+    const radio = await screen.findByRole("radio", { name: /Garrik/i });
+    fireEvent.click(radio);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Bajar a la mesa/i })[1]);
+
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalledWith("c1", {
+      ref: "SRD:goblin",
+      count: 1,
+      hp: "AVERAGE",
+      entityId: "garrik-id",
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(/enlazado con su ficha del mundo/i);
   });
 });

@@ -307,6 +307,8 @@ model Entity {
   comments      Comment[]
   /// Las sesiones que abren su escena en esta ficha. Lado inverso de `Session.openingEntity`.
   opensSessions Session[]               @relation("SessionOpeningEntity")
+  /// Los cuerpos en la mesa de esta ficha (`Character.entityId`). Lado inverso.
+  bodies        Character[]
 }
 
 model EntityLink {
@@ -675,6 +677,12 @@ model Character {
   /// del SRD vive en codigo y no tiene fila a la que apuntar.
   statblockRef String?
 
+  /// PNJ del mundo y la mesa (2026-09-14, spec §3.1): **este cuerpo en la mesa es esta ficha del
+  /// mundo.** Una ficha puede tener varios cuerpos (seis goblins de «Goblins del paso»); un cuerpo,
+  /// como mucho una ficha. Solo fichas `type: NPC` de la misma campaña — lo valida el servidor
+  /// (`common/entity-link.ts`), no la base. `SetNull`: borrar la ficha no borra al bicho.
+  entityId String?
+
   /// Puerta de efectos §5 bis (D-CF-68/D-CF-69, 2026-09-13). SRD 5.1, *Beyond 1st Level*: «A
   /// character who reaches a specified experience point total advances in capability.» **El
   /// nivel NO sube solo** (D-CF-66): esta columna cuenta, y subirlo lo pulsa el DM. Existe en
@@ -698,6 +706,7 @@ model Character {
   pp Int @default(0)
 
   campaign           Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  entity             Entity?              @relation(fields: [entityId], references: [id], onDelete: SetNull)
   resources          CharacterResource[]
   conditions         CharacterCondition[]
   inventory          InventoryItem[]
@@ -707,6 +716,7 @@ model Character {
   abilityRollAttempts AbilityRollAttempt[]
 
   @@index([campaignId])
+  @@index([entityId])
 }
 
 /// Reglas de la mesa (D-CF-53): un intento de tirar las seis características en el servidor.

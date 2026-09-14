@@ -19,6 +19,8 @@ describe("NpcsService", () => {
     character: { create: jest.fn(), findMany: jest.fn() },
     campaign: { findUniqueOrThrow: jest.fn() },
     user: { findUnique: jest.fn() },
+    // PNJ del mundo y la mesa (Task 0): `entity-link.ts` valida y redacta con esto.
+    entity: { findFirst: jest.fn(), findMany: jest.fn() },
     transaction: jest.fn(),
   };
   const membership = { requireDM: jest.fn(), requireMember: jest.fn() };
@@ -41,6 +43,8 @@ describe("NpcsService", () => {
     membership.requireDM.mockResolvedValue({ role: "DM" });
     // Por defecto, quien mira ve la plantilla; las pruebas que comprueban la redacción lo cambian.
     statblocks.puedeVerStatblock.mockResolvedValue(true);
+    // Sin fichas del mundo enlazadas por defecto — las pruebas de `entityId` lo cambian.
+    prisma.entity.findMany.mockResolvedValue([]);
     // La transacción, en las unitarias, es «ejecuta el callback con el propio cliente».
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.character.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
@@ -229,5 +233,58 @@ describe("NpcsService", () => {
     // Derivarlo aquí sería un segundo camino que discreparía de la hoja en cuanto hubiera
     // agotamiento, que es exactamente el fallo que 2D.4 encontró y unificó.
     expect(r[0]).not.toHaveProperty("maxHp");
+  });
+
+  describe("entityId — el puente con la ficha del mundo (spec §3.1, §4)", () => {
+    it("instanciar con entityId valida la ficha y la escribe en cada fila", async () => {
+      statblocks.resolver.mockResolvedValue(SRD_STATBLOCK_POR_REF.get("SRD:goblin"));
+      prisma.entity.findFirst.mockResolvedValue({ id: "e1", type: "NPC", grants: [] });
+      await service.instanciar("dm", "c1", {
+        ref: "SRD:goblin",
+        count: 2,
+        hp: "AVERAGE",
+        entityId: "e1",
+      } as any);
+      const creadas = prisma.character.create.mock.calls.map((c: any) => c[0].data.entityId);
+      expect(creadas).toEqual(["e1", "e1"]);
+    });
+
+    it("instanciar con una ficha que no es NPC de la campaña: 400 y no crea nada", async () => {
+      statblocks.resolver.mockResolvedValue(SRD_STATBLOCK_POR_REF.get("SRD:goblin"));
+      prisma.entity.findFirst.mockResolvedValue(null);
+      await expect(
+        service.instanciar("dm", "c1", {
+          ref: "SRD:goblin",
+          count: 1,
+          hp: "AVERAGE",
+          entityId: "e9",
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    it("list(): entityId redactado para quien no ve la ficha", async () => {
+      membership.requireMember.mockResolvedValue({ role: "PLAYER" });
+      prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+      prisma.campaign.findUniqueOrThrow.mockResolvedValue({ clockSeconds: 0 });
+      prisma.character.findMany.mockResolvedValue([
+        {
+          id: "n1",
+          name: "Goblin",
+          statblockRef: "SRD:goblin",
+          visibility: "PLAYERS",
+          ownerId: "dm",
+          currentHp: 7,
+          tempHp: 0,
+          entityId: "oculta",
+          conditions: [],
+        },
+      ]);
+      prisma.entity.findMany.mockResolvedValue([
+        { id: "oculta", visibility: "DM_ONLY", createdById: "dm", grants: [] },
+      ]);
+      const filas = await service.list("pl", "c1");
+      expect(filas[0].entityId).toBeNull();
+    });
   });
 });

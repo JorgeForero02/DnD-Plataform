@@ -42,6 +42,11 @@ export interface NpcEnLaMesa {
    * agotamiento. El máximo vive en la hoja, que es su fuente única.
    */
   conditions?: { key: string; level: number | null }[];
+  /**
+   * **La ficha del mundo de la que este cuerpo es** (PNJ del mundo y la mesa, spec §3.1). `null`
+   * si no tiene o si quien mira no puede ver la ficha — el servidor la redacta (spec §4).
+   */
+  entityId?: string | null;
 }
 
 export function fetchStatblocks(campaignId: string): Promise<StatblocksResponse> {

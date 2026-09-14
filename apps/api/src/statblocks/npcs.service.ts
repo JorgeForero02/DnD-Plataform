@@ -3,6 +3,7 @@ import { expresionDePgDe, pgMediosDe, type InstantiateNpcInput, type Statblock }
 import type { Prisma } from "@prisma/client";
 import { MembershipService } from "../campaigns/membership.service";
 import { canView, type Viewer } from "../common/visibility";
+import { entityIdsVisibleFor, requireNpcEntity } from "../common/entity-link";
 import { rollExpression, type Roller } from "../dice/dice";
 import { PrismaService } from "../prisma/prisma.service";
 import { DICE_ROLLER } from "../rolls/rolls.service";
@@ -46,6 +47,10 @@ export class NpcsService {
       );
     }
 
+    // PNJ del mundo y la mesa (Task 0, spec §3.1): «¿de qué ficha del mundo es?», validado antes
+    // de crear nada — media tanda entrando enlazada y media sin enlazar sería peor que ninguna.
+    if (input.entityId) await requireNpcEntity(this.prisma, campaignId, input.entityId);
+
     const nombreBase = input.name ?? statblock.name;
     const filas: Prisma.CharacterUncheckedCreateInput[] = [];
     for (let i = 0; i < input.count; i++) {
@@ -72,6 +77,7 @@ export class NpcsService {
         int: statblock.abilities.int,
         wis: statblock.abilities.wis,
         cha: statblock.abilities.cha,
+        entityId: input.entityId ?? null,
       });
     }
 
@@ -89,6 +95,8 @@ export class NpcsService {
       statblockRef: c.statblockRef,
       currentHp: c.currentHp,
       visibility: c.visibility,
+      // El DM lo ve siempre: `requireDM`, unas líneas arriba, ya decidió quién pregunta.
+      entityId: c.entityId,
     }));
   }
 
@@ -118,6 +126,13 @@ export class NpcsService {
     for (const ref of new Set(filas.map((f) => f.statblockRef).filter((r): r is string => !!r))) {
       if (await this.statblocks.puedeVerStatblock(campaignId, ref, viewer)) refsVisibles.add(ref);
     }
+    // PNJ del mundo y la mesa (spec §4): la existencia del enlace no puede filtrar que «Alguien»
+    // es Garrik. Una sola consulta para toda la lista, igual que con las plantillas.
+    const enlacesVisibles = await entityIdsVisibleFor(
+      this.prisma,
+      viewer,
+      filas.map((f) => f.entityId),
+    );
 
     return filas
       .filter((f) =>
@@ -165,6 +180,9 @@ export class NpcsService {
           key: c.key,
           level: c.level,
         })),
+
+        // Spec §4: la existencia del enlace no puede filtrar que «Alguien» es Garrik.
+        entityId: f.entityId && enlacesVisibles.has(f.entityId) ? f.entityId : null,
       }));
   }
 

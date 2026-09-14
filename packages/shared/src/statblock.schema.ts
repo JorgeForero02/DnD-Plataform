@@ -360,6 +360,8 @@ export const instantiateNpcSchema = z.object({
    * su generador inyectable. Es la regla que la fase 2 puso por escrito y aquí se respeta.
    */
   hp: z.enum(["AVERAGE", "ROLL"]).default("AVERAGE"),
+  /** «¿De qué ficha del mundo es?» (spec §3.1). Opcional; misma validación que el `PATCH`. */
+  entityId: z.string().cuid().optional(),
 });
 export type InstantiateNpcInput = z.infer<typeof instantiateNpcSchema>;
 

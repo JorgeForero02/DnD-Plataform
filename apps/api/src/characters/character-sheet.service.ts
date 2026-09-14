@@ -118,6 +118,7 @@ import {
   viewerFor,
   viewerForCharacterOwner,
 } from "../common/character-viewer";
+import { conEntityIdVisible, entityIdsVisibleFor } from "../common/entity-link";
 
 // Tareas 2A.6 y 2A.7 — la hoja calculada y los PG mutables.
 //
@@ -713,6 +714,10 @@ export class CharacterSheetService {
       throw new NotFoundException("Character not found");
     }
     const respuesta = await this.buildResponse(userId, character);
+    // Spec §4 de «PNJ del mundo y la mesa»: la hoja devuelve la fila entera, y el enlace con la
+    // ficha del mundo solo viaja a quien puede ver la ficha.
+    const enlacesVisibles = await entityIdsVisibleFor(this.prisma, viewer, [character.entityId]);
+    respuesta.character = conEntityIdVisible(respuesta.character, enlacesVisibles);
     const derivado = await this.loQueDerivanLasCondiciones(character, respuesta.sheet);
 
     // Puerta de efectos §5 bis (E-PE-10, D-CF-68/D-CF-69). **Solo en modo `XP`**: con `HITO` —el

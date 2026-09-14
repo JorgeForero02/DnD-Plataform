@@ -106,6 +106,27 @@ test("**la rejilla no arrastra la página a lo ancho**", async ({ page }) => {
   expect(desborde).toBeLessThanOrEqual(1);
 });
 
+test("**la fila de acciones de una plantilla no se sale de la tarjeta a 430 px** (2026-09-14, captura del autor)", async ({
+  page,
+}) => {
+  // La tarjeta de «Sacar criatura» se abre dentro de un cajón de la mesa, así que su ancho útil
+  // ronda los 430 px. Con «¿De qué ficha del mundo es?» en la misma fila que Bajar/Editar/Borrar,
+  // «Bajar a la mesa» se partía en tres líneas y «Borrar» quedaba cortado por el borde derecho.
+  await page.setViewportSize({ width: 430, height: 900 });
+  await abrirBestiario(page);
+  const ficha = page.getByTestId("ficha-de-criatura").first();
+  await expect(ficha).toBeVisible();
+  const caja = await ficha.boundingBox();
+  const bajar = ficha.getByRole("button", { name: "Bajar a la mesa" });
+  const cajaBajar = await bajar.boundingBox();
+  // Un botón de una sola línea: su alto es el de una línea de texto con relleno, no tres.
+  expect(cajaBajar!.height).toBeLessThan(48);
+  for (const nombre of ["Bajar a la mesa", "¿De qué ficha del mundo es?"]) {
+    const b = await ficha.getByRole("button", { name: nombre }).boundingBox();
+    expect(b!.x + b!.width).toBeLessThanOrEqual(caja!.x + caja!.width + 1);
+  }
+});
+
 test("**los cuatro números caben en una línea**, que es lo que los hace de un vistazo", async ({
   page,
 }) => {

@@ -97,7 +97,20 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## El PNJ del mundo y la mesa (2026-09-14) — cerrada en rama, sin fusionar ni desplegar
+## Fusión a `main` de «PNJ del mundo y la mesa» + su cierre (2026-09-14, tarde) — sin desplegar
+
+Qué — `main` recibe las dos ramas apiladas en `07c9a9d` (merge `--no-ff`; `pnpm verify` entero en
+verde sobre `main`: 219 + 2102 + 1715 unitarias). La segunda, `pnj-del-mundo/cierre` (`94a4755`),
+cerró en una sola pasada de rigor bajo —decisión del autor: «pruebas no tan rigurosas si es solo mover
+cosas de lugar»— los pendientes que dejó la primera: PM-1 (`entityId` no viaja en respuestas de
+mutación), T3 (la tira revela el grupo entero, `POST …/characters/reveal-many`, D-CF-87), PE-2 (e2e
+de concurrencia de `apply-damage` y `POST /xp`), el caso de la tarea 11 (origen oculto → 404) y la
+cabecera huérfana del 13-09 en 06. e2e de API 32/32 en los tres ficheros; Playwright
+`pnj-del-mundo-en-vivo` + `combate` 2/2.
+Por qué — el autor dio permiso de fusionar al cerrar; el despliegue sigue siendo suyo.
+Revertir — `git revert -m 1 07c9a9d`. **Producción sigue en `4830b8a`.**
+
+## El PNJ del mundo y la mesa (2026-09-14) — cerrada en rama, fusionada por la tarde (ver arriba)
 
 Qué — rama `pnj-del-mundo/antes-del-paso-3` (9 commits sobre `ce0cc36`;
 [plan](./superpowers/plans/2026-09-14-pnj-del-mundo-y-la-mesa.md) de la

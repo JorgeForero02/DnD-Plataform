@@ -52,11 +52,12 @@ Rasgos
 +6
 Acción Súbita (dos usos), Indómito (tres usos)
 
-Lista de conjuros del mago
-Trucos
+Conjuros de mago
+Trucos (nivel 0)
 Descarga de fuego
 Nivel 1
 Detectar magia
+Descripciones de conjuros
 `;
 
 test("cortarSrdEs corta nombre, escuela, nivel, ritual y 'A niveles superiores'", () => {

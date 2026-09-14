@@ -342,21 +342,45 @@ export function actividadDe(activity, ctx = {}) {
   }
 
   if (tipoFoundry === "save") {
-    const ability = activity.save?.ability;
-    // `save.ability` puede llegar como un ARRAY en Foundry (varias características válidas, a
-    // elección de la mesa) — `salvacionSchema.ability` es una sola. Se rechaza en vez de forzar
-    // la primera del array, que mentiría sobre cuál eligió la mesa.
-    if (!ability || Array.isArray(ability)) {
-      return texto(
-        tipoFoundry,
-        `save.ability ${Array.isArray(ability) ? "es un array (varias características válidas)" : "vacío"}: salvacionSchema.ability es una sola, no hay salvación que importar sin torcerlo.`,
-      );
+    let ability = activity.save?.ability;
+    // `save.ability` a veces llega como un ARRAY de un solo elemento en Foundry — un artefacto
+    // del exportador (medido en T2: 65 de los 66 casos son `[<una>]`, no varias características
+    // a elección), no una elección real de la mesa; se desenvuelve igual que un escalar. Un
+    // array con 0 o ≥2 elementos sí es una elección real (o un dato ausente) y no cabe en
+    // `salvacionSchema.ability`, que es una sola — se rechaza en vez de forzar una, que mentiría
+    // sobre cuál eligió la mesa.
+    if (Array.isArray(ability)) {
+      if (ability.length === 1) {
+        ability = ability[0];
+      } else {
+        return texto(
+          tipoFoundry,
+          `save.ability es un array de ${ability.length} elemento(s) (${JSON.stringify(ability)}): salvacionSchema.ability es una sola, no hay salvación que importar sin torcerlo.`,
+        );
+      }
     }
+    if (!ability) {
+      return texto(tipoFoundry, "save.ability vacío: no hay salvación que importar.");
+    }
+    // `save.dc.calculation` no vacío -> cdDeConjuro: en los conjuros vale `"spellcasting"`; en
+    // las aptitudes de clase (Canalizar Divinidad) Foundry pone directamente la abreviatura de
+    // la característica que calcula la CD (`"wis"`) — es la misma CD de lanzador en la práctica
+    // (8 + competencia + el modificador de la característica de lanzamiento de esa clase), así
+    // que cualquier valor no vacío de `calculation` cae en la misma forma. Cuando llega vacío
+    // pero `dc.formula` es un entero literal (contact-other-plane: CD 15 fija, no depende del
+    // lanzador) es `fijo`, la misma forma que ya usa `origenDe` para cualquier otro número — no
+    // una fórmula evaluable, un dato del propio conjuro.
     const calculo = activity.save?.dc?.calculation;
-    if (!calculo) {
+    const formulaCd = (activity.save?.dc?.formula ?? "").trim();
+    let cd;
+    if (calculo) {
+      cd = { tipo: "cdDeConjuro" };
+    } else if (/^\d+$/.test(formulaCd)) {
+      cd = { tipo: "fijo", valor: Number.parseInt(formulaCd, 10) };
+    } else {
       return texto(
         tipoFoundry,
-        "save.dc.calculation vacío: sin CD derivable no hay salvación que importar.",
+        "save.dc sin cálculo derivable (ni 'spellcasting' ni una fórmula entera fija): sin CD no hay salvación que importar.",
       );
     }
     const parts = activity.damage?.parts ?? [];
@@ -369,7 +393,7 @@ export function actividadDe(activity, ctx = {}) {
     const siSalva = dados ? (activity.damage?.onSave === "half" ? "mitad" : "ninguno") : "ninguno";
     return {
       tipo: "salvacion",
-      salvacion: { ability, cd: { tipo: "cdDeConjuro" }, siSalva },
+      salvacion: { ability, cd, siSalva },
       ...(dados && { dados }),
       ...base,
     };

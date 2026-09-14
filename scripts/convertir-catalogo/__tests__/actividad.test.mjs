@@ -343,3 +343,48 @@ test("counterspell — check.ability 'spellcasting' -> prueba con ability 'lanza
   });
   assert.deepEqual(actividadDe(activity, ctx), caso.esperado);
 });
+
+// T2 (2026-09-14): dos huecos genéricos encontrados al medir por qué 108 conjuros con más de una
+// actividad en Foundry se quedaban en solo 58 tras convertir — no eran 50 casos "fuera de A"
+// declarados, sino dos patrones de datos de Foundry que `actividadDe` rechazaba sin necesidad.
+
+test("save.ability como array de un solo elemento se desenvuelve, no se rechaza (grease, T2)", () => {
+  const activity = {
+    type: "save",
+    activation: { type: "special", override: true, condition: "" },
+    consumption: { targets: [] },
+    duration: { units: "inst", concentration: false },
+    damage: { onSave: "none", parts: [] },
+    save: { ability: ["dex"], dc: { calculation: "spellcasting", formula: "" } },
+  };
+  const resultado = actividadDe(activity, {});
+  assert.equal(resultado.tipo, "salvacion");
+  assert.equal(resultado.salvacion.ability, "dex");
+});
+
+test("save.ability como array de dos o más elementos sí se rechaza (elección real de la mesa)", () => {
+  const activity = {
+    type: "save",
+    activation: { type: "action", override: false },
+    consumption: { targets: [] },
+    duration: { units: "inst", concentration: false },
+    damage: { onSave: "none", parts: [] },
+    save: { ability: ["str", "dex"], dc: { calculation: "spellcasting", formula: "" } },
+  };
+  const resultado = actividadDe(activity, {});
+  assert.equal(resultado.texto, true);
+});
+
+test("save.dc.calculation vacío con dc.formula entera -> cd fijo (contact-other-plane, T2)", () => {
+  const activity = {
+    type: "save",
+    activation: { type: "action", override: false },
+    consumption: { targets: [] },
+    duration: { units: "inst", concentration: false },
+    damage: { onSave: "none", parts: [] },
+    save: { ability: "int", dc: { calculation: "", formula: "15" } },
+  };
+  const resultado = actividadDe(activity, {});
+  assert.equal(resultado.tipo, "salvacion");
+  assert.deepEqual(resultado.salvacion.cd, { tipo: "fijo", valor: 15 });
+});

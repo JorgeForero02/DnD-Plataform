@@ -10,10 +10,15 @@ import { spellsCatalogSchema } from "../packages/shared/dist/index.js";
 // `apps/api/src/rules/catalog/generado/`); `--check` regenera en memoria y compara con lo
 // commiteado, sin escribir nada.
 
+// `RAIZ` es el directorio de ESTE fichero (`scripts/`); `RAIZ_REPO` es un nivel por encima. El
+// `--out` por defecto necesita `RAIZ_REPO` (T2, 2026-09-14: usar `RAIZ` a secas escribía en
+// `scripts/apps/api/...`, una carpeta nueva nunca leída por nadie, porque nunca se había
+// ejecutado sin `--out` hasta esta tarea — todas las tareas anteriores lo pasaban siempre).
 const RAIZ = fileURLToPath(new URL(".", import.meta.url));
+const RAIZ_REPO = fileURLToPath(new URL("..", import.meta.url));
 
 function leerArgumentos(argv) {
-  const out = { check: false, outDir: join(RAIZ, "apps/api/src/rules/catalog/generado") };
+  const out = { check: false, outDir: join(RAIZ_REPO, "apps/api/src/rules/catalog/generado") };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--check") out.check = true;
     if (argv[i] === "--out") out.outDir = argv[++i];

@@ -12,21 +12,69 @@ import { actividadDe } from "./actividad.mjs";
 
 /**
  * Limpia la prosa HTML de Foundry a texto plano (E-3A1-7): `<p>`→saltos de línea, marcas de
- * negrita fuera, `@UUID[...]{Nombre}`→`Nombre` (un enlace de texto enriquecido, nunca una
- * fórmula) y `&nbsp;`→espacio. **Ninguna `@` sobrevive**: es la misma frontera que
- * `catalog.schema.ts` comprueba al final, aplicada ya aquí para no depender solo de esa red.
+ * negrita fuera, `@UUID[...]{Nombre}`→`Nombre` y `@embed[...]{Nombre}`→`Nombre` (dos enlaces de
+ * texto enriquecido, nunca una fórmula — el segundo lo usa Foundry para incrustar una tabla de
+ * tirada, p. ej. la de *Confusion*), `[[lookup @flags...]]`/`[[lookup @labels...]]`→fuera (un
+ * valor calculado en vivo por el cliente de Foundry —cuántas imágenes le quedan a *Mirror
+ * Image*, la duración ya resuelta de un `activity` de *Symbol*— que no existe como texto fuera
+ * de esa sesión de juego; medido en T2 sobre los 319: solo tres conjuros lo traen en su
+ * `description.value` de nivel de ítem —*confusion*, *eyebite*, *symbol*— y ninguno depende de
+ * ese fragmento para entenderse) y `&nbsp;`→espacio. **Ninguna `@` sobrevive**: es la misma
+ * frontera que `catalog.schema.ts` comprueba al final, aplicada ya aquí para no depender solo de
+ * esa red.
  */
 function limpiarProsa(html) {
   if (!html) return "";
   return html
     .replace(/@UUID\[[^\]]*\]\{([^}]*)\}/g, "$1")
     .replace(/@UUID\[[^\]]*\]/g, "")
+    .replace(/@embed\[[^\]]*\]\{([^}]*)\}/g, "$1")
+    .replace(/@embed\[[^\]]*\]/g, "")
+    .replace(/\[\[lookup\s+[^\]]*\]\](?:\{[^}]*\})?/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/<\/p>/gi, "\n\n")
     .replace(/<[^>]+>/g, "")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+// E-3A1-3: las listas de conjuros por clase salen del SRD español («Conjuros de <clase>», por
+// nivel), no de Foundry. El nombre de clase que usa esa cabecera (minúscula, singular) se traduce
+// aquí a la clave de `SRD_CLASSES` (`apps/api/src/rules/catalog/classes.ts`) — las ocho clases
+// con lanzamiento de conjuros del SRD 5.1; bárbaro, guerrero (salvo su subclase Caballero
+// arcano, fuera de esta tanda), monje y pícaro no tienen lista propia.
+const CLASE_ES_A_CLAVE = {
+  bardo: "bard",
+  brujo: "warlock",
+  clérigo: "cleric",
+  druida: "druid",
+  explorador: "ranger",
+  hechicero: "sorcerer",
+  mago: "wizard",
+  paladín: "paladin",
+};
+
+/**
+ * `classesDe(nameEs, listasPorClase)` — las claves de `SRD_CLASSES` en cuyo listado por nivel
+ * aparece `nameEs` tal cual. Un conjuro sin traducción (`nameEs === null`) no puede casar contra
+ * ninguna lista española: queda `[]` y lo cuenta el informe de rechazos (`sinTraduccion`), nunca
+ * en silencio.
+ */
+function classesDe(nameEs, listasPorClase) {
+  if (!nameEs) return [];
+  const claves = [];
+  for (const [nombreEs, clave] of Object.entries(CLASE_ES_A_CLAVE)) {
+    const lista = listasPorClase.get(nombreEs);
+    if (!lista) continue;
+    for (const nombres of lista.porNivel.values()) {
+      if (nombres.includes(nameEs)) {
+        claves.push(clave);
+        break;
+      }
+    }
+  }
+  return claves;
 }
 
 const CABECERA_GENERADO =
@@ -189,7 +237,7 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     folders,
     rechazados,
   } = leerFoundry(foundryDir);
-  const { conjuros: conjurosEs } = cortarSrdEs(srdEsTxt);
+  const { conjuros: conjurosEs, listasPorClase } = cortarSrdEs(srdEsTxt);
 
   const spellsEnHuella = new Map(spellsFoundry.map((s) => [s.key, huellaDesdeFoundry(s.doc)]));
   const conjurosEsHuella = new Map(
@@ -260,7 +308,7 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
       ...(conjuroEs?.higherLevelsEs && {
         higherLevelsEs: conjuroEs.higherLevelsEs.slice(0, 2000),
       }),
-      classes: [],
+      classes: classesDe(conjuroEs?.nameEs ?? null, listasPorClase),
       actividades,
       fueraDeA,
       efectosPasivos: (s.doc.effects ?? []).length,
@@ -315,11 +363,11 @@ export function escribir(outDir, resultado) {
       null,
       2,
     );
-  writeFileSync(join(outDir, "spells.json"), spellsJson.replace(/^\/\/.*\n/, ""), "utf8");
+  writeFileSync(join(outDir, "spells-srd.json"), spellsJson.replace(/^\/\/.*\n/, ""), "utf8");
   // El JSON no admite comentarios: la cabecera "no editar" va en un fichero hermano `.meta.json`
   // más un comentario Markdown en `rechazos.md`, que sí es texto libre.
   writeFileSync(
-    join(outDir, "spells.meta.json"),
+    join(outDir, "spells-srd.meta.json"),
     JSON.stringify({ generadoPor: "scripts/convertir-catalogo.mjs", noEditar: true }, null, 2),
     "utf8",
   );
@@ -328,7 +376,7 @@ export function escribir(outDir, resultado) {
 
 /** `--check`: regenera en memoria y compara byte a byte con lo commiteado. */
 export function comprobar(outDir, resultado) {
-  const rutaSpells = join(outDir, "spells.json");
+  const rutaSpells = join(outDir, "spells-srd.json");
   if (!existsSync(rutaSpells)) return { ok: false, motivo: `No existe ${rutaSpells}.` };
   const actual = readFileSync(rutaSpells, "utf8");
   const esperado = JSON.stringify(
@@ -339,7 +387,7 @@ export function comprobar(outDir, resultado) {
   if (actual !== esperado) {
     return {
       ok: false,
-      motivo: "spells.json commiteado no coincide con lo regenerado en memoria.",
+      motivo: "spells-srd.json commiteado no coincide con lo regenerado en memoria.",
     };
   }
   return { ok: true };

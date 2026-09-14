@@ -202,14 +202,21 @@ function leerTablasDeClase(lineas) {
 }
 
 /**
- * Lee «Lista de conjuros del <clase>» (por nivel) a `{ clase, porNivel: Map<nivel, nombre[]> }`.
- * Nunca se confunde con la cabecera de un conjuro real (esta función nunca mira las cuatro
- * etiquetas: las listas no las traen — T0, punto c.4 final).
+ * Lee «Conjuros de <clase>» (por nivel) a `{ clase, porNivel: Map<nivel, nombre[]> }`. La
+ * cabecera real en `srd-5.1-es.txt` es «Conjuros de <clase>», no «Lista de conjuros del…»
+ * (verificado en T2 contra las líneas 13466-14345: «Conjuros de bardo/brujo/clérigo/druida/
+ * explorador/hechicero/mago/paladín»); el mismo patrón también casa con «Conjuros de dominio»,
+ * «Conjuros de círculo» y «Conjuros de juramento» (listas de subclase, no de clase base) — se
+ * capturan igual y el llamador las descarta al no reconocer esos nombres como clave de
+ * `SRD_CLASSES`. Nunca se confunde con la cabecera de un conjuro real (esta función nunca mira
+ * las cuatro etiquetas: las listas no las traen — T0, punto c.4 final).
  */
 function leerListasPorClase(lineas) {
   const listas = new Map();
-  const RE_TITULO = /^Lista de conjuros del (\S+)$/i;
-  const RE_NIVEL = /^Nivel (\d+)$|^Trucos$/;
+  const RE_TITULO = /^Conjuros de (\S+)$/i;
+  // El truco (nivel 0) se titula «Trucos (nivel 0)» dentro de esta lista (no «Trucos» a secas,
+  // que es la cabecera del apartado narrativo de cada clase en otra parte del documento).
+  const RE_NIVEL = /^Nivel (\d+)$|^Trucos(?:\s*\(nivel 0\))?$/;
 
   for (let i = 0; i < lineas.length; i++) {
     const titulo = lineas[i].trim().match(RE_TITULO);
@@ -220,7 +227,9 @@ function leerListasPorClase(lineas) {
     let k = i + 1;
     while (k < lineas.length && k < i + 400) {
       const linea = lineas[k].trim();
-      if (/^Lista de conjuros del /i.test(linea)) break;
+      // La última lista (paladín, en el orden del documento) no tiene otra «Conjuros de» detrás
+      // que la corte: la corta el rótulo fijo que abre las descripciones completas.
+      if (/^Conjuros de /i.test(linea) || /^Descripciones de conjuros$/i.test(linea)) break;
       const nivelMatch = linea.match(RE_NIVEL);
       if (nivelMatch) {
         nivelActual = nivelMatch[1] ? Number.parseInt(nivelMatch[1], 10) : 0;

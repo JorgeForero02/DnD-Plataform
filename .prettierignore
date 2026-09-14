@@ -23,3 +23,9 @@ apps/web/playwright-report/**
 # **temporalmente** — mientras estuvo dentro, `pnpm verify` fallaba y bloqueaba todos
 # los commits del repositorio. Esta entrada se borra cuando la maqueta se adopte.
 prototipo/**
+
+# Tarea 3A.1 (T2): catálogo generado por `scripts/convertir-catalogo.mjs` — su serialización
+# (`JSON.stringify(..., null, 2)`) es la que `--check` compara byte a byte contra lo commiteado
+# (fichero dorado). Si Prettier lo reformatea, `--check` se pone rojo sin que el conversor haya
+# cambiado nada: mismo motivo que excluye `**/*.md` arriba, aplicado a JSON en vez de a prosa.
+apps/api/src/rules/catalog/generado/*.json

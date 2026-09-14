@@ -7,6 +7,7 @@ import type {
 // El módulo se importa por su espacio de nombres para que las llamadas sigan siendo espiables
 // desde las pruebas — la misma trampa de vitest que documenta docs/04-convenciones.md.
 import * as bestiarioApi from "./api";
+import { encountersKey } from "../encounters/hooks";
 
 export const statblocksKey = (campaignId: string) =>
   ["campaigns", campaignId, "statblocks"] as const;
@@ -75,5 +76,34 @@ export function useInstantiateNpc(campaignId: string) {
       qc.invalidateQueries({ queryKey: npcsKey(campaignId) });
       qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "characters"] });
     },
+  });
+}
+
+/**
+ * Revelar/ocultar desde la mesa. Invalida **toda la campaña** (`["campaigns", id]`: PNJ, fichas
+ * del mundo, plantillas, registro) y el encuentro en curso (`encountersKey`, que empieza por
+ * "encounters" y queda fuera del prefijo — la misma trampa que documenta `live/canal.ts`).
+ */
+function useInvalidarLaMesa(campaignId: string) {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ["campaigns", campaignId] });
+    void qc.invalidateQueries({ queryKey: encountersKey(campaignId) });
+  };
+}
+
+export function useRevealNpc(campaignId: string) {
+  const invalidar = useInvalidarLaMesa(campaignId);
+  return useMutation({
+    mutationFn: (characterId: string) => bestiarioApi.revealNpc(campaignId, characterId),
+    onSuccess: invalidar,
+  });
+}
+
+export function useHideNpc(campaignId: string) {
+  const invalidar = useInvalidarLaMesa(campaignId);
+  return useMutation({
+    mutationFn: (characterId: string) => bestiarioApi.hideNpc(campaignId, characterId),
+    onSuccess: invalidar,
   });
 }

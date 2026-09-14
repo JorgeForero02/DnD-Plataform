@@ -100,3 +100,33 @@ export function instantiateNpc(
     body: JSON.stringify(input),
   });
 }
+
+/**
+ * PNJ del mundo y la mesa (spec §3.2) — **revelar es una sola acción**: la instancia, su ficha
+ * del mundo y la plantilla creada suben de visibilidad en una transacción (E-PM-2/E-PM-3). El
+ * `revealed` que devuelve dice qué subió de verdad, no que se pidiera subir.
+ */
+export function revealNpc(
+  campaignId: string,
+  characterId: string,
+): Promise<{
+  id: string;
+  name: string;
+  visibility: string;
+  entityId: string | null;
+  revealed: { character: boolean; entity: boolean; template: boolean };
+}> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/reveal`, {
+    method: "POST",
+  });
+}
+
+/** Ocultar baja **solo la instancia** de la mesa (E-PM-4): la ficha del mundo no se toca. */
+export function hideNpc(
+  campaignId: string,
+  characterId: string,
+): Promise<{ id: string; name: string; visibility: string }> {
+  return apiFetch(`/campaigns/${campaignId}/characters/${characterId}/hide`, {
+    method: "POST",
+  });
+}

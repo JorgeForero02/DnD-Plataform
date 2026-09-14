@@ -296,6 +296,99 @@ describe("el nombre de un PNJ en el orden de turnos", () => {
   });
 });
 
+// PNJ del mundo y la mesa (spec §3.2, E-PM-11) — «oculto · Revelar» en cada turno cuyo grupo
+// lleve algún PNJ que `sePuedeRevelar`. Klarg (`DM_ONLY`) y un segundo PNJ ya visible en
+// `PLAYERS`, en turnos distintos, para que la prueba distinga «uno sí, el otro no».
+describe("«oculto · Revelar» en el orden de turnos (spec §3.2)", () => {
+  const GOBLIN_VISIBLE: NpcEnLaMesa = {
+    id: "npc-goblin-visible",
+    name: "Goblin",
+    statblockRef: "SRD:goblin",
+    currentHp: 7,
+    ownerId: "u-dm",
+    visibility: "PLAYERS",
+  };
+
+  function encuentroConDosPnj(): Encounter {
+    return {
+      ...ENCUENTRO,
+      combatants: [
+        { id: "cb1", characterId: "p-thora", initiative: 18, position: 0, side: "ALLY", ...EN_PIE },
+        {
+          id: "cb9",
+          characterId: "npc-klarg",
+          initiative: 9,
+          position: 1,
+          side: "ENEMY",
+          ...EN_PIE,
+        },
+        {
+          id: "cb10",
+          characterId: "npc-goblin-visible",
+          initiative: 6,
+          position: 2,
+          side: "ENEMY",
+          ...EN_PIE,
+        },
+      ],
+    };
+  }
+
+  function montarConDosPnj(esDm = true) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <TiraDeIniciativa
+            campaignId="c1"
+            sessionId="s1"
+            encuentro={encuentroConDosPnj()}
+            personajes={[THORA]}
+            pnjs={[KLARG, GOBLIN_VISIBLE]}
+            esDm={esDm}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("el DM ve «oculto · Revelar» junto a Klarg (DM_ONLY) y no junto al goblin ya visible", () => {
+    montarConDosPnj();
+
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    const turnos = within(tira).getAllByRole("listitem");
+    // Klarg es el segundo turno (posición 1); el goblin visible, el tercero (posición 2).
+    expect(within(turnos[1]).getByRole("button", { name: "Revelar a Klarg" })).toBeInTheDocument();
+    expect(within(turnos[1]).getByText("oculto ·")).toBeInTheDocument();
+    expect(
+      within(turnos[2]).queryByRole("button", { name: /Revelar a Goblin/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("un jugador no lo ve", () => {
+    montarConDosPnj(false);
+
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    expect(within(tira).queryByRole("button", { name: /Revelar a/ })).not.toBeInTheDocument();
+    expect(within(tira).queryByText("oculto ·")).not.toBeInTheDocument();
+  });
+
+  it("revelar llama al servidor con el PNJ oculto de ese turno", async () => {
+    const espia = vi.spyOn(bestiarioApi, "revealNpc").mockResolvedValue({
+      id: "npc-klarg",
+      name: "Klarg",
+      visibility: "PLAYERS",
+      entityId: null,
+      revealed: { character: true, entity: false, template: false },
+    });
+    montarConDosPnj();
+
+    fireEvent.click(screen.getByRole("button", { name: "Revelar a Klarg" }));
+
+    await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", "npc-klarg"));
+  });
+});
+
 // Ronda de arreglo 1 — crítico 1 e importante I1. `EconomiaDeAccion.test.tsx` prueba el
 // componente en aislamiento; eso nunca demuestra que llegue a la tira montada de verdad, ni que
 // lea la economía del ENCUENTRO en vez de un estado inventado en el cliente. Medido: desmontar

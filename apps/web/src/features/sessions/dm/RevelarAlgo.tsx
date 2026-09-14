@@ -1,9 +1,12 @@
 import { useState } from "react";
+import type { Visibility } from "@dnd/shared";
 import type { Entity } from "../../entities/api";
 import { useAllEntities } from "../../entities/hooks";
 import { BotonRevelar, sePuedeRevelar } from "../../entities/BotonRevelar";
 import { ETIQUETA_DE_TIPO } from "../../entities/resumen";
 import { EXPLICACION_DE_NIVEL } from "../../entities/visibilidad";
+import { useNpcs, useRevealNpc } from "../../bestiario/hooks";
+import type { NpcEnLaMesa } from "../../bestiario/api";
 import { Badge } from "../../../ui/Badge";
 import { Button, fieldControlClass } from "../../../ui";
 
@@ -41,13 +44,31 @@ import { Button, fieldControlClass } from "../../../ui";
 /** A qué nivel se revela. «Jugadores» = todos los que se sientan a esta mesa. */
 const NIVEL_REVELADO = "PLAYERS" as const;
 
-export function RevelarAlgo({ campaignId }: { campaignId: string }) {
-  const { data: entidades, isLoading } = useAllEntities(campaignId);
-  const [busqueda, setBusqueda] = useState("");
+/**
+ * **PNJ del mundo y la mesa (spec §3.4)** — «Revelar algo» también lista las criaturas que la
+ * mesa todavía no ve, no solo las fichas del mundo. El tipo de fila se escribe una sola vez aquí
+ * y no inline (regla vinculante: ningún valor de enumeración llega a la pantalla suelto, y una
+ * criatura tampoco tiene un `EntityType` del que sacar su etiqueta con `ETIQUETA_DE_TIPO`).
+ */
+const ETIQUETA_CRIATURA = "Criatura en la mesa";
 
-  const ocultas = (entidades ?? []).filter((e) => sePuedeRevelar(e.visibility));
+export function RevelarAlgo({ campaignId }: { campaignId: string }) {
+  const { data: entidades, isLoading: cargandoEntidades } = useAllEntities(campaignId);
+  const { data: pnjs, isLoading: cargandoPnjs } = useNpcs(campaignId);
+  const [busqueda, setBusqueda] = useState("");
+  const isLoading = cargandoEntidades || cargandoPnjs;
+
+  const fichasOcultas = (entidades ?? []).filter((e) => sePuedeRevelar(e.visibility));
+  const criaturasOcultas = (pnjs ?? []).filter((p) => sePuedeRevelar(p.visibility as Visibility));
   const texto = busqueda.trim().toLowerCase();
-  const encontradas = texto ? ocultas.filter((e) => e.name.toLowerCase().includes(texto)) : ocultas;
+  const fichasEncontradas = texto
+    ? fichasOcultas.filter((e) => e.name.toLowerCase().includes(texto))
+    : fichasOcultas;
+  const criaturasEncontradas = texto
+    ? criaturasOcultas.filter((p) => p.name.toLowerCase().includes(texto))
+    : criaturasOcultas;
+  const hayOcultos = fichasOcultas.length > 0 || criaturasOcultas.length > 0;
+  const hayEncontrados = fichasEncontradas.length > 0 || criaturasEncontradas.length > 0;
 
   return (
     <div className="flex flex-col gap-s3">
@@ -66,19 +87,22 @@ export function RevelarAlgo({ campaignId }: { campaignId: string }) {
 
       {isLoading && <p className="font-chrome text-chrome-sm text-muted">Leyendo el mundo…</p>}
 
-      {!isLoading && ocultas.length === 0 && (
+      {!isLoading && !hayOcultos && (
         <p className="rounded-radius-sm border border-muted p-s3 font-chrome text-chrome-sm text-muted">
-          No queda nada oculto en esta campaña: la mesa ya lo ve todo.
+          No queda nada oculto en esta campaña: la mesa lo ve todo, fichas y criaturas.
         </p>
       )}
 
-      {!isLoading && ocultas.length > 0 && encontradas.length === 0 && (
+      {!isLoading && hayOcultos && !hayEncontrados && (
         <p className="font-chrome text-chrome-sm text-muted">Nada oculto con ese nombre.</p>
       )}
 
       <ul className="flex flex-col gap-s2">
-        {encontradas.map((e) => (
+        {fichasEncontradas.map((e) => (
           <FilaRevelable key={e.id} campaignId={campaignId} entidad={e} />
+        ))}
+        {criaturasEncontradas.map((p) => (
+          <FilaDeCriatura key={p.id} campaignId={campaignId} pnj={p} />
         ))}
       </ul>
     </div>
@@ -136,6 +160,54 @@ function FilaRevelable({ campaignId, entidad }: { campaignId: string; entidad: E
           <Button type="button" variant="secondary" onClick={() => setConfirmando(false)}>
             No
           </Button>
+        </>
+      ) : (
+        <Button type="button" variant="primary" onClick={() => setConfirmando(true)}>
+          Revelar a la mesa
+        </Button>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Una criatura (PNJ del mundo y la mesa, spec §3.4) — hermana de `FilaRevelable`, misma
+ * confirmación en fila, pero la mutación es `useRevealNpc` (E-PM-1/E-PM-2) y no `BotonRevelar`:
+ * un PNJ no es una `Entity`, así que su gesto de revelar no pasa por el dueño del dominio de
+ * fichas. `sePuedeRevelar` sí es el mismo predicado — la lista ya viene filtrada con él.
+ */
+function FilaDeCriatura({ campaignId, pnj }: { campaignId: string; pnj: NpcEnLaMesa }) {
+  const [confirmando, setConfirmando] = useState(false);
+  const revelar = useRevealNpc(campaignId);
+
+  return (
+    <li className="flex flex-wrap items-center gap-s2 rounded-radius-sm border border-muted bg-bg px-s3 py-s2">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-chrome text-chrome-sm text-text">{pnj.name}</span>
+        <span className="font-chrome text-chrome-xs text-muted">{ETIQUETA_CRIATURA}</span>
+      </span>
+      <Badge visibility={pnj.visibility as Visibility} />
+      {confirmando ? (
+        <>
+          <span className="font-chrome text-chrome-xs text-copper-text">
+            ¿Se lo enseñas a la mesa?
+          </span>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={revelar.isPending}
+            onClick={() => revelar.mutate(pnj.id)}
+          >
+            Revelar a la mesa
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setConfirmando(false)}>
+            No
+          </Button>
+          {revelar.isError && (
+            <span role="alert" className="font-chrome text-chrome-xs text-danger-text">
+              {(revelar.error as Error).message}
+            </span>
+          )}
         </>
       ) : (
         <Button type="button" variant="primary" onClick={() => setConfirmando(true)}>

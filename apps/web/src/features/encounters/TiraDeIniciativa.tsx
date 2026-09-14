@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { Encounter, XpPropuesto } from "@dnd/shared";
+import type { Encounter, Visibility, XpPropuesto } from "@dnd/shared";
 import {
   useAdvanceTurn,
   useCancelEncounter,
@@ -12,6 +12,8 @@ import {
 import { EconomiaDeAccion } from "./EconomiaDeAccion";
 import type { Character } from "../characters/api";
 import type { NpcEnLaMesa } from "../bestiario/api";
+import { useRevealNpc } from "../bestiario/hooks";
+import { sePuedeRevelar } from "../entities/BotonRevelar";
 import { useMembers } from "../campaigns/members";
 import { useRollRequests } from "../roll-requests/hooks";
 import { useCharacterSheet } from "../character-sheet/hooks";
@@ -75,11 +77,24 @@ export function TiraDeIniciativa({
   const terminar = useEndEncounter(campaignId, sessionId);
   const [terminando, setTerminando] = useState(false);
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
+  // PNJ del mundo y la mesa (spec §3.2, E-PM-11) — «oculto · Revelar» en cada turno del DM.
+  const revelar = useRevealNpc(campaignId);
 
   const nombreDe = (characterId: string) =>
     personajes.find((c) => c.id === characterId)?.name ??
     pnjs.find((p) => p.id === characterId)?.name ??
     "Alguien";
+
+  /**
+   * Los PNJ ocultos de un turno (grupo de combatientes que comparten posición). **Un clic revela
+   * uno, no el grupo entero**: revelar el grupo de una vez —seis goblins con un solo botón— es
+   * una decisión que no está tomada (spec, sin cerrar); el siguiente clic revela el siguiente,
+   * hasta que el grupo entero deja de tener «oculto · Revelar».
+   */
+  const ocultosDe = (grupo: Encounter["combatants"]) =>
+    grupo
+      .map((c) => pnjs.find((p) => p.id === c.characterId))
+      .filter((p): p is NpcEnLaMesa => !!p && sePuedeRevelar(p.visibility as Visibility));
 
   // **Los combatientes que comparten posición actúan a la vez** (el SRD manda una sola tirada
   // para un grupo de criaturas idénticas, y el servidor los agrupa por `statblockRef`). Se
@@ -207,6 +222,21 @@ export function TiraDeIniciativa({
                   Cayó
                 </span>
               )}
+              {esDm && ocultosDe(grupo).length > 0 && (
+                // Spec §3.2: un combatiente oculto en el orden se dice y se arregla desde aquí.
+                <span className="flex items-center gap-1 font-chrome text-chrome-xs text-muted">
+                  oculto ·
+                  <button
+                    type="button"
+                    onClick={() => revelar.mutate(ocultosDe(grupo)[0].id)}
+                    disabled={revelar.isPending}
+                    aria-label={`Revelar a ${nombres}`}
+                    className="underline-offset-2 hover:text-copper-text hover:underline"
+                  >
+                    Revelar
+                  </button>
+                </span>
+              )}
               {esDm && (
                 <button
                   type="button"
@@ -241,6 +271,11 @@ export function TiraDeIniciativa({
       {terminar.isError && (
         <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
           No se ha podido terminar el combate: {(terminar.error as Error).message}
+        </p>
+      )}
+      {revelar.isError && (
+        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
+          No se ha podido revelar: {(revelar.error as Error).message}
         </p>
       )}
 

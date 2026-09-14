@@ -173,6 +173,23 @@ describe("el DM corrige el bando desde la ficha del elenco (tarea 10)", () => {
   });
 });
 
+// PNJ del mundo y la mesa (spec §3.3) — **«Sacar del combate»**, ofrecido a CUALQUIER
+// combatiente (E-PM-11), no solo a PNJ: un personaje de jugador puede huir de la pelea igual.
+describe("con encuentro y combatiente, el menú del DM ofrece «Sacar del combate»", () => {
+  it("aparece en el menú y llama a DELETE con el combatante", async () => {
+    const sacar = vi
+      .spyOn(encountersApi, "removeCombatant")
+      .mockResolvedValue(encuentroTrasCorreccion());
+
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Más acciones sobre Corvin Vhael" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Sacar del combate" }));
+
+    await waitFor(() => expect(sacar).toHaveBeenCalledWith("c1", "s1", "enc-1", "cb-corvin"));
+  });
+});
+
 // Arreglo de vuelta 1 sobre B4 (I2, I4) — **`DarObjeto` montado de verdad, no solo probado
 // aislado.** Devolver `MandosDeCombatiente` a no llevar «Dar», o fijar su `soyDm` a `true` sin
 // mirar el rol real, dejaba esta suite (y la de `DarObjeto.test.tsx`) en verde por separado.

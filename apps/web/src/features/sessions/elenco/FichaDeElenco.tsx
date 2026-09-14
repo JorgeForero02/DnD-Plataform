@@ -15,6 +15,7 @@ import { IconoEscudo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./CorregirBando";
+import { useAccionesDeMesa } from "./AccionesDeMesa";
 
 /**
  * Un personaje en la mesa: retrato, quién lo lleva, puntos de golpe, condiciones y —solo para el
@@ -147,6 +148,23 @@ export function FichaDeElenco({
     nombre: personaje.name,
   });
 
+  /**
+   * **Solo «Sacar del combate»** (PNJ del mundo y la mesa, spec §3.2/§3.3, E-PM-11): revelar y
+   * ocultar son solo de PNJ y criaturas, así que aquí no se manda `visibility` — un personaje de
+   * jugador no la tiene. `esDm: conMandos` porque `conMandos` YA es «esDm» en el único sitio que
+   * lo enciende, igual que ya hace `soyDm` más abajo.
+   */
+  const { acciones: accionesDeMesa, error: errorDeMesa } = useAccionesDeMesa({
+    campaignId,
+    characterId: personaje.id,
+    nombre: personaje.name,
+    esDm: conMandos,
+    sessionId,
+    encounterId,
+    combatanteId,
+    enCombate,
+  });
+
   return (
     <li
       className={[
@@ -267,6 +285,8 @@ export function FichaDeElenco({
           // asaltos.
           accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
           errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
+          accionesDeMesa={accionesDeMesa}
+          errorDeMesa={errorDeMesa}
         />
       )}
     </li>

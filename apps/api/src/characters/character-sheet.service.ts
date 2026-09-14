@@ -717,14 +717,18 @@ export class CharacterSheetService {
 
     // Puerta de efectos §5 bis (E-PE-10, D-CF-68/D-CF-69). **Solo en modo `XP`**: con `HITO` —el
     // defecto, para que una campaña que ya existe no cambie (D-CF-53)— la hoja no enseña un
-    // marcador que no significa nada. Mismo helper que `updateSheet` para leer la regla.
-    const campaign = await this.prisma.campaign.findUnique({
-      where: { id: campaignId },
-      select: { tableRules: true },
-    });
+    // marcador que no significa nada. Mismo helper que `updateSheet` para leer la regla. **Y
+    // nunca para un PNJ de statblock** (D-CF-69): no acumula XP —`XpService.award` lo rechaza—,
+    // así que su hoja no enseña un marcador a cero ni gasta la consulta a la campaña.
+    const campaign = character.statblockRef
+      ? null
+      : await this.prisma.campaign.findUnique({
+          where: { id: campaignId },
+          select: { tableRules: true },
+        });
     const regla = tableRulesSchema.parse(campaign?.tableRules ?? {});
     const xp =
-      regla.progresion === "XP"
+      campaign && regla.progresion === "XP"
         ? {
             actual: character.xp,
             siguiente: umbralDeNivel(character.level + 1),
@@ -1496,6 +1500,30 @@ export class CharacterSheetService {
   }
 
   /**
+   * **La hoja sin recortar por visibilidad, para operar con sus números.** Mismo espectador que
+   * `caDelObjetivo` —del servidor, no de nadie con sesión: `{ ownerId, role: "DM" }`—, y la misma
+   * garantía: nunca se devuelve al cliente ni se guarda, solo entra en una cuenta (máximo de PG,
+   * modificadores de daño). Lanza el mismo 400 que `construirODenegar` cuando no hay hoja que
+   * derivar. **Quien llame aquí tiene que haber autorizado ya**: esta función no comprueba
+   * nada, a propósito, y por eso es privada.
+   */
+  private async hojaDelServidor(
+    character: FilaPersonaje,
+    tx?: Prisma.TransactionClient,
+  ): Promise<CharacterSheet> {
+    const { items } = await this.equipoEquipado(character.ownerId, character, tx);
+    const resultado = await this.hojaOMotivo(
+      espectadorDelServidor(character),
+      character,
+      items,
+      tx,
+    );
+    if (!("sheet" in resultado))
+      throw new BadRequestException(`No se pueden gestionar los PG: ${resultado.reason}`);
+    return resultado.sheet;
+  }
+
+  /**
    * La hoja de un PNJ instanciado. Fase 2D.
    *
    * **El agotamiento, las condiciones y las anulaciones del DM le aplican igual**, y eso no es un
@@ -1650,7 +1678,20 @@ export class CharacterSheetService {
     const character = filas[0];
     if (!character) throw new NotFoundException("Character not found");
 
-    const sheet = await this.construirODenegar(userId, character, tx);
+    // **La hoja del OBJETIVO se deriva con un espectador del servidor, no con `userId`.** Ola de
+    // arreglos 1 de la puerta de efectos (Critical 1 de la revisión de API, 2026-09-13). Quien
+    // llega aquí ya está autorizado —`changeHp` por `requireEditable`, la segunda puerta
+    // (`changeHpFromEffect`, spec §3.1) por `canView` + `requireOwnerOrDM` en su llamador— y lo
+    // único que se necesita de la hoja son NÚMEROS: el máximo de PG y los modificadores de daño.
+    // Derivarla con el actor como espectador rompía la segunda puerta en el caso de mesa más
+    // normal: un jugador impacta a un PNJ con statblock de campaña (`DM_ONLY` por defecto,
+    // `statblock.schema.ts`) y el DM pulsa «Aplicar», o responde la salvación por el bicho — el
+    // actor que firma es el jugador, `resolverParaHoja(viewer)` devolvía `{ oculto }` y salía un
+    // 400 «No se pueden gestionar los PG» con la tirada ya escrita. `caDelObjetivo` ya usaba este
+    // mismo espectador para la CA por la misma razón: «da igual quién mira, se usa el estado
+    // real». `userId` sigue siendo quien FIRMA el suceso y quien ve la respuesta
+    // (`buildResponse`, que sí redacta).
+    const sheet = await this.hojaDelServidor(character, tx);
     const maxHp = sheet.derived.maxHp.total;
     const before = character.currentHp ?? maxHp;
 
@@ -2022,15 +2063,16 @@ export class CharacterSheetService {
    * Los modificadores de daño del objetivo, **exactamente igual que la pieza C de
    * `changeHpEnTransaccion`** (tarea 2.5.1): un PNJ con statblock los saca de su plantilla; un
    * personaje jugador, de sus rasgos. Dos fuentes, una forma — la misma regla, no una segunda
-   * copia que se desalinee el día que la primera cambie.
+   * copia que se desalinee el día que la primera cambie. Sin `userId`: quién pregunta ya se
+   * comprobó antes (`requireOwnerOrDM`) y los modificadores no dependen de quién mira.
    */
-  private async modificadoresDeDano(userId: string, campaignId: string, target: FilaPersonaje) {
+  private async modificadoresDeDano(campaignId: string, target: FilaPersonaje) {
     if (target.statblockRef && this.statblocks) {
       return (
         (await this.statblocks.resolver(campaignId, target.statblockRef))?.damageModifiers ?? []
       );
     }
-    return (await this.construirODenegar(target.ownerId, target)).damageModifiers;
+    return (await this.hojaDelServidor(target)).damageModifiers;
   }
 
   /**
@@ -2073,11 +2115,14 @@ export class CharacterSheetService {
     if (!target) throw new NotFoundException(SIN_DANO_PENDIENTE);
     try {
       await requireOwnerOrDM(this.membership, campaignId, userId, target, SIN_DANO_PENDIENTE);
-    } catch {
-      throw new NotFoundException(SIN_DANO_PENDIENTE);
+    } catch (e) {
+      // **Solo el 403 se convierte en 404.** Un fallo de base o un error de programación no es
+      // «sin daño pendiente»: se propaga, o se escondería detrás de un 404 que parece legítimo.
+      if (e instanceof ForbiddenException) throw new NotFoundException(SIN_DANO_PENDIENTE);
+      throw e;
     }
 
-    const modificadores = await this.modificadoresDeDano(userId, campaignId, target);
+    const modificadores = await this.modificadoresDeDano(campaignId, target);
     const trace = applyDamageModifiers(
       pendingDamage.amount,
       pendingDamage.damageType,
@@ -2137,8 +2182,11 @@ export class CharacterSheetService {
       where: { id: pendingDamage.attackResolvedEventId, campaignId, type: "ATTACK_RESOLVED" },
       select: { payload: true },
     });
-    const attackName =
-      (resuelto?.payload as { attackName?: string } | undefined)?.attackName ?? "?";
+    const attackName = (resuelto?.payload as { attackName?: string } | undefined)?.attackName;
+    // `pendingDamage` garantiza que el `ATTACK_RESOLVED` existe (E-PE-5: sin él no se escribe la
+    // clave). Si no aparece, la tirada está rota y la crónica no escribe un «Ataque: ?» para
+    // disimularlo: es el mismo 404 que una tirada sin daño pendiente.
+    if (!attackName) throw new NotFoundException(SIN_DANO_PENDIENTE);
 
     return this.prisma.transaction(async (tx) => {
       const resultado = await this.changeHpFromEffect(tx, actorUserId, campaignId, target.id, {
@@ -3006,8 +3054,7 @@ export class CharacterSheetService {
    */
   private async caDelObjetivo(target: FilaPersonaje): Promise<number> {
     const { items } = await this.equipoEquipado(target.ownerId, target);
-    const viewerOmnisciente: Viewer = { userId: target.ownerId, role: "DM", isAdmin: false };
-    const resultado = await this.hojaOMotivo(viewerOmnisciente, target, items);
+    const resultado = await this.hojaOMotivo(espectadorDelServidor(target), target, items);
     if (!("sheet" in resultado)) {
       // **El motivo NO viaja, y esto lo encontró la revisión de cierre como fuga real.** Los
       // `reason` de `hojaOMotivo` están escritos para que los lea el dueño o el DM sobre su
@@ -3036,7 +3083,7 @@ export class CharacterSheetService {
    * `PATCH` → `fetchAc`, y si el segundo `fetchAc` fallaba, la ficha se quedaba enseñando la CA
    * vieja aunque el servidor ya hubiera escrito el cambio.
    *
-   * **Reutiliza `construirODenegar`**, el mismo camino que ya usan `getSheet` y `changeHp`: no
+   * **Reutiliza `construirODenegar`**, el mismo camino que ya usan `getSheet` y `updateSheet`: no
    * hay una segunda fórmula de CA, solo un segundo llamante. `null` cuando no hay hoja que
    * derivar —un PNJ sin plantilla, por ejemplo—, que es un hueco tan legítimo como el que ya deja
    * `equipoEquipado` con un objeto no resoluble: equipar no tiene por qué fallar por eso.
@@ -3059,6 +3106,15 @@ export class CharacterSheetService {
       throw e;
     }
   }
+}
+
+/**
+ * El espectador del servidor: ve la plantilla entera de un personaje **para calcular con ella**,
+ * nunca para enseñarla. Lo usan `caDelObjetivo` y `hojaDelServidor`; un `Viewer` así no sale de
+ * este fichero ni se guarda en ningún sitio.
+ */
+function espectadorDelServidor(character: FilaPersonaje): Viewer {
+  return { userId: character.ownerId, role: "DM", isAdmin: false };
 }
 
 /** `1d8` + 3 → `1d8+3`; + 0 → `1d8`; − 1 → `1d8-1`. El evaluador no entiende un `+0`. */

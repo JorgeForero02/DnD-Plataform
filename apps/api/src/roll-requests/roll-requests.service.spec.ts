@@ -1,5 +1,10 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { MembershipService } from "../campaigns/membership.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { EncountersService } from "../encounters/encounters.service";
@@ -596,6 +601,66 @@ describe("RollRequestsService", () => {
         service.answer("u-b", "c1", "r1", { spendInspiration: false }),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+    });
+
+    // Ola de arreglos 1 (Important 3 de la revisión de API). La tirada ya está escrita en su
+    // propia transacción cuando se abre la del cierre; si el efecto falla dentro y con él se
+    // deshace el cierre, la petición queda abierta con un d20 ya gastado y el reintento tira otro.
+    // El modo de fallo menos malo: la petición se cierra igual, los PG no se tocan, y la respuesta
+    // avisa para que nadie vuelva a tirar.
+    it("si falla SOLO el efecto, la petición se cierra igual (segundo updateMany) y la respuesta trae effectWarning en vez de effectApplied", async () => {
+      conTotal(14);
+      sheets.changeHpFromEffect.mockRejectedValue(
+        new BadRequestException("No se pueden gestionar los PG: la plantilla es del DM."),
+      );
+      // La transacción de verdad deshace el primer cierre al lanzar: el doble simula ese rollback
+      // devolviendo el error del callback y dejando el `updateMany` de fuera como el que cuenta.
+      let intentos = 0;
+      prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+        intentos += 1;
+        return fn(prisma);
+      });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(intentos).toBe(1);
+      // Dos cierres: el de dentro de la transacción (deshecho) y el de rescate, con la misma
+      // condición `resolvedAt: null` en el `where` y la misma tirada como `resolvedEventId`.
+      expect(tx.rollRequest.updateMany).toHaveBeenCalledTimes(2);
+      expect(tx.rollRequest.updateMany.mock.calls[1][0]).toEqual({
+        where: { id: "r1", resolvedAt: null },
+        data: expect.objectContaining({ resolvedEventId: "ev1" }),
+      });
+      expect(r.effectApplied).toBeUndefined();
+      expect(r.effectWarning).toEqual({
+        code: "EFECTO_NO_APLICADO",
+        message: expect.stringMatching(/a mano/),
+      });
+      // Y la tirada sigue siendo la respuesta: el jugador ve su d20, no un error.
+      expect(r.eventId).toBe("ev1");
+    });
+
+    it("un pendingEffect que no pasa el esquema es un 409 ANTES de tirar: ni d20 gastado ni petición cerrada", async () => {
+      prisma.rollRequest.findFirst.mockResolvedValue({
+        ...base,
+        pendingEffect: { amount: "veintiuno", signo: 3 },
+      });
+
+      await expect(
+        service.answer("u-b", "c1", "r1", { spendInspiration: false }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(rolls.roll).not.toHaveBeenCalled();
+      expect(tx.rollRequest.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("un pendingEffect sin CD en la petición no se traga en silencio: cierra con effectWarning y no toca los PG", async () => {
+      conTotal(14);
+      prisma.rollRequest.findFirst.mockResolvedValue({ ...base, dc: null, pendingEffect: efecto });
+
+      const r = await service.answer("u-b", "c1", "r1", { spendInspiration: false });
+
+      expect(sheets.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(r.effectWarning?.code).toBe("EFECTO_NO_APLICADO");
     });
   });
 });

@@ -19,8 +19,12 @@ describe("las puertas de efecto no tienen ruta", () => {
     expect(ficheros.length).toBeGreaterThan(10);
   });
 
+  // Se busca una LLAMADA (`.nombre(`), no el nombre a secas: un comentario de un controlador que
+  // explique por qué no llama a la puerta no debe enrojecer esta prueba — ya pasó en la tarea 3 y
+  // se resolvió reescribiendo el comentario, que es arreglar el síntoma.
   it.each(["changeHpFromEffect", "createFromEffect"])("ningún controlador llama a %s", (nombre) => {
-    const culpables = ficheros.filter((f) => readFileSync(f, "utf8").includes(nombre));
+    const llamada = new RegExp(`\\.${nombre}\\(`);
+    const culpables = ficheros.filter((f) => llamada.test(readFileSync(f, "utf8")));
     expect(culpables).toEqual([]);
   });
 });

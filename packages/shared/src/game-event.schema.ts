@@ -745,7 +745,8 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
    * premio —igual que `HP_CHANGED.to`—, para que la línea de tiempo no tenga que sumar `amount`
    * sobre lecturas anteriores para saber cuánto XP tiene alguien ahora. `amount` puede ser
    * negativo (el DM corrige un error), y por eso no basta con "gana": la frase legible
-   * (`lineaDeLog`, `apps/web`) mira el signo.
+   * (`lineaDeLog`, `apps/web`) mira el signo. **Es el delta EFECTIVO, no el pedido**: con 20 PX y
+   * un −50 se escribe −20, porque el total no baja de 0 — la misma regla que `HP_CHANGED.delta`.
    */
   z.object({
     type: z.literal("XP_AWARDED"),

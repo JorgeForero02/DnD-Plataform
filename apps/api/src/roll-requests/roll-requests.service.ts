@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
@@ -10,6 +11,7 @@ import type {
   AnswerRollRequestInput,
   CreateRollRequestInput,
   EffectApplied,
+  EffectWarning,
   ListRollRequestsInput,
   PendingSaveEffect,
   RollAudience,
@@ -43,6 +45,8 @@ import { RollsService } from "../rolls/rolls.service";
 
 @Injectable()
 export class RollRequestsService {
+  private readonly logger = new Logger(RollRequestsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
@@ -260,7 +264,7 @@ export class RollRequestsService {
     campaignId: string,
     requestId: string,
     input: AnswerRollRequestInput,
-  ): Promise<RollResult & { effectApplied?: EffectApplied }> {
+  ): Promise<RollResult & { effectApplied?: EffectApplied; effectWarning?: EffectWarning }> {
     const miembro = await this.membership.requireMember(campaignId, userId);
     const peticion = await this.prisma.rollRequest.findFirst({
       where: { id: requestId, campaignId },
@@ -285,6 +289,12 @@ export class RollRequestsService {
     if (peticion.resolvedAt) {
       throw new BadRequestException("Esa petición ya se respondió.");
     }
+
+    // **El efecto pendiente se lee ANTES de tirar** (ola de arreglos 1, revisión de API). Una fila
+    // con un `pendingEffect` que no pasa el esquema —una migración a medias, una escritura a
+    // mano— no puede costarle al jugador un d20 real: se rechaza aquí, con la petición todavía
+    // abierta y sin ninguna tirada escrita, en vez de reventar con un 500 después de tirar.
+    const efecto = this.efectoPendienteDe(peticion.id, peticion.pendingEffect);
 
     const modificador = await this.modificadorDeLaHoja(
       userId,
@@ -406,58 +416,134 @@ export class RollRequestsService {
     // redondea hacia abajo. El daño ya se tiró UNA vez en `usar` (*Damage Rolls*: «roll the
     // damage once for all of them») y viaja en `pendingEffect`; aquí solo se decide si se aplica
     // entero, mitad o nada.
-    const efecto = peticion.pendingEffect
-      ? pendingSaveEffectSchema.parse(peticion.pendingEffect)
-      : null;
-    const effectApplied = await this.prisma.transaction(async (tx) => {
-      const cerrada = await tx.rollRequest.updateMany({
+    //
+    // **Y si falla SOLO el efecto, la petición se cierra igual** (ola de arreglos 1, Important 3
+    // de la revisión de API). La tirada ya está escrita —`rolls.roll` va en su propia
+    // transacción, arriba— y es un d20 real que el jugador gastó. Si el `changeHpFromEffect` de
+    // abajo lanzara y con él se deshiciera el cierre, la petición seguiría abierta con su botón
+    // puesto, el jugador reintentaría y tiraría OTRO d20 mientras el hilo enseña el primero: la
+    // misma tirada dos veces, que es lo que este servicio existe para impedir. El modo de fallo
+    // menos malo es el contrario: la petición queda respondida con su tirada, los PG no se
+    // tocan, y la respuesta lleva `effectWarning` para que la pantalla diga que el daño hay que
+    // aplicarlo a mano. Un cierre que se pierde en la carrera (`count === 0`) sigue siendo un 400
+    // sin efecto, como antes: ahí no hay nada que rescatar, ganó la otra respuesta.
+    let effectApplied: EffectApplied | undefined;
+    let effectWarning: EffectWarning | undefined;
+    try {
+      effectApplied = await this.prisma.transaction(async (tx) => {
+        const cerrada = await tx.rollRequest.updateMany({
+          where: { id: peticion.id, resolvedAt: null },
+          data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
+        });
+        if (cerrada.count === 0) {
+          throw new BadRequestException("Esa petición ya se respondió.");
+        }
+        if (!efecto) return undefined;
+        try {
+          return await this.aplicarEfecto(tx, campaignId, peticion, efecto, resultado.eventId);
+        } catch (causa) {
+          throw new EfectoNoAplicado(causa);
+        }
+      });
+    } catch (e) {
+      if (!(e instanceof EfectoNoAplicado)) throw e;
+      // La transacción de arriba se deshizo ENTERA, cierre incluido: se vuelve a cerrar, sola,
+      // con la misma condición en el `where`. Si esta segunda escritura tampoco toca ninguna fila
+      // es que otra respuesta la cerró entre tanto; en ese caso su tirada es la que vale y la
+      // nuestra queda escrita como una tirada más del personaje, que es lo que ya pasaba.
+      this.logger.warn(
+        `La petición ${peticion.id} se respondió (tirada ${resultado.eventId}) pero su efecto no se pudo aplicar: ${describir(e.causa)}`,
+      );
+      await this.prisma.rollRequest.updateMany({
         where: { id: peticion.id, resolvedAt: null },
         data: { resolvedAt: new Date(), resolvedEventId: resultado.eventId },
       });
-      if (cerrada.count === 0) {
-        throw new BadRequestException("Esa petición ya se respondió.");
-      }
-      if (!efecto || peticion.dc === null) return undefined;
+      effectWarning = {
+        code: "EFECTO_NO_APLICADO",
+        message:
+          "La tirada quedó registrada, pero el daño o la curación no se pudo aplicar. El DM tiene que aplicarlo a mano desde la ficha.",
+      };
+    }
 
-      // E-PE-6: el total se lee del suceso escrito, no de `resultado` — `RollResult` puede venir
-      // `revealed: false` (una petición `BLIND`), y ahí `resultado.total` no existe.
-      const evento = await tx.gameEvent.findUnique({
-        where: { id: resultado.eventId },
-        select: { payload: true },
-      });
-      const total = (evento?.payload as { total?: number } | null)?.total;
-      if (typeof total !== "number") {
-        throw new BadRequestException("La tirada de la salvación no se pudo leer.");
-      }
-      const salvo = total >= peticion.dc;
-      const cantidad = salvo
-        ? efecto.siSalva === "mitad"
-          ? Math.floor(efecto.amount / 2)
-          : 0
-        : efecto.amount;
-      // `cantidad === 0 ? 0 : …` y no `efecto.signo * cantidad` a secas: con `signo: -1` y
-      // `cantidad: 0` la multiplicación da `-0`, que es un cero de verdad para el juego pero NO
-      // para `toEqual` — el `-0` de JavaScript no es `0` bajo `Object.is`, y devolverlo habría
-      // hecho mentir a `effectApplied.delta` sobre un caso donde no pasó nada.
-      const delta = cantidad === 0 ? 0 : efecto.signo * cantidad;
-      if (cantidad > 0) {
-        await this.sheets.changeHpFromEffect(
-          tx,
-          peticion.requestedById,
-          campaignId,
-          peticion.characterId,
-          {
-            delta,
-            reason: `Actividad: ${efecto.actividadKey}${salvo ? " (salvó, mitad)" : " (falló)"}`,
-            ...(efecto.signo < 0 && efecto.tipoDeDano ? { damageType: efecto.tipoDeDano } : {}),
-            rollEventId: resultado.eventId,
-          },
-        );
-      }
-      return { delta, saved: salvo };
+    return {
+      ...resultado,
+      ...(effectApplied ? { effectApplied } : {}),
+      ...(effectWarning ? { effectWarning } : {}),
+    };
+  }
+
+  /**
+   * El `pendingEffect` de una fila, validado, o `null` si no lo hay. Una fila que no pasa el
+   * esquema es un 409 legible —el dato está roto, no la petición del cliente— y no un 500.
+   */
+  private efectoPendienteDe(requestId: string, crudo: unknown): PendingSaveEffect | null {
+    if (!crudo) return null;
+    const leido = pendingSaveEffectSchema.safeParse(crudo);
+    if (!leido.success) {
+      throw new ConflictException(
+        `La petición ${requestId} lleva un efecto pendiente que no se puede leer; el DM tiene que aplicarlo a mano.`,
+      );
+    }
+    return leido.data;
+  }
+
+  /**
+   * Lo que la spec §4.3 llama «lo que pasa al responder», sin el cierre de la petición: decide
+   * entero / mitad / nada con la tirada ya escrita y llama a la segunda puerta. **Dentro del `tx`
+   * de quien llama**, siempre.
+   */
+  private async aplicarEfecto(
+    tx: Prisma.TransactionClient,
+    campaignId: string,
+    peticion: { id: string; characterId: string; requestedById: string; dc: number | null },
+    efecto: PendingSaveEffect,
+    rollEventId: string,
+  ): Promise<EffectApplied> {
+    // **Invariante, no caso de usuario**: `usar()` siempre pide con `dc` cuando cuelga un efecto
+    // (`ActivitiesService`). Sin CD no hay forma de decidir si salvó, y callarse cerrando la
+    // petición habría hecho desaparecer el daño en silencio — se lanza, como el guardián de
+    // iniciativa de arriba, y el `catch` de `answer` lo convierte en un `effectWarning`.
+    if (peticion.dc === null) {
+      throw new BadRequestException(
+        `La petición ${peticion.id} lleva un efecto pendiente pero no tiene CD: no se puede decidir la salvación.`,
+      );
+    }
+    // E-PE-6: el total se lee del suceso escrito, no de `resultado` — `RollResult` puede venir
+    // `revealed: false` (una petición `BLIND`), y ahí `resultado.total` no existe.
+    const evento = await tx.gameEvent.findUnique({
+      where: { id: rollEventId },
+      select: { payload: true },
     });
-
-    return effectApplied ? { ...resultado, effectApplied } : resultado;
+    const total = (evento?.payload as { total?: number } | null)?.total;
+    if (typeof total !== "number") {
+      throw new BadRequestException("La tirada de la salvación no se pudo leer.");
+    }
+    const salvo = total >= peticion.dc;
+    const cantidad = salvo
+      ? efecto.siSalva === "mitad"
+        ? Math.floor(efecto.amount / 2)
+        : 0
+      : efecto.amount;
+    // `cantidad === 0 ? 0 : …` y no `efecto.signo * cantidad` a secas: con `signo: -1` y
+    // `cantidad: 0` la multiplicación da `-0`, que es un cero de verdad para el juego pero NO
+    // para `toEqual` — el `-0` de JavaScript no es `0` bajo `Object.is`, y devolverlo habría
+    // hecho mentir a `effectApplied.delta` sobre un caso donde no pasó nada.
+    const delta = cantidad === 0 ? 0 : efecto.signo * cantidad;
+    if (cantidad > 0) {
+      await this.sheets.changeHpFromEffect(
+        tx,
+        peticion.requestedById,
+        campaignId,
+        peticion.characterId,
+        {
+          delta,
+          reason: `Actividad: ${efecto.actividadKey}${salvo ? " (salvó, mitad)" : " (falló)"}`,
+          ...(efecto.signo < 0 && efecto.tipoDeDano ? { damageType: efecto.tipoDeDano } : {}),
+          rollEventId,
+        },
+      );
+    }
+    return { delta, saved: salvo };
   }
 
   /**
@@ -484,6 +570,21 @@ export class RollRequestsService {
     }
     return valor.total;
   }
+}
+
+/**
+ * Señal interna de `answer`: el cierre de la petición fue bien y lo que falló fue SOLO el efecto
+ * (la segunda puerta, la lectura del suceso, la CD ausente). Sirve para que el `catch` de fuera
+ * distinga «hay que volver a cerrar y avisar» de «la carrera la ganó otro» sin mirar mensajes.
+ */
+class EfectoNoAplicado extends Error {
+  constructor(readonly causa: unknown) {
+    super("El efecto pendiente no se pudo aplicar.");
+  }
+}
+
+function describir(causa: unknown): string {
+  return causa instanceof Error ? `${causa.constructor.name}: ${causa.message}` : String(causa);
 }
 
 /** `1d20` + 3 → `1d20+3`; + 0 → `1d20`. El evaluador no entiende un `+0`. */

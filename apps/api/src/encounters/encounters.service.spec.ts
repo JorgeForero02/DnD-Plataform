@@ -1824,5 +1824,61 @@ describe("EncountersService", () => {
 
       expect(res).not.toHaveProperty("xpPropuesto");
     });
+
+    // Ola de arreglos 1 (Important 1 de la revisión de API). `statblock.schema.ts` acepta
+    // cualquier `cr` de 0 a 30, y `xpPorVd` lanza para lo que no sea una fila de la tabla: un VD
+    // 2,5 escrito en el editor de campaña convertía `end()` en un 500 y el combate no se podía
+    // cerrar por una propuesta que solo era informativa.
+    it("un ENEMY con un VD fuera de la tabla (2,5) no revienta end(): sale de la suma y se lista en sinTabla", async () => {
+      const R = { id: "R", name: "Bicho raro", statblockRef: "CAMPAIGN:raro" };
+      statblocks.resolver.mockImplementation(async (_campaignId: string, ref: string) =>
+        ref === "SRD:goblin" ? { cr: 0.25 } : ref === "CAMPAIGN:raro" ? { cr: 2.5 } : null,
+      );
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("ENEMY", G1),
+        combatiente("ENEMY", R),
+      ]);
+
+      const res = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(res.xpPropuesto).toEqual({
+        total: 50,
+        porCabeza: 50,
+        destinatarios: [{ characterId: "A", name: "Aria" }],
+        desglose: [{ characterId: "G1", name: "Goblin", cr: 0.25, xp: 50 }],
+        sinTabla: [{ characterId: "R", name: "Bicho raro", cr: 2.5 }],
+      });
+    });
+
+    it("si TODOS los VD están fuera de tabla, la propuesta existe con total 0 y explica por qué; sin ningún VD raro no viaja sinTabla", async () => {
+      const R = { id: "R", name: "Bicho raro", statblockRef: "CAMPAIGN:raro" };
+      statblocks.resolver.mockImplementation(async (_campaignId: string, ref: string) =>
+        ref === "CAMPAIGN:raro" ? { cr: 0.75 } : ref === "SRD:goblin" ? { cr: 0.25 } : null,
+      );
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("ENEMY", R),
+      ]);
+
+      const soloRaros = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(soloRaros.xpPropuesto?.total).toBe(0);
+      expect(soloRaros.xpPropuesto?.sinTabla).toEqual([
+        { characterId: "R", name: "Bicho raro", cr: 0.75 },
+      ]);
+
+      prisma.campaign.findUnique.mockResolvedValueOnce({ tableRules: { progresion: "XP" } });
+      prisma.combatant.findMany.mockResolvedValueOnce([
+        combatiente("ALLY", A),
+        combatiente("ENEMY", G1),
+      ]);
+
+      const normal = await service.end(dmId, campaignId, sessionId2, encId2);
+
+      expect(normal.xpPropuesto).not.toHaveProperty("sinTabla");
+    });
   });
 });

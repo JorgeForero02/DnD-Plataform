@@ -90,11 +90,17 @@ export function umbralDeNivel(nivel: number): number | null {
   return UMBRALES_DE_NIVEL[nivel - 1];
 }
 
+/** Si un valor de desafío tiene fila en la tabla del SRD. `statblock.schema.ts` acepta cualquier
+ * número de 0 a 30, así que quien vaya a llamar a `xpPorVd` con un `cr` que no controla pregunta
+ * aquí primero (`EncountersService.end()`, ola de arreglos 1). */
+export function vdEnTabla(cr: number): boolean {
+  return String(cr) in XP_POR_VD;
+}
+
 /** El XP que vale un valor de desafío. Lanza `RangeError` si el VD no está en la tabla del SRD. */
 export function xpPorVd(cr: number): number {
-  const clave = String(cr);
-  if (!(clave in XP_POR_VD)) throw new RangeError(`El valor de desafío ${cr} no está en la tabla.`);
-  return XP_POR_VD[clave];
+  if (!vdEnTabla(cr)) throw new RangeError(`El valor de desafío ${cr} no está en la tabla.`);
+  return XP_POR_VD[String(cr)];
 }
 
 /** `POST /campaigns/:campaignId/xp` (E-PE-11/E-PE-12, DM). Negativo permitido para corregir un
@@ -120,5 +126,10 @@ export const xpPropuestoSchema = z.object({
   desglose: z.array(
     z.object({ characterId: z.string(), name: z.string(), cr: z.number(), xp: z.number().int() }),
   ),
+  /** Enemigos con statblock cuyo VD no tiene fila en `XP_POR_VD` (un 2,5 escrito en el editor):
+   * no suman a `total` y se listan para que el DM los añada a mano. Solo viaja si hay alguno. */
+  sinTabla: z
+    .array(z.object({ characterId: z.string(), name: z.string(), cr: z.number() }))
+    .optional(),
 });
 export type XpPropuesto = z.infer<typeof xpPropuestoSchema>;

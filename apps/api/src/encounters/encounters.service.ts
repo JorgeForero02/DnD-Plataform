@@ -8,6 +8,7 @@ import {
 import {
   SEGUNDOS_POR_ASALTO,
   tableRulesSchema,
+  vdEnTabla,
   xpPorVd,
   type CombatantSide,
   type EconomiaDelTurno,
@@ -510,16 +511,22 @@ export class EncountersService {
         },
       });
       const desglose: XpPropuesto["desglose"] = [];
+      // Ola de arreglos 1 (Important 1 de la revisión de API). **Un VD que no está en la tabla no
+      // impide cerrar el combate.** `statblock.schema.ts` acepta cualquier `cr` de 0 a 30 (2,5 o
+      // 0,75 desde el editor de campaña) y `xpPorVd` lanza `RangeError` para lo que no sea una de
+      // sus 34 claves; propagarlo convertía una propuesta que solo es informativa en un 500 sobre
+      // `end()`. Ese combatiente sale de la suma y entra en `sinTabla`, para que el DM vea por
+      // qué la cifra no lo cuenta y lo añada a mano en «Dar XP».
+      const sinTabla: NonNullable<XpPropuesto["sinTabla"]> = [];
       for (const c of combatientes.filter((c) => c.side === "ENEMY" && c.character.statblockRef)) {
         const sb = await this.statblocks.resolver(campaignId, c.character.statblockRef!);
-        if (sb) {
-          desglose.push({
-            characterId: c.character.id,
-            name: c.character.name,
-            cr: sb.cr,
-            xp: xpPorVd(sb.cr),
-          });
+        if (!sb) continue;
+        const fila = { characterId: c.character.id, name: c.character.name, cr: sb.cr };
+        if (!vdEnTabla(sb.cr)) {
+          sinTabla.push(fila);
+          continue;
         }
+        desglose.push({ ...fila, xp: xpPorVd(sb.cr) });
       }
       // D-CF-69: solo `ALLY` sin `statblockRef` puede recibir XP — un PNJ jugable no tiene nivel
       // al que avanzar, y `NEUTRAL` nunca fue del bando que ganó el combate.
@@ -527,9 +534,18 @@ export class EncountersService {
         .filter((c) => c.side === "ALLY" && !c.character.statblockRef && !c.character.archivedAt)
         .map((c) => ({ characterId: c.character.id, name: c.character.name }));
       const total = desglose.reduce((s, d) => s + d.xp, 0);
+      // Con algo que proponer O algo que explicar (`sinTabla`), y alguien a quien dárselo. Un
+      // combate donde todos los VD están fuera de tabla propone 0 y dice por qué, en vez de
+      // callarse como si no hubiera habido enemigos.
       xpPropuesto =
-        total > 0 && destinatarios.length > 0
-          ? { total, porCabeza: Math.floor(total / destinatarios.length), destinatarios, desglose }
+        (total > 0 || sinTabla.length > 0) && destinatarios.length > 0
+          ? {
+              total,
+              porCabeza: Math.floor(total / destinatarios.length),
+              destinatarios,
+              desglose,
+              ...(sinTabla.length > 0 ? { sinTabla } : {}),
+            }
           : undefined;
     }
 

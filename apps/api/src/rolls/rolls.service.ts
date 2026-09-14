@@ -24,6 +24,7 @@ import {
   dadosTirados,
   type DiceRollResult,
   type Roller,
+  DICE_ROLLER,
 } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
 import { DmTablesService } from "../dm-tables/dm-tables.service";
@@ -32,8 +33,13 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CLAVE_INSPIRACION } from "../character-state/resources/resources.service";
 
-/** Token del tirador. Solo lo rellena una prueba; en producción no hay proveedor. */
-export const DICE_ROLLER = "DICE_ROLLER";
+/**
+ * Token del tirador. Vive en `dice/dice.ts` y lo provee `DiceModule` (global) con el tirador de
+ * producción; se re-exporta desde aquí porque es donde todos lo importaban. Una prueba lo
+ * sustituye con `overrideProvider(DICE_ROLLER)`, que desde la ola de arreglos 1 de la puerta de
+ * efectos SÍ tiene algo que sustituir.
+ */
+export { DICE_ROLLER } from "../dice/dice";
 
 // Tarea 2A.13 — el servidor tira, y la tirada queda escrita.
 //
@@ -76,9 +82,9 @@ export class RollsService {
      * Inyectable para que las pruebas puedan fijar los dados sin tocar el azar real.
      *
      * Va por **token y opcional** a propósito: `Roller` es un alias de tipo, así que Nest solo
-     * ve `Function` y trataría de resolverlo como una dependencia que no existe. Sin proveedor,
-     * queda `undefined` y el evaluador usa su tirador por defecto —`crypto.randomInt`—, que es
-     * lo que corre en producción.
+     * ve `Function` y trataría de resolverlo como una dependencia que no existe. `DiceModule`
+     * (global) lo provee con `defaultRoller` —`crypto.randomInt`, lo que corre en producción—;
+     * sigue `@Optional()` para que un servicio construido a mano en una unitaria no lo necesite.
      */
     @Optional() @Inject(DICE_ROLLER) private readonly roller?: Roller,
   ) {}

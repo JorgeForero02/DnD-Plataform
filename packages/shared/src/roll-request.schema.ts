@@ -123,6 +123,14 @@ export type PendingSaveEffect = z.infer<typeof pendingSaveEffectSchema>;
 /** Lo que `RollRequestsService.answer` aplicó al cerrar una petición con `pendingEffect`. */
 export type EffectApplied = { delta: number; saved: boolean };
 
+/**
+ * Lo que `answer` devuelve en vez de `effectApplied` cuando la tirada quedó escrita y la petición
+ * cerrada pero el efecto NO se pudo aplicar (ola de arreglos 1 de la puerta de efectos). La
+ * pantalla lo enseña tal cual: el jugador ya tiró, no debe volver a tirar, y el DM aplica el daño a
+ * mano.
+ */
+export type EffectWarning = { code: "EFECTO_NO_APLICADO"; message: string };
+
 export const listRollRequestsSchema = z.object({
   /**
    * Por defecto **solo las pendientes**, que es lo que una pantalla que sondea necesita. Con

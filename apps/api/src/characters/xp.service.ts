@@ -22,7 +22,7 @@ export class XpService {
     await this.membership.requireDM(campaignId, userId);
     const personajes = await this.prisma.character.findMany({
       where: { id: { in: input.characterIds }, campaignId, archivedAt: null },
-      select: { id: true, name: true, xp: true, visibility: true, statblockRef: true },
+      select: { id: true, name: true, visibility: true, statblockRef: true },
     });
     if (personajes.length !== input.characterIds.length) {
       throw new NotFoundException("Alguno de esos personajes no está en esta campaña.");
@@ -36,9 +36,30 @@ export class XpService {
     return this.prisma.transaction(async (tx) => {
       const awarded: { characterId: string; xp: number }[] = [];
       for (const p of personajes) {
-        // XP nunca baja de 0: un premio negativo corrige un error del DM, no lo lleva a deuda.
-        const xp = Math.max(0, p.xp + input.amount);
-        await tx.character.update({ where: { id: p.id }, data: { xp } });
+        // **La suma la hace la base, en la misma sentencia que escribe** (ola de arreglos 1,
+        // Important 2 de la revisión de API). Leer `xp` fuera de la transacción y escribir el
+        // absoluto dentro perdía una de dos concesiones concurrentes —el DM confirmando la
+        // propuesta del combate en una pestaña y dando un premio a mano en otra— y el `xpTotal`
+        // del segundo suceso mentía. `GREATEST(0, …)` es la regla de siempre: XP nunca baja de 0,
+        // un premio negativo corrige un error del DM, no lo lleva a deuda. La fila anterior se
+        // lee en el mismo `UPDATE` (CTE con `FOR UPDATE`, el patrón de `changeHpEnTransaccion`)
+        // para que el `amount` del suceso sea el delta EFECTIVO —igual que `HP_CHANGED` escribe
+        // el delta reducido, no el bruto—: con 20 PX y un −50, la crónica dice «pierde 20», no
+        // «pierde 50».
+        const filas = await tx.$queryRaw<{ xp: number; xpAntes: number }[]>`
+          WITH antes AS (
+            SELECT xp FROM "Character" WHERE id = ${p.id} AND "campaignId" = ${campaignId} FOR UPDATE
+          )
+          UPDATE "Character" c
+          SET xp = GREATEST(0, c.xp + ${input.amount})
+          FROM antes
+          WHERE c.id = ${p.id}
+          RETURNING c.xp AS xp, antes.xp AS "xpAntes"
+        `;
+        const fila = filas[0];
+        if (!fila)
+          throw new NotFoundException("Alguno de esos personajes no está en esta campaña.");
+        const xp = fila.xp;
         await this.events.record(
           userId,
           campaignId,
@@ -49,7 +70,7 @@ export class XpService {
             payload: {
               type: "XP_AWARDED",
               characterId: p.id,
-              amount: input.amount,
+              amount: xp - fila.xpAntes,
               xpTotal: xp,
               ...(input.reason ? { reason: input.reason } : {}),
             },

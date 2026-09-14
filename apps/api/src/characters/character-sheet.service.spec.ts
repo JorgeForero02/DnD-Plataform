@@ -1195,7 +1195,10 @@ describe("ficha P2-0b — con `tx`, derivar la hoja va por ESE cliente", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect((tx.inventoryItem as { findMany: jest.Mock }).findMany).toHaveBeenCalled();
-    expect((tx.user as { findUnique: jest.Mock }).findUnique).toHaveBeenCalled();
+    // Ola de arreglos 1 (Critical 1): derivar los PG ya no resuelve ningún visor —usa el
+    // espectador del servidor, sin consulta—, así que lo que se afirma es lo que P2-0b quería de
+    // verdad: **ninguna lectura por el pool** mientras la transacción ajena está abierta.
+    expect((tx.user as { findUnique: jest.Mock }).findUnique).not.toHaveBeenCalled();
     expect(prisma.inventoryItem.findMany).not.toHaveBeenCalled();
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
@@ -1225,6 +1228,8 @@ describe("ficha P2-8 — con `tx`, redactar la respuesta también va por ESE cli
     // Que de verdad llegó al final, y no se quedó a medias sin que nadie lo notara.
     expect(res.hp.current).toBe(MAX_HP - 1);
     expect((tx.inventoryItem as { findMany: jest.Mock }).findMany).toHaveBeenCalled();
+    // El visor que redacta la respuesta (`buildResponse`) se resuelve por el `tx`; derivar los PG
+    // ya no resuelve ninguno (ola de arreglos 1, Critical 1).
     expect((tx.user as { findUnique: jest.Mock }).findUnique).toHaveBeenCalled();
     expect(prisma.inventoryItem.findMany).not.toHaveBeenCalled();
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
@@ -1281,6 +1286,66 @@ describe("changeHpFromEffect (segunda puerta, spec §3.1)", () => {
     });
 
     expect(espia).toHaveBeenCalledTimes(2);
+  });
+
+  // Ola de arreglos 1 (Critical 1 de la revisión de API, 2026-09-13). El caso de mesa que los e2e
+  // no veían por usar `SRD:goblin`/`SRD:wight` (los SRD resuelven para todos): un PNJ con statblock
+  // de CAMPAÑA, `DM_ONLY` por defecto, cuyo daño firma un JUGADOR —el que impactó, o el que lanzó
+  // la bola de fuego que el DM responde por el bicho—. `resolverParaHoja` devolvía `{ oculto }`
+  // para ese espectador y la segunda puerta reventaba con un 400 después de que la tirada ya
+  // estuviera escrita.
+  it("un actor JUGADOR cambia los PG de un PNJ con statblock de campaña DM_ONLY: la hoja se deriva con el espectador del servidor, y el suceso lo firma el jugador", async () => {
+    const statblock = SRD_STATBLOCK_POR_REF.get("SRD:wight")!;
+    // El comportamiento REAL de `StatblocksService.resolverParaHoja` con un statblock `DM_ONLY`:
+    // solo el DM (o quien lo creó) ve la plantilla; cualquier otro espectador recibe `oculto`.
+    const resolverParaHoja = jest.fn(
+      async (_campaignId: string, _ref: string, viewer: { role: string }) =>
+        viewer.role === "DM" ? { statblock } : { oculto: true },
+    );
+    const statblocks = {
+      resolverParaHoja: resolverParaHoja as unknown as jest.Mock,
+      resolver: jest.fn().mockResolvedValue(statblock),
+    };
+    const { service, prisma, events } = montar(undefined, statblocks);
+    const fila = personaje({
+      id: "pnj",
+      ownerId: "dm1",
+      statblockRef: "CAMPAIGN:clx0000000000000000000001",
+      visibility: "PLAYERS",
+      currentHp: 45,
+      tempHp: 0,
+    });
+    const tx = montarTransaccion(prisma, fila);
+    // El actor es un jugador de la mesa, no el DM: es lo que `viewerFor` devolvería para él.
+    (tx as unknown as { campaignMember: { findUnique: jest.Mock } }).campaignMember = {
+      findUnique: jest.fn().mockResolvedValue({ role: "PLAYER" }),
+    };
+
+    const r = await service.changeHpFromEffect(tx as never, "jugador-a", "c1", "pnj", {
+      delta: -10,
+      damageType: "NECROTIC",
+      reason: "Actividad: toque-necrotico",
+    });
+
+    // La plantilla que gobierna los NÚMEROS se leyó con un espectador del servidor (`role: "DM"`).
+    // `buildResponse` la vuelve a pedir con el jugador —y recibe `oculto`— para REDACTAR lo que se
+    // le devuelve: dos lecturas, dos propósitos, y solo la segunda mira quién es el actor.
+    const roles = resolverParaHoja.mock.calls.map((c) => (c[2] as { role: string }).role);
+    expect(roles).toContain("DM");
+    expect(r.sheet).toBeNull();
+    // El tumulario resiste el daño necrótico: 10 → 5, y la traza lo dice — los NÚMEROS de la
+    // plantilla oculta gobiernan el cambio aunque el actor no pueda verla.
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(40);
+    expect(r.damageTrace).toBeDefined();
+    // Y el suceso lo firma quien causó el daño, el jugador: la crónica no cambia de autor.
+    expect(events.record).toHaveBeenCalledWith(
+      "jugador-a",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ type: "HP_CHANGED", from: 45, to: 40 }),
+      }),
+      tx,
+    );
   });
 });
 

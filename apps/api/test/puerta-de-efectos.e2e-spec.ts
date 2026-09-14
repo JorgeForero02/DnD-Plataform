@@ -86,6 +86,13 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
   // fijo y no un azar de verdad, para que cualquier tirada que esta prueba no controle a propósito
   // (el daño en dados de las dos actividades) siga siendo determinista sin que haga falta encolar
   // nada para ella.
+  //
+  // **El `overrideProvider(DICE_ROLLER)` de abajo SÍ sustituye algo desde la ola de arreglos 1**:
+  // hasta entonces ningún módulo proveía el token y Nest ignoraba el override en silencio — el
+  // run 1 de esta suite pasó «B falla» con p≈0,70 y falló la bandeja con un `MISS` imposible.
+  // `DiceModule` (global) lo provee ahora con el tirador de producción. Y cada tirada controlada
+  // comprueba `expect(cola).toHaveLength(0)` justo después: un roller que no consume su cola es
+  // un roller que no se inyectó, y eso tiene que enrojecer, no dar suerte.
   const cola: number[] = [];
   const roller: Roller = (caras) => cola.shift() ?? Math.ceil(caras / 2);
 
@@ -296,6 +303,7 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
       .set("Authorization", `Bearer ${tokenB}`)
       .send({});
     expect(r.status).toBe(201);
+    expect(cola).toHaveLength(0);
     expect(r.body.effectApplied).toEqual({ delta: -amount, saved: false });
 
     const despues = await request(s)
@@ -329,6 +337,7 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
       .set("Authorization", `Bearer ${tokenDM}`)
       .send({});
     expect(r.status).toBe(201);
+    expect(cola).toHaveLength(0);
     expect(r.body.effectApplied).toEqual({ delta: -Math.floor(amount / 2), saved: true });
   });
 
@@ -417,7 +426,8 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
         .set("Authorization", `Bearer ${tokenA}`)
         .send({ targetCharacterId: fantasmaId, mode: "NORMAL", spendInspiration: false });
       expect(resolve.status).toBe(201);
-      expect(["HIT", "CRITICAL"]).toContain(resolve.body.verdict);
+      expect(cola).toHaveLength(0);
+      expect(resolve.body.verdict).toBe("CRITICAL");
 
       const dano = await request(s)
         .post(
@@ -499,6 +509,168 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
         .get(`/campaigns/${campaignId}/rolls/${dano.body.eventId}/damage-preview`)
         .set("Authorization", `Bearer ${tokenDM}`);
       expect(preview.status).toBe(404);
+    });
+  });
+
+  // --- 7 bis. La segunda puerta contra un statblock de CAMPAÑA `DM_ONLY` (Critical 1) ----------
+  //
+  // Los SRD resuelven para todos, así que el bloque de arriba no podía ver el fallo: un statblock
+  // propio de la campaña nace `DM_ONLY` (`createCampaignStatblockSchema`) y `resolverParaHoja`
+  // devuelve `{ oculto }` a cualquier jugador. La segunda puerta derivaba la hoja del objetivo con
+  // el ACTOR como espectador —el jugador que firma el daño— y reventaba con un 400 «No se pueden
+  // gestionar los PG» en los dos caminos: el DM aplicando la bandeja, y el DM respondiendo la
+  // salvación por el bicho con la tirada ya escrita. Desde la ola de arreglos 1 la hoja se deriva
+  // con un espectador del servidor; el actor sigue firmando.
+  describe("statblock de campaña DM_ONLY: el DM aplica y responde aunque quien firma sea un jugador", () => {
+    let attackKey = "";
+    let bichoId = "";
+    let danoRollEventId = "";
+    let amountBicho = 0;
+
+    it("el DM crea un statblock de campaña (resistente a cortante, nace DM_ONLY) y sube un bicho visible a la mesa", async () => {
+      const s = app.getHttpServer();
+      const hoja = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      attackKey = hoja.body.attacks.find((a: { name: string }) => a.name === "Espada larga").key;
+
+      const statblock = await request(s)
+        .post(`/campaigns/${campaignId}/statblocks`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({
+          name: "Espectro de la cripta",
+          size: "MEDIUM",
+          type: "UNDEAD",
+          ac: 12,
+          hitDiceCount: 6,
+          abilities: { str: 6, dex: 14, con: 13, int: 6, wis: 10, cha: 8 },
+          cr: 1,
+          damageModifiers: [{ damageType: "SLASHING", effect: "RESIST" }],
+        });
+      expect(statblock.status).toBe(201);
+      expect(statblock.body.visibility).toBe("DM_ONLY");
+
+      const npc = await request(s)
+        .post(`/campaigns/${campaignId}/npcs`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ ref: statblock.body.ref, hp: "AVERAGE" });
+      expect(npc.status).toBe(201);
+      bichoId = npc.body[0].id;
+      // El PNJ se ve (A tiene que poder apuntarle); su PLANTILLA sigue siendo del DM. Son dos
+      // visibilidades distintas, y esa diferencia es la que rompía la puerta.
+      await request(s)
+        .patch(`/campaigns/${campaignId}/characters/${bichoId}`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({ visibility: "PLAYERS" });
+
+      // A no ve los números del bicho: solo sus PG actuales. Es la premisa del caso.
+      const hojaParaA = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${bichoId}/sheet`)
+        .set("Authorization", `Bearer ${tokenA}`);
+      expect(hojaParaA.status).toBe(200);
+      expect(hojaParaA.body.sheet).toBeNull();
+    });
+
+    it("A impacta (20 natural) y tira el daño; el DM ve la mitad en el preview y aplica: HP_CHANGED del bicho firmado por A", async () => {
+      const s = app.getHttpServer();
+      cola.push(20);
+      const resolve = await request(s)
+        .post(
+          `/campaigns/${campaignId}/characters/${personajeA}/sheet/attacks/${encodeURIComponent(attackKey)}/resolve`,
+        )
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ targetCharacterId: bichoId, mode: "NORMAL", spendInspiration: false });
+      expect(resolve.status).toBe(201);
+      expect(cola).toHaveLength(0);
+      expect(resolve.body.verdict).toBe("CRITICAL");
+
+      const dano = await request(s)
+        .post(
+          `/campaigns/${campaignId}/characters/${personajeA}/sheet/attacks/${encodeURIComponent(attackKey)}/roll`,
+        )
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({
+          part: "DAMAGE",
+          spendInspiration: false,
+          mode: "NORMAL",
+          versatile: false,
+          attackRollEventId: resolve.body.roll.eventId,
+        });
+      expect(dano.status).toBe(201);
+      danoRollEventId = dano.body.eventId;
+      amountBicho = dano.body.total;
+
+      const preview = await request(s)
+        .get(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-preview`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(preview.status).toBe(200);
+      expect(preview.body.resulting.modifier).toBe("resistant");
+      expect(preview.body.resulting.taken).toBe(Math.floor(amountBicho / 2));
+
+      const antes = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${bichoId}/sheet`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+
+      // Antes de la ola de arreglos 1 esto era un 400 «No se pueden gestionar los PG: … del DM».
+      const aplicar = await request(s)
+        .post(`/campaigns/${campaignId}/rolls/${danoRollEventId}/apply-damage`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({});
+      expect(aplicar.status).toBe(201);
+
+      const despues = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${bichoId}/sheet`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(despues.body.hp.current).toBe(antes.body.hp.current - Math.floor(amountBicho / 2));
+
+      const hpChanged = await prisma.gameEvent.findFirst({
+        where: { campaignId, subjectId: bichoId, type: "HP_CHANGED" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(hpChanged!.actorUserId).toBe(userIdA);
+      expect((hpChanged!.payload as { rollEventId?: string }).rollEventId).toBe(danoRollEventId);
+    });
+
+    it("A lanza bola-de-prueba al bicho y el DM responde la salvación por él con un 1: pierde `amount` entero, firmado por A", async () => {
+      const s = app.getHttpServer();
+      const usar = await request(s)
+        .post(`/campaigns/${campaignId}/characters/${personajeA}/activities/bola-de-prueba/use`)
+        .set("Authorization", `Bearer ${tokenA}`)
+        .send({ objetivos: [bichoId] });
+      expect(usar.status).toBe(201);
+
+      const peticion = await prisma.rollRequest.findFirst({
+        where: { campaignId, characterId: bichoId, key: "save.dex", resolvedAt: null },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(peticion).not.toBeNull();
+      const amountBola = (peticion!.pendingEffect as { amount: number }).amount;
+
+      const antes = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${bichoId}/sheet`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+
+      cola.push(1);
+      const r = await request(s)
+        .post(`/campaigns/${campaignId}/roll-requests/${peticion!.id}/roll`)
+        .set("Authorization", `Bearer ${tokenDM}`)
+        .send({});
+      expect(r.status).toBe(201);
+      expect(cola).toHaveLength(0);
+      // Sin `effectWarning`: el efecto se aplicó, no se rescató.
+      expect(r.body.effectWarning).toBeUndefined();
+      expect(r.body.effectApplied).toEqual({ delta: -amountBola, saved: false });
+
+      const despues = await request(s)
+        .get(`/campaigns/${campaignId}/characters/${bichoId}/sheet`)
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(despues.body.hp.current).toBe(Math.max(0, antes.body.hp.current - amountBola));
+
+      const hpChanged = await prisma.gameEvent.findFirst({
+        where: { campaignId, subjectId: bichoId, type: "HP_CHANGED" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(hpChanged!.actorUserId).toBe(userIdA);
     });
   });
 
@@ -671,12 +843,23 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
       await ponerBando(goblin1, "ENEMY");
       await ponerBando(goblin2, "ENEMY");
 
+      // `start()` deja el encuentro `PREPARING` pidiendo la iniciativa de A y B, y `end()` exige
+      // `ACTIVE` (409 en el run 1). El DM no espera: fuerza el arranque, que es lo que haría en la
+      // mesa con dos jugadores que no tiran.
+      const forzado = await request(s)
+        .post(
+          `/campaigns/${campaignId}/sessions/${sessionXpId}/encounters/${encounterId}/force-start`,
+        )
+        .set("Authorization", `Bearer ${tokenDM}`);
+      expect(forzado.status).toBe(201);
+
       const fin = await request(s)
         .post(`/campaigns/${campaignId}/sessions/${sessionXpId}/encounters/${encounterId}/end`)
         .set("Authorization", `Bearer ${tokenDM}`);
       expect(fin.status).toBe(201);
       expect(fin.body.xpPropuesto.total).toBe(100);
       expect(fin.body.xpPropuesto.porCabeza).toBe(50);
+      expect(fin.body.xpPropuesto.sinTabla).toBeUndefined();
 
       const antesA = await request(s)
         .get(`/campaigns/${campaignId}/characters/${personajeA}/sheet`)

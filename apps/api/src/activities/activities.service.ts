@@ -198,7 +198,11 @@ export class ActivitiesService {
             pendingEffect = {
               amount: total,
               signo: actividad.dados.signo,
-              tipoDeDano: actividad.dados.tipoDeDano,
+              // Solo un daño lleva tipo: una curación por salvación (spec §4.4) no tiene «tipo de
+              // daño» que guardar, y el esquema lo dice — el dato guardado no lo contradice.
+              ...(actividad.dados.signo < 0 && actividad.dados.tipoDeDano
+                ? { tipoDeDano: actividad.dados.tipoDeDano }
+                : {}),
               siSalva: actividad.salvacion.siSalva,
               actividadKey,
               actorCharacterId: actor.id,
@@ -294,7 +298,7 @@ export class ActivitiesService {
     // error: se calla.
     await this.gastarActivacion(userId, campaignId, actor, actividad);
 
-    return { aviso: undefined, cd, traza: traza.length > 0 ? traza : undefined };
+    return { cd, traza: traza.length > 0 ? traza : undefined };
   }
 
   /**

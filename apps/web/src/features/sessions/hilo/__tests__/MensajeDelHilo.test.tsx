@@ -80,6 +80,7 @@ describe("MensajeDelHilo — la cabecera lleva el sujeto, la línea no lo repite
     const { container } = render(
       <ul>
         <MensajeDelHilo
+          campaignId="c1"
           evento={e}
           autor="Jorge"
           personaje={{ id: "sylas", name: "Sylas", color: null }}
@@ -108,6 +109,7 @@ describe("MensajeDelHilo — la cabecera lleva el sujeto, la línea no lo repite
     const { container } = render(
       <ul>
         <MensajeDelHilo
+          campaignId="c1"
           evento={e}
           autor="Ada"
           personaje={{ id: "klarg", name: "Klarg", color: null }}
@@ -133,6 +135,7 @@ describe("MensajeDelHilo — la cabecera lleva el sujeto, la línea no lo repite
     const { container } = render(
       <ul>
         <MensajeDelHilo
+          campaignId="c1"
           evento={e}
           autor="Ada"
           personaje={{ id: "u-dm" }}

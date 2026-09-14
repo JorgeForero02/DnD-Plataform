@@ -1,0 +1,96 @@
+import type { GameEventPayload } from "@dnd/shared";
+import { ApiError } from "../../../lib/api";
+import { Button } from "../../../ui/Button";
+import { IconoAviso } from "../../../ui/Iconos";
+import { nombreTipoDano } from "../../../dominio/dano";
+import { NOMBRE_MODIFICADOR_DE_DANO } from "../vocabulario";
+import { useApplyDamage, useDamagePreview } from "../hooks";
+
+// Tarea 7 de la puerta de efectos (spec §4 bis §4b.5/§4b.6, E-PE-2). La bandeja de daño: la línea
+// que enseña el servidor antes de aplicar nada, y el botón de un solo clic para quien puede.
+//
+// **El preview es la única fuente de la cifra reducida y del nombre del objetivo.** `pendingDamage`
+// —lo que trae el propio suceso— solo sirve para decidir SI se monta este componente
+// (`MensajeDelHilo`) y para identificar la tirada y el objetivo al invalidar la hoja tras aplicar;
+// el número que se lee siempre viene de `GET .../damage-preview`, calculado por el servidor con
+// las mismas resistencias/vulnerabilidades/inmunidades que `changeHp` usaría de verdad. Ningún
+// número se calcula aquí.
+//
+// **El 404 no es un error de red, es la respuesta para quien no podría aplicar** (§4b.5): mostrar
+// entonces el nombre del objetivo o la cifra sería la misma fuga que el servidor evita al
+// devolver 404 en vez de 403. Por eso, sin preview, esta bandeja solo dice «Daño pendiente» — ni
+// un dato más — y sin botón.
+
+type PendingDamage = NonNullable<
+  Extract<GameEventPayload, { type: "ABILITY_ROLL" }>["pendingDamage"]
+>;
+
+export function BandejaDeDano({
+  campaignId,
+  rollEventId,
+  pendingDamage,
+}: {
+  campaignId: string;
+  rollEventId: string;
+  pendingDamage: PendingDamage;
+}): JSX.Element | null {
+  // `enabled` cuelga de `pendingDamage.targetCharacterId` y no de una constante: sin objetivo no
+  // hay nada que previsualizar, y el llamador ya garantiza que solo se monta este componente con
+  // un `pendingDamage` real (`MensajeDelHilo`).
+  const preview = useDamagePreview(
+    campaignId,
+    rollEventId,
+    Boolean(pendingDamage.targetCharacterId),
+  );
+  const aplicar = useApplyDamage(campaignId);
+
+  const es404 = preview.error instanceof ApiError && preview.error.status === 404;
+
+  // Cualquier otro código (500, un fallo de red…) sigue siendo un fallo de verdad, no «no hay
+  // nada que enseñar»: aquí no se inventa una frase de error genérica sin saber qué pasó, así que
+  // la bandeja no pinta nada.
+  if (preview.isError && !es404) return null;
+
+  if (preview.isError || !preview.data) {
+    return (
+      <p className="my-s2 border-y border-copper/25 py-s2 font-chrome text-chrome-sm text-muted">
+        Daño pendiente
+      </p>
+    );
+  }
+
+  const p = preview.data;
+  const { modifier, reason, taken } = p.resulting;
+  const nombreModificador = modifier ? NOMBRE_MODIFICADOR_DE_DANO[modifier] : null;
+
+  return (
+    <div className="my-s2 flex flex-col gap-s2 border-y border-copper/25 py-s2">
+      <p className="font-chrome text-chrome-sm">
+        {`${p.target.name}: ${p.amount} ${nombreTipoDano(p.damageType)} → `}
+        <span className="font-data">{taken}</span>
+        {nombreModificador && ` · ${nombreModificador}`}
+        {nombreModificador && reason && ` (${reason})`}
+      </p>
+      {p.canApply ? (
+        <div>
+          <Button
+            variant="secondary"
+            aria-label={`Aplicar el daño a ${p.target.name}`}
+            disabled={aplicar.isPending}
+            onClick={() => aplicar.mutate({ rollEventId, targetCharacterId: p.target.id })}
+          >
+            Aplicar
+          </Button>
+        </div>
+      ) : (
+        <p className="font-chrome text-chrome-xs uppercase tracking-wide text-muted">Aplicado</p>
+      )}
+      {aplicar.isError && (
+        <p role="alert" className="font-chrome text-chrome-xs text-danger-text">
+          <IconoAviso className="mr-1 inline h-3.5 w-3.5" />
+          {(aplicar.error as Error).message}
+        </p>
+      )}
+    </div>
+  );
+}

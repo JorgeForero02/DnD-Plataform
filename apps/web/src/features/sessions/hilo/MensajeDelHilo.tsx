@@ -4,6 +4,7 @@ import { horaDe, lineaDeLog, selloDeSuceso } from "../linea-de-log";
 import { NOMBRE_SELLO } from "../vocabulario";
 import { Badge } from "../../../ui/Badge";
 import { TiradaIncrustada } from "./TiradaIncrustada";
+import { BandejaDeDano } from "./BandejaDeDano";
 import { datosDeTirada } from "./tirada";
 import { tipoDeMensaje } from "./tipo-de-mensaje";
 import { vozDePersonaje, type ConColor } from "../../../dominio/voces";
@@ -85,6 +86,7 @@ function tituloDeSello(p: GameEventPayload): string {
 }
 
 export function MensajeDelHilo({
+  campaignId,
   evento,
   autor,
   personaje,
@@ -92,6 +94,8 @@ export function MensajeDelHilo({
   nuevo,
   linea,
 }: {
+  /** Tarea 7 de la puerta de efectos: quién identifica la tirada ante `BandejaDeDano`. */
+  campaignId: string;
   evento: GameEventRow;
   /** El nombre de quien lo hizo. El hilo manda «Alguien» si no conoce a ese miembro. */
   autor: string;
@@ -179,6 +183,13 @@ export function MensajeDelHilo({
       <li data-suceso={evento.id} className={contenedor}>
         <p className="font-chrome text-chrome-sm text-muted">{linea}</p>
         {datos && <TiradaIncrustada t={datos} />}
+        {p.type === "ABILITY_ROLL" && p.pendingDamage && (
+          <BandejaDeDano
+            campaignId={campaignId}
+            rollEventId={evento.id}
+            pendingDamage={p.pendingDamage}
+          />
+        )}
         <Firma autor={autor} hora={hora} visibility={evento.visibility} />
       </li>
     );

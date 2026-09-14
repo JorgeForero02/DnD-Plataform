@@ -1,6 +1,7 @@
 import type {
   CloseSessionInput,
   CreateSessionInput,
+  DamagePreview,
   StampSessionNoteInput,
   StartSessionInput,
   UpdateSessionInput,
@@ -112,5 +113,25 @@ export function stampSessionNote(
   return apiFetch(`/campaigns/${campaignId}/sessions/notes`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+// --- La bandeja de daño (tarea 7 de la puerta de efectos, spec §4 bis §4b.5) ---
+
+/**
+ * El preview del daño pendiente de una tirada. **404 para quien no podría aplicarlo** (§4b.5):
+ * el llamador lo trata como «no hay nada que enseñar», no como un error de red.
+ */
+export function fetchDamagePreview(
+  campaignId: string,
+  rollEventId: string,
+): Promise<DamagePreview> {
+  return apiFetch<DamagePreview>(`/campaigns/${campaignId}/rolls/${rollEventId}/damage-preview`);
+}
+
+/** El clic de «Aplicar». Sin cuerpo: todo lo que hace falta ya está en la tirada citada por la URL. */
+export function applyDamage(campaignId: string, rollEventId: string): Promise<unknown> {
+  return apiFetch(`/campaigns/${campaignId}/rolls/${rollEventId}/apply-damage`, {
+    method: "POST",
   });
 }

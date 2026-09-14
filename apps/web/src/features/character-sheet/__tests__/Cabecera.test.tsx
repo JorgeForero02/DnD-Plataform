@@ -267,4 +267,37 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
     unmount();
     expect(alDesconectar).toHaveBeenCalledTimes(1);
   });
+
+  // Puerta de efectos §5 bis (E-PE-10, D-CF-68) — el marcador de PX y su aviso de nivel
+  // disponible. `character.level` de la armadura es 3.
+  describe("el marcador de experiencia", () => {
+    it("con sheet.xp y el nivel al día, se lee «1 250 / 2 700 PX» y no hay aviso", async () => {
+      renderCabecera({
+        disposicion: "pagina",
+        data: { ...sheetResponse, xp: { actual: 1250, siguiente: 2700, nivelPorXp: 3 } },
+      });
+      // `getByText` normaliza el contenido del nodo con `replace(/\s+/g, ' ')` (colapsa TODO
+      // espacio en blanco, incluido el fino) pero no normaliza el texto de búsqueda — así que
+      // aquí se busca con espacio normal, aunque el DOM real lleve "\u202f" (ver
+      // `frasesDeXp.test.ts`, que sí lo comprueba con `toBe` exacto sobre la función).
+      expect(await screen.findByText("1 250 / 2 700 PX")).toBeInTheDocument();
+      expect(screen.queryByText(/el DM puede subirte/)).toBeNull();
+    });
+
+    it("con nivelPorXp por encima del nivel, se lee el aviso", async () => {
+      renderCabecera({
+        disposicion: "pagina",
+        data: { ...sheetResponse, xp: { actual: 2700, siguiente: 6500, nivelPorXp: 4 } },
+      });
+      expect(
+        await screen.findByText("Has alcanzado el XP del nivel 4: el DM puede subirte"),
+      ).toBeInTheDocument();
+    });
+
+    it("sin sheet.xp, no se pinta nada de PX (E-PE-10)", async () => {
+      renderCabecera({ disposicion: "pagina" });
+      await screen.findByRole("region", { name: "resumen de combate" });
+      expect(screen.queryByText(/PX/)).toBeNull();
+    });
+  });
 });

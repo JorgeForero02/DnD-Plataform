@@ -10,6 +10,8 @@ import { useEsVistaDeDm } from "./hooks";
 import { BotonSubirNivel } from "../level-up/BotonSubirNivel";
 import { Casilla } from "./Casilla";
 import type { PropsDePestana } from "./pestanas/tipos";
+import type { SheetResponse } from "./api";
+import { frasesDeXp } from "./vocabulario";
 
 // Tarea 3 (spec 2026-09-11, «la hoja a página completa») — la cabecera fija de la hoja: lo que
 // cambia el turno, en cualquier disposición y fuera de todas las pestañas. Vivía dentro de
@@ -69,7 +71,21 @@ export function Cabecera({
   // se pintan; la del DM cuelga de una consulta y por eso es un hook compartido con el aviso.
   const esVistaDeDm = useEsVistaDeDm(campaignId);
   const hayAvisos =
-    sheet.warnings.length > 0 || sheet.pendingChoices.length > 0 || esVistaDeDm || puedeEditar;
+    sheet.warnings.length > 0 ||
+    sheet.pendingChoices.length > 0 ||
+    esVistaDeDm ||
+    puedeEditar ||
+    // Puerta de efectos §5 bis (E-PE-10): el marcador de PX se pinta aunque no haya ningún otro
+    // aviso — un jugador que solo mira su ficha (ni DM, ni puede editar) sigue queriendo ver
+    // «1 250 / 2 700 PX» en modo XP.
+    Boolean(data.xp);
+  // El botón «Subir a nivel N» vive dentro de este contenedor cuando `puedeEditar` lo monta; el
+  // aviso de la DM lo enfoca en vez de enlazarlo con un ancla — `BotonSubirNivel` es de
+  // `features/level-up`, fuera de esta frontera, así que no se le añade un `id` propio.
+  const contenedorDelBoton = useRef<HTMLDivElement>(null);
+  const enfocarSubirNivel = () => {
+    contenedorDelBoton.current?.querySelector<HTMLButtonElement>("button")?.focus();
+  };
 
   return (
     <>
@@ -159,16 +175,71 @@ export function Cabecera({
             choicesActuales={character.choices ?? {}}
           />
           <AvisoDeDm campaignId={campaignId} />
-          {puedeEditar && (
-            <BotonSubirNivel
-              campaignId={campaignId}
-              characterId={characterId}
+          {data.xp && (
+            <MarcadorDeXp
+              xp={data.xp}
               level={character.level}
               esDM={esDM}
+              onIrASubirNivel={enfocarSubirNivel}
             />
+          )}
+          {puedeEditar && (
+            <div ref={contenedorDelBoton}>
+              <BotonSubirNivel
+                campaignId={campaignId}
+                characterId={characterId}
+                level={character.level}
+                esDM={esDM}
+              />
+            </div>
           )}
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Puerta de efectos §5 bis (E-PE-10, D-CF-68) — el marcador «1 250 / 2 700 PX» y, si toca, el
+ * aviso de nivel disponible. Mismo tratamiento visual que `AvisoDeDm` (filete de cobre) para el
+ * marcador — es información de la mesa, no un error — y el mismo tono de `Avisos` (filete de
+ * aviso, texto de aviso) para la notificación, que sí pide atención.
+ *
+ * **El enlace es del DM.** Solo el DM sube el nivel (D-CF-66), así que solo en su vista el aviso
+ * se ofrece como algo que se pulsa — enfoca el botón «Subir a nivel N+1» en vez de repetir el
+ * gesto aquí. Para quien no puede editar, el aviso es una frase: el dueño del personaje se
+ * entera de que puede subir, pero quien pulsa sigue siendo el DM.
+ */
+function MarcadorDeXp({
+  xp,
+  level,
+  esDM,
+  onIrASubirNivel,
+}: {
+  xp: NonNullable<SheetResponse["xp"]>;
+  level: number;
+  esDM: boolean;
+  onIrASubirNivel: () => void;
+}) {
+  const { marcador, aviso } = frasesDeXp(xp, level);
+  return (
+    <section
+      aria-label="experiencia"
+      className="rounded-radius-md border border-copper px-s3 py-s2"
+    >
+      <p className="font-data text-chrome-sm text-copper-text">{marcador}</p>
+      {aviso &&
+        (esDM ? (
+          <button
+            type="button"
+            onClick={onIrASubirNivel}
+            className="mt-1 block text-left font-chrome text-chrome-xs leading-snug text-warning-text underline-offset-2 hover:underline"
+          >
+            {aviso}
+          </button>
+        ) : (
+          <p className="mt-1 font-chrome text-chrome-xs leading-snug text-warning-text">{aviso}</p>
+        ))}
+    </section>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import type { Encounter } from "@dnd/shared";
+import type { Encounter, XpPropuesto } from "@dnd/shared";
 import {
   useAdvanceTurn,
   useCancelEncounter,
@@ -19,6 +19,7 @@ import { NOMBRE_ESTADO_DE_COMBATE } from "../../dominio/combate";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
+import { DarXp } from "../sessions/dm/DarXp";
 
 // Tarea 2.5.6 — **el orden de turnos, como una tira sobre el elenco.**
 //
@@ -66,6 +67,10 @@ export function TiraDeIniciativa({
   const terminar = useEndEncounter(campaignId, sessionId);
   const [terminando, setTerminando] = useState(false);
   const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
+  // Puerta de efectos §5 bis (E-PE-9) — lo que `EncountersService.end()` propone en modo XP.
+  // `undefined` fuera de ese modo (o sin ningún `ENEMY` con statblock); se rellena en el
+  // `onSuccess` de `terminar` y se retira cuando `DarXp` avisa que ya se dio (`onHecho`).
+  const [propuestaXp, setPropuestaXp] = useState<XpPropuesto | null>(null);
 
   const nombreDe = (characterId: string) =>
     personajes.find((c) => c.id === characterId)?.name ??
@@ -263,13 +268,33 @@ export function TiraDeIniciativa({
               variant="primary"
               disabled={terminar.isPending}
               onClick={() =>
-                terminar.mutate(encuentro.id, { onSuccess: () => setTerminando(false) })
+                terminar.mutate(encuentro.id, {
+                  onSuccess: (res) => {
+                    setTerminando(false);
+                    if (res.xpPropuesto) setPropuestaXp(res.xpPropuesto);
+                  },
+                })
               }
             >
               Terminar el combate
             </Button>
           </div>
         </Dialog>
+      )}
+
+      {/* E-PE-9: la propuesta se pinta con el MISMO `DarXp` que la herramienta «Dar XP», solo que
+          prellenado — el DM confirma o edita, no repite el cálculo. Desaparece sola cuando se da
+          la experiencia (`onHecho`); si el DM cierra la mesa sin darla, se queda escrita en el
+          registro del combate, no perdida — nada aquí impide abrir «Dar XP» más tarde. */}
+      {propuestaXp && (
+        <div className="mt-s3 rounded-radius-md border border-copper bg-surface p-s3">
+          <h3 className="mb-s2 font-title text-chrome-md text-text">Repartir la experiencia</h3>
+          <DarXp
+            campaignId={campaignId}
+            propuesta={propuestaXp}
+            onHecho={() => setPropuestaXp(null)}
+          />
+        </div>
       )}
 
       {corrigiendo && (

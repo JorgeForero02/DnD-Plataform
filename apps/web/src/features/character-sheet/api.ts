@@ -238,6 +238,15 @@ export interface SheetResponse {
    * aparecer en su bandeja y el DM no sabía por qué. Es la ficha del §8 de la auditoría.
    */
   concentrationSave?: { requestId: string; dc: number };
+
+  /**
+   * Puerta de efectos §5 bis (E-PE-10, D-CF-68) — **solo llega con la mesa en modo `XP`**
+   * (`tableRules.progresion`, D-CF-53): en `HITO`, que es el defecto, el servidor no la manda y
+   * la hoja no pinta un marcador que no significaría nada. `nivelPorXp` es el nivel que el XP
+   * acumulado ya alcanza según la tabla del SRD; puede ser mayor que `character.level` — eso es
+   * justo el aviso de «puedes subir», no un error.
+   */
+  xp?: { actual: number; siguiente: number | null; nivelPorXp: number };
 }
 
 // --- Anulaciones manuales (solo DM; el servidor lo impone) ---

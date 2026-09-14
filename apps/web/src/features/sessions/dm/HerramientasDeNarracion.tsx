@@ -12,6 +12,10 @@ import { PedirTirada } from "../../roll-requests/PedirTirada";
 import { RelojDeCampana } from "../../game-clock/RelojDeCampana";
 import { PanelDeBestiario } from "../../bestiario/PanelDeBestiario";
 import { PanelDeTablas } from "../../dm-tables/PanelDeTablas";
+import { DarXp } from "./DarXp";
+import { IconoAscenso } from "../../level-up/IconoAscenso";
+import { useCampaign } from "../../campaigns/hooks";
+import { reglasCompletas } from "../../campaigns/reglas";
 
 // **La columna del DM: las SEIS herramientas de narración, y las seis hacen algo.**
 //
@@ -67,8 +71,14 @@ import { PanelDeTablas } from "../../dm-tables/PanelDeTablas";
 export const FRASE_DEL_DM =
   "El sistema propone; tú decides. Nada llega a la mesa hasta que lo confirmas.";
 
-/** Cuál de los seis cajones está abierto. `null` es «ninguno», que es el estado normal. */
-type HerramientaAbierta = "revelar" | "tirada" | "reloj" | "criatura" | "reglas" | "tablas";
+/**
+ * Cuál de los cajones está abierto. `null` es «ninguno», que es el estado normal.
+ *
+ * `"xp"` se suma en la Puerta de efectos §5 bis (E-PE-8): la séptima herramienta, «Dar XP», solo
+ * se ofrece con la mesa en modo `XP` (D-CF-53) — en `HITO` la hoja no cuenta experiencia y el
+ * botón no tendría nada que hacer.
+ */
+type HerramientaAbierta = "revelar" | "tirada" | "reloj" | "criatura" | "reglas" | "tablas" | "xp";
 
 /**
  * Los cuatro tonos de la maqueta (`copper`, `accent`, `fantasma`, `danger`) sobre el botón de
@@ -137,6 +147,13 @@ export function HerramientasDeNarracion({
   const [abierta, setAbierta] = useState<HerramientaAbierta | null>(null);
   const cerrar = () => setAbierta(null);
 
+  // **De qué progresión juega la mesa.** `useCampaign` es la misma consulta que ya usan
+  // `ReglasDeLaMesa`/`CampaignSettings` — comparte clave con React Query, así que no es una
+  // segunda petición. `reglasCompletas` rellena los defaults de una respuesta vieja en caché,
+  // igual que hace esa pantalla.
+  const { data: campana } = useCampaign(campaignId);
+  const enModoXp = reglasCompletas(campana?.tableRules).progresion === "XP";
+
   return (
     // `gap-s4`, que es lo que la §5 de la auditoría fija literalmente para las herramientas del
     // DM (`flex min-h-0 flex-col gap-s4 overflow-y-auto scroll-quiet`). El scroll y el
@@ -191,6 +208,18 @@ export function HerramientasDeNarracion({
         >
           Tablas
         </BotonDeHerramienta>
+        {/* Séptima herramienta, solo en modo XP (E-PE-8): la rejilla de la maqueta es de seis y
+            esta no la sustituye, se suma — con siete, la última fila del `grid-cols-2` se queda
+            con una sola casilla, que es justo lo que pide el brief y no un octavo inventado. */}
+        {enModoXp && (
+          <BotonDeHerramienta
+            tono="accent"
+            icono={<IconoAscenso className="h-4 w-4" />}
+            onClick={() => setAbierta("xp")}
+          >
+            Dar XP
+          </BotonDeHerramienta>
+        )}
       </div>
 
       <p className="shrink-0 font-chrome text-chrome-xs leading-snug text-muted">{FRASE_DEL_DM}</p>
@@ -272,6 +301,16 @@ export function HerramientasDeNarracion({
         size="xl"
       >
         <PanelDeTablas campaignId={campaignId} />
+      </Dialog>
+
+      <Dialog
+        open={abierta === "xp"}
+        onClose={cerrar}
+        title="Dar experiencia"
+        subtitulo="El servidor no sube el nivel: avisa en la hoja y lo pulsa el DM."
+        size="lg"
+      >
+        <DarXp campaignId={campaignId} />
       </Dialog>
     </div>
   );

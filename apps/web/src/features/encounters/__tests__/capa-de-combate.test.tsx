@@ -6,6 +6,7 @@ import type { Encounter } from "@dnd/shared";
 import { TiraDeIniciativa } from "../TiraDeIniciativa";
 import * as encountersApi from "../api";
 import * as characterSheetApi from "../../character-sheet/api";
+import * as charactersApi from "../../characters/api";
 import type { Character } from "../../characters/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import { useAuthStore } from "../../../store/auth.store";
@@ -385,5 +386,52 @@ describe("la propuesta de terminar y los caídos", () => {
   it("y quien sigue en pie no lo dice", () => {
     montarTira(ENCUENTRO);
     expect(screen.queryByText("Cayó")).not.toBeInTheDocument();
+  });
+});
+
+// Puerta de efectos §5 bis (E-PE-9) — al terminar, si la respuesta trae `xpPropuesto` aparece
+// «Repartir la experiencia» con `DarXp` prellenado; sin él, no aparece nada nuevo.
+describe("la propuesta de experiencia al terminar el combate", () => {
+  beforeEach(() => {
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([THORA]);
+  });
+
+  it("con xpPropuesto en la respuesta, aparece «Repartir la experiencia» con DarXp prellenado", async () => {
+    vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({
+      id: "e1",
+      status: "ENDED",
+      xpPropuesto: {
+        total: 100,
+        porCabeza: 100,
+        destinatarios: [{ characterId: "p-thora", name: "Thora Piedrahonda" }],
+        desglose: [
+          { characterId: "g1", name: "Goblin", cr: 0.25, xp: 50 },
+          { characterId: "g2", name: "Goblin", cr: 0.25, xp: 50 },
+        ],
+      },
+    });
+    montarTira();
+
+    fireEvent.click(screen.getByRole("button", { name: "Terminar el combate" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Terminar el combate" }));
+
+    expect(await screen.findByText("Repartir la experiencia")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Propuesto por el combate: 100 PX (2 goblins · VD 1/4)"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Thora Piedrahonda")).toBeChecked();
+  });
+
+  it("sin xpPropuesto en la respuesta, no aparece", async () => {
+    vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({ id: "e1", status: "ENDED" });
+    montarTira();
+
+    fireEvent.click(screen.getByRole("button", { name: "Terminar el combate" }));
+    const dialogo = await screen.findByRole("dialog");
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Terminar el combate" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
   });
 });

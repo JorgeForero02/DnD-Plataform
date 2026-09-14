@@ -5,6 +5,7 @@ import {
   type AbilitiesRule,
   type OroInicial,
   type PgNivelesSiguientes,
+  type Progresion,
   type TableRules,
 } from "@dnd/shared";
 import { useUpdateCampaign } from "./hooks";
@@ -14,7 +15,13 @@ import {
   opcionesDeRaza,
   type OpcionDeCatalogo,
 } from "../character-sheet/opcionesDeCatalogo";
-import { NOMBRE_METODO, NOMBRE_ORO, NOMBRE_PG, AVISO_NO_RETROACTIVO } from "./reglas";
+import {
+  NOMBRE_METODO,
+  NOMBRE_ORO,
+  NOMBRE_PG,
+  NOMBRE_PROGRESION,
+  AVISO_NO_RETROACTIVO,
+} from "./reglas";
 import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 
@@ -248,6 +255,17 @@ export function ReglasDeLaMesa({
           />
         </Field>
       )}
+
+      <GrupoDeRadios
+        legend="Progresión"
+        name="reglas-progresion"
+        opciones={NOMBRE_PROGRESION}
+        valor={borrador.progresion}
+        disabled={disabled}
+        onChange={(progresion) =>
+          setBorrador({ ...borrador, progresion: progresion as Progresion })
+        }
+      />
 
       {error && (
         <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">

@@ -875,3 +875,45 @@ export const NOMBRE_ANULABLE: Record<string, string> = {
 export function nombreAnulable(target: string): string {
   return nombreOSinTraducir(NOMBRE_ANULABLE, target);
 }
+
+// --- XP (Puerta de efectos §5 bis, E-PE-10, D-CF-68) ----------------------------------------
+
+/**
+ * **Números en es-ES con espacio fino de miles** (docs/04-convenciones.md): «1 250», no «1.250»
+ * ni «1250».
+ *
+ * **No usa `toLocaleString("es-ES")`.** El Node de este proyecto se compila con el ICU pequeño
+ * («small-icu», solo en-US con datos completos): `(1250).toLocaleString("es-ES")` devuelve
+ * `"1250"`, sin agrupar nada, y la unitaria de esta función lo cazó en el primer intento. Se
+ * agrupa a mano — de tres en tres desde la derecha — para no depender de qué ICU trae el Node
+ * que ejecute esto.
+ */
+function conEspacioFino(n: number): string {
+  const negativo = n < 0;
+  const digitos = String(Math.trunc(Math.abs(n)));
+  const agrupado = digitos.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return negativo ? `-${agrupado}` : agrupado;
+}
+
+/**
+ * El marcador de la cabecera y el aviso de nivel disponible, a partir de `sheet.xp` (solo llega
+ * en modo `XP`, D-CF-53) y del nivel actual del personaje.
+ *
+ * **`aviso` no es "sube automáticamente"**: nunca lo hace — D-CF-66 deja el gesto en manos del
+ * DM incluso en modo XP. `nivelPorXp > level` solo dice que la hoja ya cruzó el umbral; el aviso
+ * lo dice y enlaza al botón, no lo pulsa por su cuenta.
+ */
+export function frasesDeXp(
+  xp: { actual: number; siguiente: number | null; nivelPorXp: number },
+  level: number,
+): { marcador: string; aviso: string | null } {
+  const marcador =
+    xp.siguiente === null
+      ? `${conEspacioFino(xp.actual)} PX · nivel máximo`
+      : `${conEspacioFino(xp.actual)} / ${conEspacioFino(xp.siguiente)} PX`;
+  const aviso =
+    xp.nivelPorXp > level
+      ? `Has alcanzado el XP del nivel ${xp.nivelPorXp}: el DM puede subirte`
+      : null;
+  return { marcador, aviso };
+}

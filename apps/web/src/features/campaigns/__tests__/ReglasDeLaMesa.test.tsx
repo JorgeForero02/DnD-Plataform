@@ -112,6 +112,23 @@ describe("ReglasDeLaMesa", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("4d");
   });
 
+  // Puerta de efectos §5 bis (D-CF-53/D-CF-68) — la regla de progresión.
+  it("hay dos radios «Por hito» / «Por experiencia», y guardar manda «progresion»", () => {
+    mutate.mockReset();
+    montar({ campaignId: "c1", reglas: reglasCompletas({ progresion: "XP" }), disabled: false });
+
+    expect(screen.getByRole("radio", { name: /Por experiencia/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Por hito/ })).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Por hito/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar las reglas" }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      { tableRules: expect.objectContaining({ progresion: "HITO" }) },
+      expect.anything(),
+    );
+  });
+
   it("el botón de guardar no se deshabilita para un jugador: los controles sí, con el motivo a la vista", () => {
     montar({
       campaignId: "c1",

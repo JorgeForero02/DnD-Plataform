@@ -1,4 +1,9 @@
-import type { CreateCharacterInput, UpdateCharacterInput, Visibility } from "@dnd/shared";
+import type {
+  AwardXpInput,
+  CreateCharacterInput,
+  UpdateCharacterInput,
+  Visibility,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 export interface Character {
@@ -30,10 +35,38 @@ export interface Character {
    * pérdida que archivar existe para impedir. Lo encontró la revisión del plan 06.
    */
   archivedAt: string | null;
+  /**
+   * **A qué statblock refiere, si este `Character` es un PNJ** (D-2D-2). `GET .../characters`
+   * filtra `statblockRef: null` en el servidor —«quién se sienta a la mesa»—, así que en la
+   * práctica esta lista nunca trae uno distinto de `null`; el campo es opcional en el tipo para
+   * no obligar a los mocks de otras pantallas a conocerlo, y para que «Dar XP» (Puerta de
+   * efectos §5 bis) pueda marcar como no seleccionable el elenco que sí lo traiga.
+   */
+  statblockRef?: string | null;
+  /**
+   * **La experiencia acumulada** (Puerta de efectos §5 bis, D-CF-68). Opcional por la misma
+   * razón que `statblockRef`: los mocks que no la necesitan no tienen que declararla.
+   */
+  xp?: number;
 }
 
 export function fetchCharacters(campaignId: string): Promise<Character[]> {
   return apiFetch<Character[]>(`/campaigns/${campaignId}/characters`);
+}
+
+// --- XP (Puerta de efectos §5 bis, D-CF-68/D-CF-69) ----------------------------------------
+//
+// `POST /campaigns/:campaignId/xp` (`XpController`) es la única puerta HTTP para «Dar XP»: solo
+// el DM, y el servidor responde 400 si algún personaje es un PNJ de statblock — esta pantalla no
+// reimplementa esa regla, solo evita ofrecerla (checkbox `disabled` en `DarXp.tsx`).
+export function awardXp(
+  campaignId: string,
+  input: AwardXpInput,
+): Promise<{ awarded: { characterId: string; xp: number }[] }> {
+  return apiFetch(`/campaigns/${campaignId}/xp`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function createCharacter(

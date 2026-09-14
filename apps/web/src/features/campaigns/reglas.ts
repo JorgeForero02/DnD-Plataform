@@ -3,6 +3,7 @@ import {
   type AbilitiesRule,
   type OroInicial,
   type PgNivelesSiguientes,
+  type Progresion,
   type TableRules,
 } from "@dnd/shared";
 
@@ -60,6 +61,26 @@ export const NOMBRE_ORO: Record<OroInicial["modo"], { etiqueta: string; frase: s
   },
   ORO_FIJO: { etiqueta: "Oro fijo", frase: "Todos nacen con la misma cantidad de piezas de oro." },
 };
+/**
+ * Puerta de efectos §5 bis (D-CF-68) — cómo sube de nivel la mesa. `HITO` es el defecto: una
+ * campaña que ya existe no cambia de comportamiento hasta que el DM elige `XP` a propósito
+ * (D-CF-53). Las dos frases dicen la verdad completa del servidor, no la de la maqueta: en los
+ * dos modos **el DM sigue siendo quien sube el nivel** (D-CF-66) — «por experiencia» solo añade
+ * que la hoja cuenta y avisa.
+ */
+export const NOMBRE_PROGRESION: Record<Progresion, { etiqueta: string; frase: string }> = {
+  HITO: {
+    etiqueta: "Por hito",
+    frase:
+      "El DM decide cuándo sube cada personaje; la hoja no cuenta experiencia. Es lo de siempre.",
+  },
+  XP: {
+    etiqueta: "Por experiencia",
+    frase:
+      "La hoja cuenta PX contra la tabla del SRD y avisa cuando toca subir; el DM da los PX desde la mesa y sigue siendo quien sube el nivel.",
+  },
+};
+
 export const AVISO_NO_RETROACTIVO =
   "Estas reglas valen para los personajes que se creen a partir de ahora.";
 

@@ -53,7 +53,7 @@ por su cuenta**.
 | `links` | Relaciones wiki entre entidades | DM o creador |
 | `comments` | Hilo de comentarios de una entidad | quien pueda ver la entidad |
 | `sessions` | Sesiones de juego | solo DM |
-| `characters` | Personajes y **la hoja de 5.ª edición** (2A.6) con sus PG mutables y sus tiradas de muerte (2A.7). `ability-rolls.service.ts`/`ability-rolls.controller.ts` (D-CF-53): tirar las seis características cuando la regla de la mesa es `DADOS`, contando intentos contra `AbilityRollAttempt` para que no se pueda repetir a escondidas | dueño o DM |
+| `characters` | Personajes y **la hoja de 5.ª edición** (2A.6) con sus PG mutables y sus tiradas de muerte (2A.7). `ability-rolls.service.ts`/`ability-rolls.controller.ts` (D-CF-53): tirar las seis características cuando la regla de la mesa es `DADOS`, contando intentos contra `AbilityRollAttempt` para que no se pueda repetir a escondidas. Puerta de efectos (2026-09-13): `damage-tray.controller.ts` (`GET/POST .../rolls/:rollEventId/damage-preview` y `/apply-damage`, la única puerta HTTP sobre el `pendingDamage` de una tirada) y `xp.controller.ts`/`xp.service.ts` (`POST .../xp`, dar experiencia por cabeza — 400 si algún destinatario es un PNJ de statblock) | dueño o DM; XP, solo DM |
 | `character-state` | Recursos consumibles y descansos (2A.8), condiciones y velocidad efectiva (2A.12), **la sugerencia de ventaja o desventaja que sale de esas condiciones** (2.5.5, `roll-mode/`) y **si un personaje está concentrado** (2.5.4, `concentration/`, que solo reconoce el prefijo y calcula la CD; pedir la salvación lo hace `changeHp`) | dueño o DM; los recursos `DM_ONLY`, solo el DM |
 | `game-events` | Log append-only de la partida (2A.5). **Solo lectura por HTTP**: escribe el servicio que provoca el cambio | nadie, por HTTP |
 | `rolls` | Tirar de verdad (2A.13). **El azar vive aquí y solo aquí**: el servidor tira y escribe la tirada antes de devolverla | miembro de la campaña |
@@ -174,6 +174,33 @@ tx?, options?)`.
 dentro de una transacción ajena habría tocado a todos sus llamadores actuales para nada — lo único
 nuevo es que ahora tienen un llamador más. Un `tx?` que por defecto abre su propia transacción es la
 forma más barata de dar una puerta nueva sin mover la que ya existía.
+
+### Misma escritura, dos autorizaciones, la interna sin ruta
+
+Un tercer patrón, distinto del `tx?` aditivo de arriba aunque a veces viaje con él: **la misma
+escritura tiene dos puertas de entrada, con dos autorizaciones distintas, y una de las dos no tiene
+ruta HTTP** — nadie puede llamarla directamente, solo otro servicio que ya autorizó por su cuenta.
+
+- **`GameEventsService.record` / `recordFromEngine`** (`game-events`): `record` es la puerta
+  pública, con su propia comprobación de membresía; `recordFromEngine` la usa el motor de reglas
+  (`rules-engine`) para escribir el eco de una regla que él mismo disparó, sin volver a pedirle
+  permiso a nadie — la autorización ya la hizo quien montó la regla.
+- **`WorldStateService.recordEntityOpened`** (`world-state`): sin ruta HTTP propia; la llama
+  `entities` cuando un jugador (no el DM) abre una ficha, así que un jugador escribe en
+  `world-state` sin pasar por su controlador, que solo admite al DM.
+- **`CharacterSheetService.changeHpFromEffect` / `RollRequestsService.createFromEffect`** (puerta
+  de efectos, 2026-09-13, spec §3): las llama `ActivitiesService.usar`, que ya autorizó con
+  `canView` sobre un objetivo de la actividad — «vienes de una actividad ya autorizada sobre un
+  objetivo que `canView` te deja ver» (D-P2-11, [decisiones.md](./decisiones.md)). Las dos exigen
+  `tx: Prisma.TransactionClient` **obligatorio**, no opcional: sin transacción ajena no hay forma
+  de llamarlas, y eso es lo que impide que un controlador las importe por accidente. Ningún
+  controlador lo hace — lo comprueba `apps/api/src/characters/__tests__/puertas-sin-ruta.spec.ts`
+  con un grep sobre el árbol de módulos, no una convención de que nadie las use. Las cruzan otros
+  **servicios**, cada uno ya autorizado por su propio camino: `ActivitiesService.usar` (el
+  efecto directo de una actividad) llama a las dos; `RollRequestsService.answer` (responder una
+  petición con `pendingEffect`) y `CharacterSheetService.applyPendingDamage` (la bandeja de daño,
+  bajo `DamageTrayController.applyDamage`, `.../rolls/:rollEventId/apply-damage`) llaman solo a
+  `changeHpFromEffect` — ninguno de los tres repite `canView` ni `requireOwnerOrDM`.
 
 ## Estructura de la web
 

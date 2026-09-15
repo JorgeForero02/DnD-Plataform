@@ -1,45 +1,25 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { leerFoundry, leerSubclases, leerEscalasDeClase } from "./foundry.mjs";
+import {
+  leerFoundry,
+  leerSubclases,
+  leerEscalasDeClase,
+  leerConcesionesDeClase,
+} from "./foundry.mjs";
 import { cortarSrdEs, cortarAptitudesEs } from "./srd-es.mjs";
 import { emparejar } from "./huella.mjs";
-import { actividadDe } from "./actividad.mjs";
+import { convertirActividades, repartirRechazos } from "./actividad.mjs";
 import { convertirAptitudes } from "./aptitudes.mjs";
 import { convertirRazas } from "./razas.mjs";
+import { limpiarProsa, separarNivelesSuperiores, claveDeNombre } from "./prosa.mjs";
 
 // Tarea 3A.1 (T1) — junta los módulos puros anteriores en el pipeline completo: lee Foundry,
 // corta el SRD español, empareja por huella, traduce cada actividad, y escribe el catálogo
 // generado (o lo compara, en `--check`). **`apps/api/src/rules/catalog/generado/*.json` +
 // `rechazos.md` llevan cabecera «GENERADO — no editar»** (constraints.md).
 
-/**
- * Limpia la prosa HTML de Foundry a texto plano (E-3A1-7): `<p>`→saltos de línea, marcas de
- * negrita fuera, `@UUID[...]{Nombre}`→`Nombre` y `@embed[...]{Nombre}`→`Nombre` (dos enlaces de
- * texto enriquecido, nunca una fórmula — el segundo lo usa Foundry para incrustar una tabla de
- * tirada, p. ej. la de *Confusion*), `[[lookup @flags...]]`/`[[lookup @labels...]]`→fuera (un
- * valor calculado en vivo por el cliente de Foundry —cuántas imágenes le quedan a *Mirror
- * Image*, la duración ya resuelta de un `activity` de *Symbol*— que no existe como texto fuera
- * de esa sesión de juego; medido en T2 sobre los 319: solo tres conjuros lo traen en su
- * `description.value` de nivel de ítem —*confusion*, *eyebite*, *symbol*— y ninguno depende de
- * ese fragmento para entenderse) y `&nbsp;`→espacio. **Ninguna `@` sobrevive**: es la misma
- * frontera que `catalog.schema.ts` comprueba al final, aplicada ya aquí para no depender solo de
- * esa red.
- */
-function limpiarProsa(html) {
-  if (!html) return "";
-  return html
-    .replace(/@UUID\[[^\]]*\]\{([^}]*)\}/g, "$1")
-    .replace(/@UUID\[[^\]]*\]/g, "")
-    .replace(/@embed\[[^\]]*\]\{([^}]*)\}/g, "$1")
-    .replace(/@embed\[[^\]]*\]/g, "")
-    .replace(/\[\[lookup\s+[^\]]*\]\](?:\{[^}]*\})?/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/<\/p>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
+// La limpieza de la prosa HTML (E-3A1-7) vive en `prosa.mjs` desde la ola de arreglos (I8): una
+// sola copia para conjuros, aptitudes y razas.
 
 // E-3A1-3: las listas de conjuros por clase salen del SRD español («Conjuros de <clase>», por
 // nivel), no de Foundry. El nombre de clase que usa esa cabecera (minúscula, singular) se traduce
@@ -106,11 +86,20 @@ function activacionEsDe(texto) {
 function rangoEsDe(texto) {
   if (!texto) return undefined;
   const t = texto.trim();
-  // "Personal" y "Lanzador" (el SRD español usa las dos para alcance sobre uno mismo) se omiten,
-  // igual que "self" en Foundry (T1).
-  if (/^personal/i.test(t) || /^lanzador/i.test(t)) return undefined;
+  // "Personal" y "Lanzador" (el SRD español usa las dos para alcance sobre uno mismo, con o sin
+  // el área entre paréntesis: «Lanzador (cono de 4,5 m)») son `personal`, que `rangoSchema` ya
+  // tiene — hasta la ola de arreglos (I4) se devolvía `undefined` y el llamador lo convertía en
+  // «especial», 68 conjuros (Escudo, Manos ardientes, Rociada prismática…).
+  if (/^personal/i.test(t) || /^lanzador/i.test(t)) return { unidad: "personal" };
   if (/^toque/i.test(t)) return { unidad: "toque" };
   if (/^ilimitado/i.test(t)) return { unidad: "ilimitado" };
+  // «1,5 km» / «750 km»: el SRD español redondea la milla (5280 pies) a 1,5 km — se deshace la
+  // conversión por millas, no por metros, para que Clarividencia dé los 5280 pies de Foundry.
+  const km = t.match(/^([\d.,]+)\s*km\b/i);
+  if (km) {
+    const millas = Math.round(Number.parseFloat(km[1].replace(",", ".")) / 1.5);
+    return { unidad: "pies", distanciaFt: millas * 5280 };
+  }
   const metros = t.match(/^([\d.,]+)\s*m\b/i);
   if (metros) {
     const m = Number.parseFloat(metros[1].replace(",", "."));
@@ -136,8 +125,16 @@ function duracionEsDe(texto) {
   // "Instantánea" (conjuro) e "Instantáneo" (efecto): el SRD español usa las dos formas de
   // género según la frase — se aceptan ambas.
   if (/^instant[aá]ne[oa]/i.test(t)) return { unidad: "instantanea", concentracion: false };
-  if (/^hasta que se disipe/i.test(t)) return { unidad: "hastaQueSeDisipe", concentracion: false };
+  // «Hasta que sea disipado» (10) y «Hasta que sea disipado o se active» (2) — el mismo
+  // `hastaQueSeDisipe` que `duracionSchema` ya recoge para `disp`/`dstr` de Foundry (I4: antes
+  // solo casaba «hasta que se disipe», que el SRD español no usa nunca, y caían en «especial»).
+  if (/^hasta que (se disipe|sea disipad[oa])/i.test(t)) {
+    return { unidad: "hastaQueSeDisipe", concentracion: false };
+  }
   const concentracion = /^concentraci[oó]n/i.test(t);
+  // «1 asalto» (9) y «Concentración, hasta 1 asalto» (1): `asalto` existe en el esquema (I4).
+  const asaltos = t.match(/(\d+)\s*asaltos?/i);
+  if (asaltos) return { unidad: "asalto", valor: Number.parseInt(asaltos[1], 10), concentracion };
   const minutos = t.match(/(\d+)\s*minutos?/i);
   const horas = t.match(/(\d+)\s*horas?/i);
   const dias = t.match(/(\d+)\s*d[ií]as?/i);
@@ -174,6 +171,7 @@ function huellaDesdeFoundry(doc) {
 // comparar huellas, nunca para el catálogo final.
 const UNIDAD_DE_RANGO_A_FOUNDRY = {
   toque: "touch",
+  personal: "self",
   ilimitado: "any",
   especial: "spec",
   pies: "ft",
@@ -189,14 +187,18 @@ const UNIDAD_DE_DURACION_A_FOUNDRY = {
 };
 
 function huellaDesdeSrdEs(conjuro) {
-  const rango = rangoEsDe(conjuro.camposCrudos["Alcance:"]);
+  const alcanceCrudo = conjuro.camposCrudos["Alcance:"] ?? "";
+  const rango = rangoEsDe(alcanceCrudo);
+  // Un alcance en km es una milla de Foundry (`mi`): la huella compara la UNIDAD, no los pies
+  // reconstruidos, así que aquí se dice `mi` para que la huella siga casando (I4).
+  const esEnKm = /^[\d.,]+\s*km\b/i.test(alcanceCrudo.trim());
   const duracion = duracionEsDe(conjuro.camposCrudos["Duración:"]);
   const componentes = componentesEsDe(conjuro.camposCrudos["Componentes:"]);
   return {
     level: conjuro.level,
     school: conjuro.school,
-    rangeUnit: rango ? (UNIDAD_DE_RANGO_A_FOUNDRY[rango.unidad] ?? "") : "self",
-    rangeValue: rango?.distanciaFt ?? 0,
+    rangeUnit: esEnKm ? "mi" : rango ? (UNIDAD_DE_RANGO_A_FOUNDRY[rango.unidad] ?? "") : "self",
+    rangeValue: esEnKm ? 0 : (rango?.distanciaFt ?? 0),
     v: componentes.v,
     s: componentes.s,
     m: componentes.m,
@@ -207,25 +209,6 @@ function huellaDesdeSrdEs(conjuro) {
     concentration: Boolean(duracion?.concentracion),
     ritual: conjuro.ritual,
   };
-}
-
-/** Convierte una `activities` de Foundry (objeto por id) en `Actividad[]` + `fueraDeA[]`. */
-function convertirActividades(doc, ctxComun) {
-  const actividades = [];
-  const fueraDeA = [];
-  const rechazosDeItem = [];
-  const bloque = doc.system.activities ?? {};
-  for (const actividadFoundry of Object.values(bloque)) {
-    const r = actividadDe(actividadFoundry, ctxComun);
-    if (r.rechazo) {
-      rechazosDeItem.push(`${doc.system.identifier}/${actividadFoundry.type}: ${r.rechazo}`);
-    } else if (r.texto) {
-      fueraDeA.push(r.tipo);
-    } else {
-      actividades.push(r);
-    }
-  }
-  return { actividades, fueraDeA, rechazosDeItem };
 }
 
 /**
@@ -254,7 +237,14 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     emparejamientos?.conjuros ?? {},
   );
 
-  const rechazos = { edicion2024: [], sinTraduccion: [], fueraDeA: [] };
+  const rechazos = {
+    edicion2024: [],
+    sinTraduccion: [],
+    // C5 — dos tablas: tipos fuera de A por decisión de autor, y huecos del esquema / fórmulas
+    // rechazadas, cada línea con su motivo.
+    fueraDeAPorAutor: [],
+    huecos: [],
+  };
   for (const r of rechazados) rechazos.edicion2024.push(r);
 
   const spells = [];
@@ -265,10 +255,20 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     if (sinTraduccion) rechazos.sinTraduccion.push(s.key);
 
     const sys = s.doc.system;
+    const key = claveDeNombre(s.name);
     const componentes = conjuroEs ? componentesEsDe(conjuroEs.camposCrudos["Componentes:"]) : {};
-    const textEnPlano = limpiarProsa(sys.description?.value) || "(sin texto)";
+    // I8: «At Higher Levels.» va aparte (`higherLevelsEn`), como ya hacía el español.
+    const { textEn: textEnPlano, higherLevelsEn } = separarNivelesSuperiores(
+      limpiarProsa(sys.description?.value) || "(sin texto)",
+    );
+    const castingTimeEs = activacionEsDe(conjuroEs?.camposCrudos["Tiempo de lanzamiento:"]);
     const ctxComun = {
-      recurso: s.key,
+      recurso: key,
+      // C1: el bloque de ÍTEM, al que vuelve toda actividad con `override: false`.
+      itemActivation: sys.activation,
+      // La condición de la reacción («que llevas a cabo cuando…») sale del SRD español, del
+      // mismo campo que ya alimenta `castingTime`.
+      condicionEs: castingTimeEs?.condicion,
       itemRange: sys.range,
       itemDuration: sys.duration?.units === "inst" ? { units: "inst" } : sys.duration,
       itemConcentration: (sys.properties ?? []).includes("concentration"),
@@ -282,20 +282,20 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
       higherLevelsEs: conjuroEs?.higherLevelsEs,
       materialesTextoEs: componentes.materialesTexto,
     };
-    const { actividades, fueraDeA, rechazosDeItem } = convertirActividades(s.doc, ctxComun);
-    for (const motivo of fueraDeA) rechazos.fueraDeA.push(`${s.key}: ${motivo}`);
-    for (const motivo of rechazosDeItem) rechazos.fueraDeA.push(motivo);
+    const { actividades, fueraDeA, rechazosDeItem } = convertirActividades(s.doc, ctxComun, key);
+    repartirRechazos(rechazosDeItem, rechazos);
 
     spells.push({
-      key: s.key,
+      key,
+      // I13: `key` sale del nombre (2014); el `identifier` de Foundry (a veces el de 2024:
+      // `befuddlement` para Feeblemind) se conserva aparte solo cuando difiere, por trazabilidad.
+      ...(s.key !== key && { foundryIdentifier: s.key }),
       nameEn: s.name,
       nameEs: conjuroEs?.nameEs ?? null,
       sinTraduccion,
       level: sys.level,
       school: sys.school,
-      castingTime: activacionEsDe(conjuroEs?.camposCrudos["Tiempo de lanzamiento:"]) ?? {
-        coste: "ACTION",
-      },
+      castingTime: castingTimeEs ?? { coste: "ACTION" },
       range: rangoEsDe(conjuroEs?.camposCrudos["Alcance:"]) ?? { unidad: "especial" },
       components: {
         v: Boolean(sys.properties?.includes("vocal")),
@@ -308,11 +308,11 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
       },
       ritual: Boolean(sys.properties?.includes("ritual")),
       concentration: Boolean(sys.properties?.includes("concentration")),
-      textEn: textEnPlano.slice(0, 4000),
-      textEs: conjuroEs?.textoEs ? conjuroEs.textoEs.slice(0, 4000) : null,
-      ...(conjuroEs?.higherLevelsEs && {
-        higherLevelsEs: conjuroEs.higherLevelsEs.slice(0, 2000),
-      }),
+      // I9: sin recortes — el tope lo pone el esquema Zod y, si no cabe, el CLI falla en voz alta.
+      textEn: textEnPlano,
+      textEs: conjuroEs?.textoEs ? conjuroEs.textoEs : null,
+      ...(higherLevelsEn && { higherLevelsEn }),
+      ...(conjuroEs?.higherLevelsEs && { higherLevelsEs: conjuroEs.higherLevelsEs }),
       classes: classesDe(conjuroEs?.nameEs ?? null, listasPorClase),
       actividades,
       fueraDeA,
@@ -330,6 +330,8 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     choques: choques.length,
     sinPareja: sinPareja.length,
     sinTraduccion: rechazos.sinTraduccion.length,
+    conjurosFueraDeAPorAutor: rechazos.fueraDeAPorAutor.length,
+    conjurosConHuecoDeEsquema: rechazos.huecos.length,
   };
 
   if (choques.length > 0) {
@@ -348,6 +350,7 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     subclases,
     emparejamientos,
     cortesEs,
+    concesiones: leerConcesionesDeClase(foundryDir),
   });
   const { features: rasgosDeRaza, rechazos: rechazosRazas } = convertirRazas({
     foundryDir,
@@ -362,7 +365,9 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     aptitudesGeneradas: aptitudes.length,
     subclases: subclases.length,
     aptitudesSinNombreEspañol: rechazosAptitudes.sinTraduccion.length,
-    aptitudesFueraDeAOrechazadas: rechazosAptitudes.fueraDeA.length,
+    aptitudesFueraDeAPorAutor: rechazosAptitudes.fueraDeAPorAutor.length,
+    aptitudesConHuecoDeEsquema: rechazosAptitudes.huecos.length,
+    aptitudesConUsosRechazados: rechazosAptitudes.usosRechazados.length,
     // T3b — cobertura de `textEs` entre las aptitudes CON nombre (una sin nombre no puede
     // buscarse por nombre; su ausencia ya se cuenta arriba, no se duplica aquí).
     aptitudesConTraduccionPropia: aptitudes.filter((f) => f.traduccionPropia).length,
@@ -371,6 +376,8 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
   };
   const conteosRazas = {
     rasgosDeRaza: rasgosDeRaza.length,
+    razasFueraDeAPorAutor: rechazosRazas.fueraDeAPorAutor.length,
+    razasConHuecoDeEsquema: rechazosRazas.huecos.length,
     razasSinNombreEspañol: rechazosRazas.sinTraduccion.length,
     razasConTraduccionPropia: rasgosDeRaza.filter((f) => f.traduccionPropia).length,
     razasConTextoEs: razasConNombre.filter((f) => f.textEs).length,
@@ -400,13 +407,18 @@ function rechazosMd({ rechazos, conteos, sinPareja }) {
     `${CABECERA_GENERADO}\n# Rechazos del conversor\n\n` +
     `## Rechazados al leer Foundry (edición 2024, o type distinto de spell/feat)\n\n${filas(rechazos.edicion2024.map((r) => `${r.identifier}: ${r.motivo}`))}\n` +
     `## Sin traducción al español (conjuros)\n\n${filas(rechazos.sinTraduccion)}\n` +
-    `## Fórmula o actividad fuera de A (conjuros)\n\n${filas(rechazos.fueraDeA)}\n` +
+    `## Conjuros — actividad fuera de A por decisión de autor (tipo)\n\n${filas(rechazos.fueraDeAPorAutor)}\n` +
+    `## Conjuros — hueco de esquema o fórmula rechazada (motivo)\n\n${filas(rechazos.huecos)}\n` +
     `## Sin huella hermana (huella sin pareja, T1 revisó a mano)\n\n${filas(sinPareja)}\n` +
     `## Aptitudes de clase — sin nombre español\n\n${filas(rechazos.aptitudes?.sinTraduccion ?? [])}\n` +
-    `## Aptitudes de clase — fórmula o actividad fuera de A\n\n${filas(rechazos.aptitudes?.fueraDeA ?? [])}\n` +
+    `## Aptitudes de clase — actividad fuera de A por decisión de autor (tipo)\n\n${filas(rechazos.aptitudes?.fueraDeAPorAutor ?? [])}\n` +
+    `## Aptitudes de clase — hueco de esquema o fórmula rechazada (motivo)\n\n${filas(rechazos.aptitudes?.huecos ?? [])}\n` +
+    `## Aptitudes de clase — usos descartados (uses.max que no cabe en Origen; el rasgo se queda sin \`usos\`)\n\n${filas(rechazos.aptitudes?.usosRechazados ?? [])}\n` +
     `## Aptitudes de clase — con nombre pero sin texto en español (T3b, corte por nombre sin coincidencia)\n\n${filas(rechazos.aptitudes?.sinTextoEs ?? [])}\n` +
     `## Rasgos de raza — sin nombre español\n\n${filas(rechazos.razas?.sinTraduccion ?? [])}\n` +
     `## Rasgos de raza — no es una aptitud (subraza en sí, u otro tipo)\n\n${filas(rechazos.razas?.noEsAptitud ?? [])}\n` +
+    `## Rasgos de raza — actividad fuera de A por decisión de autor (tipo)\n\n${filas(rechazos.razas?.fueraDeAPorAutor ?? [])}\n` +
+    `## Rasgos de raza — hueco de esquema o fórmula rechazada (motivo)\n\n${filas(rechazos.razas?.huecos ?? [])}\n` +
     `## Rasgos de raza — con nombre pero sin texto en español (T3b, corte por nombre sin coincidencia)\n\n${filas(rechazos.razas?.sinTextoEs ?? [])}\n` +
     `## Conteos\n\n` +
     Object.entries(conteos)
@@ -429,104 +441,64 @@ function ordenarClaves(porClase) {
   return salida;
 }
 
-/** Escribe el catálogo generado en `outDir`. Sobrescribe sin preguntar — es contenido derivado. */
-export function escribir(outDir, resultado) {
-  mkdirSync(outDir, { recursive: true });
-  const spellsJson =
-    CABECERA_GENERADO +
-    JSON.stringify(
+/**
+ * Los seis ficheros que el conversor escribe, con su contenido exacto — UNA sola definición
+ * para `escribir` y para `comprobar` (ola de arreglos, I7): antes `comprobar` solo exigía
+ * `spells-srd.json`, comparaba tres más «si existían» y nunca miraba `rechazos.md` ni el
+ * `.meta.json`, así que borrar `class-features-srd.json` pasaba `--check`.
+ *
+ * Un JSON no admite comentarios: la marca «GENERADO — no editar» va en el fichero hermano
+ * `spells-srd.meta.json` y en la cabecera Markdown de `rechazos.md`, que sí es texto libre —
+ * los cuatro `.json` de datos NO llevan cabecera (05-datos y NOTICE lo dicen así desde I12).
+ */
+function ficherosGenerados(resultado) {
+  return {
+    "spells-srd.json": JSON.stringify(
       [...resultado.spells].sort((a, b) => a.key.localeCompare(b.key)),
       null,
       2,
-    );
-  writeFileSync(join(outDir, "spells-srd.json"), spellsJson.replace(/^\/\/.*\n/, ""), "utf8");
-  const featuresJson = JSON.stringify(
-    [...resultado.features].sort(
-      (a, b) => a.class.localeCompare(b.class) || a.level - b.level || a.key.localeCompare(b.key),
     ),
-    null,
-    2,
-  );
-  writeFileSync(join(outDir, "class-features-srd.json"), featuresJson, "utf8");
-  const razasJson = JSON.stringify(
-    [...resultado.razas].sort((a, b) => a.race.localeCompare(b.race) || a.key.localeCompare(b.key)),
-    null,
-    2,
-  );
-  writeFileSync(join(outDir, "race-features-srd.json"), razasJson, "utf8");
-  writeFileSync(
-    join(outDir, "class-scales-srd.json"),
-    JSON.stringify(ordenarClaves(resultado.escalas), null, 2),
-    "utf8",
-  );
-  // El JSON no admite comentarios: la cabecera "no editar" va en un fichero hermano `.meta.json`
-  // más un comentario Markdown en `rechazos.md`, que sí es texto libre.
-  writeFileSync(
-    join(outDir, "spells-srd.meta.json"),
-    JSON.stringify({ generadoPor: "scripts/convertir-catalogo.mjs", noEditar: true }, null, 2),
-    "utf8",
-  );
-  writeFileSync(join(outDir, "rechazos.md"), rechazosMd(resultado), "utf8");
-}
-
-/** `--check`: regenera en memoria y compara byte a byte con lo commiteado. */
-export function comprobar(outDir, resultado) {
-  const rutaSpells = join(outDir, "spells-srd.json");
-  if (!existsSync(rutaSpells)) return { ok: false, motivo: `No existe ${rutaSpells}.` };
-  const actual = readFileSync(rutaSpells, "utf8");
-  const esperado = JSON.stringify(
-    [...resultado.spells].sort((a, b) => a.key.localeCompare(b.key)),
-    null,
-    2,
-  );
-  if (actual !== esperado) {
-    return {
-      ok: false,
-      motivo: "spells-srd.json commiteado no coincide con lo regenerado en memoria.",
-    };
-  }
-  const rutaFeatures = join(outDir, "class-features-srd.json");
-  if (existsSync(rutaFeatures)) {
-    const actualFeatures = readFileSync(rutaFeatures, "utf8");
-    const esperadoFeatures = JSON.stringify(
+    "class-features-srd.json": JSON.stringify(
       [...resultado.features].sort(
         (a, b) => a.class.localeCompare(b.class) || a.level - b.level || a.key.localeCompare(b.key),
       ),
       null,
       2,
-    );
-    if (actualFeatures !== esperadoFeatures) {
-      return {
-        ok: false,
-        motivo: "class-features-srd.json commiteado no coincide con lo regenerado en memoria.",
-      };
-    }
-  }
-  const rutaEscalas = join(outDir, "class-scales-srd.json");
-  if (existsSync(rutaEscalas)) {
-    const actualEscalas = readFileSync(rutaEscalas, "utf8");
-    const esperadoEscalas = JSON.stringify(ordenarClaves(resultado.escalas), null, 2);
-    if (actualEscalas !== esperadoEscalas) {
-      return {
-        ok: false,
-        motivo: "class-scales-srd.json commiteado no coincide con lo regenerado en memoria.",
-      };
-    }
-  }
-  const rutaRazas = join(outDir, "race-features-srd.json");
-  if (existsSync(rutaRazas)) {
-    const actualRazas = readFileSync(rutaRazas, "utf8");
-    const esperadoRazas = JSON.stringify(
+    ),
+    "race-features-srd.json": JSON.stringify(
       [...resultado.razas].sort(
         (a, b) => a.race.localeCompare(b.race) || a.key.localeCompare(b.key),
       ),
       null,
       2,
-    );
-    if (actualRazas !== esperadoRazas) {
+    ),
+    "class-scales-srd.json": JSON.stringify(ordenarClaves(resultado.escalas), null, 2),
+    "spells-srd.meta.json": JSON.stringify(
+      { generadoPor: "scripts/convertir-catalogo.mjs", noEditar: true },
+      null,
+      2,
+    ),
+    "rechazos.md": rechazosMd(resultado),
+  };
+}
+
+/** Escribe el catálogo generado en `outDir`. Sobrescribe sin preguntar — es contenido derivado. */
+export function escribir(outDir, resultado) {
+  mkdirSync(outDir, { recursive: true });
+  for (const [nombre, contenido] of Object.entries(ficherosGenerados(resultado))) {
+    writeFileSync(join(outDir, nombre), contenido, "utf8");
+  }
+}
+
+/** `--check`: regenera en memoria y compara byte a byte los seis ficheros con lo commiteado. */
+export function comprobar(outDir, resultado) {
+  for (const [nombre, esperado] of Object.entries(ficherosGenerados(resultado))) {
+    const ruta = join(outDir, nombre);
+    if (!existsSync(ruta)) return { ok: false, motivo: `No existe ${ruta}.` };
+    if (readFileSync(ruta, "utf8") !== esperado) {
       return {
         ok: false,
-        motivo: "race-features-srd.json commiteado no coincide con lo regenerado en memoria.",
+        motivo: `${nombre} commiteado no coincide con lo regenerado en memoria.`,
       };
     }
   }

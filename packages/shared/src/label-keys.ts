@@ -70,6 +70,10 @@ export const LABEL_KEYS = [
   // `nivelDeClase` de verdad (T2 en adelante).
   "nivelDeClase.fighter",
   "nivelDeClase.monk",
+  // Ola de arreglos de 3A.1 (I11): Fuente de Magia del hechicero (`usos.max: nivelDeClase(sorcerer)`)
+  // ya estaba en el catálogo generado sin registrar. `generado.spec.ts` barre el catálogo y
+  // exige que toda clase que aparezca en un `nivelDeClase` esté aquí.
+  "nivelDeClase.sorcerer",
   // effective-speed.ts — la velocidad YA EFECTIVA (tras aplicar condiciones), distinta de la
   // velocidad base por tipo de movimiento (familia `speed.<movimiento>.base` más abajo).
   "speed.base",

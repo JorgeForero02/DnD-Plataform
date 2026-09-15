@@ -57,10 +57,14 @@ function main() {
     process.exit(1);
   }
 
+  // Ola de arreglos (I7): un fallo de esquema en conjuros también para el CLI — antes se
+  // imprimía como conteo y el JSON se escribía igual.
   const validacion = spellsCatalogSchema.safeParse(resultado.spells);
-  const conjurosRechazadosPorEsquema = validacion.success
-    ? []
-    : validacion.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+  if (!validacion.success) {
+    console.error("spells-srd.json no pasa el esquema Zod:");
+    for (const i of validacion.error.issues) console.error(`  ${i.path.join(".")}: ${i.message}`);
+    process.exit(1);
+  }
 
   const validacionFeatures = classFeaturesCatalogSchema.safeParse(resultado.features);
   if (!validacionFeatures.success) {
@@ -86,7 +90,21 @@ function main() {
 
   console.log("Conteos:");
   for (const [k, v] of Object.entries(resultado.conteos)) console.log(`  ${k}: ${v}`);
-  console.log(`  rechazados por el esquema Zod: ${conjurosRechazadosPorEsquema.length}`);
+
+  // Un rechazo NO declarado (un tipo de actividad que `actividadDe` no conoce) para el CLI
+  // antes de escribir y también en `--check` (I7: antes solo se miraba tras escribir).
+  const noDeclarados = [
+    resultado.rechazos.huecos,
+    resultado.rechazos.aptitudes.huecos,
+    resultado.rechazos.razas.huecos,
+  ]
+    .flat()
+    .filter((r) => r.includes("RECHAZO SIN DECLARAR"));
+  if (noDeclarados.length > 0) {
+    console.error("Hubo al menos un rechazo NO declarado (tipo de actividad sin implementar):");
+    for (const r of noDeclarados) console.error(`  ${r}`);
+    process.exit(1);
+  }
 
   if (check) {
     const cmp = comprobar(outDir, resultado);
@@ -100,14 +118,6 @@ function main() {
 
   escribir(outDir, resultado);
   console.log(`Catálogo escrito en ${outDir}`);
-
-  const huboRechazoNoDeclarado = resultado.rechazos.fueraDeA.some((r) =>
-    r.includes("Tipo de actividad sin implementar"),
-  );
-  if (huboRechazoNoDeclarado) {
-    console.error("Hubo al menos un rechazo NO declarado (tipo de actividad sin implementar).");
-    process.exit(1);
-  }
 }
 
 main();

@@ -66,8 +66,10 @@ un nombre o una prosa que el SRD (inglés o español) no trae. Cuando el SRD esp
 (2026-09-14, ver [decisiones.md](./docs/decisiones.md)), con una **traducción propia marcada**
 (`traduccionPropia: true`) — nunca sin marca, y nunca haciéndola pasar por la del SRD.
 
-**Dónde vive en el repositorio:** `apps/api/src/rules/catalog/generado/` (los cuatro JSON y
-`rechazos.md`, todos con cabecera «GENERADO… no editar»), leídos por
+**Dónde vive en el repositorio:** `apps/api/src/rules/catalog/generado/` (los cuatro JSON de
+datos —sin cabecera: un JSON no admite comentarios—, `spells-srd.meta.json` con la marca
+«GENERADO… no editar» y `rechazos.md` con esa misma cabecera y el motivo de todo lo que no
+entró), leídos por
 `apps/api/src/rules/catalog/generado/index.ts`; y el conversor mismo,
 `scripts/convertir-catalogo.mjs` + `scripts/convertir-catalogo/`. Se suma a la lista de
 `catalog.spec.ts` de la sección de abajo — el catálogo generado **es distinto** de los ficheros a

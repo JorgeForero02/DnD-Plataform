@@ -125,6 +125,9 @@ export function leerSubclases(dir) {
     const texto = readFileSync(ruta, "utf8");
     const doc = cargarYaml(texto);
     if (doc?.type !== "subclass") continue; // por si algún día cuelga otra cosa ahí
+    // Misma frontera de edición que `leerFoundry` (ola de arreglos, m5): «el conversor rechaza
+    // cualquier fichero cuyo rules no sea 2014», también aquí y en `leerEscalasDeClase`.
+    if (doc.system?.source?.rules !== "2014") continue;
     subclases.push({
       key: doc.system?.identifier,
       name: doc.name,
@@ -165,6 +168,7 @@ export function leerEscalasDeClase(dir) {
     const doc = cargarYaml(readFileSync(ruta, "utf8"));
     const classKey = doc?.system?.identifier;
     if (!classKey) continue;
+    if (doc.system?.source?.rules !== "2014") continue; // ver leerSubclases (m5)
     const advancement = doc?.system?.advancement ?? [];
     const scales = {};
     for (const bloque of advancement) {
@@ -184,4 +188,50 @@ export function leerEscalasDeClase(dir) {
     if (Object.keys(scales).length > 0) porClase[classKey] = scales;
   }
   return porClase;
+}
+
+/**
+ * `leerConcesionesDeClase(dir)` — ola de arreglos (I10). Lee el `advancement` de `classes/*.yml`
+ * para saber QUÉ clase concede un fichero de `classfeatures/shared-features/` y a qué nivel:
+ * `extra-attack.yml` no tiene `requirements`, pero bárbaro, monje, paladín y explorador lo
+ * conceden por `ItemGrant` (`configuration.items[].uuid` termina en su `_id`) al nivel 5; la
+ * Mejora de Característica no es un `ItemGrant` sino un `AbilityScoreImprovement` por clase (la
+ * primera vez, al nivel 4). Hasta esta ola los dos entraban como «fighter, nivel 1» — un dato
+ * inventado que el invariante «toda aptitud tiene clase y nivel 1–20» aceptaba.
+ *
+ * Devuelve `{ porId: Map<_id, {class, level}[]>, mejoraDeCaracteristica: {class, level}[] }`.
+ */
+export function leerConcesionesDeClase(dir) {
+  const raiz = join(dir, "classes");
+  let archivos;
+  try {
+    archivos = listarYaml(raiz);
+  } catch {
+    return { porId: new Map(), mejoraDeCaracteristica: [] };
+  }
+  const porId = new Map();
+  const mejoraDeCaracteristica = [];
+  for (const ruta of archivos) {
+    if (ruta.endsWith("_folder.yml")) continue;
+    const doc = cargarYaml(readFileSync(ruta, "utf8"));
+    const classKey = doc?.system?.identifier;
+    if (!classKey || doc.system?.source?.rules !== "2014") continue;
+    let primerAsi;
+    for (const bloque of doc.system.advancement ?? []) {
+      if (bloque.type === "AbilityScoreImprovement") {
+        if (primerAsi === undefined || bloque.level < primerAsi) primerAsi = bloque.level;
+      }
+      if (bloque.type !== "ItemGrant") continue;
+      for (const item of bloque.configuration?.items ?? []) {
+        const id = String(item.uuid ?? "")
+          .split(".")
+          .pop();
+        if (!id) continue;
+        if (!porId.has(id)) porId.set(id, []);
+        porId.get(id).push({ class: classKey, level: bloque.level });
+      }
+    }
+    if (primerAsi !== undefined) mejoraDeCaracteristica.push({ class: classKey, level: primerAsi });
+  }
+  return { porId, mejoraDeCaracteristica };
 }

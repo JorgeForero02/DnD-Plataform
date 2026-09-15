@@ -16,7 +16,7 @@ import { ConditionsService } from "../character-state/conditions/conditions.serv
 import { PrismaService } from "../prisma/prisma.service";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../common/character-viewer";
 import { loVeLaMesa } from "../common/visibility";
-import { resolverOrigen, type ContextoDeDerivacion } from "../rules/engine";
+import { resolverOrigen, tablaDeEscalas, type ContextoDeDerivacion } from "../rules/engine";
 import { findClass, UnknownContentError } from "../rules/catalog";
 import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER } from "../rolls/rolls.service";
@@ -429,9 +429,11 @@ export class ActivitiesService {
     for (const clave of claves) abilities[clave] = actor[clave] ?? NaN;
 
     let spellcastingAbility: AbilityKey | undefined;
+    let clase: ReturnType<typeof findClass> | undefined;
     if (actor.classKey) {
       try {
-        spellcastingAbility = findClass({ source: "SRD", key: actor.classKey }).spellcastingAbility;
+        clase = findClass({ source: "SRD", key: actor.classKey });
+        spellcastingAbility = clase.spellcastingAbility;
       } catch (error) {
         // Una clase que el catálogo ya no reconoce es un dato caduco, no un motivo para reventar
         // "usar": se deriva sin característica de lanzamiento, igual que hace el resto de la
@@ -451,10 +453,13 @@ export class ActivitiesService {
       level: actor.level,
       spellcastingAbility,
       cdDeConjuro,
-      // Las tablas de escala las llena la tarea A10; hasta entonces, un `Origen` de tipo
-      // `escala` lanza con su propio mensaje — no se inventa aquí una tabla vacía que parezca
-      // una respuesta.
-      escalas: new Map(),
+      // C2 (ola de arreglos de 3A.1): la clase del actor, para `nivelDeClase` — Tomar Aliento
+      // curaba `1d10 + 0` sin esto. Sin multiclase; una clase que el catálogo no reconoce deja
+      // `classKey` vacío y `nivelDeClase` da 0, igual que antes.
+      classKey: clase?.key,
+      // Las tablas de escala de LA CLASE del actor (m4): antes `new Map()` y cualquier `escala`
+      // en unos dados o un bono lanzaba. Mismo mapa que `resolve.ts` usa para los `usos.max`.
+      escalas: tablaDeEscalas({ ...(clase?.scales ?? {}) }),
     };
   }
 

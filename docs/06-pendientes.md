@@ -128,38 +128,60 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
-## Lo que 3A.1 dejó como texto (2026-09-14)
+## Lo que 3A.1 dejó como texto (2026-09-14; conteos regenerados en la ola de arreglos)
 
 **«El libro entra»** convirtió 319 conjuros, 234 aptitudes de clase/subclase y los rasgos de raza
 del SRD 5.1 a `Actividad`, con nombre y prosa del SRD español oficial. Lo que sigue son los
-conteos agrupados de lo que **se quedó como texto** —`actividades: []`, prosa completa en
-`textEn`/`textEs`— y de las traducciones propias, medidos por el propio conversor
-(`apps/api/src/rules/catalog/generado/rechazos.md`, GENERADO, no se edita a mano) y en
-`docs/superpowers/specs/2026-09-14-3a1-tarea-0-prueba-de-fuego.md` §f. Ver
-[decisiones.md](./decisiones.md), sección «Ejecución de 3A.1», D-CF-92 a D-CF-107.
+conteos de lo que **se quedó como texto** —sin esa actividad, prosa completa en
+`textEn`/`textEs`— y de las traducciones propias, **copiados de
+`apps/api/src/rules/catalog/generado/rechazos.md`** (GENERADO, no se edita a mano; es la fuente,
+y cada línea de allí lleva su motivo). Ver [decisiones.md](./decisiones.md), sección «Ejecución de
+3A.1», D-CF-92 a D-CF-107, y la ola de arreglos D-CF-108 a D-CF-115.
 
-**Tipos de actividad de Foundry fuera del vocabulario cerrado de `Origen`** (`fueraDeA` en el
-catálogo, medido en `rechazos.md`): **57 apariciones en conjuros** —`summon` (29), `enchant`
-(11), `check` (8), `transform` (6), `teleport` (1), `heal` (1, `spare-the-dying`), `save` (1,
-`delayed-blast-fireball`, que además tiene una actividad `summon` fuera de A) — repartidas en
-**53 conjuros distintos** (`disguise-self`, `scrying`, `seeming` y `true-polymorph` aparecen dos
-veces, con dos tipos fuera de A cada uno). **0 aptitudes de clase y 0 rasgos de raza** cayeron
-aquí: el motivo por el que una aptitud queda sin actividad son los tres huecos de esquema de
-abajo, no un tipo de Foundry no soportado. Ninguno de estos 57 se convierte a mecánica en 3A.1 —
-invocar, transformar y encantar como mecánica es trabajo de B (`constraints.md`, «No entra»).
+> Hasta la ola de arreglos este bloque decía «0 aptitudes de clase y 0 rasgos de raza cayeron
+> aquí» y `rechazos.md` decía «_ninguno_» para aptitudes: era falso (la revisión final contó 14
+> aptitudes fuera y 4 con `usos` descartados sin rastro, C5). El informe tira ahora el motivo de
+> TODO lo que no entra, en dos tablas —«fuera de A por decisión de autor» y «hueco de esquema o
+> fórmula rechazada»— y este bloque se copia de él, no al revés.
 
-**Tres huecos reales del esquema** (`Origen`/`Actividad` no tienen forma para esto), cada uno con
-su nombre y por qué se queda en texto:
+**Fuera de A por decisión de autor** (tipos de Foundry que no se automatizan, D-CF-103/constraints
+«No entra»): **47 actividades de conjuro** —`summon` 29, `enchant` 11, `transform` 6,
+`teleport` 1— en 45 conjuros distintos, y **1 aptitud** (`druid:wild-shape`, `transform`).
+Invocar, transformar y encantar como mecánica es trabajo de B.
 
-| Aptitud | Por qué |
-|---|---|
-| **Ataque Furtivo** (`rogue:sneak-attack`) | Su daño escala por una tabla de dados **enteros** por nivel (1d6→10d6), y `expresionDeDadosSchema.n` es un literal fijo, no un `Origen` — es material de **3A.2/B** (D-CF-71 decide allí si `escala` puede dar un número de dados) |
-| **Imponer las Manos** (`paladin:lay-on-hands`) | Sus dos actividades consumen y curan la **misma cifra variable**, elegida por el jugador dentro de una reserva — `consumoSchema.cantidad` es un entero fijo, no «lo que cures es lo que gastes» |
-| **Forma Salvaje** (`druid:wild-shape`) | Su duración depende del nivel de druida (`floor(nivel/2)` horas) y `duracionSchema.valor` es un literal fijo — ya estaba fuera de A por ser `transform`, así que este hueco no cambia su resultado hoy, pero es la misma clase de limitación |
+**Hueco de esquema o fórmula rechazada** (`Origen`/`Actividad` no tienen forma para esto; cada
+línea de `rechazos.md` dice cuál): **19 actividades de conjuro** en 18 conjuros, **31 de aptitud**
+en 29 aptitudes y **13 de rasgo de raza**. Por causa:
 
-El bono de ataque de conjuro (el cuarto hueco que midió T0) **sí se cerró en esta misma tanda**:
-`{ tipo: "ataqueDeConjuro" }` (D-CF-95), así que los 17 conjuros de ataque del SRD entran en A y
-no aparecen en esta lista.
+| Causa | Conjuros | Aptitudes | Razas | Ejemplo |
+|---|---|---|---|---|
+| `check.ability` vacío (una prueba sin característica) | 8 | 1 | 3 | `minor-illusion`, `dwarf:stonecunning` |
+| Daño en varias partes — `expresionDeDados` es UNA expresión con UN tipo (I1: antes se recortaba a la primera parte en silencio) | 3 | — | — | `ice-storm` 2d8 + 4d6, `meteor-swarm`, `flame-strike` |
+| `duration.units` sin equivalente (`turn`) o `duration.value` por fórmula (hueco B-bis) | 5 | — | — | `blink`, `magic-circle` |
+| `onSave: full` — el daño entra entero aunque se salve, y `siSalva` solo dice ninguno/mitad (I5) | 1 | — | — | `feeblemind` |
+| `save.ability` vacío / expresión sin dados ni bonus | 2 | — | — | `delayed-blast-fireball`, `spare-the-dying` |
+| Consumo con destino a un **UUID de compendio** (Ki, Puntos de hechicería) — sin un recurso que el personaje tenga, el botón daría 409 (C3) | — | 15 | — | los cinco rasgos de ki del monje, Palma Vibrante, las ocho metamagias |
+| Consumo variable = efecto (hueco C, D-CF-105) | — | 5 | — | `paladin:lay-on-hands`, `sorcerer:font-of-magic`, `cleric/life-domain:blessed-healer` |
+| Fórmula fuera de las nueve formas de `Origen` (`5*nivel`, `3*nivel`, `5 + @mod`, `max(…)`) | — | 5 | — | `channel-divinity-preserve-life`, `wholeness-of-body`, `survivor`, `dark-ones-blessing`, `song-of-rest` |
+| CD de característica de una clase que no lanza (8 + competencia + mod de X) — `Origen` no tiene esa forma (I6) | — | 2 | 10 | `monk/open-hand:tranquility`, `berserker:intimidating-presence`, los diez Ataques de Aliento (CD de Constitución) |
+| Dados por tabla de escala entera (hueco A, D-CF-104) | — | 2 | — | `rogue:sneak-attack`, `life-domain:divine-strike` |
+| Consumo negativo (reposición, no gasto) | — | 1 | — | `bard:superior-inspiration` |
+
+**Cuatro aptitudes con `uses.max` que no cabe en `Origen`** (I2: el rasgo se queda sin `usos`, y
+por tanto sin fila de recurso ni `grant`; antes se descartaba en silencio): `bard:bardic-inspiration`
+y `paladin:cleansing-touch` (`max(1, @abilities.cha.mod)`), `paladin:divine-sense`
+(`1 + @abilities.cha.mod`) y `paladin:lay-on-hands` (`5 * @classes.paladin.levels` — D-CF-105
+pedía «usos a mano si cabe»: no cabe, `Origen` no multiplica, así que solo texto).
+
+**Nueve concesiones que `enriquecerClases` NO construye** (C3, `CONCESIONES_SIN_RECURSO` en
+`apps/api/src/rules/catalog/generado/index.ts`, comprobadas por `generado.spec.ts`): las cuatro Inspiraciones Bárdicas
+(d6–d12), Palabras Cortantes y Habilidad Sin Parangón (consumen esa Inspiración), Sentidos Divinos
+y Toque Purificador (sus `usos` no caben) y Canalizar Divinidad del Juramento de Devoción (consume
+la de paladín, que `classes.ts` no declara como rasgo base). Reglas de la ola: un `grant` solo se
+construye si cada recurso que consume lo siembra un rasgo con `usos` de la misma clase, y solo
+una `ClassFeature` por aptitud de Foundry lo lleva (`channel-divinity-1`, no `-2`/`-3`).
+**Fuente de Magia** (`nivelDeClase(sorcerer)` en sus usos) tampoco llega a la hoja: sus dos
+actividades son hueco C.
 
 **Cinco aptitudes con nombre oficial pero sin prosa en español** (T3b, corte por nombre sin
 coincidencia en `srd-5.1-es.txt` — se quedan con `textEn` y sin `textEs`, 228/233 de las que sí
@@ -171,15 +193,34 @@ tienen nombre oficial):
 - `warlock/the-fiend:expanded-spell-list` → «Lista de conjuros ampliada»
 - `wizard:signature-spells` → «Conjuros característicos»
 
-**Once traducciones propias** (D-CF-106: el SRD español no nombra estos ítems, y en vez de
-dejarlos en inglés marcado llevan un nombre nuestro, marcado `traduccionPropia: true`): la
-aptitud `fighter:grappler` («Presa», un FEAT del manual del jugador sin equivalente en el SRD
-5.1) y los diez colores del rasgo racial «Ataque de Aliento» del dracónido (`dragonborn`), que en
-el SRD es una sola tabla genérica color→tipo de daño sin nombre propio por color.
+**Cinco `ClassFeature` de `classes.ts` sin fila en el generado** (menor 6 de la revisión; llevan
+su propio nombre como texto y `sinTraduccion: true`, y `generado.spec.ts` fija la lista):
+`paladin:aura-improvements`, `paladin/oath-of-devotion:oath-spells`,
+`ranger:favored-enemy-improvement`, `ranger:favored-enemy-improvement-2`,
+`ranger:natural-explorer-improvement` — rasgos sintéticos de `classes.ts` que Foundry no modela
+como fichero propio.
 
-**Cero conjuros o aptitudes sin ningún nombre** (`sinTraduccion`): el ruling de traducción propia
-cerró los últimos huecos de nombre; lo que queda son huecos de **actividad** (los de arriba) y de
-**prosa española** (las cinco de la tabla), no de nombre.
+**Once traducciones propias** (D-CF-106: el SRD español no nombra estos ítems, y en vez de
+dejarlos en inglés marcado llevan un nombre nuestro, marcado `traduccionPropia: true`): la dote
+`feat:grappler` («Presa», un FEAT del manual del jugador sin equivalente en el SRD 5.1; desde la
+ola de arreglos con `class: "feat"`, no «fighter nivel 1») y los diez colores del rasgo racial
+«Ataque de Aliento» del dracónido (`dragonborn`), que en el SRD es una sola tabla genérica
+color→tipo de daño sin nombre propio por color.
+
+**Cero conjuros o aptitudes sin ningún nombre** (`sinTraduccion` en el JSON): el ruling de
+traducción propia cerró los últimos huecos de nombre.
+
+**Lo que esta ola dejó para después, dicho aquí:** (1) resolver los UUID de compendio a la clave
+de la aptitud que consumen (índice `_id → key`) devolvería a A los cinco rasgos de ki y las ocho
+metamagias, pero exige que 3A.2 cablee un recurso compartido entre rasgos — hoy se rechazan con
+motivo; (2) una forma `cdDeCaracteristica(ability)` en `Origen` daría CD a Golpe Aturdidor,
+Presencia Intimidante y los Ataques de Aliento; (3) `activacion.type` `special` y `""` caen los
+dos en `FREE` (menor 10) porque `Coste` no distingue «parte de otra acción» de «sin
+activación»; (4) los cuatro nombres corregidos al SRD (Mejora de Característica, Duelo, Combate
+con Armas a Dos Manos, Aguante Enano) viven en el JSON generado — `classes.ts`/`races.ts`
+conservan los de 2A.3 como rótulo de la hoja, y cambiarlos barre e2e (no en esta ola);
+(5) `mezclarScales` expone tablas de escala que no son «un número que se suma» (Ataque Furtivo
+como número de dados) — hoy ninguna actividad las usa.
 
 ## Dejado por «puerta de efectos» (2026-09-14) — cerrada en rama, sin fusionar ni desplegar
 

@@ -70,11 +70,15 @@ código**: `apps/api/src/rules/catalog/generado/*.json`, generados por
 `scripts/convertir-catalogo.mjs` (ver [02-entorno.md](./02-entorno.md) para cómo se regenera) y
 leídos **una sola vez, al arrancar**, con Zod como barrera
 (`spellsCatalogSchema`/`classFeaturesCatalogSchema`/`raceFeaturesCatalogSchema`/`classScalesCatalogSchema`,
-`packages/shared/src/catalog.schema.ts`). **Generado, no editado**: los cuatro JSON y
-`rechazos.md` llevan cabecera «GENERADO por scripts/convertir-catalogo.mjs — no editar»; un
-cambio se hace en el conversor y se regenera, nunca a mano en el JSON.
+`packages/shared/src/catalog.schema.ts`). **Generado, no editado**: un JSON no admite
+comentarios, así que la marca «GENERADO por scripts/convertir-catalogo.mjs — no editar» va en el
+fichero hermano `spells-srd.meta.json` y en la cabecera de `rechazos.md` (los cuatro JSON de datos
+no llevan cabecera — I12, ola de arreglos); un cambio se hace en el conversor y se regenera,
+nunca a mano en el JSON. `pnpm catalogo:convertir -- --check` compara los seis ficheros.
 
-**La forma de un conjuro** (`SrdSpell`): `key` (identificador de Foundry, p. ej. `fireball`),
+**La forma de un conjuro** (`SrdSpell`): `key` (el nombre inglés de 2014 en minúsculas con
+guiones, p. ej. `fireball`; `foundryIdentifier` solo cuando el `system.identifier` de Foundry
+difiere — D-CF-112),
 `nameEn`/`nameEs` (`nameEs` nulable), `sinTraduccion` y `traduccionPropia` (booleanos, nunca los
 dos a la vez), `level` (0–9), `school` (una de las ocho escuelas), `castingTime`, `range`,
 `components`, `duration`, `ritual`, `concentration`, `textEn`/`textEs` (prosa limpia, sin HTML),

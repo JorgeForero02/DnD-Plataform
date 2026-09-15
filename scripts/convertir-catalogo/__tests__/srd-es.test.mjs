@@ -10,7 +10,9 @@ import {
 
 // Tarea 3A.1 (T1), Step 4. Fragmento sintético con tres cabeceras reales (una con `(ritual)`,
 // una con `(truco)` y una con el campo "Tiempo de lanzamiento" partido en varias líneas — la
-// misma forma que Contrahechizo, T0 sección c.4), una tabla de clase y una lista de conjuros.
+// misma forma que Contrahechizo, T0 sección c.4), el pie de página de tres líneas y la cabecera
+// «Trampas» que cierra el capítulo (ola de arreglos, C4), una tabla de clase y una lista de
+// conjuros.
 
 const FRAGMENTO = `
 Detectar magia
@@ -39,6 +41,11 @@ Alcance: 18 m
 Componentes: S
 Duración: Instantánea
 Intentas interrumpir a una criatura.
+ Documento de referencia del sistema 5.1. 209
+Prohibida la reventa. Tienes permiso para imprimir
+o fotocopiar este documento solo para uso personal.
+Trampas
+Casi cualquier lugar puede ocultar una trampa.
 
 El guerrero
 
@@ -86,23 +93,15 @@ test("cortarSrdEs corta nombre, escuela, nivel, ritual y 'A niveles superiores'"
   const contrahechizo = conjuros.get("Contrahechizo");
   assert.ok(contrahechizo, "Contrahechizo (campo partido en varias líneas) no se encontró");
   assert.equal(contrahechizo.level, 3);
+  // C4: el último conjuro termina donde empieza el capítulo «Trampas», y el pie de página (tres
+  // líneas) no llega a la prosa.
+  assert.equal(contrahechizo.textoEs, "Intentas interrumpir a una criatura.");
+  assert.doesNotMatch(contrahechizo.textoEs, /Prohibida la reventa|Trampas|El guerrero/);
   // El campo "Tiempo de lanzamiento" ocupaba tres líneas: se recompone en una sola cadena.
   assert.match(
     contrahechizo.camposCrudos["Tiempo de lanzamiento:"],
     /1 reacción, que llevas a cabo cuando una criatura que puedas ver lance un conjuro/,
   );
-});
-
-test("cortarSrdEs lee una tabla de clase, descartando la fila de cabecera repetida", () => {
-  const { tablasDeClase } = cortarSrdEs(FRAGMENTO);
-  const guerrero = tablasDeClase.get("guerrero");
-  assert.ok(guerrero, "La tabla 'El guerrero' no se leyó");
-  assert.deepEqual(
-    guerrero.map((f) => f.nivel),
-    [1, 2, 17],
-  );
-  assert.deepEqual(guerrero[0].rasgos, ["Estilo de Combate", "Tomar Aliento"]);
-  assert.deepEqual(guerrero[2].rasgos, ["Acción Súbita (dos usos)", "Indómito (tres usos)"]);
 });
 
 test("cortarSrdEs lee una lista de conjuros por clase, por nivel", () => {
@@ -266,4 +265,37 @@ test("limpiarProsaEs — colapsa espacios dobles (defecto de extracción de PDF)
 
 test("limpiarProsaEs — no toca un texto ya limpio, ni sus saltos de línea", () => {
   assert.equal(limpiarProsaEs("Línea uno\nLínea dos"), "Línea uno\nLínea dos");
+});
+
+test("cortarSrdEs — el último conjuro sin la cabecera «Trampas» detrás hace fallar el corte (C4)", () => {
+  const sinTrampas = FRAGMENTO.replace(/^Trampas *$/m, "");
+  assert.throws(() => cortarSrdEs(sinTrampas), /Trampas/);
+});
+
+test("limpiarProsaEs — quita el pie de página aunque venga pegado a la prosa (C4)", () => {
+  const conPie =
+    "tu modificador por aptitud Documento de referencia del sistema 5.1. 182 Prohibida la reventa. Tienes permiso para imprimir o fotocopiar este documento solo para uso personal. y sigue";
+  assert.equal(limpiarProsaEs(conPie), "tu modificador por aptitud y sigue");
+});
+
+test("cortarSrdEs — las líneas del PDF se unen en párrafos; la sangría abre párrafo (menor 1)", () => {
+  const txt = `
+Conjuro de prueba
+Evocación nivel 1
+Tiempo de lanzamiento: 1 acción
+Alcance: 18 m
+Componentes: V
+Duración: Instantánea
+Primera línea del párrafo que sigue
+en la segunda línea permanen-
+temente partida.
+ Segundo párrafo con sangría
+y su segunda línea.
+Trampas
+`;
+  const { conjuros } = cortarSrdEs(txt);
+  assert.equal(
+    conjuros.get("Conjuro de prueba").textoEs,
+    "Primera línea del párrafo que sigue en la segunda línea permanen-temente partida.\n\nSegundo párrafo con sangría y su segunda línea.",
+  );
 });

@@ -1,5 +1,5 @@
 // Tarea 3A.1 (T1) — corta el texto extraído del SRD 5.1 español (`srd-5.1-es.txt`) en bloques
-// por conjuro, tablas de clase y listas de conjuros por clase. Reglas de corte medidas en la
+// por conjuro y listas de conjuros por clase. Reglas de corte medidas en la
 // tarea 0 (`docs/superpowers/specs/2026-09-14-3a1-tarea-0-prueba-de-fuego.md`, sección c):
 // tolerante a `(ritual)`, a `(truco)`, a la escuela escrita «Ilusionismo» y a los cuatro campos
 // partidos en varias líneas.
@@ -27,13 +27,34 @@ const ETIQUETAS = ["Tiempo de lanzamiento:", "Alcance:", "Componentes:", "Duraci
 const RE_A_NIVELES_SUPERIORES = /^A niveles superiores\.?/;
 
 /**
- * Limpia una línea de pie de página («Documento de referencia del sistema 5.1. 182 / Prohibida
- * la reventa…») que puede caer DENTRO del cuerpo de un conjuro, sin marcar el principio de uno
- * nuevo (T0, sección c, punto 5).
+ * El pie de página del PDF, medido en `srd-5.1-es.txt` (ola de arreglos, C4): son TRES líneas
+ * seguidas —« Documento de referencia del sistema 5.1. 184», «Prohibida la reventa. Tienes
+ * permiso para imprimir» y «o fotocopiar este documento solo para uso personal.»— que caen
+ * DENTRO del cuerpo de un conjuro o de una aptitud cada vez que cruza una página. Hasta esta ola
+ * solo se quitaba la primera, y las otras dos acababan en 81 `textEs` de conjuro, 33 de aptitud
+ * y 1 de raza. Las tres se quitan por línea aquí, y `limpiarProsaEs` remata cualquier resto que
+ * hubiera quedado pegado a una línea de prosa.
  */
+const RE_PIE_DE_PAGINA = [
+  /^Documento de referencia del sistema 5\.1\.\s*\d*$/,
+  /^Prohibida la reventa\. Tienes permiso para imprimir$/,
+  /^o fotocopiar este documento solo para uso personal\.$/,
+];
+const RE_PIE_DE_PAGINA_EN_LINEA =
+  /\s*Documento de referencia del sistema 5\.1\.\s*\d*\s*Prohibida la reventa\. Tienes permiso para imprimir\s*o fotocopiar este documento solo para uso personal\.?/g;
+
 function esPieDePagina(linea) {
-  return /^Documento de referencia del sistema 5\.1\./.test(linea.trim());
+  const t = linea.trim();
+  return RE_PIE_DE_PAGINA.some((re) => re.test(t));
 }
+
+/**
+ * Tras «Zona de la verdad», el último conjuro del capítulo, el texto sigue con el capítulo
+ * «Trampas»: sin esta cota su cuerpo arrastraba ~2500 caracteres ajenos (C4). Es una cabecera
+ * medida en el texto, y `cortarSrdEs` falla si no la encuentra después del último conjuro —
+ * un texto distinto al medido no se corta a ciegas.
+ */
+const CABECERA_TRAS_LOS_CONJUROS = "Trampas";
 
 /**
  * Busca las cuatro etiquetas EN ORDEN dentro de una ventana de líneas, sea cual sea cuántas
@@ -68,7 +89,7 @@ function leerCuatroCampos(lineas, desde, ventana = 25) {
 }
 
 /**
- * `cortarSrdEs(txt)` — pura. Devuelve `{ conjuros, tablasDeClase, listasPorClase }`.
+ * `cortarSrdEs(txt)` — pura. Devuelve `{ conjuros, listasPorClase }`.
  * `conjuros` es un `Map<nombreEs, bloque>` con `{ nameEs, level, school, ritual, camposCrudos,
  * textoEs, higherLevelsEs }` — la traducción de `camposCrudos` (tiempo/alcance/componentes/
  * duración en prosa) a la forma estructurada es trabajo de `salida.mjs`, no de este módulo.
@@ -109,19 +130,32 @@ export function cortarSrdEs(txt) {
 
   for (let c = 0; c < cabeceras.length; c++) {
     const actual = cabeceras[c];
-    const finCuerpo = c + 1 < cabeceras.length ? cabeceras[c + 1].indice - 1 : lineas.length;
+    let finCuerpo;
+    if (c + 1 < cabeceras.length) {
+      finCuerpo = cabeceras[c + 1].indice - 1;
+    } else {
+      finCuerpo = lineas.findIndex(
+        (l, i) => i > actual.indice && l.trim() === CABECERA_TRAS_LOS_CONJUROS,
+      );
+      if (finCuerpo < 0 && cabeceras.length > 1) {
+        throw new Error(
+          `cortarSrdEs: no se encontró la cabecera «${CABECERA_TRAS_LOS_CONJUROS}» tras el último conjuro («${actual.nombre}»): el texto no es el medido y su cuerpo no se puede acotar.`,
+        );
+      }
+      if (finCuerpo < 0) finCuerpo = lineas.length;
+    }
     const cuerpoLineas = lineas.slice(actual.cuerpoDesde, finCuerpo);
 
     const indiceNiveles = cuerpoLineas.findIndex((l) => RE_A_NIVELES_SUPERIORES.test(l.trim()));
     let textoEs;
     let higherLevelsEs;
     if (indiceNiveles >= 0) {
-      textoEs = limpiarProsaEs(cuerpoLineas.slice(0, indiceNiveles).join("\n").trim());
+      textoEs = limpiarProsaEs(unirParrafos(cuerpoLineas.slice(0, indiceNiveles)));
       higherLevelsEs = limpiarProsaEs(
-        cuerpoLineas.slice(indiceNiveles).join(" ").replace(RE_A_NIVELES_SUPERIORES, "").trim(),
+        unirParrafos(cuerpoLineas.slice(indiceNiveles)).replace(RE_A_NIVELES_SUPERIORES, ""),
       );
     } else {
-      textoEs = limpiarProsaEs(cuerpoLineas.join("\n").trim());
+      textoEs = limpiarProsaEs(unirParrafos(cuerpoLineas));
     }
 
     conjuros.set(actual.nombre, {
@@ -137,9 +171,39 @@ export function cortarSrdEs(txt) {
 
   return {
     conjuros,
-    tablasDeClase: leerTablasDeClase(lineas),
     listasPorClase: leerListasPorClase(lineas),
   };
+}
+
+/**
+ * Une las líneas del PDF en párrafos (ola de arreglos, menor 1). El texto extraído parte cada
+ * párrafo en líneas de ~50 caracteres y marca el principio de un párrafo nuevo con un ESPACIO
+ * inicial (la sangría del PDF: « Una criatura afectada es consciente…»). Aquí una línea con
+ * sangría abre párrafo y las demás se pegan a la anterior con un espacio — salvo que la anterior
+ * termine en guion, que se pegan sin espacio conservando el guion: el texto extraído no
+ * distingue un guion de partición («permanen-temente») de uno real («amarillo-verdosa»), y
+ * quitarlo a ciegas rompería el segundo.
+ */
+function unirParrafos(lineasCrudas) {
+  const parrafos = [];
+  let actual = "";
+  for (const cruda of lineasCrudas) {
+    const t = cruda.trim();
+    if (!t) continue;
+    const abreParrafo = /^\s/.test(cruda) && actual !== "";
+    if (abreParrafo) {
+      parrafos.push(actual);
+      actual = t;
+    } else if (actual === "") {
+      actual = t;
+    } else if (actual.endsWith("-")) {
+      actual += t;
+    } else {
+      actual += " " + t;
+    }
+  }
+  if (actual) parrafos.push(actual);
+  return parrafos.join("\n\n");
 }
 
 /**
@@ -152,7 +216,11 @@ export function cortarSrdEs(txt) {
  */
 export function limpiarProsaEs(texto) {
   if (!texto) return texto;
-  return texto.replace(/[ \t]{2,}/g, " ").trim();
+  return texto
+    .replace(RE_PIE_DE_PAGINA_EN_LINEA, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ \n/g, "\n")
+    .trim();
 }
 
 // -------------------------------------------------------------------------------------------
@@ -461,62 +529,9 @@ export function textoDeRasgoDeRaza(cortes, raceKey, nombreEs) {
   return undefined;
 }
 
-/**
- * Lee una tabla «El <clase> / Nivel / Bon. por competencia / Rasgos» a `[{ nivel, rasgos }]`.
- * El texto extraído la imprime como una secuencia plana de celdas, **una por línea** (nivel,
- * bonificador, rasgos — tripletas), y cuando la tabla cruza una página repite la fila de
- * cabecera («Nivel», «Bon. por competencia», «Rasgos»), que se descarta como marca de salto de
- * página en vez de leerse como una fila de datos nueva (T0, sección c).
- */
-function leerTablasDeClase(lineas) {
-  const tablas = new Map();
-  const RE_TITULO = /^El\s+(\S+)$/;
-  const RE_NIVEL = /^(\d{1,2})$/;
-
-  for (let i = 0; i < lineas.length; i++) {
-    const titulo = lineas[i].trim().match(RE_TITULO);
-    if (!titulo) continue;
-    let j = i + 1;
-    while (j < lineas.length && lineas[j].trim() === "") j++;
-    if (lineas[j]?.trim() !== "Nivel") continue;
-
-    const filas = [];
-    let k = j;
-    let vacias = 0;
-    while (k < lineas.length && filas.length < 20 && vacias < 3) {
-      const linea = lineas[k].trim();
-      if (linea === "Nivel" || linea === "Bon. por competencia" || linea === "Rasgos") {
-        k++;
-        continue; // repetición de cabecera tras un salto de página: se descarta
-      }
-      if (linea === "") {
-        vacias++;
-        k++;
-        continue;
-      }
-      const nivelMatch = linea.match(RE_NIVEL);
-      if (!nivelMatch) {
-        if (filas.length > 0) break; // ya no estamos dentro de la tabla
-        k++;
-        continue;
-      }
-      const bono = lineas[k + 1]?.trim() ?? "";
-      const rasgosLinea = lineas[k + 2]?.trim() ?? "";
-      if (!/^\+?\d+$/.test(bono) || !rasgosLinea) break;
-      filas.push({
-        nivel: Number.parseInt(nivelMatch[1], 10),
-        rasgos: rasgosLinea
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      });
-      k += 3;
-      vacias = 0;
-    }
-    if (filas.length > 0) tablas.set(titulo[1].toLowerCase(), filas);
-  }
-  return tablas;
-}
+// `leerTablasDeClase` (la tabla «El <clase> / Nivel / Rasgos») se borró en la ola de arreglos
+// (I12): nadie la consumía — los nombres de las aptitudes salen de la tabla a mano de
+// `emparejamientos.json`, verificada contra el SRD, no de la posición en la tabla de la clase.
 
 /**
  * Lee «Conjuros de <clase>» (por nivel) a `{ clase, porNivel: Map<nivel, nombre[]> }`. La

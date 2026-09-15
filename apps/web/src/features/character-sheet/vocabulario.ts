@@ -536,6 +536,7 @@ const ETIQUETAS_FIJAS: Record<string, string> = {
   "attack.spell": "Bono de ataque de conjuro (valor ya derivado)",
   "nivelDeClase.fighter": "Nivel de guerrero",
   "nivelDeClase.monk": "Nivel de monje",
+  "nivelDeClase.sorcerer": "Nivel de hechicero",
   "speed.base": "Velocidad base",
   "speed.condition.zero": "Una condición deja la velocidad en 0",
   "speed.condition.half": "Una condición reduce la velocidad a la mitad",

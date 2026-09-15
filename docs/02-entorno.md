@@ -229,8 +229,9 @@ de siempre — `DATABASE_URL`, `PORT` y `AUTH_RATE_LIMIT` los sigue fijando
 `apps/api/src/rules/catalog/generado/*.json` (conjuros, aptitudes de clase/subclase, rasgos de
 raza, tablas de escala) los produce `scripts/convertir-catalogo.mjs` cruzando **dos fuentes
 externas**, ninguna de las dos en este repositorio ni en el volumen de Docker — ver
-[NOTICE.md](../NOTICE.md) para su licencia y `.superpowers/sdd/2026-09-14-3a1-el-libro-entra/constraints.md`
-para el porqué de cada regla:
+[NOTICE.md](../NOTICE.md) para su licencia y [decisiones.md](./decisiones.md) (sección
+«Ejecución de 3A.1», D-CF-92 a D-CF-115) para el porqué de cada regla — el `constraints.md` de la
+tanda vive en `.superpowers/`, que está en `.gitignore` y no viaja con el clon:
 
 - **El sistema `dnd5e` de Foundry** (MIT), solo como estructura de datos y **su código nunca se
   ejecuta**: clona <https://github.com/foundryvtt/dnd5e> (o descarga su fuente) y apunta

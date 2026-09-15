@@ -43,7 +43,7 @@ function cargarSpells(): SrdSpell[] {
 /** Los 319 conjuros del SRD 5.1 convertidos, validados una vez al cargar el módulo. */
 export const SRD_SPELLS: readonly SrdSpell[] = cargarSpells();
 
-/** El mismo catálogo, indexado por `key` (el identificador de Foundry, p. ej. `"fireball"`). */
+/** El mismo catálogo, indexado por `key` (el nombre inglés de 2014 en minúsculas con guiones, p. ej. `"fireball"`). */
 export const SRD_SPELL_POR_KEY: ReadonlyMap<string, SrdSpell> = new Map(
   SRD_SPELLS.map((s) => [s.key, s]),
 );
@@ -141,7 +141,9 @@ function compararUsos(
  * intacto y solo se COMPARAN sus `usos` contra los del generado (`compararUsos`, arriba) — nunca
  * se sustituye. Si no tenía uno y la primera actividad generada entra en A, se construye un
  * `ItemGrant` nuevo (`id`/`labelKey` derivados de `clase`+`key`, `actividad` la primera de A,
- * `usos` los del generado si los trae).
+ * `usos` los del generado si los trae) — **solo si cada recurso que consume lo siembra un rasgo
+ * de la misma clase, y una sola vez por aptitud de Foundry** (ola de arreglos, C3: ver
+ * `proveedoresDe` y `CONCESIONES_SIN_RECURSO`).
  *
  * **Sin generado (identificador sin match, ver `emparejamientos.json`, `clavesDeAptitud`):** la
  * aptitud nunca se deja sin texto — el mínimo es su propio nombre, ya verificado en `classes.ts`
@@ -161,40 +163,45 @@ function claveSinSufijoDeTramo(key: string): string {
 }
 
 /**
- * Los pocos identificadores de `classes.ts` que NO coinciden con `system.identifier` de Foundry
- * y que TAMPOCO son el patrón de sufijo de arriba (E-3A1-2, «donde no coincidan, añadir el par a
- * `emparejamientos.json`» — clave `"clavesDeAptitud"`). Copia deliberada, pequeña y estable: el
- * conversor (`scripts/convertir-catalogo/`) no se puede importar desde `apps/api` (es CommonJS
- * suelto, no un paquete), así que este puñado se mantiene a mano aquí, igual que
- * `emparejamientos.json` lo mantiene a mano del lado del conversor — los dos se leen juntos si
- * algún día uno cambia sin el otro.
+ * Los pocos identificadores de `classes.ts` que NO coinciden con la `key` del catálogo generado
+ * y que TAMPOCO son el patrón de sufijo de arriba. Desde la ola de arreglos (I13) la `key` del
+ * generado es el nombre inglés de 2014 en minúsculas con guiones (`ki`, `deflect-missiles`,
+ * `natural-explorer`…) y no el `system.identifier` de Foundry, que era el de la edición 2024
+ * (`monks-focus`, `deflect-attacks`, `deft-explorer`): las 24 entradas se quedaron en 13, todas
+ * estructurales (varias `ClassFeature` sintéticas para un solo fichero, o un nombre de fichero
+ * con sufijo de clase). Se mantiene a mano aquí porque el conversor no se puede importar desde
+ * `apps/api`.
  */
 const ALIAS_DE_CLAVE_A_IDENTIFICADOR: Readonly<Record<string, string>> = {
   "barbarian:unarmored-defense": "unarmored-defense-barbarian",
   "cleric/life-domain:preserve-life": "channel-divinity-preserve-life",
-  "cleric:destroy-undead-cr-1": "sear-undead",
-  "cleric:destroy-undead-cr-2": "sear-undead",
-  "cleric:destroy-undead-cr-3": "sear-undead",
-  "cleric:destroy-undead-cr-4": "sear-undead",
-  "cleric:destroy-undead-cr-half": "sear-undead",
+  "cleric:destroy-undead-cr-1": "destroy-undead",
+  "cleric:destroy-undead-cr-2": "destroy-undead",
+  "cleric:destroy-undead-cr-3": "destroy-undead",
+  "cleric:destroy-undead-cr-4": "destroy-undead",
+  "cleric:destroy-undead-cr-half": "destroy-undead",
   "cleric:divine-intervention-improvement": "divine-intervention",
   "druid:wild-shape-improvement-1": "wild-shape",
   "druid:wild-shape-improvement-2": "wild-shape",
-  "monk:deflect-missiles": "deflect-attacks",
-  "monk:diamond-soul": "disciplined-survivor",
-  "monk:empty-body": "superior-defense",
-  "monk:ki": "monks-focus",
-  "monk:ki-empowered-strikes": "empowered-strikes",
-  "monk:perfect-self": "perfect-focus",
-  "monk:stillness-of-mind": "self-restoration",
   "monk:unarmored-movement-improvement": "unarmored-movement",
   "paladin/oath-of-devotion:channel-divinity": "channel-divinity-sacred-weapon",
-  "paladin:cleansing-touch": "restoring-touch",
-  "paladin:improved-divine-smite": "radiant-strikes",
-  "ranger:natural-explorer": "deft-explorer",
-  "ranger:vanish": "natures-veil",
   "sorcerer:sorcerous-origin": "sorcerous-origins",
 };
+
+/**
+ * Una concesión que `enriquecerClases` NO construyó porque la actividad consume un recurso que
+ * ningún rasgo de esa clase siembra (ola de arreglos, C3). Se exporta para que la prueba del
+ * catálogo lo cuente y lo lea una persona — nunca se construye un `grant` que en la mesa daría
+ * «Sin usos de X» (409) o se sembraría con 0.
+ */
+export interface ConcesionSinRecurso {
+  owner: string;
+  key: string;
+  recursos: string[];
+}
+
+/** Las concesiones que la última llamada a `enriquecerClases` dejó sin `grant` por falta de recurso (C3). */
+export const CONCESIONES_SIN_RECURSO: ConcesionSinRecurso[] = [];
 
 export function enriquecerClases(
   clases: readonly SrdClass[],
@@ -202,18 +209,65 @@ export function enriquecerClases(
 ): SrdClass[] {
   const indice = indiceDeFeatures(features);
   const indiceGlobal = indiceGlobalPorClave(features);
+  CONCESIONES_SIN_RECURSO.length = 0;
 
-  function enriquecerFeature(feature: ClassFeature, owner: string): ClassFeature {
+  function generadoDe(feature: ClassFeature, owner: string): SrdFeature | undefined {
     const clase = owner.split("/")[0];
     const subclase = owner.split("/")[1];
     const alias = ALIAS_DE_CLAVE_A_IDENTIFICADOR[`${owner}:${feature.key}`];
-    const generado =
+    return (
       indice.get(claveDeAptitud(clase, subclase, feature.key)) ??
-      (alias && indice.get(claveDeAptitud(clase, subclase, alias))) ??
-      (alias && indiceGlobal.get(alias)) ??
+      (alias ? indice.get(claveDeAptitud(clase, subclase, alias)) : undefined) ??
+      (alias ? indiceGlobal.get(alias) : undefined) ??
       indice.get(claveDeAptitud(clase, subclase, claveSinSufijoDeTramo(feature.key))) ??
       indiceGlobal.get(feature.key) ??
-      indiceGlobal.get(claveSinSufijoDeTramo(feature.key));
+      indiceGlobal.get(claveSinSufijoDeTramo(feature.key))
+    );
+  }
+
+  /**
+   * **Primera pasada (C3): quién PROVEE cada recurso dentro de una clase.** El recurso que una
+   * actividad consume (`consumption.recurso`, la `key` del generado: `channel-divinity`, `ki`)
+   * solo existe en la mesa si un rasgo de la clase lo SIEMBRA — y `resources.service.ts` siembra
+   * una fila por cada `sheet.activities[].usos`, con `key` = la `ClassFeature.key` de
+   * `classes.ts`. Así que un recurso lo provee la PRIMERA `ClassFeature` (la de menor nivel:
+   * `channel-divinity-1`, no `-2` ni `-3`) cuyo generado trae `usos` y consume sus propios usos
+   * (o nada). El mapa devuelve, por clave del generado, la `ClassFeature.key` que siembra la fila
+   * — que es a lo que hay que renombrar el `recurso` de quien lo consume.
+   */
+  function proveedoresDe(clase: SrdClass): Map<string, string> {
+    const proveedores = new Map<string, string>();
+    const candidatos: { feature: ClassFeature; owner: string }[] = [
+      ...clase.features.map((feature) => ({ feature, owner: clase.key })),
+      ...clase.subclasses.flatMap((sub) =>
+        sub.features.map((feature) => ({ feature, owner: `${clase.key}/${sub.key}` })),
+      ),
+    ].sort((a, b) => a.feature.level - b.feature.level);
+    for (const { feature, owner } of candidatos) {
+      if (feature.grant?.usos) {
+        // El grant a mano (la Furia): su recurso es su propia clave, como siembra A11.
+        if (!proveedores.has(feature.key)) proveedores.set(feature.key, feature.key);
+        continue;
+      }
+      const generado = generadoDe(feature, owner);
+      if (!generado?.usos || proveedores.has(generado.key)) continue;
+      const primera = generado.actividades[0];
+      if (!primera) continue;
+      const consumeSoloLoSuyo = (primera.consumption ?? []).every(
+        (c) => c.recurso === generado.key,
+      );
+      if (consumeSoloLoSuyo) proveedores.set(generado.key, feature.key);
+    }
+    return proveedores;
+  }
+
+  function enriquecerFeature(
+    feature: ClassFeature,
+    owner: string,
+    proveedores: Map<string, string>,
+    concedidas: Set<string>,
+  ): ClassFeature {
+    const generado = generadoDe(feature, owner);
     if (!generado) {
       return {
         ...feature,
@@ -244,11 +298,33 @@ export function enriquecerClases(
     const primeraEnA = generado.actividades[0];
     if (!primeraEnA) return base;
 
+    // **Un solo `grant` por aptitud de Foundry (C3).** `channel-divinity-1/2/3` son tres
+    // `ClassFeature` sintéticas para un fichero: la primera (menor nivel) gana el `grant` y
+    // siembra el recurso; las demás solo reaparecen en la hoja con su texto.
+    const claveDeConcesion = `${owner.split("/")[0]}:${generado.key}`;
+    if (concedidas.has(claveDeConcesion)) return base;
+
+    // **Cada recurso consumido tiene que existir en la mesa (C3).** Se renombra a la
+    // `ClassFeature.key` que lo siembra (`channel-divinity` → `channel-divinity-1`); si ningún
+    // rasgo de la clase lo provee, no hay `grant` y se cuenta — nunca un botón que dé 409.
+    const consumption = (primeraEnA.consumption ?? []).map((c) => ({
+      ...c,
+      recurso: proveedores.get(c.recurso) ?? c.recurso,
+    }));
+    const sinProveedor = (primeraEnA.consumption ?? [])
+      .map((c) => c.recurso)
+      .filter((recurso) => !proveedores.has(recurso));
+    if (sinProveedor.length > 0) {
+      CONCESIONES_SIN_RECURSO.push({ owner, key: feature.key, recursos: sinProveedor });
+      return base;
+    }
+    concedidas.add(claveDeConcesion);
+
     const grant: ItemGrant = {
       kind: "grant",
       id: `${owner.replace("/", "-")}-${feature.key}`,
       labelKey: `class.${owner.replace("/", ".")}.${feature.key}`,
-      actividad: primeraEnA,
+      actividad: { ...primeraEnA, consumption },
       ...(generado.usos && { usos: generado.usos }),
     };
     return { ...base, grant };
@@ -256,12 +332,16 @@ export function enriquecerClases(
 
   return clases.map((clase) => {
     const scalesGeneradas = SRD_CLASS_SCALES_GENERADAS[clase.key];
+    const proveedores = proveedoresDe(clase);
+    const concedidas = new Set<string>();
     return {
       ...clase,
-      features: clase.features.map((f) => enriquecerFeature(f, clase.key)),
+      features: clase.features.map((f) => enriquecerFeature(f, clase.key, proveedores, concedidas)),
       subclasses: clase.subclasses.map((sub) => ({
         ...sub,
-        features: sub.features.map((f) => enriquecerFeature(f, `${clase.key}/${sub.key}`)),
+        features: sub.features.map((f) =>
+          enriquecerFeature(f, `${clase.key}/${sub.key}`, proveedores, concedidas),
+        ),
       })),
       scales: mezclarScales(clase.key, clase.scales, scalesGeneradas),
     };

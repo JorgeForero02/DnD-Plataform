@@ -11,6 +11,7 @@ import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SRD_CLASSES } from "../../rules/catalog/classes";
+import type { SrdClass } from "../../rules/catalog/types";
 import type { CharacterSheet } from "../../rules/catalog";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../../common/character-viewer";
 
@@ -458,7 +459,7 @@ export class ResourcesService {
         create: {
           characterId,
           key: actividad.key,
-          label: ETIQUETA_DE_ACTIVIDAD[actividad.key] ?? actividad.key,
+          label: etiquetaDeActividad(clase, actividad.key),
           current,
           max: actividad.usos.max,
           resetOn: actividad.usos.resetOn,
@@ -504,12 +505,15 @@ export class ResourcesService {
 export const MARCADOR_DE_USOS_SIN_TOPE = 1_000_000;
 
 /**
- * El texto que ve el jugador, por la clave estable de la actividad (`ClassFeature.key`). Hoy solo
- * hay una entrada porque solo hay una actividad completa en el catálogo (`RASGO_FURIA`, tarea
- * A11); una clave sin entrada aquí no revienta — enseña su propia clave, que es peor que una
- * traducción y mejor que una excepción, y una prueba puede barrer esta tabla contra las claves
- * reales del catálogo el día que haya una segunda.
+ * El texto que ve el jugador para un recurso concedido por un rasgo: **el nombre del rasgo en
+ * `classes.ts`** (ola de arreglos de 3A.1, I11). Hasta esta ola era una tabla con una sola
+ * entrada (`rage: "Furia"`) y el catálogo generado ya concedía una docena de rasgos más — los
+ * recursos nuevos se etiquetaban con su clave («second-wind», «ki»), que es exactamente «un
+ * valor de enumeración llegando a la pantalla». El nombre se busca en la clase y en sus
+ * subclases; una clave sin rasgo (dato caduco) enseña su clave, como antes, sin reventar.
  */
-const ETIQUETA_DE_ACTIVIDAD: Record<string, string> = {
-  rage: "Furia",
-};
+function etiquetaDeActividad(clase: SrdClass | undefined, key: string): string {
+  if (!clase) return key;
+  const rasgos = [...clase.features, ...clase.subclasses.flatMap((s) => s.features)];
+  return rasgos.find((f) => f.key === key)?.name ?? key;
+}

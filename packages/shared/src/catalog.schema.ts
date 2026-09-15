@@ -20,6 +20,40 @@ import { resourceResetSchema } from "./character-state.schema";
 // Foundry ya se tradujo a una forma cerrada de `Origen` antes de escribir el JSON — ver el
 // `refine` al final de este fichero, que comprueba que ningún `@` sobrevivió dentro de
 // `actividades`.
+//
+// **Topes de prosa (ola de arreglos, I9).** `textEn`/`textEs` a 8000 y `higherLevels*` a 3000:
+// hasta esta ola el conversor recortaba a 4000/2000 en silencio (Muro prismático perdía sus tres
+// últimas líneas). Ahora el conversor no corta nada — si un texto no cabe, el esquema lo rechaza
+// al escribir y el CLI falla en voz alta. El tope sigue existiendo porque es prosa acotada del
+// SRD (el conjuro más largo ronda los 5000 caracteres), no un campo libre.
+
+const PROSA_MAX = 8000;
+const NIVELES_SUPERIORES_MAX = 3000;
+
+/**
+ * `traduccionPropia` y `sinTraduccion` nunca a la vez (05-datos lo promete; el `refine` lo exige
+ * desde la ola de arreglos, m7): una traducción propia ES un nombre, así que no está «sin
+ * traducción».
+ */
+function nuncaPropiaYSinTraduccion(
+  item: { traduccionPropia: boolean; sinTraduccion: boolean; nameEs: string | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (item.traduccionPropia && item.sinTraduccion) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "traduccionPropia y sinTraduccion no pueden ser true a la vez.",
+      path: ["traduccionPropia"],
+    });
+  }
+  if (item.traduccionPropia && item.nameEs === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "traduccionPropia exige un nameEs.",
+      path: ["nameEs"],
+    });
+  }
+}
 
 /** Las ocho escuelas de magia del SRD 5.1, con la clave que ya usa Foundry. */
 export const spellSchoolSchema = z.enum(["abj", "con", "div", "enc", "evo", "ill", "nec", "trs"]);
@@ -46,7 +80,12 @@ export type SpellComponents = z.infer<typeof spellComponentsSchema>;
  */
 export const srdSpellSchema = z
   .object({
+    /** Clave estable: el nombre inglés de 2014 en minúsculas con guiones (`"fireball"`). */
     key: z.string().min(1).max(120),
+    /** `system.identifier` de Foundry, SOLO cuando difiere de `key` (ola de arreglos, I13:
+     * Foundry pone identificadores de la edición 2024 a ítems de 2014 — `befuddlement` para
+     * Feeblemind). Trazabilidad hacia el YAML de origen, nada más. */
+    foundryIdentifier: z.string().min(1).max(120).optional(),
     nameEn: z.string().min(1).max(200),
     nameEs: z.string().min(1).max(200).nullable(),
     sinTraduccion: z.boolean(),
@@ -61,10 +100,10 @@ export const srdSpellSchema = z
     duration: duracionSchema,
     ritual: z.boolean(),
     concentration: z.boolean(),
-    textEn: z.string().min(1).max(4000),
-    textEs: z.string().min(1).max(4000).nullable(),
-    higherLevelsEn: z.string().min(1).max(2000).optional(),
-    higherLevelsEs: z.string().min(1).max(2000).optional(),
+    textEn: z.string().min(1).max(PROSA_MAX),
+    textEs: z.string().min(1).max(PROSA_MAX).nullable(),
+    higherLevelsEn: z.string().min(1).max(NIVELES_SUPERIORES_MAX).optional(),
+    higherLevelsEs: z.string().min(1).max(NIVELES_SUPERIORES_MAX).optional(),
     /** Claves de clase de nuestro catálogo (`wizard`, `cleric`…) — E-3A1-3, viene del SRD español. */
     classes: z.array(z.string().min(1).max(60)),
     actividades: z.array(actividadSchema),
@@ -73,7 +112,8 @@ export const srdSpellSchema = z
     /** Cuántos `ActiveEffects` de Foundry traía el ítem, sin convertir (E-3A1-12). */
     efectosPasivos: z.number().int().min(0),
   })
-  .strict();
+  .strict()
+  .superRefine(nuncaPropiaYSinTraduccion);
 export type SrdSpell = z.infer<typeof srdSpellSchema>;
 
 const usosDeAptitudSchema = z
@@ -83,26 +123,55 @@ const usosDeAptitudSchema = z
   })
   .strict();
 
+/**
+ * Una clase que concede una aptitud de `classfeatures/shared-features/` y a qué nivel (ola de
+ * arreglos, I10): Ataque Adicional lo conceden bárbaro, monje, paladín y explorador al 5; la
+ * Mejora de Característica, las doce clases al 4.
+ */
+const concesionDeClaseSchema = z
+  .object({ class: z.string().min(1).max(60), level: z.number().int().min(1).max(20) })
+  .strict();
+
 /** Un rasgo de clase (o subclase) del SRD 5.1, convertido. */
 export const srdFeatureSchema = z
   .object({
+    /** Clave estable: el nombre inglés de 2014 en minúsculas con guiones (`"ki"`, no `monks-focus`). */
     key: z.string().min(1).max(120),
+    /** Ver `srdSpellSchema.foundryIdentifier`. */
+    foundryIdentifier: z.string().min(1).max(120).optional(),
+    /**
+     * La clase dueña, o `"shared"` para un fichero de `shared-features/` sin `requirements` —
+     * entonces `compartidaPor` dice qué clases lo conceden de verdad (I10: antes entraba como
+     * «fighter, nivel 1», un dato inventado).
+     */
     class: z.string().min(1).max(60),
     subclass: z.string().min(1).max(60).optional(),
+    /** Nivel al que la clase dueña lo concede; para `"shared"`, el mínimo de `compartidaPor`. */
     level: z.number().int().min(1).max(20),
+    compartidaPor: z.array(concesionDeClaseSchema).min(1).optional(),
     nameEn: z.string().min(1).max(200),
     nameEs: z.string().min(1).max(200).nullable(),
     sinTraduccion: z.boolean(),
     /** T3b: ver `srdSpellSchema.traduccionPropia`. */
     traduccionPropia: z.boolean().default(false),
-    textEn: z.string().min(1).max(4000),
-    textEs: z.string().min(1).max(4000).nullable(),
+    textEn: z.string().min(1).max(PROSA_MAX),
+    textEs: z.string().min(1).max(PROSA_MAX).nullable(),
     usos: usosDeAptitudSchema.optional(),
     actividades: z.array(actividadSchema),
     fueraDeA: z.array(z.string().min(1).max(40)),
     efectosPasivos: z.number().int().min(0),
   })
-  .strict();
+  .strict()
+  .superRefine((f, ctx) => {
+    nuncaPropiaYSinTraduccion(f, ctx);
+    if ((f.class === "shared") !== (f.compartidaPor !== undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "class 'shared' y compartidaPor van siempre juntos, nunca uno sin el otro.",
+        path: ["compartidaPor"],
+      });
+    }
+  });
 export type SrdFeature = z.infer<typeof srdFeatureSchema>;
 
 /**
@@ -120,13 +189,14 @@ export const raceFeatureSchema = z
     sinTraduccion: z.boolean(),
     /** T3b: ver `srdSpellSchema.traduccionPropia`. */
     traduccionPropia: z.boolean().default(false),
-    textEn: z.string().min(1).max(4000),
-    textEs: z.string().min(1).max(4000).nullable(),
+    textEn: z.string().min(1).max(PROSA_MAX),
+    textEs: z.string().min(1).max(PROSA_MAX).nullable(),
     actividades: z.array(actividadSchema),
     fueraDeA: z.array(z.string().min(1).max(40)),
     efectosPasivos: z.number().int().min(0),
   })
-  .strict();
+  .strict()
+  .superRefine(nuncaPropiaYSinTraduccion);
 export type RaceFeature = z.infer<typeof raceFeatureSchema>;
 
 /**

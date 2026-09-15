@@ -120,7 +120,7 @@ test("paladin:lay-on-hands — consumo variable = efecto: hueco C, se queda en t
   assert.equal(caso.esperado.texto, true);
 });
 
-test("cleric:channel-divinity-turn-undead — save.dc.calculation 'wis' -> cdDeConjuro", () => {
+test("cleric:channel-divinity-turn-undead — save.dc.calculation 'wis' -> cdDeConjuro (la de lanzamiento del clérigo es wis)", () => {
   const caso = casoPorId("cleric:channel-divinity-turn-undead");
   const activity = {
     type: "save",
@@ -135,8 +135,29 @@ test("cleric:channel-divinity-turn-undead — save.dc.calculation 'wis' -> cdDeC
     damage: { onSave: "half", parts: [] },
     save: { ability: "wis", dc: { calculation: "wis" } },
   };
-  const ctx = ctxDesdeEsperado(caso.esperado);
+  const ctx = ctxDesdeEsperado(caso.esperado, { spellcastingAbility: "wis" });
   assert.deepEqual(actividadDe(activity, ctx), caso.esperado);
+});
+
+test("I6 — save.dc.calculation 'wis' en una clase que no lanza (monk:stunning-strike) se rechaza con motivo", () => {
+  const activity = {
+    type: "save",
+    activation: { type: "special", override: false },
+    consumption: { targets: [] },
+    duration: { units: "inst", concentration: false },
+    damage: { onSave: "none", parts: [] },
+    save: { ability: "con", dc: { calculation: "wis" } },
+  };
+  const resultado = actividadDe(activity, { spellcastingAbility: undefined });
+  assert.equal(resultado.texto, true);
+  assert.match(resultado.motivo, /dc\.calculation = 'wis'/);
+  // En una clase cuya característica de lanzamiento coincide (paladín, cha) sí es cdDeConjuro.
+  const enPaladin = actividadDe(
+    { ...activity, save: { ability: "wis", dc: { calculation: "cha" } } },
+    { spellcastingAbility: "cha" },
+  );
+  assert.equal(enPaladin.tipo, "salvacion");
+  assert.deepEqual(enPaladin.salvacion.cd, { tipo: "cdDeConjuro" });
 });
 
 test("monk:ki — activation 'special' sin condición -> FREE; nivelDeClase('monk') es el tope", () => {
@@ -387,4 +408,157 @@ test("save.dc.calculation vacío con dc.formula entera -> cd fijo (contact-other
   const resultado = actividadDe(activity, {});
   assert.equal(resultado.tipo, "salvacion");
   assert.deepEqual(resultado.salvacion.cd, { tipo: "fijo", valor: 15 });
+});
+
+// -------------------------------------------------------------------------------------------
+// Ola de arreglos (2026-09-14) — fixtures reconstruidas de los YAML reales que la revisión final
+// señaló, una por hallazgo.
+
+test("C1 — override:false hereda del ítem: Escudo es REACCIÓN y dura 1 asalto, no ACTION/instantánea", () => {
+  // spells/1st-level/shield.yml: la actividad trae `activation.type: action` y `duration.units:
+  // inst` como placeholders con `override: false`; el ítem dice reaction + 1 round.
+  const activity = {
+    type: "utility",
+    activation: { type: "action", value: null, override: false },
+    consumption: { targets: [] },
+    duration: { units: "inst", concentration: false, override: false },
+    range: { override: false },
+  };
+  const ctx = {
+    itemActivation: {
+      type: "reaction",
+      condition: "Which you take when you are hit by an attack",
+    },
+    condicionEs: "que llevas a cabo cuando te impacta un ataque",
+    itemDuration: { value: "1", units: "round" },
+    itemRange: { units: "self" },
+    itemConcentration: false,
+    descripcionEs: "Aparece una barrera invisible.",
+  };
+  assert.deepEqual(actividadDe(activity, ctx), {
+    tipo: "utilidad",
+    activation: { coste: "REACTION", condicion: "que llevas a cabo cuando te impacta un ataque" },
+    duration: { unidad: "asalto", concentracion: false, valor: 1 },
+    description: "Aparece una barrera invisible.",
+  });
+});
+
+test("C1 — override:true manda: una actividad secundaria con duración propia no hereda la concentración del ítem", () => {
+  // spells/4th-level/black-tentacles.yml, «Restraining Tentacles»: el ítem es 1 minuto con
+  // concentración; la actividad es instantánea con override:true y concentration:false.
+  const activity = {
+    type: "save",
+    activation: { type: "special", override: true },
+    consumption: { targets: [] },
+    duration: { units: "inst", concentration: false, override: true },
+    range: { override: true, units: "spec" },
+    damage: { onSave: "none", parts: [] },
+    save: { ability: "dex", dc: { calculation: "spellcasting" } },
+  };
+  const r = actividadDe(activity, {
+    itemActivation: { type: "action" },
+    itemDuration: { value: "1", units: "minute" },
+    itemRange: { units: "ft", value: "90" },
+    itemConcentration: true,
+  });
+  assert.deepEqual(r.activation, { coste: "FREE" });
+  assert.deepEqual(r.duration, { unidad: "instantanea", concentracion: false });
+  assert.deepEqual(r.range, { unidad: "especial" });
+});
+
+test("C1 — una unidad de duración sin equivalente (turn) se rechaza con motivo, no cae en instantánea", () => {
+  const activity = {
+    type: "utility",
+    activation: { type: "action", override: true },
+    consumption: { targets: [] },
+    duration: { units: "turn", value: "1", override: true },
+  };
+  const r = actividadDe(activity, { descripcionEs: "x" });
+  assert.equal(r.texto, true);
+  assert.match(r.motivo, /duration\.units = 'turn'/);
+});
+
+test("C3 — un consumo cuyo target es un UUID de compendio se rechaza con motivo (flurry-of-blows)", () => {
+  const activity = {
+    type: "utility",
+    activation: { type: "bonus", override: false },
+    consumption: {
+      targets: [
+        {
+          type: "itemUses",
+          target: "Compendium.dnd5e.classfeatures.Item.10b6z2W1txNkrGP7",
+          value: "1",
+        },
+      ],
+    },
+    duration: { units: "", value: "" },
+  };
+  const r = actividadDe(activity, { recurso: "flurry-of-blows", descripcionEs: "x" });
+  assert.equal(r.texto, true);
+  assert.match(r.motivo, /sin recurso resoluble/);
+});
+
+test("C3/I13 — 'feat:<identifier>' se traduce a la clave del catálogo por claveDeIdentificador", () => {
+  const activity = {
+    type: "utility",
+    activation: { type: "action", override: false },
+    consumption: { targets: [{ type: "itemUses", target: "feat:monks-focus", value: "1" }] },
+    duration: { units: "", value: "" },
+  };
+  const r = actividadDe(activity, {
+    recurso: "x",
+    descripcionEs: "x",
+    claveDeIdentificador: new Map([["monks-focus", "ki"]]),
+  });
+  assert.deepEqual(r.consumption, [{ recurso: "ki", cantidad: 1 }]);
+});
+
+test("I1 — damage.parts con más de una parte se rechaza entero (ice-storm), nunca la primera parte sola", () => {
+  const activity = {
+    type: "save",
+    activation: { type: "action", override: false },
+    consumption: { targets: [] },
+    duration: { units: "inst", override: false },
+    damage: {
+      onSave: "half",
+      parts: [
+        { number: 2, denomination: 8, types: ["bludgeoning"], custom: { enabled: false } },
+        { number: 4, denomination: 6, types: ["cold"], custom: { enabled: false } },
+      ],
+    },
+    save: { ability: "dex", dc: { calculation: "spellcasting" } },
+  };
+  const r = actividadDe(activity, { itemDuration: { units: "inst" } });
+  assert.equal(r.texto, true);
+  assert.match(r.motivo, /2 partes/);
+});
+
+test("I5 — damage.onSave 'full' (Feeblemind) se rechaza: siSalva no sabe decir «todo el daño»", () => {
+  const activity = {
+    type: "save",
+    activation: { type: "action", override: false },
+    consumption: { targets: [] },
+    duration: { units: "inst", override: false },
+    damage: {
+      onSave: "full",
+      parts: [{ number: 4, denomination: 6, types: ["psychic"], custom: { enabled: false } }],
+    },
+    save: { ability: "int", dc: { calculation: "spellcasting" } },
+  };
+  const r = actividadDe(activity, { itemDuration: { units: "inst" } });
+  assert.equal(r.texto, true);
+  assert.match(r.motivo, /onSave = 'full'/);
+});
+
+test("I9 — la description no se recorta a 2000 caracteres", () => {
+  const larga = "x".repeat(3000);
+  const r = actividadDe(
+    {
+      type: "utility",
+      activation: { type: "action", override: false },
+      consumption: { targets: [] },
+    },
+    { descripcionEs: larga },
+  );
+  assert.equal(r.description.length, 3000);
 });

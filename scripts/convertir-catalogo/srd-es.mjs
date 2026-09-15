@@ -116,14 +116,12 @@ export function cortarSrdEs(txt) {
     let textoEs;
     let higherLevelsEs;
     if (indiceNiveles >= 0) {
-      textoEs = cuerpoLineas.slice(0, indiceNiveles).join("\n").trim();
-      higherLevelsEs = cuerpoLineas
-        .slice(indiceNiveles)
-        .join(" ")
-        .replace(RE_A_NIVELES_SUPERIORES, "")
-        .trim();
+      textoEs = limpiarProsaEs(cuerpoLineas.slice(0, indiceNiveles).join("\n").trim());
+      higherLevelsEs = limpiarProsaEs(
+        cuerpoLineas.slice(indiceNiveles).join(" ").replace(RE_A_NIVELES_SUPERIORES, "").trim(),
+      );
     } else {
-      textoEs = cuerpoLineas.join("\n").trim();
+      textoEs = limpiarProsaEs(cuerpoLineas.join("\n").trim());
     }
 
     conjuros.set(actual.nombre, {
@@ -142,6 +140,325 @@ export function cortarSrdEs(txt) {
     tablasDeClase: leerTablasDeClase(lineas),
     listasPorClase: leerListasPorClase(lineas),
   };
+}
+
+/**
+ * Colapsa espacios dobles/múltiples a uno solo (T3b). El texto extraído con `pymupdf` a veces
+ * deja dos espacios donde el PDF justificaba una línea — se ve tanto en la prosa de conjuros
+ * (`textoEs`/`higherLevelsEs`, ya cortados por `cortarSrdEs`) como en la de aptitudes y rasgos de
+ * raza (`cortarAptitudesEs`, más abajo): es la MISMA limpieza, una sola función para las dos.
+ * No toca saltos de línea ni el resto de espacios en blanco, solo dos o más espacios/tabs
+ * seguidos dentro de una línea ya unida.
+ */
+export function limpiarProsaEs(texto) {
+  if (!texto) return texto;
+  return texto.replace(/[ \t]{2,}/g, " ").trim();
+}
+
+// -------------------------------------------------------------------------------------------
+// Tarea 3A.1 (T3b) — `cortarAptitudesEs(txt)`: la prosa española de las aptitudes de clase y los
+// rasgos de raza. A diferencia de un conjuro (una cabecera de cuatro etiquetas que acota su
+// cuerpo sin ambigüedad), una aptitud no tiene ancla estructural — así que el corte busca, por
+// NOMBRE ya conocido (el que `aptitudes.mjs`/`razas.mjs` ya resolvieron contra `classes.ts`/
+// `races.ts` en 2A.3, o contra la tabla a mano de esta tanda), uno de dos formatos que el SRD
+// español usa de verdad (medidos hoy sobre el texto, no supuestos):
+//
+//  · Formato A — «cabecera sola»: una línea que es SOLO el nombre del rasgo (sin coma, sin
+//    punto final), seguida de una línea de prosa. Es el formato de los rasgos "de nivel" de cada
+//    clase («Tomar Aliento», «Acción Súbita», «Ataque Furtivo»…) y de los de subclase («Crítico
+//    Mejorado»). El MISMO nombre puede aparecer antes, dentro de la tabla «El <clase>» —pero ahí
+//    va seguido de un número de nivel o de "(N usos)", nunca de prosa— así que "la línea
+//    siguiente empieza por letra y no es una celda de tabla" es lo que distingue una cabecera
+//    real de una fila de tabla, sin tener que saltarse la tabla aparte.
+//  · Formato B — «viñeta en línea»: `Nombre. Prosa…` en la MISMA línea (con un espacio inicial
+//    de la viñeta del PDF). Es el formato de las OPCIONES dentro de un rasgo con elección
+//    («El Cazador y la Presa» del explorador: «Azote de Colosos.», «Destructor de Hordas.»…; la
+//    Metamagia del hechicero: «Conjuro Cuidadoso.», «Conjuro Distante.»…; las invocaciones
+//    sobrenaturales del brujo, cada una con su propio nombre en negrita) y también el de los
+//    rasgos raciales (ver `RE_VIÑETA` reutilizada por `cortarRasgosDeRazaEs`).
+//
+// Las dos cabeceras compiten dentro de la MISMA sección de clase (o de raza): se recorre la
+// sección línea a línea, se detectan los candidatos de los dos formatos en el orden en que
+// aparecen y el cuerpo de cada uno llega hasta el candidato siguiente (o el final de la
+// sección). El resultado es un `Map<nombre, texto>` por sección — nunca se filtra por si el
+// nombre detectado es una aptitud real: el filtro lo hace el LLAMADOR, que solo mira los nombres
+// que ya sabe que necesita (`aptitudesDeClase`/`rasgosDeRaza`/`traduccionesPropias`); una
+// cabecera espuria («Competencias», «Equipo»…) que nadie busca simplemente no se usa.
+
+const CONECTORES_DE_NOMBRE = new Set([
+  "de",
+  "del",
+  "la",
+  "el",
+  "los",
+  "las",
+  "y",
+  "e",
+  "en",
+  "con",
+  "a",
+  "al",
+  "un",
+  "una",
+  "o",
+  "tu",
+  "sus",
+  "su",
+  "sin",
+  "por",
+  "para",
+  "entre",
+  "sobre",
+  "contra",
+  "hacia",
+  "desde",
+  "tras",
+  "bajo",
+  "ante",
+  "según",
+  "mediante",
+  "como",
+  "lo",
+]);
+
+/**
+ * ¿Es `texto` un nombre de rasgo plausible? Cada palabra empieza en mayúscula, salvo los
+ * conectores gramaticales españoles habituales en un título («Mejora DE Característica»,
+ * «Defensa SIN Armadura»); como mucho seis palabras, ninguna con dígitos. Es una heurística, no
+ * una gramática: filtra la inmensa mayoría de la prosa normal (que solo capitaliza la primera
+ * palabra de la frase) sin tener que conocer de antemano el nombre exacto.
+ */
+function pareceNombreDeRasgo(texto) {
+  const palabras = texto.trim().split(/\s+/);
+  if (palabras.length === 0 || palabras.length > 6) return false;
+  for (const p of palabras) {
+    if (/\d/.test(p)) return false;
+    const limpio = p.replace(/[():,]/g, "");
+    if (!limpio) return false;
+    if (CONECTORES_DE_NOMBRE.has(limpio.toLowerCase())) continue;
+    if (!/^[A-ZÁÉÍÓÚÑ]/.test(limpio)) return false;
+  }
+  return /^[A-ZÁÉÍÓÚÑ]/.test(palabras[0]);
+}
+
+const RE_VIÑETA = /^\s*([A-ZÁÉÍÓÚÑ][^.]{1,58})\.\s+(\S.*)$/;
+
+/** Candidatos de cabecera (los dos formatos) dentro de `lineas[desde, hasta)`. */
+function candidatosDeSeccion(lineas, desde, hasta) {
+  const candidatos = [];
+  for (let i = desde; i < hasta; i++) {
+    const cruda = lineas[i];
+    if (esPieDePagina(cruda)) continue;
+    const t = cruda.trim();
+    if (!t) continue;
+
+    const mB = t.match(RE_VIÑETA);
+    if (mB && pareceNombreDeRasgo(mB[1]) && mB[2]) {
+      candidatos.push({ indice: i, nombre: mB[1].trim(), inicioMismaLinea: mB[2].trim() });
+      continue;
+    }
+
+    if (!t.includes(",") && !t.endsWith(".") && t.length <= 60 && pareceNombreDeRasgo(t)) {
+      const siguiente = (lineas[i + 1] ?? "").trim();
+      const esProsa =
+        siguiente.length > 0 &&
+        /^[A-ZÁÉÍÓÚÑa-záéíóúñ]/.test(siguiente) &&
+        !/^\+?\d+$/.test(siguiente);
+      if (esProsa) candidatos.push({ indice: i, nombre: t, inicioMismaLinea: null });
+    }
+  }
+  return candidatos;
+}
+
+/** El cuerpo del candidato `candidatos[k]`, hasta el candidato siguiente o `hasta`. */
+function cuerpoDelCandidato(lineas, candidatos, k, hasta) {
+  const c = candidatos[k];
+  const finIndice = k + 1 < candidatos.length ? candidatos[k + 1].indice : hasta;
+  const partes = [];
+  if (c.inicioMismaLinea) partes.push(c.inicioMismaLinea);
+  for (let j = c.indice + 1; j < finIndice; j++) {
+    if (esPieDePagina(lineas[j])) continue;
+    const t = lineas[j].trim();
+    if (t) partes.push(t);
+  }
+  return limpiarProsaEs(partes.join(" "));
+}
+
+/** `Map<nombre, texto>` de una sección — la primera aparición de cada nombre gana. */
+function mapaDeSeccion(lineas, desde, hasta) {
+  const candidatos = candidatosDeSeccion(lineas, desde, hasta);
+  const mapa = new Map();
+  for (let k = 0; k < candidatos.length; k++) {
+    const nombre = candidatos[k].nombre;
+    if (!mapa.has(nombre)) mapa.set(nombre, cuerpoDelCandidato(lineas, candidatos, k, hasta));
+  }
+  return mapa;
+}
+
+/** Clave sin acentos y en minúsculas — para buscar un nombre sin depender de mayúscula/tilde. */
+function normalizarNombre(s) {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
+
+/** `Map<claveNormalizada, texto>` a partir de un `Map<nombre, texto>` — la primera gana. */
+function indiceNormalizado(mapa) {
+  const indice = new Map();
+  for (const [nombre, texto] of mapa) {
+    const clave = normalizarNombre(nombre);
+    if (!indice.has(clave)) indice.set(clave, texto);
+  }
+  return indice;
+}
+
+/** Índice de una cabecera de clase («Guerrero \n Rasgos de clase») o de raza («Elfo \n Atributos
+ * de los…»): la línea es EXACTAMENTE `nombre` y la siguiente línea no vacía empieza por
+ * `siguientePrefijo`. Devuelve `-1` si no se encuentra (evita las apariciones sueltas del nombre
+ * de clase/raza en tablas o índices, que no van seguidas de esa frase fija). */
+function indiceDeCabecera(lineas, nombre, siguientePrefijo) {
+  for (let i = 0; i < lineas.length; i++) {
+    if (lineas[i].trim() !== nombre) continue;
+    let j = i + 1;
+    while (j < lineas.length && lineas[j].trim() === "") j++;
+    if (lineas[j] && lineas[j].trim().startsWith(siguientePrefijo)) return i;
+  }
+  return -1;
+}
+
+/** Las doce clases del SRD 5.1, en el español de la cabecera de capítulo, a la clave de
+ * `classes.ts`. En el mismo orden en que aparecen en `srd-5.1-es.txt` (E-3A1-2). */
+const CLASE_ES_A_CLAVE_DE_CAPITULO = [
+  ["Bárbaro", "barbarian"],
+  ["Bardo", "bard"],
+  ["Brujo", "warlock"],
+  ["Clérigo", "cleric"],
+  ["Druida", "druid"],
+  ["Explorador", "ranger"],
+  ["Guerrero", "fighter"],
+  ["Hechicero", "sorcerer"],
+  ["Mago", "wizard"],
+  ["Monje", "monk"],
+  ["Paladín", "paladin"],
+  ["Pícaro", "rogue"],
+];
+
+/** Las razas del SRD 5.1 con capítulo propio, a la clave de `races.ts` (`CARPETA_FOUNDRY_A_CLAVE`
+ * de `razas.mjs`, reproducida aquí porque el orden en el texto —no el de esa tabla— es el que
+ * importa para cortar cada capítulo). */
+const RAZA_ES_A_CLAVE_DE_CAPITULO = [
+  ["Elfo", "elf"],
+  ["Enano", "dwarf"],
+  ["Humano", "human"],
+  ["Mediano", "halfling"],
+  ["Dracónido", "dragonborn"],
+  ["Gnomo", "gnome"],
+  ["Semiorco", "half-orc"],
+  ["Tiefling", "tiefling"],
+];
+
+/**
+ * `cortarAptitudesEs(txt)` — pura. Devuelve `{ porClase: Map<claveDeClase, Map<claveNormalizada,
+ * texto>>, porRaza: Map<claveDeRaza, Map<claveNormalizada, texto>>, global: Map<claveNormalizada,
+ * texto> }`. `global` es el respaldo para los rasgos de `classfeatures/shared-features/` (los
+ * estilos de combate, "Mejora de puntuación de característica", "Ataque adicional" genérico):
+ * sin clase propia en el catálogo generado, pero con texto en la sección de la clase donde el
+ * SRD los enumera por primera vez (el guerrero, para los estilos de combate).
+ */
+export function cortarAptitudesEs(txt) {
+  const lineas = txt.split(/\r?\n/);
+
+  const inicios = CLASE_ES_A_CLAVE_DE_CAPITULO.map(([nombre, clave]) => ({
+    clave,
+    indice: indiceDeCabecera(lineas, nombre, "Rasgos de clase"),
+  })).filter((x) => x.indice >= 0);
+  inicios.sort((a, b) => a.indice - b.indice);
+
+  let finClases = lineas.length;
+  if (inicios.length > 0) {
+    for (let i = inicios[inicios.length - 1].indice; i < lineas.length; i++) {
+      if (lineas[i].trim() === "Más allá del nivel 1") {
+        finClases = i;
+        break;
+      }
+    }
+  }
+
+  const porClase = new Map();
+  const global = new Map();
+  for (let i = 0; i < inicios.length; i++) {
+    const desde = inicios[i].indice;
+    const hasta = i + 1 < inicios.length ? inicios[i + 1].indice : finClases;
+    const mapa = mapaDeSeccion(lineas, desde, hasta);
+    porClase.set(inicios[i].clave, indiceNormalizado(mapa));
+    for (const [nombre, texto] of mapa) {
+      const clave = normalizarNombre(nombre);
+      if (!global.has(clave)) global.set(clave, limpiarProsaEs(texto));
+    }
+  }
+
+  const raices = RAZA_ES_A_CLAVE_DE_CAPITULO.map(([nombre, clave]) => ({
+    clave,
+    indice: indiceDeCabecera(lineas, nombre, "Atributos de"),
+  })).filter((x) => x.indice >= 0);
+  raices.sort((a, b) => a.indice - b.indice);
+
+  const primeraClase = inicios.length > 0 ? inicios[0].indice : lineas.length;
+  const porRaza = new Map();
+  for (let i = 0; i < raices.length; i++) {
+    const desde = raices[i].indice;
+    const hasta = i + 1 < raices.length ? raices[i + 1].indice : primeraClase;
+    porRaza.set(raices[i].clave, indiceNormalizado(mapaDeSeccion(lineas, desde, hasta)));
+  }
+
+  return { porClase, porRaza, global };
+}
+
+/**
+ * Un nombre ya resuelto (`aptitudesDeClase`/`rasgosDeRaza`) a veces trae un matiz que el propio
+ * SRD español no repite en la cabecera de la prosa — un tramo entre paréntesis que distingue
+ * ClassFeature sintéticas del mismo rasgo (`"Indómito (un uso)"` / `"Indómito (dos usos)"`,
+ * ambas la MISMA cabecera «Indómito»), o el prefijo «Canalizar Divinidad: » de una opción que en
+ * el SRD aparece como viñeta suelta bajo su propio nombre («Expulsar Muertos Vivientes», no
+ * «Canalizar Divinidad: Expulsar Muertos Vivientes»). Se intenta el nombre tal cual primero, y
+ * solo si falla, estas dos variantes — nunca al revés, para no preferir una coincidencia parcial
+ * cuando la exacta ya estaba.
+ */
+function* variantesDeNombre(nombreEs) {
+  yield nombreEs;
+  const sinParentesis = nombreEs.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (sinParentesis !== nombreEs) yield sinParentesis;
+  const posDosPuntos = nombreEs.indexOf(":");
+  if (posDosPuntos >= 0) {
+    const despues = nombreEs.slice(posDosPuntos + 1).trim();
+    if (despues) yield despues;
+  }
+}
+
+/**
+ * `textoDeAptitud(cortes, claseKey, nombreEs)` — busca primero en la sección de `claseKey`
+ * (T3b: nunca confunde el "Ataque adicional" del bárbaro con el del guerrero si sus textos
+ * llegaran a diferir) y, si no está ahí, en `global` (los rasgos de `shared-features`, sin
+ * sección propia). `undefined` si no se encontró en ninguno de los dos — el llamador decide qué
+ * hacer (contar el fallo en `rechazos.md`, nunca inventar prosa).
+ */
+export function textoDeAptitud(cortes, claseKey, nombreEs) {
+  if (!nombreEs) return undefined;
+  for (const variante of variantesDeNombre(nombreEs)) {
+    const clave = normalizarNombre(variante);
+    const texto = cortes.porClase.get(claseKey)?.get(clave) ?? cortes.global.get(clave);
+    if (texto) return texto;
+  }
+  return undefined;
+}
+
+/** `textoDeRasgoDeRaza(cortes, raceKey, nombreEs)` — mismo criterio, sin respaldo global (un
+ * rasgo de raza no se comparte entre razas como sí ocurre con los estilos de combate). */
+export function textoDeRasgoDeRaza(cortes, raceKey, nombreEs) {
+  if (!nombreEs) return undefined;
+  for (const variante of variantesDeNombre(nombreEs)) {
+    const texto = cortes.porRaza.get(raceKey)?.get(normalizarNombre(variante));
+    if (texto) return texto;
+  }
+  return undefined;
 }
 
 /**

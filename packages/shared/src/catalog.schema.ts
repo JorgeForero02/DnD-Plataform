@@ -50,6 +50,9 @@ export const srdSpellSchema = z
     nameEn: z.string().min(1).max(200),
     nameEs: z.string().min(1).max(200).nullable(),
     sinTraduccion: z.boolean(),
+    /** T3b: `nameEs` es una traducción propia (no del SRD español oficial), marcada como tal
+     * porque el SRD no nombra este ítem — nunca `true` a la vez que `sinTraduccion`. */
+    traduccionPropia: z.boolean().default(false),
     level: z.number().int().min(0).max(9),
     school: spellSchoolSchema,
     castingTime: activacionSchema,
@@ -90,6 +93,8 @@ export const srdFeatureSchema = z
     nameEn: z.string().min(1).max(200),
     nameEs: z.string().min(1).max(200).nullable(),
     sinTraduccion: z.boolean(),
+    /** T3b: ver `srdSpellSchema.traduccionPropia`. */
+    traduccionPropia: z.boolean().default(false),
     textEn: z.string().min(1).max(4000),
     textEs: z.string().min(1).max(4000).nullable(),
     usos: usosDeAptitudSchema.optional(),
@@ -113,6 +118,8 @@ export const raceFeatureSchema = z
     nameEn: z.string().min(1).max(200),
     nameEs: z.string().min(1).max(200).nullable(),
     sinTraduccion: z.boolean(),
+    /** T3b: ver `srdSpellSchema.traduccionPropia`. */
+    traduccionPropia: z.boolean().default(false),
     textEn: z.string().min(1).max(4000),
     textEs: z.string().min(1).max(4000).nullable(),
     actividades: z.array(actividadSchema),

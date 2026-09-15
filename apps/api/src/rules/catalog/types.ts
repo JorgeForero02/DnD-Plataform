@@ -147,6 +147,26 @@ export interface FeatureGrant extends GrantBase {
   kind: "feature";
   /** Nombre en español. La interfaz nunca compone el nombre de un rasgo a partir de su clave. */
   name: string;
+  /**
+   * Identificador del catálogo generado (`race-features-srd.json`, `key` de Foundry — p. ej.
+   * `"stonecunning"`) que `enriquecerRazas` (`./generado`, tarea 3A.1 T3b) usa para buscar este
+   * rasgo por `(race, key)`. Ausente en los `FeatureGrant` que no tienen fila propia en el
+   * generado (sin correspondencia 1:1, como los tres de dracónido — ver `races.ts`): esos se
+   * quedan tal cual, escritos a mano, sin enriquecer.
+   */
+  key?: string;
+  /** Nombre en inglés (Foundry), tal cual — T3b, puesto por `enriquecerRazas`. */
+  nameEn?: string;
+  /** Prosa en español del SRD 5.1. `null` cuando el conversor no encontró traducción. */
+  textEs?: string | null;
+  /** Prosa en inglés del SRD 5.1 (Foundry), presente solo cuando hay enriquecimiento. */
+  textEn?: string;
+  /** Las actividades que el conversor tradujo de este rasgo, si tiene alguna. */
+  actividades?: Actividad[];
+  /** `true` cuando el conversor no encontró nombre español para este rasgo. */
+  sinTraduccion?: boolean;
+  /** `true` cuando `nameEs` es una traducción propia, no del SRD español oficial (T3b). */
+  traduccionPropia?: boolean;
 }
 
 /**

@@ -12,10 +12,15 @@
 
 import { ABILITY_KEYS, SKILLS, type SkillKey } from "@dnd/shared";
 import type { SrdRace } from "./types";
+import { enriquecerRazas } from "./generado";
 
 const TODAS_LAS_HABILIDADES = Object.keys(SKILLS) as SkillKey[];
 
-export const SRD_RACES: SrdRace[] = [
+// **A mano, sin enriquecer.** `SRD_RACES` (el export de verdad, al final de este fichero) es
+// `enriquecerRazas(SRD_RACES_A_MANO)` — la misma disciplina que `classes.ts` ya usa con
+// `SRD_CLASSES_A_MANO`/`enriquecerClases` (tarea 3A.1, T3). Nunca se importa este array
+// directamente desde fuera: los `FeatureGrant` con `key` aquí siguen sin `nameEn`/`textEs`/etc.
+const SRD_RACES_A_MANO: SrdRace[] = [
   {
     key: "dwarf",
     name: "Enano",
@@ -59,6 +64,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "dwarf-stonecunning",
         kind: "feature",
+        key: "stonecunning",
         name: "Afinidad con la piedra",
         labelKey: "race.dwarf.stonecunning",
       },
@@ -104,10 +110,17 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "elf-fey-ancestry",
         kind: "feature",
+        key: "fey-ancestry",
         name: "Linaje feérico",
         labelKey: "race.elf.feyAncestry",
       },
-      { id: "elf-trance", kind: "feature", name: "Trance", labelKey: "race.elf.trance" },
+      {
+        id: "elf-trance",
+        kind: "feature",
+        key: "trance",
+        name: "Trance",
+        labelKey: "race.elf.trance",
+      },
     ],
     subraces: [
       {
@@ -160,13 +173,21 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "halfling-lucky",
         kind: "feature",
+        key: "lucky",
         name: "Afortunado",
         labelKey: "race.halfling.lucky",
       },
-      { id: "halfling-brave", kind: "feature", name: "Valiente", labelKey: "race.halfling.brave" },
+      {
+        id: "halfling-brave",
+        kind: "feature",
+        key: "brave",
+        name: "Valiente",
+        labelKey: "race.halfling.brave",
+      },
       {
         id: "halfling-nimbleness",
         kind: "feature",
+        key: "halfling-nimbleness",
         name: "Agilidad de mediano",
         labelKey: "race.halfling.nimbleness",
       },
@@ -186,6 +207,7 @@ export const SRD_RACES: SrdRace[] = [
           {
             id: "halfling-lightfoot-stealthy",
             kind: "feature",
+            key: "naturally-stealthy",
             name: "Sigiloso por naturaleza",
             labelKey: "subrace.halflingLightfoot.stealthy",
           },
@@ -294,6 +316,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "gnome-cunning",
         kind: "feature",
+        key: "gnome-cunning",
         name: "Astucia gnoma",
         labelKey: "race.gnome.cunning",
       },
@@ -313,12 +336,14 @@ export const SRD_RACES: SrdRace[] = [
           {
             id: "gnome-rock-artificers-lore",
             kind: "feature",
+            key: "artificers-lore",
             name: "Saber del artífice",
             labelKey: "subrace.gnomeRock.artificersLore",
           },
           {
             id: "gnome-rock-tinker",
             kind: "feature",
+            key: "tinker",
             name: "Manitas",
             labelKey: "subrace.gnomeRock.tinker",
           },
@@ -410,12 +435,14 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "half-orc-relentless",
         kind: "feature",
+        key: "relentless-endurance",
         name: "Aguante incansable",
         labelKey: "race.halfOrc.relentless",
       },
       {
         id: "half-orc-savage-attacks",
         kind: "feature",
+        key: "savage-attacks",
         name: "Ataques salvajes",
         labelKey: "race.halfOrc.savageAttacks",
       },
@@ -462,6 +489,7 @@ export const SRD_RACES: SrdRace[] = [
       {
         id: "tiefling-infernal-legacy",
         kind: "feature",
+        key: "infernal-legacy",
         name: "Linaje infernal",
         labelKey: "race.tiefling.infernalLegacy",
       },
@@ -469,3 +497,12 @@ export const SRD_RACES: SrdRace[] = [
     subraces: [],
   },
 ];
+
+/**
+ * Las nueve razas del SRD 5.1, ENRIQUECIDAS (tarea 3A.1, T3b) — el export de verdad. Cada
+ * `FeatureGrant` con `key` gana `nameEn/textEs/textEn/actividades/sinTraduccion/traduccionPropia`
+ * del catálogo generado (`enriquecerRazas`, `./generado`); un `FeatureGrant` sin `key`, o
+ * `strengthAbility`/`speed`/etc. (que no son `kind: "feature"`), se queda tal cual. Un JSON
+ * inválido revienta en el arranque, igual que `SRD_CLASSES` en `classes.ts`.
+ */
+export const SRD_RACES: SrdRace[] = enriquecerRazas(SRD_RACES_A_MANO);

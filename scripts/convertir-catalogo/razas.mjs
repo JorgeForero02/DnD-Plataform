@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { load as cargarYaml } from "js-yaml";
 import { actividadDe } from "./actividad.mjs";
+import { textoDeRasgoDeRaza } from "./srd-es.mjs";
 
 // Tarea 3A.1 (T3) — los rasgos raciales: `races/**/*.yml` con `type: feat` (E-3A1-11/d.1 de T0:
 // 26 de esos, más 9 `type: race` — las subrazas en sí, que no son una aptitud y aquí no se leen).
@@ -13,6 +14,17 @@ import { actividadDe } from "./actividad.mjs";
 // para clases (ver `aptitudes.mjs`): aquí se reutiliza el nombre que `races.ts` ya verificó en
 // 2A.3 para los rasgos comunes (`nombresDeRaza` en `emparejamientos.json`), y el resto queda
 // `sinTraduccion: true`, contado en el informe — nunca inventado.
+
+/**
+ * T3b — un puñado de `nameEs` ya fijados en `rasgosDeRaza` (2A.3) no coinciden literalmente con
+ * la cabecera que usa `srd-5.1-es.txt` para la misma prosa (`dwarf:dwarven-toughness` es
+ * «Tenacidad enana» en el catálogo pero «Aguante Enano» en el SRD, que es la Dureza Enana del
+ * enano de las colinas). Nunca se toca `nameEs` por esto —es el nombre que 2A.3 ya verificó y lo
+ * que ve la hoja— solo se busca el TEXTO bajo este alias antes de darlo por no encontrado.
+ */
+const ALIAS_DE_BUSQUEDA = {
+  "dwarf:dwarven-toughness": "Aguante Enano",
+};
 
 const CARPETA_FOUNDRY_A_CLAVE = {
   dragonborn: "dragonborn",
@@ -58,21 +70,25 @@ function limpiarProsa(html) {
 }
 
 /**
- * `convertirRazas({ foundryDir, emparejamientos })` — lee `races/` directamente (no pasa por
- * `leerFoundry`, que solo visita `spells/classfeatures/subclasses`). Devuelve
- * `{ features: RaceFeature[], rechazos }`.
+ * `convertirRazas({ foundryDir, emparejamientos, cortesEs })` — lee `races/` directamente (no
+ * pasa por `leerFoundry`, que solo visita `spells/classfeatures/subclasses`). Devuelve
+ * `{ features: RaceFeature[], rechazos }`. `cortesEs` es el resultado de `cortarAptitudesEs`
+ * (T3b, `srd-es.mjs`), opcional por la misma razón que en `aptitudes.mjs`.
  */
-export function convertirRazas({ foundryDir, emparejamientos }) {
+export function convertirRazas({ foundryDir, emparejamientos, cortesEs }) {
   const raiz = join(foundryDir, "races");
   let archivos;
   try {
     archivos = listarYaml(raiz);
   } catch {
-    return { features: [], rechazos: { sinTraduccion: [], noEsAptitud: [] } };
+    return { features: [], rechazos: { sinTraduccion: [], noEsAptitud: [], sinTextoEs: [] } };
   }
 
   const nombresDeRaza = emparejamientos?.rasgosDeRaza ?? {};
-  const rechazos = { sinTraduccion: [], noEsAptitud: [] };
+  // T3b: último recurso, solo para lo que el SRD español no nombra (10 colores del Ataque de
+  // Aliento dracónido — ver el comentario de `traduccionesPropias` en `emparejamientos.json`).
+  const traduccionesPropias = emparejamientos?.traduccionesPropias ?? {};
+  const rechazos = { sinTraduccion: [], noEsAptitud: [], sinTextoEs: [] };
   const features = [];
 
   for (const ruta of archivos) {
@@ -94,9 +110,26 @@ export function convertirRazas({ foundryDir, emparejamientos }) {
     const raceKey = CARPETA_FOUNDRY_A_CLAVE[carpeta] ?? carpeta;
 
     const identifier = doc.system.identifier;
-    const nameEs = nombresDeRaza[`${raceKey}:${identifier}`] ?? null;
+    let nameEs = nombresDeRaza[`${raceKey}:${identifier}`] ?? null;
+    let traduccionPropia = false;
+    if (!nameEs) {
+      const propia = traduccionesPropias[`${raceKey}:${identifier}`];
+      if (propia) {
+        nameEs = propia;
+        traduccionPropia = true;
+      }
+    }
     const sinTraduccion = !nameEs;
     if (sinTraduccion) rechazos.sinTraduccion.push(`${raceKey}:${identifier}`);
+
+    const nombreDeBusqueda = ALIAS_DE_BUSQUEDA[`${raceKey}:${identifier}`] ?? nameEs;
+    const textEs =
+      !traduccionPropia && cortesEs
+        ? (textoDeRasgoDeRaza(cortesEs, raceKey, nombreDeBusqueda) ?? null)
+        : null;
+    if (nameEs && !traduccionPropia && !textEs) {
+      rechazos.sinTextoEs.push(`${raceKey}:${identifier} -> ${nameEs}`);
+    }
 
     const textEnPlano = limpiarProsa(doc.system.description?.value) || "(sin texto)";
 
@@ -126,8 +159,9 @@ export function convertirRazas({ foundryDir, emparejamientos }) {
       nameEn: doc.name,
       nameEs,
       sinTraduccion,
+      traduccionPropia,
       textEn: textEnPlano.slice(0, 4000),
-      textEs: null,
+      textEs: textEs ? textEs.slice(0, 4000) : null,
       actividades,
       fueraDeA,
       efectosPasivos: (doc.effects ?? []).length,

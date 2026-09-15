@@ -12,6 +12,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { SRD_CLASSES } from "./classes";
+import { SRD_RACES } from "./races";
 import { SRD_SPELLS, SRD_SPELL_POR_KEY, SRD_CLASS_FEATURES, SRD_RACE_FEATURES } from "./generado";
 
 const RAIZ_REPO = join(__dirname, "..", "..", "..", "..", "..");
@@ -246,19 +247,45 @@ describe("catálogo generado de aptitudes — invariantes (T3)", () => {
     }
   });
 
-  // **No es 0/234.** Al contrario que los conjuros (una cabecera de cuatro etiquetas por
-  // conjuro en el SRD español), una aptitud no tiene ningún ancla estructural que separe su
-  // nombre del siguiente — el conversor solo puede dar nameEs con confianza donde `classes.ts`
-  // (2A.3, ya verificado contra el SRD) ya declaraba esa clave, o donde el nombre es un término
-  // fijo bien conocido (`emparejamientos.json`, `aptitudesDeClase`). Lo que queda sin nombrar
-  // (~60/234) son opciones de elección — invocaciones sobrenaturales del brujo, metamagia del
-  // hechicero, estilos de combate del cazador— que `classes.ts` nunca desglosó una a una: están
-  // en `rechazos.md`, contadas, no escondidas. El número real (medido, no un techo inventado)
-  // es la barrera de esta prueba: si sube, algo se rompió; si baja, alguien nombró una más.
-  it("la gran mayoría tiene nameEs — las 174 que classes.ts ya nombraba en 2A.3 (60 sin traducción, listadas en rechazos.md)", () => {
+  // **0/234 desde T3b.** T3 dejaba ~60 aptitudes sin nombre español porque `classes.ts` (2A.3)
+  // no las había verificado contra el SRD una a una — eran opciones de elección (invocaciones
+  // sobrenaturales del brujo, metamagia del hechicero, opciones del arquetipo Cazador del
+  // explorador…). T3b midió que **59 de esas 60 SÍ tienen nombre oficial** en `srd-5.1-es.txt`
+  // (`emparejamientos.json`, `aptitudesDeClase`) y solo UNA —`fighter:grappler`, un FEAT del
+  // manual del jugador, no una aptitud de clase del SRD 5.1— necesita «traducción propia,
+  // marcada» (`traduccionPropia: true`). El ruling del autor prohíbe dejar algo sin nombre
+  // cuando hay una alternativa marcada: por eso `sinTraduccion` es 0 en TODO el catálogo.
+  it("ninguna aptitud se queda sin nameEs — el ruling «traducción propia, marcada» cierra las que el SRD no nombra", () => {
     const sinTraduccion = SRD_CLASS_FEATURES.filter((f) => f.sinTraduccion);
-    expect(sinTraduccion.length).toBe(60);
-    expect(SRD_CLASS_FEATURES.length - sinTraduccion.length).toBe(174);
+    expect(sinTraduccion.length).toBe(0);
+    for (const f of SRD_CLASS_FEATURES) {
+      expect(f.nameEs).not.toBeNull();
+    }
+  });
+
+  it("traduccionPropia: exactamente 1 (fighter:grappler, único FEAT sin equivalente en el SRD 5.1)", () => {
+    const propias = SRD_CLASS_FEATURES.filter((f) => f.traduccionPropia);
+    expect(propias.length).toBe(1);
+    expect(propias[0]?.key).toBe("grappler");
+    expect(propias[0]?.nameEs).toBe("Presa");
+  });
+
+  // **≥95% de las aptitudes NOMBRADAS Y de nombre oficial** traen `textEs` — la población
+  // elegible excluye las de `traduccionPropia` (por definición no hay prosa oficial que buscar
+  // para ellas). El número exacto (medido, no un techo inventado) es la barrera: si baja, algo
+  // del corte se rompió; si sube, alguien encontró una más (documentar la que falta).
+  it("≥95% de las aptitudes con nombre oficial tienen textEs (228/233, T3b)", () => {
+    const conNombreOficial = SRD_CLASS_FEATURES.filter((f) => f.nameEs && !f.traduccionPropia);
+    const conTextEs = conNombreOficial.filter((f) => f.textEs);
+    expect(conNombreOficial.length).toBe(233);
+    expect(conTextEs.length).toBe(228);
+    expect(conTextEs.length / conNombreOficial.length).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it("ningún textEs trae espacio doble (limpiarProsaEs, T3b)", () => {
+    for (const f of SRD_CLASS_FEATURES) {
+      if (f.textEs) expect(f.textEs).not.toMatch(/ {2,}/);
+    }
   });
 
   it("ninguna aptitud tiene actividades: [] Y textEn: '' a la vez (nunca las dos vacías)", () => {
@@ -293,6 +320,7 @@ describe("cuatro aptitudes contrastadas a mano (T3, Step 4 del brief)", () => {
       (x) => x.key === "second-wind",
     )!;
     expect(f.nameEn).toBe("Second Wind");
+    expect(f.textEs).toMatch(/^Posees una pequeña reserva/);
     expect(f.actividades).toEqual([
       {
         tipo: "dados",
@@ -312,6 +340,7 @@ describe("cuatro aptitudes contrastadas a mano (T3, Step 4 del brief)", () => {
     )!;
     expect(f.actividades).toEqual([]);
     expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+    expect(f.textEs).toMatch(/^A partir del nivel 1, sabes cómo atacar sutilmente/);
   });
 
   it("Imponer las Manos (paladin:lay-on-hands): se queda en texto — consumo variable, hueco C", () => {
@@ -320,6 +349,7 @@ describe("cuatro aptitudes contrastadas a mano (T3, Step 4 del brief)", () => {
     )!;
     expect(f.actividades).toEqual([]);
     expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+    expect(f.textEs).toMatch(/^Tu toque bendito puede curar heridas/);
   });
 
   it("Acción Súbita (fighter:action-surge-1): usos 1 SHORT_REST, utilidad", () => {
@@ -334,6 +364,7 @@ describe("cuatro aptitudes contrastadas a mano (T3, Step 4 del brief)", () => {
     expect(f.nameEn).toBe("Action Surge");
     expect(f.actividades?.[0]?.tipo).toBe("utilidad");
     expect(f.actividades?.[0]?.activation).toEqual({ coste: "FREE" });
+    expect(f.textEs).toMatch(/^A partir del nivel 2, puedes superar tus límites/);
   });
 
   it("un bárbaro de nivel 5 tiene «Ataque adicional» con texto", () => {
@@ -352,5 +383,57 @@ describe("rasgos de raza — invariantes (T3, alcance reducido — ver razas.mjs
       expect(f.nameEn.length).toBeGreaterThan(0);
     }
     expect(JSON.stringify(SRD_RACE_FEATURES).includes("@")).toBe(false);
+  });
+
+  // T3b — mismo ruling que en las aptitudes de clase: 0 rasgos sin nameEs. Los diez colores del
+  // Ataque de Aliento dracónido no tienen nombre propio en el SRD (una sola aptitud genérica con
+  // una tabla color→daño) y van con «traducción propia, marcada».
+  it("ninguna sin nameEs — el ruling «traducción propia, marcada» cierra los diez colores de dracónido", () => {
+    for (const f of SRD_RACE_FEATURES) {
+      expect(f.sinTraduccion).toBe(false);
+      expect(f.nameEs).not.toBeNull();
+    }
+  });
+
+  it("traduccionPropia: exactamente 10 (los diez colores del Ataque de Aliento dracónido)", () => {
+    const propias = SRD_RACE_FEATURES.filter((f) => f.traduccionPropia);
+    expect(propias.length).toBe(10);
+    for (const f of propias) expect(f.race).toBe("dragonborn");
+  });
+
+  it("≥95% de los rasgos con nombre oficial tienen textEs (16/16, T3b)", () => {
+    const conNombreOficial = SRD_RACE_FEATURES.filter((f) => f.nameEs && !f.traduccionPropia);
+    const conTextEs = conNombreOficial.filter((f) => f.textEs);
+    expect(conNombreOficial.length).toBe(16);
+    expect(conTextEs.length).toBe(16);
+  });
+
+  it("ningún textEs trae espacio doble (limpiarProsaEs, T3b)", () => {
+    for (const f of SRD_RACE_FEATURES) {
+      if (f.textEs) expect(f.textEs).not.toMatch(/ {2,}/);
+    }
+  });
+});
+
+describe("enriquecerRazas — SRD_RACES trae los FeatureGrant con key enriquecidos (T3b)", () => {
+  it("dwarf-stonecunning (Afinidad con la piedra) trae textEs, empezando como el SRD", () => {
+    const enano = SRD_RACES.find((r) => r.key === "dwarf")!;
+    const grant = enano.grants.find((g) => g.id === "dwarf-stonecunning")!;
+    expect(grant.kind).toBe("feature");
+    if (grant.kind === "feature") {
+      expect(grant.nameEn).toBe("Stonecunning");
+      expect(grant.textEs).toMatch(/^Cuando hagas una prueba/);
+      expect(grant.sinTraduccion).toBe(false);
+    }
+  });
+
+  it("un FeatureGrant sin key se devuelve sin cambios (dragonborn-ancestry, sin fila 1:1)", () => {
+    const draconido = SRD_RACES.find((r) => r.key === "dragonborn")!;
+    const grant = draconido.grants.find((g) => g.id === "dragonborn-ancestry")!;
+    expect(grant.kind).toBe("feature");
+    if (grant.kind === "feature") {
+      expect(grant.name).toBe("Linaje dracónico");
+      expect(grant.nameEn).toBeUndefined();
+    }
   });
 });

@@ -23,7 +23,15 @@ import {
   type SrdFeature,
   type RaceFeature,
 } from "@dnd/shared";
-import type { ClassFeature, ItemGrant, ScaleStep, SrdClass } from "../types";
+import type {
+  ClassFeature,
+  FeatureGrant,
+  Grant,
+  ItemGrant,
+  ScaleStep,
+  SrdClass,
+  SrdRace,
+} from "../types";
 
 const RUTA_SPELLS_JSON = join(__dirname, "spells-srd.json");
 
@@ -290,4 +298,61 @@ function mezclarScales(
     fundidas[clave] = pasos; // a mano gana, siempre — con o sin discrepancia detectada arriba.
   }
   return fundidas;
+}
+
+// -------------------------------------------------------------------------------------------
+// Tarea 3A.1 (T3b) — `enriquecerRazas`, la misma idea que `enriquecerClases` pero para
+// `SRD_RACES` (`races.ts`). Un `FeatureGrant` de raza no tiene la forma de dueño+nivel que sí
+// tiene una `ClassFeature` (`requirements` de Foundry no existe para un rasgo racial): la
+// búsqueda es sencillamente por `(raceKey, grant.key)`, y `grant.key` es opcional a propósito —
+// los `FeatureGrant` sin `key` (los que no tienen fila 1:1 en el catálogo generado, como los tres
+// de dracónido: ver `races.ts`) se devuelven tal cual, sin tocar.
+
+/** Índice del catálogo de rasgos de raza generado, por `(race, key)`. */
+function indiceDeRasgosDeRaza(features: readonly RaceFeature[]): Map<string, RaceFeature> {
+  const indice = new Map<string, RaceFeature>();
+  for (const f of features) indice.set(`${f.race}:${f.key}`, f);
+  return indice;
+}
+
+/**
+ * `enriquecerRazas(razas, rasgos?)` — Tarea 3A.1 (T3b). Pura: devuelve una COPIA de `razas`
+ * donde cada `FeatureGrant` con `key` gana `nameEn/textEs/textEn/actividades/sinTraduccion/
+ * traduccionPropia` del catálogo generado (`race-features-srd.json`), buscando por
+ * `(raceKey, grant.key)`. Un `FeatureGrant` sin `key`, o cuya `key` no tiene fila en el
+ * generado, se devuelve sin cambios — nunca se inventa un enriquecimiento a partir de su nombre.
+ */
+export function enriquecerRazas(
+  razas: readonly SrdRace[],
+  rasgos: readonly RaceFeature[] = SRD_RACE_FEATURES,
+): SrdRace[] {
+  const indice = indiceDeRasgosDeRaza(rasgos);
+
+  function enriquecerGrant(grant: Grant, raceKey: string): Grant {
+    if (grant.kind !== "feature" || !grant.key) return grant;
+    const generado = indice.get(`${raceKey}:${grant.key}`);
+    if (!generado) return grant;
+    const enriquecido: FeatureGrant = {
+      ...grant,
+      nameEn: generado.nameEn,
+      textEs: generado.textEs,
+      textEn: generado.textEn,
+      actividades: generado.actividades,
+      sinTraduccion: generado.sinTraduccion,
+      traduccionPropia: generado.traduccionPropia,
+    };
+    return enriquecido;
+  }
+
+  return razas.map((raza) => ({
+    ...raza,
+    grants: raza.grants.map((g) => enriquecerGrant(g, raza.key)),
+    subraces: raza.subraces.map((sub) => ({
+      ...sub,
+      // T3b (razas.mjs): el conversor atribuye TODOS los rasgos —de la raza y de su subraza— a
+      // la clave de la CARPETA de nivel superior (p. ej. "gnome" para el gnomo de las rocas), así
+      // que la búsqueda de un rasgo de subraza también se hace por `raza.key`, no `sub.key`.
+      grants: sub.grants.map((g) => enriquecerGrant(g, raza.key)),
+    })),
+  }));
 }

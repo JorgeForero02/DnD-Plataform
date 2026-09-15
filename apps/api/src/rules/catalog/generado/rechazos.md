@@ -89,84 +89,23 @@ _ninguno_
 
 ## Aptitudes de clase — sin nombre español
 
-- fighter:grappler
-- monk:flurry-of-blows
-- monk:patient-defense
-- monk:step-of-the-wind
-- paladin/oath-of-devotion:channel-divinity-turn-the-unholy
-- paladin:channel-divinity
-- ranger/hunter:colossus-slayer
-- ranger/hunter:escape-the-horde
-- ranger/hunter:evasion
-- ranger/hunter:giant-killer
-- ranger/hunter:horde-breaker
-- ranger/hunter:multiattack-defense
-- ranger/hunter:stand-against-the-tide
-- ranger/hunter:steel-will
-- ranger/hunter:uncanny-dodge
-- ranger/hunter:volley
-- ranger/hunter:whirlwind-attack
-- sorcerer:careful-spell
-- sorcerer:distant-spell
-- sorcerer:empowered-spell
-- sorcerer:extended-spell
-- sorcerer:heightened-spell
-- sorcerer:quickened-spell
-- sorcerer:subtle-spell
-- sorcerer:twinned-spell
-- warlock:agonizing-blast
-- warlock:armor-of-shadows
-- warlock:ascendant-step
-- warlock:beast-speech
-- warlock:beguiling-influence
-- warlock:bewitching-whispers
-- warlock:book-of-ancient-secrets
-- warlock:chains-of-carceri
-- warlock:devils-sight
-- warlock:dreadful-word
-- warlock:eldritch-sight
-- warlock:eldritch-spear
-- warlock:eyes-of-the-rune-keeper
-- warlock:fiendish-vigor
-- warlock:gaze-of-two-minds
-- warlock:lifedrinker
-- warlock:mask-of-many-faces
-- warlock:master-of-myriad-forms
-- warlock:minions-of-chaos
-- warlock:mire-the-mind
-- warlock:misty-visions
-- warlock:one-with-shadows
-- warlock:otherworldly-leap
-- warlock:repelling-blast
-- warlock:sculptor-of-flesh
-- warlock:sign-of-ill-omen
-- warlock:thief-of-five-fates
-- warlock:thirsting-blade
-- warlock:visions-of-distant-realms
-- warlock:voice-of-the-chain-master
-- warlock:whispers-of-the-grave
-- warlock:witch-sight
-- warlock:pact-of-the-blade
-- warlock:pact-of-the-chain
-- warlock:pact-of-the-tome
+_ninguno_
 
 ## Aptitudes de clase — fórmula o actividad fuera de A
 
 _ninguno_
 
+## Aptitudes de clase — con nombre pero sin texto en español (T3b, corte por nombre sin coincidencia)
+
+- bard/lore:additional-magical-secrets -> Secretos mágicos adicionales
+- cleric:channel-divinity-turn-undead -> Canalizar Divinidad: Expulsar Muertos Vivientes
+- druid/circle-of-the-land:circle-spells -> Conjuros de círculo
+- warlock/the-fiend:expanded-spell-list -> Lista de conjuros ampliada
+- wizard:signature-spells -> Conjuros característicos
+
 ## Rasgos de raza — sin nombre español
 
-- dragonborn:breath-weapon-black
-- dragonborn:breath-weapon-blue
-- dragonborn:breath-weapon-brass
-- dragonborn:breath-weapon-bronze
-- dragonborn:breath-weapon-copper
-- dragonborn:breath-weapon-gold
-- dragonborn:breath-weapon-green
-- dragonborn:breath-weapon-red
-- dragonborn:breath-weapon-silver
-- dragonborn:breath-weapon-white
-- halfling:naturally-stealthy
+_ninguno_
 
 ## Rasgos de raza — no es una aptitud (subraza en sí, u otro tipo)
 
@@ -179,6 +118,10 @@ _ninguno_
 - human: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
 - half-orc: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
 - tiefling: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+
+## Rasgos de raza — con nombre pero sin texto en español (T3b, corte por nombre sin coincidencia)
+
+_ninguno_
 
 ## Conteos
 
@@ -193,8 +136,14 @@ _ninguno_
 - sinTraduccion: 0
 - aptitudesGeneradas: 234
 - subclases: 12
-- aptitudesSinNombreEspañol: 60
+- aptitudesSinNombreEspañol: 0
 - aptitudesFueraDeAOrechazadas: 0
+- aptitudesConTraduccionPropia: 1
+- aptitudesConTextoEs: 228
+- aptitudesSinTextoEs: 5
 - rasgosDeRaza: 26
-- razasSinNombreEspañol: 11
+- razasSinNombreEspañol: 0
+- razasConTraduccionPropia: 10
+- razasConTextoEs: 16
+- razasSinTextoEs: 0
 - clasesConEscalas: 12

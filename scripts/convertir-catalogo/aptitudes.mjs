@@ -1,5 +1,6 @@
 import { actividadDe } from "./actividad.mjs";
 import { origenDe } from "./origen.mjs";
+import { textoDeAptitud } from "./srd-es.mjs";
 
 // Tarea 3A.1 (T3) — las aptitudes de clase y subclase: 234 `type: feat` de `classfeatures/`,
 // traducidas con el mismo `actividadDe` que ya usan los conjuros (T1). Lo nuevo de esta tanda es
@@ -17,6 +18,20 @@ const IDENTIFICADOR_DE_SUBCLASE_A_CLAVE = {
   "college-of-lore": "lore",
   "way-of-the-open-hand": "open-hand",
   "school-of-evocation": "evocation",
+};
+
+/**
+ * T3b — un puñado de identificadores de Foundry cuyo nombre ya resuelto (`aptitudesDeClase`) no
+ * coincide LITERALMENTE con la cabecera que usa `srd-5.1-es.txt` para la misma prosa (dicho de
+ * otra forma: dos formas válidas de nombrar lo mismo, una la que `classes.ts` ya verificó en
+ * 2A.3 y otra la que el SRD usa como título de sección). Nunca se toca `nameEs` por esto — solo
+ * se busca el TEXTO bajo este alias antes de darlo por no encontrado. Por IDENTIFICADOR crudo,
+ * sin dueño, porque el desajuste es el mismo lo lleve la clase que lo lleve.
+ */
+const ALIAS_DE_BUSQUEDA = {
+  "ability-score-improvement": "Mejora de Característica",
+  dueling: "Duelo",
+  "great-weapon-fighting": "Combate con Armas a Dos Manos",
 };
 
 /** Las doce clases del SRD 5.1, en el inglés que usa `system.requirements` de Foundry. */
@@ -96,10 +111,12 @@ function usosDe(uses) {
 }
 
 /**
- * `convertirAptitudes({ featuresFoundry, subclases, emparejamientos })` — pura. Devuelve
- * `{ features: SrdFeature[], rechazos }`.
+ * `convertirAptitudes({ featuresFoundry, subclases, emparejamientos, cortesEs })` — pura.
+ * Devuelve `{ features: SrdFeature[], rechazos }`. `cortesEs` es el resultado de
+ * `cortarAptitudesEs` (T3b, `srd-es.mjs`) — opcional para no romper llamadas antiguas en pruebas
+ * unitarias que no lo necesitan; sin él, `textEs` se queda en `null` como antes de esta tanda.
  */
-export function convertirAptitudes({ featuresFoundry, subclases, emparejamientos }) {
+export function convertirAptitudes({ featuresFoundry, subclases, emparejamientos, cortesEs }) {
   // `s.key` normalizada a la clave de `classes.ts` (`IDENTIFICADOR_DE_SUBCLASE_A_CLAVE` para las
   // cuatro que no coinciden con el `identifier` de Foundry, igual en el resto).
   const subclasesNormalizadas = subclases.map((s) => ({
@@ -116,8 +133,11 @@ export function convertirAptitudes({ featuresFoundry, subclases, emparejamientos
 
   const clavesDeAptitud = emparejamientos?.clavesDeAptitud ?? {};
   const nombresDeAptitud = emparejamientos?.aptitudesDeClase ?? {};
+  // T3b (E-3A1, «traducción propia, marcada»): último recurso, solo para lo que el SRD español
+  // de verdad no nombra (ver el comentario de `traduccionesPropias` en `emparejamientos.json`).
+  const traduccionesPropias = emparejamientos?.traduccionesPropias ?? {};
 
-  const rechazos = { sinTraduccion: [], fueraDeA: [] };
+  const rechazos = { sinTraduccion: [], fueraDeA: [], sinTextoEs: [] };
   const features = [];
 
   for (const entry of featuresFoundry) {
@@ -157,8 +177,32 @@ export function convertirAptitudes({ featuresFoundry, subclases, emparejamientos
       // característica y compañía, que no tienen clase propia en el catálogo generado).
       nameEs = nombresDeAptitud[`shared:${identificadorResuelto}`] ?? null;
     }
+    // T3b: traducción propia, marcada (E-3A1) — solo cuando el SRD español no nombra el ítem.
+    let traduccionPropia = false;
+    if (!nameEs) {
+      const propia =
+        traduccionesPropias[`${owner}:${identificadorResuelto}`] ??
+        traduccionesPropias[`shared:${identificadorResuelto}`];
+      if (propia) {
+        nameEs = propia;
+        traduccionPropia = true;
+      }
+    }
     const sinTraduccion = !nameEs;
     if (sinTraduccion) rechazos.sinTraduccion.push(`${owner}:${identifier}`);
+
+    // T3b: prosa española de la aptitud, buscada por su nombre ya resuelto dentro de la sección
+    // de `classKey` (con `global` como respaldo para las de `shared-features`). `null` cuando no
+    // hay nombre (sin nada que buscar) o cuando el nombre no se encontró en el texto cortado —
+    // nunca inventada; el fallo se cuenta abajo, en `rechazos.sinTextoEs`.
+    const nombreDeBusqueda = ALIAS_DE_BUSQUEDA[identifier] ?? nameEs;
+    const textEs =
+      !traduccionPropia && cortesEs
+        ? (textoDeAptitud(cortesEs, classKey, nombreDeBusqueda) ?? null)
+        : null;
+    if (nameEs && !traduccionPropia && !textEs) {
+      rechazos.sinTextoEs.push(`${owner}:${identifier} -> ${nameEs}`);
+    }
 
     const textEnPlano = limpiarProsaFeature(doc.system.description?.value) || "(sin texto)";
 
@@ -191,15 +235,12 @@ export function convertirAptitudes({ featuresFoundry, subclases, emparejamientos
       nameEn,
       nameEs,
       sinTraduccion,
+      traduccionPropia,
       textEn: textEnPlano.slice(0, 4000),
-      // Sin extracción de prosa española por-aptitud en esta tanda (a diferencia de los
-      // conjuros, una aptitud no tiene una cabecera de cuatro etiquetas que acote su cuerpo en
-      // `srd-5.1-es.txt`; el nombre SÍ sale del SRD español — `aptitudesDeClase`, hecho a mano
-      // sobre el nombre que `classes.ts` ya verificó en 2A.3 — pero el TEXTO largo se queda en
-      // inglés, documentado como deuda, no fingido): `textEs` es `null` salvo los ocho casos
-      // conocidos de la tarea 0 que sí traen descripción en español (`CONOCIDOS_A_MANO`, más
-      // abajo vía `actividadDe`).
-      textEs: null,
+      // T3b: prosa española cortada de `srd-5.1-es.txt` por nombre (`cortarAptitudesEs`,
+      // `srd-es.mjs`) — `null` cuando no hay nombre, la traducción es propia (sin prosa oficial
+      // que buscar) o el corte no la encontró (contado en `rechazos.sinTextoEs`).
+      textEs: textEs ? textEs.slice(0, 4000) : null,
       ...(usosDe(doc.system.uses) && { usos: usosDe(doc.system.uses) }),
       actividades,
       fueraDeA,

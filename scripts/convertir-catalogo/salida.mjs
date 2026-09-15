@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { leerFoundry, leerSubclases, leerEscalasDeClase } from "./foundry.mjs";
-import { cortarSrdEs } from "./srd-es.mjs";
+import { cortarSrdEs, cortarAptitudesEs } from "./srd-es.mjs";
 import { emparejar } from "./huella.mjs";
 import { actividadDe } from "./actividad.mjs";
 import { convertirAptitudes } from "./aptitudes.mjs";
@@ -240,6 +240,9 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     rechazados,
   } = leerFoundry(foundryDir);
   const { conjuros: conjurosEs, listasPorClase } = cortarSrdEs(srdEsTxt);
+  // T3b — la prosa española de aptitudes de clase/subclase y rasgos de raza, cortada UNA vez
+  // (misma disciplina que `cortarSrdEs` arriba) y reutilizada por las dos conversiones de abajo.
+  const cortesEs = cortarAptitudesEs(srdEsTxt);
 
   const spellsEnHuella = new Map(spellsFoundry.map((s) => [s.key, huellaDesdeFoundry(s.doc)]));
   const conjurosEsHuella = new Map(
@@ -344,22 +347,34 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     featuresFoundry,
     subclases,
     emparejamientos,
+    cortesEs,
   });
   const { features: rasgosDeRaza, rechazos: rechazosRazas } = convertirRazas({
     foundryDir,
     emparejamientos,
+    cortesEs,
   });
   const escalas = leerEscalasDeClase(foundryDir);
 
+  const aptitudesConNombre = aptitudes.filter((f) => f.nameEs);
+  const razasConNombre = rasgosDeRaza.filter((f) => f.nameEs);
   const conteosAptitudes = {
     aptitudesGeneradas: aptitudes.length,
     subclases: subclases.length,
     aptitudesSinNombreEspañol: rechazosAptitudes.sinTraduccion.length,
     aptitudesFueraDeAOrechazadas: rechazosAptitudes.fueraDeA.length,
+    // T3b — cobertura de `textEs` entre las aptitudes CON nombre (una sin nombre no puede
+    // buscarse por nombre; su ausencia ya se cuenta arriba, no se duplica aquí).
+    aptitudesConTraduccionPropia: aptitudes.filter((f) => f.traduccionPropia).length,
+    aptitudesConTextoEs: aptitudesConNombre.filter((f) => f.textEs).length,
+    aptitudesSinTextoEs: rechazosAptitudes.sinTextoEs.length,
   };
   const conteosRazas = {
     rasgosDeRaza: rasgosDeRaza.length,
     razasSinNombreEspañol: rechazosRazas.sinTraduccion.length,
+    razasConTraduccionPropia: rasgosDeRaza.filter((f) => f.traduccionPropia).length,
+    razasConTextoEs: razasConNombre.filter((f) => f.textEs).length,
+    razasSinTextoEs: rechazosRazas.sinTextoEs.length,
   };
 
   return {
@@ -389,8 +404,10 @@ function rechazosMd({ rechazos, conteos, sinPareja }) {
     `## Sin huella hermana (huella sin pareja, T1 revisó a mano)\n\n${filas(sinPareja)}\n` +
     `## Aptitudes de clase — sin nombre español\n\n${filas(rechazos.aptitudes?.sinTraduccion ?? [])}\n` +
     `## Aptitudes de clase — fórmula o actividad fuera de A\n\n${filas(rechazos.aptitudes?.fueraDeA ?? [])}\n` +
+    `## Aptitudes de clase — con nombre pero sin texto en español (T3b, corte por nombre sin coincidencia)\n\n${filas(rechazos.aptitudes?.sinTextoEs ?? [])}\n` +
     `## Rasgos de raza — sin nombre español\n\n${filas(rechazos.razas?.sinTraduccion ?? [])}\n` +
     `## Rasgos de raza — no es una aptitud (subraza en sí, u otro tipo)\n\n${filas(rechazos.razas?.noEsAptitud ?? [])}\n` +
+    `## Rasgos de raza — con nombre pero sin texto en español (T3b, corte por nombre sin coincidencia)\n\n${filas(rechazos.razas?.sinTextoEs ?? [])}\n` +
     `## Conteos\n\n` +
     Object.entries(conteos)
       .map(([k, v]) => `- ${k}: ${v}\n`)

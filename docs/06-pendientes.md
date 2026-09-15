@@ -128,6 +128,23 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
+## Dejado por «efectos de mesa» (2026-09-15) — en rama `feat/efectos-de-mesa`
+
+### EM-1 · Cubrir los efectos de mesa con pruebas
+
+El autor decidió entregarlos sin pruebas nuevas (D-CF-118). Cuando se vuelvan a tocar, lo mínimo:
+unitarias del detector puro (`apps/web/src/features/sessions/elenco/efectos/detectarEfectos.ts`: daño/cura/temporales/cae/muere/
+en pie/nivel/condición puesta y terminada, y que la primera lectura no dispara nada) y **un e2e
+que mida en navegador que el texto flotante desaparece del DOM** — el fallo exacto del laboratorio
+que jsdom no puede ver.
+
+### EM-2 · Crítico, bloqueo y esquiva no tienen efecto
+
+El crítico vive en el registro (`HP_CHANGED.critical`), no en la hoja, y el detector solo compara
+hojas: hoy un golpe «fuerte» es ≥ 25 % del máximo, sin decir «crítico». Bloquear y esquivar no
+tienen suceso propio. Si se quieren, la ficha tendría que leer también el hilo de sucesos del
+personaje.
+
 ## Lo que 3A.1 dejó como texto (2026-09-14; conteos regenerados en la ola de arreglos)
 
 **«El libro entra»** convirtió 319 conjuros, 234 aptitudes de clase/subclase y los rasgos de raza

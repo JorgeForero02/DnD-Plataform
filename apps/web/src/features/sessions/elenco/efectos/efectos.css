@@ -1,0 +1,612 @@
+/* Efectos de mesa (2026-09-15). Sin librería: todo es transform/opacity/filter/box-shadow, que
+   CSS anima nativo y compone en la GPU. Los colores y las fuentes salen de los tokens, así que
+   siguen al tema. Con `prefers-reduced-motion` nada se mueve: el texto solo aparece y se va. */
+
+/* Los textos flotantes van en una columna: varios a la vez se APILAN, no se pisan. La columna es
+   `absolute` sobre la tarjeta; cada texto está en flujo dentro de ella. */
+.fx-flotantes {
+  position: absolute;
+  inset-inline: 0;
+  top: 0.5rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+.fx-flotante {
+  white-space: nowrap;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-sm, 0.25rem);
+  border: 1px solid currentColor;
+  /* Píldora opaca del color de fondo del tema: legible sobre cualquier tarjeta, en los dos temas. */
+  background: rgb(var(--bg-ch) / 0.92);
+  box-shadow: 0 4px 14px var(--sheet-shadow);
+  font-family: var(--font-data);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+  /* 0,3 s de entrada, ~1,8 s quieto y legible, 0,5 s de salida. */
+  animation: fx-flotante 2.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: var(--fx-retardo, 0ms);
+}
+.fx-flotante--rotulo {
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+.fx-tono-dano {
+  color: var(--danger-text);
+}
+.fx-tono-cura {
+  color: var(--voz-salvia);
+}
+.fx-tono-aviso {
+  color: var(--warning-text);
+}
+.fx-tono-sistema {
+  color: var(--accent-text);
+}
+
+@keyframes fx-flotante {
+  0% {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+  20% {
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1rem) scale(1);
+  }
+}
+
+/* El destello dentro de la tarjeta o sobre la pantalla. */
+.fx-destello {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--fx-color);
+  animation: fx-destello 0.45s ease-out both;
+}
+@keyframes fx-destello {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* **Caído: estado, no animación.** Mientras esté a 0 PG la tarjeta se queda gris y apagada. Solo
+   `filter` y `opacity`: ni transform ni márgenes, así que ocupa exactamente lo mismo que en pie. */
+.fx-tarjeta-caido {
+  filter: grayscale(1);
+  opacity: 0.6;
+  transition:
+    filter 0.4s ease-out,
+    opacity 0.4s ease-out;
+}
+
+/* La tarjeta. Todas vuelven sola al estado inicial: la barra y la cifra ya dicen lo que queda. */
+.fx-tarjeta-golpe {
+  animation: fx-sacudida 0.35s linear both;
+}
+.fx-tarjeta-golpe-fuerte {
+  animation: fx-sacudida-fuerte 0.5s linear both;
+}
+.fx-tarjeta-cura {
+  animation: fx-cura 0.5s ease-out both;
+}
+.fx-tarjeta-nivel {
+  animation: fx-nivel 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.fx-tarjeta-condicion {
+  animation: fx-condicion 0.3s ease-in-out 4 alternate both;
+}
+.fx-tarjeta-condicion-termina {
+  animation: fx-condicion-termina 0.35s ease-in-out 2 alternate both;
+}
+.fx-tarjeta-cae {
+  animation: fx-cae 1.1s ease-out both;
+}
+.fx-tarjeta-muerte {
+  animation: fx-muerte 1.4s ease-out both;
+}
+.fx-tarjeta-en-pie {
+  animation: fx-en-pie 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes fx-sacudida {
+  0% {
+    transform: translateX(0) rotate(0);
+  }
+  15% {
+    transform: translateX(-10px) rotate(-1deg);
+  }
+  30% {
+    transform: translateX(10px) rotate(1deg);
+  }
+  45% {
+    transform: translateX(-7px) rotate(-0.7deg);
+  }
+  60% {
+    transform: translateX(5px) rotate(0.4deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+}
+@keyframes fx-sacudida-fuerte {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  10% {
+    transform: translateX(-14px) rotate(-1.5deg) scale(1.06);
+  }
+  25% {
+    transform: translateX(14px) rotate(1.5deg) scale(1.06);
+  }
+  40% {
+    transform: translateX(-10px) rotate(-1deg) scale(1.03);
+  }
+  55% {
+    transform: translateX(7px) rotate(0.6deg);
+  }
+  70% {
+    transform: translateX(-4px);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes fx-cura {
+  0% {
+    transform: scale(1.03);
+    filter: brightness(1.7);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+@keyframes fx-nivel {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.12);
+    filter: brightness(1.9);
+    box-shadow: 0 0 32px var(--warning);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+@keyframes fx-condicion {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  100% {
+    box-shadow: 0 0 28px var(--warning);
+  }
+}
+@keyframes fx-condicion-termina {
+  0% {
+    filter: saturate(1);
+  }
+  100% {
+    filter: saturate(0.3);
+  }
+}
+@keyframes fx-cae {
+  0% {
+    filter: grayscale(0);
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    filter: grayscale(1);
+    transform: scale(0.95);
+    opacity: 0.45;
+  }
+  100% {
+    filter: grayscale(1);
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+@keyframes fx-muerte {
+  0% {
+    filter: grayscale(0);
+    transform: scale(1);
+    opacity: 1;
+  }
+  30% {
+    filter: grayscale(1);
+    transform: scale(0.92);
+    opacity: 0.2;
+  }
+  100% {
+    filter: grayscale(1);
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+@keyframes fx-en-pie {
+  0% {
+    filter: grayscale(1) brightness(2);
+    transform: translateY(20px) scale(0.8);
+    opacity: 0.2;
+  }
+  100% {
+    filter: grayscale(0) brightness(1);
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Una animación por condición del SRD (`detectarEfectos.ts`, CLASE_DE_CONDICION). Todas vuelven
+   al estado inicial: el chip de la condición es lo que queda. */
+.fx-tarjeta-cond-veneno {
+  animation: fx-cond-veneno 0.6s ease-in-out 3 alternate both;
+}
+.fx-tarjeta-cond-aturdido {
+  animation: fx-cond-aturdido 1.2s ease-in-out both;
+}
+.fx-tarjeta-cond-paralizado {
+  animation: fx-cond-paralizado 1.1s linear both;
+}
+.fx-tarjeta-cond-asustado {
+  animation: fx-cond-asustado 0.08s linear 14 both;
+}
+.fx-tarjeta-cond-encantado {
+  animation: fx-cond-encantado 0.45s ease-in-out 3 alternate both;
+}
+.fx-tarjeta-cond-cegado {
+  animation: fx-cond-cegado 1.2s ease-in-out both;
+}
+.fx-tarjeta-cond-ensordecido {
+  animation: fx-cond-ensordecido 0.9s ease-in-out both;
+}
+.fx-tarjeta-cond-derribado {
+  animation: fx-cond-derribado 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.fx-tarjeta-cond-agarrado {
+  animation: fx-cond-agarrado 0.25s ease-in-out 4 alternate both;
+}
+.fx-tarjeta-cond-invisible {
+  animation: fx-cond-invisible 1.4s ease-in-out both;
+}
+.fx-tarjeta-cond-petrificado {
+  animation: fx-cond-petrificado 1.3s ease-out both;
+}
+.fx-tarjeta-cond-inconsciente {
+  animation: fx-cond-inconsciente 1.2s ease-in-out both;
+}
+.fx-tarjeta-cond-agotado {
+  animation: fx-cond-agotado 1.4s ease-in-out both;
+}
+.fx-tarjeta-cond-furia {
+  animation: fx-cond-furia 0.35s ease-in-out 4 alternate both;
+}
+
+@keyframes fx-cond-veneno {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+    filter: hue-rotate(0deg) saturate(1);
+  }
+  100% {
+    box-shadow: 0 0 26px var(--voz-salvia);
+    filter: hue-rotate(60deg) saturate(1.4);
+  }
+}
+@keyframes fx-cond-aturdido {
+  0% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(-4deg) translateX(-4px);
+  }
+  35% {
+    transform: rotate(4deg) translateX(4px);
+  }
+  55% {
+    transform: rotate(-3deg) translateX(-3px);
+  }
+  75% {
+    transform: rotate(2deg) translateX(2px);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+@keyframes fx-cond-paralizado {
+  0% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+  5% {
+    transform: translateX(-3px);
+    filter: brightness(1.8);
+  }
+  10% {
+    transform: translateX(3px);
+  }
+  15% {
+    transform: translateX(-3px);
+    filter: brightness(1.8);
+  }
+  20% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+  /* …y se queda rígido: nada se mueve el resto del tiempo. */
+  100% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+}
+@keyframes fx-cond-asustado {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-2px, 1px);
+  }
+  50% {
+    transform: translate(2px, -1px);
+  }
+  75% {
+    transform: translate(-1px, -1px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes fx-cond-encantado {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  100% {
+    transform: scale(1.04);
+    box-shadow: 0 0 24px var(--voz-ciruela);
+  }
+}
+@keyframes fx-cond-cegado {
+  0% {
+    filter: brightness(1);
+  }
+  40% {
+    filter: brightness(0.25);
+  }
+  70% {
+    filter: brightness(0.25);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+@keyframes fx-cond-ensordecido {
+  0% {
+    filter: blur(0);
+  }
+  30% {
+    filter: blur(2px);
+  }
+  70% {
+    filter: blur(2px);
+  }
+  100% {
+    filter: blur(0);
+  }
+}
+@keyframes fx-cond-derribado {
+  0% {
+    transform: rotate(0) translateY(0);
+  }
+  40% {
+    transform: rotate(6deg) translateY(6px);
+  }
+  70% {
+    transform: rotate(6deg) translateY(6px);
+  }
+  100% {
+    transform: rotate(0) translateY(0);
+  }
+}
+@keyframes fx-cond-agarrado {
+  0% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0.94);
+    box-shadow: inset 0 0 18px var(--voz-indigo);
+  }
+}
+@keyframes fx-cond-invisible {
+  0% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.25;
+  }
+  70% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes fx-cond-petrificado {
+  0% {
+    filter: grayscale(0) contrast(1);
+  }
+  50% {
+    filter: grayscale(1) contrast(1.4) brightness(0.9);
+  }
+  85% {
+    filter: grayscale(1) contrast(1.4) brightness(0.9);
+  }
+  100% {
+    filter: grayscale(0) contrast(1);
+  }
+}
+@keyframes fx-cond-inconsciente {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateY(8px) scale(0.97);
+    filter: brightness(0.6);
+  }
+  80% {
+    transform: translateY(8px) scale(0.97);
+    filter: brightness(0.6);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+@keyframes fx-cond-agotado {
+  0% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(0.2) brightness(0.7);
+  }
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+}
+@keyframes fx-cond-furia {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  100% {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px var(--danger);
+  }
+}
+
+/* La pantalla entera. Solo el jugador afectado la ve (`pantalla.store.ts`). */
+.fx-pantalla-destello {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: var(--fx-color);
+  animation: fx-destello 0.5s ease-out both;
+}
+.fx-pantalla-golpe {
+  animation: fx-sacudida-pantalla 0.4s linear both;
+}
+.fx-pantalla-golpe-fuerte {
+  animation: fx-sacudida-pantalla 0.6s linear both;
+}
+.fx-pantalla-cae,
+.fx-pantalla-muerte {
+  animation: fx-pantalla-gris 1.4s ease-out both;
+}
+.fx-pantalla-en-pie,
+.fx-pantalla-nivel {
+  animation: fx-pantalla-brillo 0.9s ease-out both;
+}
+@keyframes fx-sacudida-pantalla {
+  0% {
+    transform: translate(0, 0);
+  }
+  12% {
+    transform: translate(-6px, 2px);
+  }
+  25% {
+    transform: translate(6px, -2px);
+  }
+  37% {
+    transform: translate(-5px, 1px);
+  }
+  50% {
+    transform: translate(5px, -1px);
+  }
+  62% {
+    transform: translate(-3px, 0);
+  }
+  75% {
+    transform: translate(3px, 0);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes fx-pantalla-gris {
+  0% {
+    filter: grayscale(0);
+  }
+  30% {
+    filter: grayscale(1);
+  }
+  70% {
+    filter: grayscale(1);
+  }
+  100% {
+    filter: grayscale(0);
+  }
+}
+@keyframes fx-pantalla-brillo {
+  0% {
+    filter: brightness(1);
+  }
+  20% {
+    filter: brightness(1.35);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*="fx-tarjeta-"],
+  [class*="fx-pantalla-"]:not(.fx-pantalla-destello) {
+    animation: none;
+  }
+  .fx-flotante {
+    animation: fx-flotante-quieto 2.6s ease-out both;
+  }
+  .fx-destello,
+  .fx-pantalla-destello {
+    animation-duration: 0.25s;
+  }
+  @keyframes fx-flotante-quieto {
+    0% {
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}

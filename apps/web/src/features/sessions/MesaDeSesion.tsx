@@ -6,6 +6,8 @@ import { DialogoDeInicio } from "./ControlesDeSesion";
 import { BandaDeMesa } from "./BandaDeMesa";
 import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { ColumnaElenco } from "./elenco/ColumnaElenco";
+import { EfectosDePantalla } from "./elenco/efectos/EfectosDePantalla";
+import { useClaseDePantalla } from "./elenco/efectos/pantalla.store";
 import { HiloDeSesion } from "./hilo/HiloDeSesion";
 import { MarcoDelTablero } from "./tablero/MarcoDelTablero";
 import { CajonDelRegistro } from "./tablero/CajonDelRegistro";
@@ -68,6 +70,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   const { data: campana } = useCampaign(campaignId);
   const { role } = useMyRole(campaignId);
   const esDm = role === "DM";
+  const claseDePantalla = useClaseDePantalla();
   // «Ver como»: el DM elige por los ojos de quién mira. El servidor sigue filtrando por canView.
   const [comoUsuario, setComoUsuario] = useState<string>("");
 
@@ -154,7 +157,11 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
+    // **Efectos de mesa** (2026-09-15): la clase sacude o apaga la raíz entera cuando le pegan a
+    // MI personaje (`elenco/efectos/pantalla.store.ts`); el destello va encima de todo. Solo lo
+    // recibe el jugador afectado — al DM no le dispara nada.
+    <div className={`flex h-screen flex-col overflow-hidden bg-bg text-text ${claseDePantalla}`}>
+      <EfectosDePantalla />
       <BandaDeMesa
         campaignId={campaignId}
         nombreDeCampana={campana?.name}

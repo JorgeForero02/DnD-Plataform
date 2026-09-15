@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 import { IconoCerrar } from "./Iconos";
 
@@ -166,7 +167,12 @@ export function Dialog({
   // lo que escriben las 24 llamadas; lo que cambia es a cuánto miden.
   const ancho = { sm: "max-w-[26rem]", lg: "max-w-[40rem]", xl: "max-w-[58rem]" }[size];
 
-  return (
+  // **Portal a `document.body`** (2026-09-15). El cajón es `fixed`, pero `fixed` se ancla al
+  // antecesor más cercano con `transform` o `filter` — y desde los efectos de mesa una tarjeta
+  // del elenco lleva `filter: grayscale(1)` mientras su personaje está a 0 PG. Sin portal, el
+  // cajón de «Curar» de un caído se pintaba embutido en su propia tarjeta y en gris. El mismo
+  // motivo por el que `PanelFlotante` ya sale por portal (desbordes, E-DB-1..5).
+  return createPortal(
     <div
       role="presentation"
       // El velo: `bg-[color:var(--veil)]`, un token declarado, y no `bg-bg/70`.
@@ -301,6 +307,7 @@ export function Dialog({
           </footer>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

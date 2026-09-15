@@ -12,6 +12,9 @@ import { useAnswerRollRequest, useRollRequests } from "./hooks";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { nombreDeClave } from "./vocabulario";
 import { PanelDeIniciativa } from "./PanelDeIniciativa";
+import { IconoCerrar } from "../../ui/Iconos";
+import { useCurrentSession } from "../sessions/hooks";
+import { useCurrentEncounter } from "../encounters/hooks";
 
 // Tarea 2C.5 — **lo que te han pedido.**
 //
@@ -76,6 +79,8 @@ interface Respondida {
    * aparecía en un rótulo que ya no describía nada pendiente.
    */
   esDeEncuentro: boolean;
+  /** El encuentro del que salió, para pintarla solo mientras ese siga preparándose. */
+  encounterId: string | null;
   /**
    * La puerta de efectos (§4.3): lo que el servidor aplicó de verdad al responder esta salvación,
    * o `undefined` si la petición no traía ningún `pendingEffect` (una prueba, una salvación sin
@@ -100,6 +105,23 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   const responder = useAnswerRollRequest(campaignId);
   // Por petición, porque cada una es una decisión distinta.
   const [inspirados, setInspirados] = useState<Record<string, boolean>>({});
+
+  // **Los resultados de iniciativa se van solos cuando dejan de servir** (2026-09-15).
+  // `respondidas` es estado local y hasta hoy no se vaciaba nunca: la caja «Iniciativa tirada»
+  // se quedaba encima de la mesa hasta recargar la página. Se pinta SOLO mientras SU encuentro
+  // siga en `PREPARING` —en cuanto pasa a `ACTIVE`, el orden ya está en la tira de iniciativa,
+  // que es donde se mira—. Es una derivación en el render, no un efecto que vacíe estado: así
+  // un encuentro nuevo tampoco puede resucitar el resultado del anterior (se compara el `id`).
+  // Mismo par de hooks que `ColumnaElenco` para llegar al encuentro sin tocar el compositor.
+  const { data: sesion } = useCurrentSession(campaignId);
+  const { data: encuentro } = useCurrentEncounter(campaignId, sesion?.id);
+  // Mientras el encuentro no se conoce (`undefined`: cargando o sin sesión) el resultado se
+  // enseña: esconderlo por no saber sería quitarle al jugador su tirada durante una recarga.
+  const iniciativaSigueViva = (encounterId: string | null) =>
+    encuentro === undefined || (encuentro?.status === "PREPARING" && encuentro.id === encounterId);
+
+  // Y cualquier resultado se puede cerrar a mano: el aspa de cada caja.
+  const cerrar = (id: string) => setRespondidas((actuales) => actuales.filter((r) => r.id !== id));
 
   const yaRespondidas = new Set(respondidas.map((r) => r.id));
   // La lista que sondea el servidor ya viene solo con las pendientes (`includeResolved=false`),
@@ -128,7 +150,9 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   // I-6 — el resultado de una respondida vuelve a la caja de la que salió su petición, no a la
   // que quede montada. `respondidasDeEncuentro` tiene su propio sitio (ver más abajo); la caja
   // pequeña solo abre por `normales` o por `respondidasNormales`, nunca por las dos mezcladas.
-  const respondidasDeEncuentro = respondidas.filter((r) => r.esDeEncuentro);
+  const respondidasDeEncuentro = respondidas.filter(
+    (r) => r.esDeEncuentro && iniciativaSigueViva(r.encounterId),
+  );
   const respondidasNormales = respondidas.filter((r) => !r.esDeEncuentro);
 
   // I-4 — la ausencia de panel **afirma algo**: «no hay ningún combate esperándote, no te han
@@ -172,6 +196,7 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
               etiqueta: peticion.label,
               resultado,
               esDeEncuentro,
+              encounterId: peticion.encounterId ?? null,
               effectApplied: resultado.effectApplied,
               effectWarning: resultado.effectWarning,
             },
@@ -220,7 +245,8 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
           habla de peticiones que siguen esperando. */}
       {respondidasDeEncuentro.map((r) => (
         <section aria-label="Tu iniciativa" className="mb-s5" key={r.id}>
-          <Panel className="max-w-[24rem] border-warning">
+          <Panel className="relative max-w-[24rem] border-warning">
+            <BotonCerrarResultado onClick={() => cerrar(r.id)} />
             <h3 className="font-title text-chrome-lg uppercase tracking-wide text-warning-text">
               Iniciativa tirada
             </h3>
@@ -304,7 +330,8 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
             </ul>
 
             {respondidasNormales.map((r) => (
-              <div key={r.id} className="mt-s3">
+              <div key={r.id} className="relative mt-s3 pr-s5">
+                <BotonCerrarResultado onClick={() => cerrar(r.id)} />
                 {r.resultado.revealed ? (
                   <>
                     {/* El total en grande, igual que en la tarjeta de tirada libre: es lo que se
@@ -342,5 +369,19 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
         </section>
       )}
     </>
+  );
+}
+
+/** El aspa que retira un resultado ya leído. Arriba a la derecha de su caja (`relative` en el padre). */
+function BotonCerrarResultado({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Cerrar este resultado"
+      className="absolute right-s2 top-s2 rounded-radius-sm p-s1 text-muted transition-colors hover:text-text"
+    >
+      <IconoCerrar className="h-4 w-4" />
+    </button>
   );
 }

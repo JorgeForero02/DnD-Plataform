@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { CombatantSide } from "@dnd/shared";
 import type { Character } from "../../characters/api";
@@ -17,6 +18,7 @@ import { Button } from "../../../ui/Button";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./CorregirBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
+import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
 
 /**
  * Un personaje en la mesa: retrato, quién lo lleva, puntos de golpe, condiciones y —solo para el
@@ -135,6 +137,26 @@ export function FichaDeElenco({
   const ca = hoja?.sheet?.derived.ac?.total ?? null;
   const descriptor = descriptorDePersonaje(personaje);
 
+  // **Efectos de mesa** (2026-09-15): la lectura que se compara con la anterior. Memorizada para
+  // que el gancho solo mire cuando de verdad llegó una hoja o una lista de condiciones nueva.
+  // `esMio` es `puedeCambiarPg` porque es el mismo hecho —«este personaje lo llevo yo»— y el DM
+  // nunca lo tiene: su pantalla no se sacude (decisión del autor).
+  const instantanea = useMemo(
+    () =>
+      hoja
+        ? {
+            hp: hoja.hp.current,
+            max: hoja.hp.max,
+            temp: hoja.hp.temp,
+            nivel: personaje.level,
+            estado: hoja.deathSaves?.status,
+            condiciones: condiciones ?? [],
+          }
+        : null,
+    [hoja, condiciones, personaje.level],
+  );
+  const efectos = useEfectosDeFicha({ instantanea, esMio: puedeCambiarPg });
+
   // **Los ítems del bando, para el menú de `MandosDeCombatiente`** (tarea 8 del pulido). Los
   // hooks no pueden llamarse condicionalmente, así que `useAccionesDeBando` se llama siempre —
   // con valores de repuesto cuando falta alguno— y es la lista que se le PASA al menú la que
@@ -185,8 +207,13 @@ export function FichaDeElenco({
         // El anillo del turno. **No es el único portador**: el rótulo «Su turno» de arriba dice
         // lo mismo con palabras, igual que la tira de iniciativa lleva su «Le toca».
         turnoActual ? "ring-2 ring-warning" : "",
+        efectos.clase,
+        // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.
+        actual === 0 ? "fx-tarjeta-caido" : "",
       ].join(" ")}
+      onAnimationEnd={efectos.alTerminarAnimacion}
     >
+      {efectos.capa}
       {turnoActual && (
         <span className="absolute -top-2 left-s3 rounded-radius-sm bg-warning px-1.5 py-px font-chrome text-chrome-xs font-semibold text-bg">
           Su turno
@@ -320,8 +347,8 @@ export function FichaDeElenco({
  * cinco navegadores sería mentira en cuatro—: se resta contra el reloj de campaña que el servidor
  * devuelve, exactamente como hace `character-sheet/Condiciones.tsx`.
  *
- * **Una condición vencida se marca, no desaparece.** El servidor la deja en la lista a propósito
- * (decisión D-2C-2) para que nadie vea cambiar sus números sin saber por qué.
+ * **Una condición vencida no desaparece del servidor** (D-2C-2), pero aquí **se cuenta, no se
+ * lista**: un chip «N vencidas» en vez de una ristra tachada. Ver el comentario de abajo.
  *
  * **Exportada** (tarea 9b, 2026-09-06): `FichaDePnj.tsx` la reutiliza para los PNJ en combate —
  * no lee nada de `Character`, solo `campaignId` y la lista de condiciones, así que sirve igual
@@ -346,47 +373,54 @@ export function Condiciones({
   const hayCuentaAtras = condiciones.some((c) => c.expiresAtClock != null && c.expired !== true);
   const { data: reloj } = useGameClock(campaignId, { enabled: hayCuentaAtras });
 
+  // **Las vencidas no se listan: se cuentan** (2026-09-15, la misma regla que D-CF-43 fijó para
+  // la cabecera de la hoja). El servidor las deja en la lista a propósito (D-2C-2), y hasta hoy la
+  // tarjeta las pintaba una a una: tras una sesión larga un personaje llevaba una ristra de
+  // chips tachados que alargaba su tarjeta y escondía las que sí cuentan. Aquí queda un solo chip
+  // «N vencidas»; tachadas una a una siguen en la pestaña Estado de la hoja, que es donde se
+  // retiran o se renuevan.
+  const activasEnOrden = condiciones.filter((c) => c.expired !== true);
+  const vencidas = condiciones.length - activasEnOrden.length;
+
   return (
     <ul className="mt-s2 flex flex-wrap gap-1.5 empty:mt-0">
       {
         // Sin condiciones **no se pinta nada**, como la maqueta: un chip que dice «Sin
         // condiciones» en cinco retratos es ruido en la única columna que se mira de reojo.
-        condiciones.map((c) => {
-          const vencida = c.expired === true;
+        activasEnOrden.map((c) => {
           const restante =
-            !vencida && c.expiresAtClock != null && reloj ? c.expiresAtClock - reloj.seconds : null;
+            c.expiresAtClock != null && reloj ? c.expiresAtClock - reloj.seconds : null;
           return (
             <li
               key={c.id}
-              className={[
-                "rounded-radius-sm border px-1.5 py-0.5 font-chrome text-chrome-xs",
-                vencida ? "border-muted text-muted" : "border-warning text-warning-text",
-              ].join(" ")}
+              className="rounded-radius-sm border border-warning px-1.5 py-0.5 font-chrome text-chrome-xs text-warning-text"
             >
-              <span className={vencida ? "line-through" : undefined}>
+              <span>
                 {nombreCondicion(c.key)}
                 {c.level !== null && ` ${c.level}`}
               </span>
-              {vencida ? (
-                <span className="ml-1">· vencida</span>
-              ) : (
-                <>
-                  {restante != null && (
-                    <span className="ml-1 text-muted">· {describirRestante(restante)}</span>
-                  )}
-                  {/* La puerta de efectos: «hasta descanso corto/largo», nunca `SHORT`/`LONG`
-                      crudo — la misma tabla que usa la línea de la condición en la hoja. */}
-                  {c.expiresOnRest && (
-                    <span className="ml-1 text-muted">
-                      · {HASTA_EL_DESCANSO[c.expiresOnRest].corto}
-                    </span>
-                  )}
-                </>
+              {restante != null && (
+                <span className="ml-1 text-muted">· {describirRestante(restante)}</span>
+              )}
+              {/* La puerta de efectos: «hasta descanso corto/largo», nunca `SHORT`/`LONG`
+                  crudo — la misma tabla que usa la línea de la condición en la hoja. */}
+              {c.expiresOnRest && (
+                <span className="ml-1 text-muted">
+                  · {HASTA_EL_DESCANSO[c.expiresOnRest].corto}
+                </span>
               )}
             </li>
           );
         })
       }
+      {vencidas > 0 && (
+        <li
+          className="rounded-radius-sm border border-muted px-1.5 py-0.5 font-chrome text-chrome-xs text-muted"
+          title="Se retiran o renuevan desde la hoja, en Estado"
+        >
+          {vencidas === 1 ? "1 vencida" : `${vencidas} vencidas`}
+        </li>
+      )}
     </ul>
   );
 }

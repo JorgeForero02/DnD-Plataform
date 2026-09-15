@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { CombatantSide } from "@dnd/shared";
 import type { NpcEnLaMesa } from "../../bestiario/api";
@@ -8,6 +9,7 @@ import { Retrato, BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./CorregirBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
+import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -96,6 +98,24 @@ export function FichaDePnj({
   const maximo = esDm ? (hoja?.hp.max ?? null) : null;
   const ca = esDm ? (hoja?.sheet?.derived.ac?.total ?? null) : null;
 
+  // **Efectos de mesa** (2026-09-15), los mismos que en `FichaDeElenco`. Un PNJ no es de ningún
+  // jugador, así que `esMio` es falso siempre: su golpe se ve en la tarjeta y en ninguna pantalla.
+  // Sin nivel: subir de nivel no es cosa de un PNJ en la mesa.
+  const instantanea = useMemo(
+    () =>
+      hoja
+        ? {
+            hp: hoja.hp.current,
+            max: hoja.hp.max,
+            temp: hoja.hp.temp,
+            estado: hoja.deathSaves?.status,
+            condiciones: condiciones ?? [],
+          }
+        : null,
+    [hoja, condiciones],
+  );
+  const efectos = useEfectosDeFicha({ instantanea, esMio: false });
+
   // **Los mandos son del DM o del dueño**, igual que `FichaDeElenco` ya hace con `puedeCambiarPg`.
   // **Esconder el botón no es control de acceso**: la puerta real sigue siendo `requireEditable`
   // en el servidor, y esto es cortesía — enseñar un mando que va a dar 403 es peor que no
@@ -142,8 +162,13 @@ export function FichaDePnj({
       className={[
         "relative rounded-radius-md border border-muted bg-bg p-s2",
         turnoActual ? "ring-2 ring-warning" : "",
+        efectos.clase,
+        // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.
+        actual === 0 ? "fx-tarjeta-caido" : "",
       ].join(" ")}
+      onAnimationEnd={efectos.alTerminarAnimacion}
     >
+      {efectos.capa}
       {turnoActual && (
         <span className="absolute -top-2 left-s3 rounded-radius-sm bg-warning px-1.5 py-px font-chrome text-chrome-xs font-semibold text-bg">
           Su turno

@@ -128,7 +128,7 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
-## Dejado por «efectos de mesa» (2026-09-15) — en rama `feat/efectos-de-mesa`
+## Dejado por «efectos de mesa» (2026-09-15) — fusionada y desplegada (`334912b`)
 
 ### EM-1 · Cubrir los efectos de mesa con pruebas
 

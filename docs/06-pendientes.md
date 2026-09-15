@@ -128,6 +128,59 @@ fecha de esta línea se actualiza al añadir una sección** — se quedó en el 
 secciones del día siguiente ya escritas debajo, y otra vez en el 2026-09-04 con las del 05 ya
 dentro. Las dos las cazó una auditoría, no una revisión.
 
+## Lo que 3A.1 dejó como texto (2026-09-14)
+
+**«El libro entra»** convirtió 319 conjuros, 234 aptitudes de clase/subclase y los rasgos de raza
+del SRD 5.1 a `Actividad`, con nombre y prosa del SRD español oficial. Lo que sigue son los
+conteos agrupados de lo que **se quedó como texto** —`actividades: []`, prosa completa en
+`textEn`/`textEs`— y de las traducciones propias, medidos por el propio conversor
+(`apps/api/src/rules/catalog/generado/rechazos.md`, GENERADO, no se edita a mano) y en
+`docs/superpowers/specs/2026-09-14-3a1-tarea-0-prueba-de-fuego.md` §f. Ver
+[decisiones.md](./decisiones.md), sección «Ejecución de 3A.1», D-CF-92 a D-CF-107.
+
+**Tipos de actividad de Foundry fuera del vocabulario cerrado de `Origen`** (`fueraDeA` en el
+catálogo, medido en `rechazos.md`): **57 apariciones en conjuros** —`summon` (29), `enchant`
+(11), `check` (8), `transform` (6), `teleport` (1), `heal` (1, `spare-the-dying`), `save` (1,
+`delayed-blast-fireball`, que además tiene una actividad `summon` fuera de A) — repartidas en
+**53 conjuros distintos** (`disguise-self`, `scrying`, `seeming` y `true-polymorph` aparecen dos
+veces, con dos tipos fuera de A cada uno). **0 aptitudes de clase y 0 rasgos de raza** cayeron
+aquí: el motivo por el que una aptitud queda sin actividad son los tres huecos de esquema de
+abajo, no un tipo de Foundry no soportado. Ninguno de estos 57 se convierte a mecánica en 3A.1 —
+invocar, transformar y encantar como mecánica es trabajo de B (`constraints.md`, «No entra»).
+
+**Tres huecos reales del esquema** (`Origen`/`Actividad` no tienen forma para esto), cada uno con
+su nombre y por qué se queda en texto:
+
+| Aptitud | Por qué |
+|---|---|
+| **Ataque Furtivo** (`rogue:sneak-attack`) | Su daño escala por una tabla de dados **enteros** por nivel (1d6→10d6), y `expresionDeDadosSchema.n` es un literal fijo, no un `Origen` — es material de **3A.2/B** (D-CF-71 decide allí si `escala` puede dar un número de dados) |
+| **Imponer las Manos** (`paladin:lay-on-hands`) | Sus dos actividades consumen y curan la **misma cifra variable**, elegida por el jugador dentro de una reserva — `consumoSchema.cantidad` es un entero fijo, no «lo que cures es lo que gastes» |
+| **Forma Salvaje** (`druid:wild-shape`) | Su duración depende del nivel de druida (`floor(nivel/2)` horas) y `duracionSchema.valor` es un literal fijo — ya estaba fuera de A por ser `transform`, así que este hueco no cambia su resultado hoy, pero es la misma clase de limitación |
+
+El bono de ataque de conjuro (el cuarto hueco que midió T0) **sí se cerró en esta misma tanda**:
+`{ tipo: "ataqueDeConjuro" }` (D-CF-95), así que los 17 conjuros de ataque del SRD entran en A y
+no aparecen en esta lista.
+
+**Cinco aptitudes con nombre oficial pero sin prosa en español** (T3b, corte por nombre sin
+coincidencia en `srd-5.1-es.txt` — se quedan con `textEn` y sin `textEs`, 228/233 de las que sí
+tienen nombre oficial):
+
+- `bard/lore:additional-magical-secrets` → «Secretos mágicos adicionales»
+- `cleric:channel-divinity-turn-undead` → «Canalizar Divinidad: Expulsar Muertos Vivientes»
+- `druid/circle-of-the-land:circle-spells` → «Conjuros de círculo»
+- `warlock/the-fiend:expanded-spell-list` → «Lista de conjuros ampliada»
+- `wizard:signature-spells` → «Conjuros característicos»
+
+**Once traducciones propias** (D-CF-106: el SRD español no nombra estos ítems, y en vez de
+dejarlos en inglés marcado llevan un nombre nuestro, marcado `traduccionPropia: true`): la
+aptitud `fighter:grappler` («Presa», un FEAT del manual del jugador sin equivalente en el SRD
+5.1) y los diez colores del rasgo racial «Ataque de Aliento» del dracónido (`dragonborn`), que en
+el SRD es una sola tabla genérica color→tipo de daño sin nombre propio por color.
+
+**Cero conjuros o aptitudes sin ningún nombre** (`sinTraduccion`): el ruling de traducción propia
+cerró los últimos huecos de nombre; lo que queda son huecos de **actividad** (los de arriba) y de
+**prosa española** (las cinco de la tabla), no de nombre.
+
 ## Dejado por «puerta de efectos» (2026-09-14) — cerrada en rama, sin fusionar ni desplegar
 
 Rama `puerta-de-efectos/antes-del-paso-3`; revisión Opus de la rama entera en dos mitades

@@ -224,6 +224,48 @@ CI no toca `WORKTREE_SLOT`: corre un job por máquina, así que se queda siempre
 de siempre — `DATABASE_URL`, `PORT` y `AUTH_RATE_LIMIT` los sigue fijando
 `.github/workflows/ci.yml` explícitamente, como ya hacía.
 
+## El catálogo generado (3A.1): dos fuentes externas, fuera del repositorio
+
+`apps/api/src/rules/catalog/generado/*.json` (conjuros, aptitudes de clase/subclase, rasgos de
+raza, tablas de escala) los produce `scripts/convertir-catalogo.mjs` cruzando **dos fuentes
+externas**, ninguna de las dos en este repositorio ni en el volumen de Docker — ver
+[NOTICE.md](../NOTICE.md) para su licencia y `.superpowers/sdd/2026-09-14-3a1-el-libro-entra/constraints.md`
+para el porqué de cada regla:
+
+- **El sistema `dnd5e` de Foundry** (MIT), solo como estructura de datos y **su código nunca se
+  ejecuta**: clona <https://github.com/foundryvtt/dnd5e> (o descarga su fuente) y apunta
+  `FOUNDRY_SOURCE_DIR` a la carpeta `packs/_source` de dentro — en esta máquina,
+  `C:\Users\gogam\Desktop\Trabajo\Mine\referencia-foundry-dnd5e\packs\_source`. **Edición 2014
+  (SRD 5.1), sin el sufijo `24`**: el conversor rechaza cualquier ítem cuyo
+  `system.source.rules` no sea `"2014"`.
+- **El SRD 5.1 en español** (CC-BY 4.0): descarga
+  <https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1_ES.pdf> (`SRD_CC_v5.1_ES.pdf`) y
+  extrae su texto con `pymupdf` (`fitz.open(pdf).get_text()` por página, concatenado) a un
+  `.txt` — en esta máquina, `C:\Users\gogam\Desktop\Trabajo\Mine\referencia-srd-es\srd-5.1-es.txt`.
+  Apunta `SRD_ES_TXT` a ese fichero.
+
+```bash
+# una vez, con las dos variables apuntando a las rutas de arriba
+FOUNDRY_SOURCE_DIR=/ruta/a/referencia-foundry-dnd5e/packs/_source \
+SRD_ES_TXT=/ruta/a/referencia-srd-es/srd-5.1-es.txt \
+pnpm catalogo:convertir              # regenera los cuatro JSON + rechazos.md bajo generado/
+
+# --check: regenera en memoria y compara con lo commiteado, sin escribir nada (falla si difieren)
+FOUNDRY_SOURCE_DIR=... SRD_ES_TXT=... pnpm catalogo:convertir --check
+
+pnpm catalogo:test                   # las 47 unitarias PURAS del conversor (sin las fuentes), parte de `pnpm test`
+```
+
+**Sin las dos variables, `pnpm catalogo:convertir` falla explicando cuál falta — nunca genera a
+medias.** Y **en CI la prueba dorada se salta**: `apps/api/src/rules/catalog/generado.spec.ts`
+comprueba `FOUNDRY_SOURCE_DIR`/`SRD_ES_TXT` antes de intentar `--check` y, si no están (el caso
+normal en CI, porque las dos fuentes no viajan con el repositorio ni con la imagen), hace
+`it.skip` con un aviso explicando por qué — **el JSON commiteado bajo `generado/` es la verdad**
+en CI y en producción; solo quien tenga las dos fuentes clonadas puede reproducir el `--check`.
+Los invariantes y los casos contrastados a mano de ese mismo fichero (conteos, «ninguna `@` de
+Foundry sobrevivió», los conjuros y aptitudes literales) sí corren siempre, porque solo leen el
+JSON ya commiteado.
+
 ## Gotchas que ya costaron tiempo
 
 **La carpeta del proyecto contiene un `&`** (`D&D-Plataform`). Eso rompe `nest --watch` en

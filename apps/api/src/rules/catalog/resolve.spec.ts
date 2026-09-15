@@ -181,6 +181,39 @@ describe("ItemGrant — al nivel 1 un bárbaro recibe la Furia como actividad us
     const hoja = deriveCharacter(build("barbarian", 19));
     expect(hoja.activities.find((a) => a.key === "rage")?.usos?.max).toBe(6);
   });
+
+  // Ola de arreglos de 3A.1 (C2). `nivelDeClase` se resolvía a 0 en producción: `resolverOrigen`
+  // compara `ctx.classKey` con la clase del `Origen`, y `ctxDeConcesiones` no lo ponía — solo la
+  // unitaria del motor lo pasaba. Un monje de nivel 5 se sembraba con 0 puntos de ki y un
+  // hechicero con 0 puntos de hechicería: exactamente el «cero en silencio» que `engine.spec.ts`
+  // dice impedir. **Sin multiclase**: el contexto lleva la única clase del personaje.
+  it("un monje de nivel 5 tiene 5 puntos de ki (nivelDeClase(monk) con classKey en el contexto, C2)", () => {
+    const hoja = deriveCharacter(build("monk", 5));
+    expect(hoja.activities.find((a) => a.key === "ki")?.usos).toEqual({
+      max: 5,
+      resetOn: "SHORT_REST",
+    });
+  });
+
+  // Fuente de Magia (`nivelDeClase(sorcerer)` en sus usos) NO llega a la hoja: sus dos
+  // actividades son un consumo variable (hueco C, `rechazos.md`) y sin actividad no hay grant ni
+  // fila de puntos de hechicería — se dice aquí para que nadie lo busque.
+
+  it("un guerrero de nivel 2 tiene Acción Súbita con 1 uso por escala y Tomar Aliento con 1 (C2/C3)", () => {
+    const hoja = deriveCharacter(build("fighter", 2));
+    expect(hoja.activities.find((a) => a.key === "action-surge-1")?.usos).toEqual({
+      max: 1,
+      resetOn: "SHORT_REST",
+    });
+    expect(hoja.activities.find((a) => a.key === "second-wind")?.usos).toEqual({
+      max: 1,
+      resetOn: "SHORT_REST",
+    });
+    // Y toda actividad concedida consume una fila que la misma hoja siembra (C3).
+    const sembradas = new Set(hoja.activities.filter((a) => a.usos).map((a) => a.key));
+    for (const a of hoja.activities)
+      for (const c of a.consumption) expect(sembradas.has(c.recurso)).toBe(true);
+  });
 });
 
 // Encargo A10 (2026-09-07) — números que suben por tramos, no por veinte filas.

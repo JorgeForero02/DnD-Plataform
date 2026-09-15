@@ -129,6 +129,49 @@ cada corrida, con sus rojos y sus causas, vive en el ledger de la tanda
 > fuente única es mirarla de vez en cuando** — o hacer que la escriba una máquina, que es lo que
 > se hizo el 2026-09-03 con lo que se puede contar.
 
+## El catálogo generado (3A.1): qué demuestran sus pruebas, y qué no
+
+Dos suites distintas, con disciplinas distintas porque una puede regenerar su entrada y la otra
+no (E-3A1-9: **se prueba la fórmula, no cada conjuro**):
+
+- **`pnpm catalogo:test`** (`node --test scripts/convertir-catalogo/__tests__/*.test.mjs`, parte
+  de `pnpm test`): **58 unitarias puras** del conversor mismo —huella estructural,
+  emparejamiento, traducción de `@` a `Origen`, limpieza de prosa, corte de cabeceras del SRD
+  español, y desde la ola de arreglos una por hallazgo de la revisión final (`override: false`,
+  pie de página, UUID de compendio, daño en varias partes, `onSave: full`, CD de
+  característica)—, sin tocar disco fuera de sus propios fixtures. No necesitan `FOUNDRY_SOURCE_DIR` ni
+  `SRD_ES_TXT`: prueban funciones, no las fuentes externas.
+- **`apps/api/src/rules/catalog/generado.spec.ts`** (jest, parte de las unitarias de `@dnd/api`):
+  tres cosas. **(a)** El fichero dorado: regenerar en memoria con `--check` tiene que dar
+  exactamente lo commiteado — **solo corre si las dos fuentes externas están presentes**
+  (`FOUNDRY_SOURCE_DIR`/`SRD_ES_TXT`, ver [02-entorno.md](./02-entorno.md)); si no, se salta con
+  `it.skip` y un aviso, **nunca falla en rojo por un motivo ajeno al código** — es el caso normal
+  en CI, porque las dos fuentes no viajan con el repositorio. **(b)** Invariantes sobre los 319
+  conjuros, las 234 aptitudes y los rasgos de raza a la vez: conteos exactos, nivel 0–9, las ocho
+  escuelas, ninguno con actividad Y texto vacíos a la vez, concentración implica duración no
+  instantánea **también por actividad**, la activación de cada actividad es la del conjuro salvo
+  en las secundarias con `override` (96 de 425, medidas), ningún pie de página del PDF en la
+  prosa, `higherLevelsEn` aparte y sin `&Reference[...]`, un truco nunca escala por espacio,
+  ninguna `@` de Foundry sobrevivió, cero sin `nameEs`, las claves son las de 2014, toda clase de
+  un `nivelDeClase` registrada en `LABEL_KEYS`, y **todo recurso que consume un `grant` lo siembra
+  un rasgo con `usos` de la misma clase** (`CONCESIONES_SIN_RECURSO` fijadas). **(c)** Un puñado
+  de casos contrastados a mano, literales: cuatro conjuros (Proyectil mágico, Bola de fuego,
+  Curar heridas, Escudo — reacción y 1 asalto, no acción e instantáneo como decía hasta la ola
+  de arreglos) y seis aptitudes (Tomar Aliento, Ataque Furtivo, Imponer las Manos, Acción Súbita
+  con sus usos por escala, Ataque adicional del bárbaro, dos rasgos raciales), con su `Actividad`
+  esperada byte a byte; más Ki de un monje de nivel 5 con 5 usos en `resolve.spec.ts` (C2).
+
+**Lo que NO demuestran, dicho en voz alta:** **nada por conjuro o por aptitud individual** — con
+319 conjuros y 234 aptitudes, una prueba por ítem sería una segunda copia del JSON escrita a
+mano, que es exactamente lo que el fichero dorado ya compara. Si un conjuro concreto sale mal
+convertido y no es de los seis-diez contrastados a mano, **ninguna prueba lo caza**: lo cazaría
+una lectura del JSON o jugarlo en la mesa. Y el fichero dorado, sin las fuentes externas
+(cualquier máquina que no sea la del autor, y CI siempre), **no prueba que el conversor siga
+produciendo lo commiteado hoy** — solo que el JSON de ayer sigue siendo válido contra los
+esquemas y cumple los invariantes. Tampoco hay e2e de API ni Playwright sobre este catálogo en
+esta tanda: **no entra pantalla ni conjuro lanzado** (fuera de alcance de 3A.1, ver
+[decisiones.md](./decisiones.md), «Ejecución de 3A.1»).
+
 ## Qué escribe una tarea de API
 
 1. **Unitarias del servicio** con el Prisma simulado: el caso normal, el caso sin permiso, y el

@@ -240,7 +240,14 @@ export const actividadBaseObjectSchema = z
      * **`.trim()` antes de `.min(1)` (vuelta 1, M7).** Sin él, `"   "` pasaba la validación del
      * campo y satisfacía la invariante de más abajo con una cadena que no dice nada.
      */
-    description: z.string().trim().min(1).max(2000).optional(),
+    /**
+     * **Tope a 8000 (ola de arreglos de 3A.1, I9 — decisión declarada).** Era 2000 y el
+     * conversor del catálogo recortaba en silencio la prosa de 70 conjuros (Deseo, Símbolo,
+     * Rociada prismática…) para que cupiera. La `description` de una actividad de conjuro ES su
+     * prosa entera del SRD (lo que la mesa lee al pulsar el botón), así que el tope sube al mismo
+     * de `textEs` en `catalog.schema.ts` y nada se corta: si algún día no cabe, se rechaza.
+     */
+    description: z.string().trim().min(1).max(8000).optional(),
     materiales: materialesSchema.optional(),
   })
   .strict();

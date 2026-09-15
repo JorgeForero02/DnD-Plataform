@@ -32,6 +32,7 @@ export * from "./resolve";
 export * from "./difficulty";
 
 export * from "./monsters-srd";
+export * from "./generado";
 
 import type { DamageModifier, DerivationResult, Statblock } from "@dnd/shared";
 import { derive, type Modifier } from "../engine";

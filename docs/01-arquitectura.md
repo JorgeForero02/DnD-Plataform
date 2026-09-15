@@ -105,6 +105,18 @@ catálogo, deriva con el motor y **junta las dos listas de avisos**. Existe porq
 mismo para quien mira la hoja —«hay algo que querrías saber»— y dejar que cada pantalla las
 junte por su cuenta es cómo una de ellas acaba sin pintarse.
 
+**El catálogo generado (3A.1, 2026-09-14) añade dos directorios al mapa**, uno fuera de `apps/`
+y otro dentro de `rules/catalog/`: `scripts/convertir-catalogo.mjs` + `scripts/convertir-catalogo/`
+es el conversor —Foundry YAML + el SRD 5.1 español → los cuatro JSON de abajo, por huella
+estructural y tablas a mano, puro y probado con `node --test` (`pnpm catalogo:test`, 47
+unitarias)—, y `apps/api/src/rules/catalog/generado/` son sus **ficheros generados y
+commiteados** (`spells-srd.json`, `class-features-srd.json`, `race-features-srd.json`,
+`class-scales-srd.json`, `rechazos.md`), leídos una sola vez al arrancar por `apps/api/src/rules/catalog/generado/index.ts`
+con Zod (`spellsCatalogSchema` y hermanos en `packages/shared/src/catalog.schema.ts`) y fundidos
+en `SRD_CLASSES`/`SRD_RACES` al cargar (`enriquecerClases`, `enriquecerRazas`). Es **generado, no
+editado** — ver [05-datos.md](./05-datos.md) y [02-entorno.md](./02-entorno.md) para cómo se
+regenera y [NOTICE.md](../NOTICE.md) para su licencia.
+
 `ContentRef` (`apps/api/src/rules/catalog/types.ts`) existe desde 2A aunque **hoy solo
 tenga una rama útil** (`SRD`): la otra (`CAMPAIGN`) es por donde entrará el contenido propio
 del DM en 2B, **sin que el motor cambie**. Mientras no exista, una referencia de campaña falla

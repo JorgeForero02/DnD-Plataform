@@ -23,6 +23,7 @@
 
 import { CLAVE_FURIA_ACTIVA, SKILLS, type Actividad, type SkillKey } from "@dnd/shared";
 import type { ClassFeature, SrdClass } from "./types";
+import { enriquecerClases } from "./generado";
 
 /** El bardo elige entre **todas**. Se escribe la lista entera y no `[]` con una nota: una lista
  * vacía con un comentario que dice «en realidad son todas» es exactamente la clase de dato que
@@ -152,7 +153,14 @@ const HABILIDADES_BARBARO: SkillKey[] = [
   "survival",
 ];
 
-export const SRD_CLASSES: SrdClass[] = [
+/**
+ * Las doce clases del SRD 5.1 **hechas a mano** (nombre, nivel, `scales` de la Furia): el dato
+ * fuente que `enriquecerClases` (`./generado`, tarea 3A.1 T3) enriquece con texto, actividades y
+ * `grant` sin tocar este array. Se exporta con este nombre "privado" y NO desde `index.ts` — todo
+ * consumidor real (`resolve.ts`, `activities.module.ts`, la hoja) importa `SRD_CLASSES` de más
+ * abajo, la versión YA enriquecida, que es la que hay que leer si se busca `textEs`/`actividades`.
+ */
+const SRD_CLASSES_A_MANO: SrdClass[] = [
   {
     key: "barbarian",
     name: "Bárbaro",
@@ -762,3 +770,13 @@ export const SRD_CLASSES: SrdClass[] = [
     ],
   },
 ];
+
+/**
+ * **Las doce clases, enriquecidas** (tarea 3A.1, T3). Se calcula UNA VEZ al importar este
+ * módulo — igual que `SRD_SPELLS` en `./generado`, y por el mismo motivo: un catálogo generado
+ * inválido revienta en el arranque, no a mitad de una petición. `enriquecerClases` nunca muta
+ * `SRD_CLASSES_A_MANO`; esto es una copia con `nameEn/textEs/textEn/actividades/sinTraduccion`
+ * añadidos por `key`, `grant` construido donde faltaba (nunca donde la Furia ya lo trae a mano)
+ * y las `scales` fundidas con las del catálogo generado (`barbarian-rages` a mano gana).
+ */
+export const SRD_CLASSES: SrdClass[] = enriquecerClases(SRD_CLASSES_A_MANO);

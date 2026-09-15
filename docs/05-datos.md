@@ -62,6 +62,62 @@ cascada. **`GameEvent` cuelga de la campaña, no de la
 sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
 borra su historia, que es lo que se quiere de un log.
 
+## El catálogo generado del SRD 5.1 (3A.1, 2026-09-14): no toca la base
+
+**No hay tabla ni migración.** Igual que las razas y las clases de 2A, los 319 conjuros, las 234
+aptitudes de clase/subclase, los rasgos de raza y las tablas de escala del SRD 5.1 viven **en
+código**: `apps/api/src/rules/catalog/generado/*.json`, generados por
+`scripts/convertir-catalogo.mjs` (ver [02-entorno.md](./02-entorno.md) para cómo se regenera) y
+leídos **una sola vez, al arrancar**, con Zod como barrera
+(`spellsCatalogSchema`/`classFeaturesCatalogSchema`/`raceFeaturesCatalogSchema`/`classScalesCatalogSchema`,
+`packages/shared/src/catalog.schema.ts`). **Generado, no editado**: un JSON no admite
+comentarios, así que la marca «GENERADO por scripts/convertir-catalogo.mjs — no editar» va en el
+fichero hermano `spells-srd.meta.json` y en la cabecera de `rechazos.md` (los cuatro JSON de datos
+no llevan cabecera — I12, ola de arreglos); un cambio se hace en el conversor y se regenera,
+nunca a mano en el JSON. `pnpm catalogo:convertir -- --check` compara los seis ficheros.
+
+**La forma de un conjuro** (`SrdSpell`): `key` (el nombre inglés de 2014 en minúsculas con
+guiones, p. ej. `fireball`; `foundryIdentifier` solo cuando el `system.identifier` de Foundry
+difiere — D-CF-112),
+`nameEn`/`nameEs` (`nameEs` nulable), `sinTraduccion` y `traduccionPropia` (booleanos, nunca los
+dos a la vez), `level` (0–9), `school` (una de las ocho escuelas), `castingTime`, `range`,
+`components`, `duration`, `ritual`, `concentration`, `textEn`/`textEs` (prosa limpia, sin HTML),
+`higherLevelsEn`/`higherLevelsEs` («A niveles superiores», aparte), `classes` (claves de
+`SRD_CLASSES` que lo pueden lanzar, sacadas de la lista de conjuros por clase del SRD español —
+E-3A1-3), `actividades` (`Actividad[]`, la misma forma que ya consume el motor de reglas —
+`packages/shared/src/activity.schema.ts` — para que un conjuro se ejecute exactamente como una
+actividad de la hoja), `fueraDeA` (qué tipos de actividad de Foundry tenía y no entraron —
+`summon`, `transform`…) y `efectosPasivos` (cuántos `ActiveEffects` de Foundry traía sin
+convertir). **Una `Actividad` de aquí no lleva ninguna fórmula evaluable de Foundry**: cada `@`
+se tradujo a una forma cerrada de `Origen` (`fijo`, `modificador`, `competencia`, `escala`,
+`lanzamiento`, `nivelDeEspacio`, `cdDeConjuro`, `nivelDeClase`, `ataqueDeConjuro`) al convertir, y
+una prueba (`generado.spec.ts`) falla si sobrevive una `@` en el JSON.
+
+**La forma de una aptitud de clase** (`SrdFeature`) es la misma idea con `class`/`subclass`
+(opcional) y `level` (1–20) en vez de escuela y componentes, más `usos` opcional (`{ max: Origen,
+resetOn }`, la misma forma que ya usa `ClassFeature.grant` a mano). **Los rasgos de raza**
+(`RaceFeature`) son la forma simétrica sin `level`/`usos`, con `race`/`subrace` en vez de
+`class`/`subclass`.
+
+**Lo que NO se convirtió a `Actividad` se queda como texto** (`actividades: []`, `textEn`/`textEs`
+con la prosa completa): tipos de Foundry fuera del vocabulario cerrado (`summon`, `transform`,
+`enchant`, `teleport`, `forward`, `cast`, `order`) y tres huecos reales del esquema —dados que
+escalan por una tabla de nivel en vez de un bonus sumado (Ataque Furtivo), un consumo variable
+que es a la vez lo que se gasta y lo que se cura (Imponer las Manos), y una duración que depende
+del nivel de clase (Forma Salvaje, ya fuera de A por ser `transform`)—, documentados en
+[06-pendientes.md](./06-pendientes.md). **`nivelDeClase` y `ataqueDeConjuro`** sí se resolvieron
+en esta tanda: dos formas nuevas de `Origen` (`packages/shared/src/origen.schema.ts`), la segunda
+por enmienda de E-3A1-4 al descubrir el hueco del bono de ataque de conjuro (17 conjuros de
+ataque, incluidos Descarga de fuego y Rayo abrasador).
+
+**`enriquecerClases`/`enriquecerRazas`** (`apps/api/src/rules/catalog/generado/index.ts`) funden
+este catálogo en `SRD_CLASSES`/`SRD_RACES` **al cargar el módulo**, por clave (`<clase>[/<subclase>]:<key>`
+para aptitudes, `<race>[/<subrace>]:<key>` para rasgos): una `ClassFeature`/`FeatureGrant` escrita
+a mano en `classes.ts`/`races.ts` que ya trae su propio `grant` **gana** — la Furia del bárbaro
+(`RASGO_FURIA`) es el único caso hoy, verificado contra el SRD y comparado por el cargador con lo
+que el conversor habría generado, avisando si discrepan (E-3A1-5). Todo lo demás llega **solo por
+el generado**: antes de esta tanda, 230 de 234 aptitudes eran solo un nombre sin mecánica.
+
 ## Objetos, inventario y equipo (fase 2B)
 
 **El catálogo del SRD no está en la base**: vive en código (`apps/api/src/rules/catalog/`), como

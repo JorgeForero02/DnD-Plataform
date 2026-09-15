@@ -19,6 +19,15 @@ describe("origenSchema", () => {
     expect(origenSchema.parse({ tipo: "lanzamiento" })).toEqual({ tipo: "lanzamiento" });
     expect(origenSchema.parse({ tipo: "nivelDeEspacio" })).toEqual({ tipo: "nivelDeEspacio" });
     expect(origenSchema.parse({ tipo: "cdDeConjuro" })).toEqual({ tipo: "cdDeConjuro" });
+    expect(origenSchema.parse({ tipo: "nivelDeClase", clase: "fighter" })).toEqual({
+      tipo: "nivelDeClase",
+      clase: "fighter",
+    });
+    expect(origenSchema.parse({ tipo: "ataqueDeConjuro" })).toEqual({ tipo: "ataqueDeConjuro" });
+  });
+
+  it("rechaza una clase vacía en 'nivelDeClase'", () => {
+    expect(() => origenSchema.parse({ tipo: "nivelDeClase", clase: "" })).toThrow();
   });
 
   it("rechaza una característica que no existe en 'modificador'", () => {

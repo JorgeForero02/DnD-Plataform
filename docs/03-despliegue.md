@@ -500,3 +500,12 @@ Nada de esto se puede verificar desde una máquina de desarrollo. Es la lista li
 6. Una restauración de prueba en un contenedor desechable, con conteo de filas.
 7. El consumo real de la pila cabe en la holgura de la máquina (`docker stats`) y los límites
    de memoria del compose no están estrangulando a nadie.
+
+## El catálogo generado viaja en la imagen (3A.1, anotado en la ola de arreglos)
+
+`apps/api/nest-cli.json` copia `src/rules/catalog/generado/*.json` (y el `.meta.json`, inocuo) a
+`dist/src/rules/catalog/generado/` en cada `nest build`, y `apps/api/Dockerfile` copia el
+repositorio entero y ejecuta ese build: los seis ficheros generados llegan a la imagen sin paso
+extra. El cargador (`apps/api/src/rules/catalog/generado/index.ts`) los lee por `__dirname`, así que funciona igual en
+`src/` (jest, ts-node) y en `dist/src/` (contenedor). Las dos fuentes externas
+(`FOUNDRY_SOURCE_DIR`, `SRD_ES_TXT`) **no** hacen falta en producción: solo para regenerar.

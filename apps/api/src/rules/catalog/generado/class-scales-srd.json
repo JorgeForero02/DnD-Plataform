@@ -1,0 +1,546 @@
+{
+  "barbarian": {
+    "barbarian-brutal-critical": [
+      {
+        "desde": 9,
+        "valor": 1
+      },
+      {
+        "desde": 13,
+        "valor": 2
+      },
+      {
+        "desde": 17,
+        "valor": 3
+      }
+    ],
+    "barbarian-rage-damage": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 9,
+        "valor": 3
+      },
+      {
+        "desde": 16,
+        "valor": 4
+      }
+    ],
+    "barbarian-rages": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 3,
+        "valor": 3
+      },
+      {
+        "desde": 6,
+        "valor": 4
+      },
+      {
+        "desde": 12,
+        "valor": 5
+      },
+      {
+        "desde": 17,
+        "valor": 6
+      },
+      {
+        "desde": 20,
+        "valor": 999
+      }
+    ]
+  },
+  "bard": {
+    "bard-cantrips-known": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 4,
+        "valor": 3
+      },
+      {
+        "desde": 10,
+        "valor": 4
+      }
+    ],
+    "bard-spells-known": [
+      {
+        "desde": 1,
+        "valor": 4
+      },
+      {
+        "desde": 2,
+        "valor": 5
+      },
+      {
+        "desde": 3,
+        "valor": 6
+      },
+      {
+        "desde": 4,
+        "valor": 7
+      },
+      {
+        "desde": 5,
+        "valor": 8
+      },
+      {
+        "desde": 6,
+        "valor": 9
+      },
+      {
+        "desde": 7,
+        "valor": 10
+      },
+      {
+        "desde": 8,
+        "valor": 11
+      },
+      {
+        "desde": 9,
+        "valor": 12
+      },
+      {
+        "desde": 10,
+        "valor": 14
+      },
+      {
+        "desde": 11,
+        "valor": 15
+      },
+      {
+        "desde": 13,
+        "valor": 16
+      },
+      {
+        "desde": 14,
+        "valor": 18
+      },
+      {
+        "desde": 15,
+        "valor": 19
+      },
+      {
+        "desde": 17,
+        "valor": 20
+      },
+      {
+        "desde": 18,
+        "valor": 22
+      }
+    ]
+  },
+  "cleric": {
+    "cleric-cantrips-known": [
+      {
+        "desde": 1,
+        "valor": 3
+      },
+      {
+        "desde": 4,
+        "valor": 4
+      },
+      {
+        "desde": 10,
+        "valor": 5
+      }
+    ],
+    "cleric-channel-divinity": [
+      {
+        "desde": 2,
+        "valor": 1
+      },
+      {
+        "desde": 6,
+        "valor": 2
+      },
+      {
+        "desde": 18,
+        "valor": 3
+      }
+    ],
+    "cleric-destroy-undead": [
+      {
+        "desde": 5,
+        "valor": 0.5
+      },
+      {
+        "desde": 8,
+        "valor": 1
+      },
+      {
+        "desde": 11,
+        "valor": 2
+      },
+      {
+        "desde": 14,
+        "valor": 3
+      },
+      {
+        "desde": 17,
+        "valor": 4
+      }
+    ]
+  },
+  "druid": {
+    "druid-cantrips-known": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 4,
+        "valor": 3
+      },
+      {
+        "desde": 10,
+        "valor": 4
+      }
+    ],
+    "druid-wild-shape": [
+      {
+        "desde": 2,
+        "valor": 0.25
+      },
+      {
+        "desde": 4,
+        "valor": 0.5
+      },
+      {
+        "desde": 8,
+        "valor": 1
+      }
+    ],
+    "druid-wild-shape-uses": [
+      {
+        "desde": 2,
+        "valor": 2
+      },
+      {
+        "desde": 20,
+        "valor": 99
+      }
+    ]
+  },
+  "fighter": {
+    "fighter-action-surge": [
+      {
+        "desde": 2,
+        "valor": 1
+      },
+      {
+        "desde": 17,
+        "valor": 2
+      }
+    ],
+    "fighter-indomitable": [
+      {
+        "desde": 9,
+        "valor": 1
+      },
+      {
+        "desde": 13,
+        "valor": 2
+      },
+      {
+        "desde": 17,
+        "valor": 3
+      }
+    ]
+  },
+  "monk": {
+    "monk-unarmored-movement": [
+      {
+        "desde": 2,
+        "valor": 10
+      },
+      {
+        "desde": 6,
+        "valor": 15
+      },
+      {
+        "desde": 10,
+        "valor": 20
+      },
+      {
+        "desde": 14,
+        "valor": 25
+      },
+      {
+        "desde": 18,
+        "valor": 30
+      }
+    ]
+  },
+  "paladin": {
+    "paladin-aura-radius": [
+      {
+        "desde": 6,
+        "valor": 10
+      },
+      {
+        "desde": 18,
+        "valor": 30
+      }
+    ]
+  },
+  "ranger": {
+    "ranger-spells-known": [
+      {
+        "desde": 2,
+        "valor": 2
+      },
+      {
+        "desde": 3,
+        "valor": 3
+      },
+      {
+        "desde": 5,
+        "valor": 4
+      },
+      {
+        "desde": 7,
+        "valor": 5
+      },
+      {
+        "desde": 9,
+        "valor": 6
+      },
+      {
+        "desde": 11,
+        "valor": 7
+      },
+      {
+        "desde": 13,
+        "valor": 8
+      },
+      {
+        "desde": 15,
+        "valor": 9
+      },
+      {
+        "desde": 17,
+        "valor": 10
+      },
+      {
+        "desde": 19,
+        "valor": 11
+      }
+    ]
+  },
+  "rogue": {
+    "rogue-sneak-attack": [
+      {
+        "desde": 1,
+        "valor": 1
+      },
+      {
+        "desde": 3,
+        "valor": 2
+      },
+      {
+        "desde": 5,
+        "valor": 3
+      },
+      {
+        "desde": 7,
+        "valor": 4
+      },
+      {
+        "desde": 9,
+        "valor": 5
+      },
+      {
+        "desde": 11,
+        "valor": 6
+      },
+      {
+        "desde": 13,
+        "valor": 7
+      },
+      {
+        "desde": 15,
+        "valor": 8
+      },
+      {
+        "desde": 17,
+        "valor": 9
+      },
+      {
+        "desde": 19,
+        "valor": 10
+      }
+    ]
+  },
+  "sorcerer": {
+    "sorcerer-cantrips-known": [
+      {
+        "desde": 1,
+        "valor": 4
+      },
+      {
+        "desde": 4,
+        "valor": 5
+      },
+      {
+        "desde": 10,
+        "valor": 6
+      }
+    ],
+    "sorcerer-spells-known": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 2,
+        "valor": 3
+      },
+      {
+        "desde": 3,
+        "valor": 4
+      },
+      {
+        "desde": 4,
+        "valor": 5
+      },
+      {
+        "desde": 5,
+        "valor": 6
+      },
+      {
+        "desde": 6,
+        "valor": 7
+      },
+      {
+        "desde": 7,
+        "valor": 8
+      },
+      {
+        "desde": 8,
+        "valor": 9
+      },
+      {
+        "desde": 9,
+        "valor": 10
+      },
+      {
+        "desde": 10,
+        "valor": 11
+      },
+      {
+        "desde": 11,
+        "valor": 12
+      },
+      {
+        "desde": 13,
+        "valor": 13
+      },
+      {
+        "desde": 15,
+        "valor": 14
+      },
+      {
+        "desde": 17,
+        "valor": 15
+      }
+    ]
+  },
+  "warlock": {
+    "warlock-cantrips-known": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 4,
+        "valor": 3
+      },
+      {
+        "desde": 10,
+        "valor": 4
+      }
+    ],
+    "warlock-spells-known": [
+      {
+        "desde": 1,
+        "valor": 2
+      },
+      {
+        "desde": 2,
+        "valor": 3
+      },
+      {
+        "desde": 3,
+        "valor": 4
+      },
+      {
+        "desde": 4,
+        "valor": 5
+      },
+      {
+        "desde": 5,
+        "valor": 6
+      },
+      {
+        "desde": 6,
+        "valor": 7
+      },
+      {
+        "desde": 7,
+        "valor": 8
+      },
+      {
+        "desde": 8,
+        "valor": 9
+      },
+      {
+        "desde": 9,
+        "valor": 10
+      },
+      {
+        "desde": 11,
+        "valor": 11
+      },
+      {
+        "desde": 13,
+        "valor": 12
+      },
+      {
+        "desde": 15,
+        "valor": 13
+      },
+      {
+        "desde": 17,
+        "valor": 14
+      },
+      {
+        "desde": 19,
+        "valor": 15
+      }
+    ]
+  },
+  "wizard": {
+    "wizard-cantrips-known": [
+      {
+        "desde": 1,
+        "valor": 3
+      },
+      {
+        "desde": 4,
+        "valor": 4
+      },
+      {
+        "desde": 10,
+        "valor": 5
+      }
+    ]
+  }
+}

@@ -1,0 +1,192 @@
+[
+  {
+    "id": "barbarian:rage",
+    "fuente": "feature",
+    "esperado": {
+      "tipo": "utilidad",
+      "activation": { "coste": "BONUS" },
+      "consumption": [{ "recurso": "rage", "cantidad": 1 }],
+      "duration": { "valor": 1, "unidad": "minuto", "concentracion": false },
+      "effects": [{ "key": "raging", "durationSeconds": 60, "note": "Furia activa" }],
+      "description": "Mientras dura (1 minuto): ventaja en pruebas y salvaciones de Fuerza, resistencia a daño contundente, perforante y cortante, y no puedes lanzar conjuros ni llevar armadura pesada."
+    },
+    "porque": "Ya existe hecha a mano en apps/api/src/rules/catalog/classes.ts (RASGO_FURIA); el conversor debe REPRODUCIRLA, no reemplazarla — E-3A1-5 dice que se compara, no se regenera por encima. usos.max = { tipo: 'escala', clave: 'barbarian-rages' }, resetOn LONG_REST, sinTopeDesde 20 (no forma parte de la Actividad en sí, va en ClassFeature.grant.usos)."
+  },
+  {
+    "id": "fighter:second-wind",
+    "fuente": "feature",
+    "esperado": {
+      "tipo": "dados",
+      "activation": { "coste": "BONUS" },
+      "consumption": [{ "recurso": "second-wind", "cantidad": 1 }],
+      "dados": {
+        "n": 1,
+        "caras": 10,
+        "bonus": { "tipo": "nivelDeClase", "clase": "fighter" },
+        "signo": 1
+      }
+    },
+    "porque": "healing.bonus: '@classes.fighter.levels' es EXACTAMENTE el caso que motivó nivelDeClase en E-3A1-4: no es @mod (característica de lanzamiento) ni un truco (@classes.<clase>.levels es literal). Es el nombre español que menos se parece al inglés de los ocho: 'Tomar Aliento', no 'Segundo aliento'. usos.max = { tipo: 'fijo', valor: 1 }, resetOn SHORT_REST."
+  },
+  {
+    "id": "rogue:sneak-attack",
+    "fuente": "feature",
+    "esperado": {
+      "texto": true,
+      "motivo": "damage.parts[0].custom.formula es literalmente '@scale.rogue.sneak-attack' — la tabla de escala completa (1d6 a nivel 1, 2d6 a nivel 3, ... 10d6 a nivel 19) sustituye a n Y a caras juntos, no solo a un bonus. expresionDeDadosSchema.n es z.number().int() fijo: no hay forma de que 'cuántos dados' dependa de un Origen. Ver 'Vuelve al esquema', punto A."
+    },
+    "porque": "Es el ejemplo que la brief pedía medir explícitamente contra el borrador del esquema — y es el primero de los tres huecos reales que esta tarea encontró."
+  },
+  {
+    "id": "paladin:lay-on-hands",
+    "fuente": "feature",
+    "esperado": {
+      "texto": true,
+      "motivo": "Dos actividades, las dos con el mismo problema: la cantidad CONSUMIDA de la reserva y la cantidad CURADA (o el número de enfermedades/venenos curados) son el mismo número, elegido por el jugador en la mesa dentro de un máximo (@item.uses.value, o floor(@item.uses.value/5) para la segunda). consumoSchema.cantidad es un entero positivo FIJO puesto por el catálogo, no 'hasta N, a elección'. Ver 'Vuelve al esquema', punto C."
+    },
+    "porque": "Es el segundo hueco real: una actividad de curación cuyo consumo y su efecto numérico son la MISMA cifra variable, no dos números fijos independientes."
+  },
+  {
+    "id": "cleric:channel-divinity-turn-undead",
+    "fuente": "feature",
+    "esperado": {
+      "tipo": "salvacion",
+      "activation": { "coste": "ACTION" },
+      "consumption": [{ "recurso": "channel-divinity", "cantidad": 1 }],
+      "range": { "unidad": "pies", "distanciaFt": 30 },
+      "duration": { "valor": 1, "unidad": "minuto", "concentracion": false },
+      "salvacion": { "ability": "wis", "cd": { "tipo": "cdDeConjuro" }, "siSalva": "ninguno" },
+      "description": "Cada muerto viviente que pueda verte u oírte a 9 m o menos de ti debe superar una tirada de salvación de Sabiduría o queda expulsado durante 1 minuto o hasta que reciba daño. El servidor no arbitra que la expulsión acabe al recibir daño ni el comportamiento del muerto viviente expulsado: eso queda para la mesa."
+    },
+    "porque": "save.dc.calculation vale 'wis', no 'spellcasting': no es literalmente cdDeConjuro, pero para un clérigo (lanzador con WIS) el número coincide siempre con spellSaveDc — se usa cdDeConjuro por ser la única variante de Origen que el motor ya deriva con traza, dejando la coincidencia anotada como una decisión de importación, no una casualidad silenciosa. Las uses reales (2/descanso, sube con el nivel) viven en el rasgo PADRE 'Canalizar Divinidad' (tabla de escala cleric-channel-divinity), no en este: es un recurso COMPARTIDO entre varios sub-rasgos, y esa forma ya la soporta consumoSchema.recurso al ser una clave de texto libre."
+  },
+  {
+    "id": "monk:ki",
+    "fuente": "feature",
+    "esperado": {
+      "tipo": "utilidad",
+      "activation": { "coste": "FREE" },
+      "consumption": [{ "recurso": "ki", "cantidad": 1 }],
+      "description": "Gastas un punto de ki para alimentar un rasgo de ki (Ráfaga de Golpes, Defensa Paciente, Paso del Viento u otro que hayas aprendido). El punto vuelve tras un descanso corto o largo."
+    },
+    "porque": "activation.type vale 'special' en Foundry — no es ninguno de los cinco COSTES tal cual. Regla de corte para este caso (no está en el borrador del plan, se descubre aquí): 'special' sin activación propia se importa como coste 'FREE', porque gastar el punto no consume la acción del turno, la consume el rasgo de ki que lo gasta (fuera de alcance de esta tarea). usos.max = { tipo: 'nivelDeClase', clase: 'monk' } — @classes.monk.levels es LITERALMENTE el número de puntos de ki, el segundo ejemplo real de nivelDeClase además de second-wind."
+  },
+  {
+    "id": "druid:wild-shape",
+    "fuente": "feature",
+    "esperado": {
+      "texto": true,
+      "motivo": "duration.value = 'floor(@classes.druid.levels / 2)' horas: la duración depende del nivel de druida, y duracionSchema.valor es z.number().int().positive() fijo, no un Origen. Además su actividad Foundry es type: transform, que ya está fuera de A por decisión del autor (summon/transform/enchant/... → texto). Doble motivo para quedarse en texto."
+    },
+    "porque": "Es el tercer hueco real (duración variable) y, a la vez, un caso ya cubierto por la regla existente (transform → texto): confirma que la regla vigente no necesita tocarse aquí, aunque el hueco de duración sí quede anotado para si algún día se intenta con otro rasgo."
+  },
+  {
+    "id": "fighter:action-surge",
+    "fuente": "feature",
+    "esperado": {
+      "tipo": "utilidad",
+      "activation": { "coste": "FREE" },
+      "consumption": [{ "recurso": "action-surge", "cantidad": 1 }],
+      "description": "Tomas una acción adicional este turno, además de tu acción y tu posible acción adicional habituales."
+    },
+    "porque": "Mismo caso que Ki: activation.type 'special' → FREE. usos.max = { tipo: 'escala', clave: 'fighter-action-surge' }, resetOn SHORT_REST (tabla: 1 uso hasta nivel 16, 2 usos desde 17 — el SRD no la declara 'ilimitada' en ningún nivel, a diferencia de la Furia, así que no hace falta sinTopeDesde)."
+  },
+  {
+    "id": "fireball",
+    "fuente": "spell",
+    "esperado": {
+      "tipo": "salvacion",
+      "activation": { "coste": "ACTION" },
+      "range": { "unidad": "pies", "distanciaFt": 150 },
+      "duration": { "unidad": "instantanea", "concentracion": false },
+      "materiales": {
+        "texto": "una pelotita de guano de murciélago y azufre",
+        "consumido": false,
+        "costeCp": 0
+      },
+      "salvacion": { "ability": "dex", "cd": { "tipo": "cdDeConjuro" }, "siSalva": "mitad" },
+      "dados": {
+        "n": 8,
+        "caras": 6,
+        "signo": -1,
+        "tipoDeDano": "FIRE",
+        "escalado": { "por": "espacio", "n": 1, "caras": 6 }
+      },
+      "description": "Una ráfaga brillante surge de tu dedo hacia un punto de tu elección dentro del alcance y luego estalla con un rugido sordo en una explosión de llamas. Todas las criaturas situadas en una esfera de 6 m de radio centrada en ese punto deberán hacer una tirada de salvación de Destreza. Cada objetivo sufrirá 8d6 de daño de fuego si la falla o la mitad del daño si la supera.",
+      "higherLevelsEs": "Cuando lanzas este conjuro mediante un espacio de conjuro de nivel 4 o superior, el daño aumenta en 1d6 por cada nivel por encima de 3 que tenga el espacio que hayas empleado."
+    },
+    "porque": "Es literalmente el ejemplo del crítico 1 de la revisión de calidad ya citado en activity.schema.ts: una salvación, con sus dados y su escalado por espacio DENTRO de la misma actividad, no dos actividades separadas."
+  },
+  {
+    "id": "cure-wounds",
+    "fuente": "spell",
+    "esperado": {
+      "tipo": "dados",
+      "activation": { "coste": "ACTION" },
+      "range": { "unidad": "toque" },
+      "duration": { "unidad": "instantanea", "concentracion": false },
+      "dados": {
+        "n": 1,
+        "caras": 8,
+        "bonus": { "tipo": "lanzamiento" },
+        "signo": 1,
+        "escalado": { "por": "espacio", "n": 1, "caras": 8 }
+      },
+      "description": "Una criatura a la que toques recupera una cantidad de puntos de golpe igual a 1d8 + tu modificador por aptitud mágica. Este conjuro no afecta ni a autómatas ni a muertos vivientes.",
+      "higherLevelsEs": "Cuando lanzas este conjuro mediante un espacio de conjuro de nivel 2 o superior, la curación aumenta en 1d8 por cada nivel por encima de 1 que tenga el espacio que hayas empleado."
+    },
+    "porque": "healing.bonus: '@mod' es el ejemplo canónico de 'lanzamiento' (E-3A1-4 / el comentario de origen.schema.ts): la característica de quien lanza, no una característica fija — un clérigo y un mago sacan el bonus de características distintas con la misma Actividad."
+  },
+  {
+    "id": "fire-bolt",
+    "fuente": "spell",
+    "esperado": {
+      "texto": true,
+      "motivo": "Actividad type: attack con attack.ability vacío (se resuelve a la característica de lanzamiento) y attack.bonus vacío (Foundry lo deriva internamente como mod + competencia). ataqueSchema.ataque.bono es UN origenSchema, y ninguna de sus siete variantes es 'modificador de lanzamiento + competencia': ni 'lanzamiento' (solo el modificador) ni 'cdDeConjuro' (es una CD, no un bono de ataque) sirven. Ver 'Vuelve al esquema', punto B — el más importante de los tres: afecta a los 17 conjuros de ataque del SRD, no solo a este."
+    },
+    "porque": "Es el segundo de los cuatro conjuros pedidos explícitamente por Step 5 y el que expone el hueco de mayor impacto: sin una variante de Origen para el bono de ataque de conjuro, NINGÚN conjuro con tirada de ataque puede importarse como 'ataque' — los 17 se quedarían todos en texto, que es mucho para una decisión tomada en un caso raro."
+  },
+  {
+    "id": "revivify",
+    "fuente": "spell",
+    "esperado": {
+      "tipo": "dados",
+      "activation": { "coste": "ACTION" },
+      "range": { "unidad": "toque" },
+      "duration": { "unidad": "instantanea", "concentracion": false },
+      "materiales": {
+        "texto": "Diamantes con un valor de 300 po que se consumen como parte del conjuro",
+        "consumido": true,
+        "costeCp": 30000
+      },
+      "dados": { "bonus": { "tipo": "fijo", "valor": 1 }, "signo": 1 },
+      "description": "Tocas a una criatura que haya muerto en el último minuto. Esa criatura vuelve a la vida con 1 punto de golpe. Este conjuro no puede devolver a la vida a una criatura que haya muerto de vieja ni puede devolverle las partes del cuerpo que haya perdido."
+    },
+    "porque": "healing: { number: null, denomination: null, custom: { formula: '1' } } — EXACTAMENTE el caso que ya motivó que n y caras sean opcionales en expresionDeDadosSchema (comentario del propio esquema cita este conjuro). costeCp = 300 po × 100 = 30000, NO el 100 que trae materials.cost de Foundry (el propio dato discrepa de su propio texto — se copia el texto, nunca el valor, tal y como avisa el comentario de materialesSchema)."
+  },
+  {
+    "id": "scorching-ray",
+    "fuente": "spell",
+    "esperado": {
+      "texto": true,
+      "motivo": "Mismo hueco que fire-bolt (falta el Origen de bono de ataque de conjuro) MÁS un segundo problema propio: son TRES tiradas de ataque independientes (roll.formula: '@item.level + 1' rayos, cada uno con su propio impacto o fallo), no una sola tirada aplicada a target.cantidad objetivos. ataqueSchema solo tiene un `ataque.bono` y un `dados?`: no hay sitio para 'N tiradas independientes, cada una con su propio resultado'."
+    },
+    "porque": "Es el cuarto conjuro pedido por Step 5 y confirma que el hueco de fire-bolt no es un caso aislado, y añade un segundo hueco (ataques múltiples independientes) que ningún otro de los 20 expone tan claro."
+  },
+  {
+    "id": "counterspell",
+    "fuente": "spell",
+    "esperado": {
+      "tipo": "prueba",
+      "activation": {
+        "coste": "REACTION",
+        "condicion": "que llevas a cabo cuando veas a una criatura a 18 m o menos de ti lanzando un conjuro"
+      },
+      "range": { "unidad": "pies", "distanciaFt": 60 },
+      "duration": { "unidad": "instantanea", "concentracion": false },
+      "prueba": { "ability": "lanzamiento" },
+      "description": "Intentas interrumpir a una criatura que esté lanzando un conjuro. Si la criatura está lanzando un conjuro de nivel 3 o inferior, el conjuro falla y no tiene efecto. Si está lanzando un conjuro de nivel 4 o superior, haz una prueba de característica usando tu característica de lanzamiento de conjuros. La CD equivale a 10 + el nivel del conjuro."
+    },
+    "porque": "check.ability vale 'spellcasting' (no una característica fija) y check.dc.calculation/formula están VACÍOS a propósito: la CD de counterspell es '10 + el nivel del conjuro lanzado', un dato que no se conoce hasta la mesa. pruebaSchema.cd es opcional exactamente para este caso — ausente no es un error, es la CD fijándose en juego, tal y como dice el comentario del propio esquema citando este conjuro."
+  }
+]

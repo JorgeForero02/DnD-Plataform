@@ -1,1 +1,13 @@
-{ "collection": "@nestjs/schematics", "sourceRoot": "src" }
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "assets": [
+      {
+        "include": "rules/catalog/generado/*.json",
+        "outDir": "dist/src",
+        "watchAssets": true
+      }
+    ]
+  }
+}

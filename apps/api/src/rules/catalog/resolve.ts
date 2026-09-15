@@ -229,6 +229,11 @@ export function resolveBuild(
   const ctxDeConcesiones: ContextoDeDerivacion = {
     abilities: build.abilities,
     level: build.level,
+    // **`classKey` (ola de arreglos de 3A.1, C2).** Sin él, `nivelDeClase(monk)` daba 0 en
+    // producción (`resolverOrigen` compara `ctx.classKey` con la clase del `Origen`) y un monje se
+    // sembraba con 0 puntos de ki — solo la unitaria del motor lo pasaba. Sin multiclase: la única
+    // clase del personaje.
+    classKey: characterClass.key,
     escalas: tablaDeEscalas({ ...characterClass.scales }),
   };
   const speeds: ResolvedBuild["speeds"] = {};

@@ -58,6 +58,22 @@ export const LABEL_KEYS = [
   // catálogo genérico (una llamada fija, no una por clase), así que es una clave suelta y no una
   // familia — de ahí que no haya un prefijo "scale." en la lista de abajo.
   "scale.rage-damage",
+  // resolverOrigen, kind "ataqueDeConjuro" (tarea 3A.1, T1) — el bono de ataque de conjuro ya
+  // derivado (`derived["attack.spell"]`), tomado como dato desde una actividad. Misma forma que
+  // "spellSaveDc" para "cdDeConjuro" justo arriba.
+  "attack.spell",
+  // resolverOrigen, kind "nivelDeClase" (tarea 3A.1, T1) — familia `nivelDeClase.<clase>`, una
+  // por cada clase del catálogo que de verdad usa esta variante (Tomar Aliento del guerrero, Ki
+  // del monje — las dos de `casos-raros.json`). Se registra una entrada por clase, como
+  // "scale.rage-damage" arriba, no por prefijo: las clases son un catálogo cerrado, no algo
+  // genuinamente no enumerable como `item.<ref>`. Ampliar esta lista cuando una clase nueva use
+  // `nivelDeClase` de verdad (T2 en adelante).
+  "nivelDeClase.fighter",
+  "nivelDeClase.monk",
+  // Ola de arreglos de 3A.1 (I11): Fuente de Magia del hechicero (`usos.max: nivelDeClase(sorcerer)`)
+  // ya estaba en el catálogo generado sin registrar. `generado.spec.ts` barre el catálogo y
+  // exige que toda clase que aparezca en un `nivelDeClase` esté aquí.
+  "nivelDeClase.sorcerer",
   // effective-speed.ts — la velocidad YA EFECTIVA (tras aplicar condiciones), distinta de la
   // velocidad base por tipo de movimiento (familia `speed.<movimiento>.base` más abajo).
   "speed.base",

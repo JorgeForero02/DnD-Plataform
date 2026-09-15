@@ -162,7 +162,12 @@ function FichaDeCriatura({
         ) : null}
 
         {puedeBajar ? (
-          <div className="flex items-center gap-s2 pt-s1">
+          // **`flex-wrap`, y los botones no se parten por dentro** (2026-09-14, captura del
+          // autor): con la pregunta de la ficha del mundo en la misma fila, a ~430 px «Bajar a la
+          // mesa» se partía en tres líneas, la pregunta en cinco y «Borrar» se salía de la tarjeta.
+          // La fila envuelve; cada botón conserva su rótulo entero (`whitespace-nowrap`); y la
+          // pregunta —que es un gesto raro, no uno de cada bajada— va en su propia línea, debajo.
+          <div className="flex flex-wrap items-center gap-s2 pt-s1 [&>button]:whitespace-nowrap">
             <label
               className="font-chrome text-chrome-xs text-muted"
               htmlFor={`cuantos-${statblock.ref}`}
@@ -185,12 +190,6 @@ function FichaDeCriatura({
             >
               <IconoEscudo className="mr-1 inline h-4 w-4" />
               Bajar a la mesa
-            </Button>
-            {/* PNJ del mundo y la mesa (spec §3.1) — «¿de qué ficha del mundo es?». Botón de
-                texto, no un campo más: la mayoría de las bajadas no enlazan con nada, y un campo
-                siempre visible pesaría igual que los que sí importan. */}
-            <Button variant="ghost" onClick={() => setMostrarSelector((v) => !v)}>
-              ¿De qué ficha del mundo es?
             </Button>
             {onEditar ? (
               <Button variant="ghost" onClick={onEditar}>
@@ -220,6 +219,17 @@ function FichaDeCriatura({
                 </Button>
               )
             ) : null}
+          </div>
+        ) : null}
+
+        {puedeBajar ? (
+          // PNJ del mundo y la mesa (spec §3.1) — «¿de qué ficha del mundo es?». Botón de texto en
+          // su propia línea, no un campo más: la mayoría de las bajadas no enlazan con nada, y un
+          // campo siempre visible pesaría igual que los que sí importan.
+          <div>
+            <Button variant="ghost" onClick={() => setMostrarSelector((v) => !v)}>
+              ¿De qué ficha del mundo es?
+            </Button>
           </div>
         ) : null}
 

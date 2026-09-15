@@ -180,11 +180,19 @@ function duracionDe(duration, concentracionDelItem) {
   return out;
 }
 
-/** Extrae "300 po" del texto español; si no hay, cae al `cost` (en po) de Foundry. `* 100` = cp. */
+// Un millar en el SRD español se escribe con el millar SEPARADO por un espacio («25 000 po», no
+// «25.000 po» ni «25,000 po»): `resurrección verdadera` es el único conjuro con ese formato
+// (medido en la ola de arreglos, I9/re-review). La alternativa de grupos de tres dígitos separados
+// por espacio (normal o los de ancho fijo/estrecho que `\s` de JS ya reconoce, U+00A0/U+202F) va
+// PRIMERO en la alternancia para que gane sobre `\d[\d.,]*`, que solo casaría "000" suelto y daría
+// 0 cp — el fallo que tenía esta función antes de este arreglo.
+const RE_COSTE_PO = /(\d{1,3}(?:\s\d{3})+|\d[\d.,]*)\s*po\b/i;
+
+/** Extrae "300 po" (o "25 000 po", con millar separado por espacio) del texto español; si no
+ * hay, cae al `cost` (en po) de Foundry. `* 100` = cp. */
 function costeCpDe(materialesTextoEs, costeEnPoDeFoundry) {
-  const match =
-    typeof materialesTextoEs === "string" ? materialesTextoEs.match(/(\d[\d.,]*)\s*po\b/i) : null;
-  const po = match ? Number.parseInt(match[1].replace(/[.,]/g, ""), 10) : costeEnPoDeFoundry || 0;
+  const match = typeof materialesTextoEs === "string" ? materialesTextoEs.match(RE_COSTE_PO) : null;
+  const po = match ? Number.parseInt(match[1].replace(/[.,\s]/g, ""), 10) : costeEnPoDeFoundry || 0;
   return po * 100;
 }
 

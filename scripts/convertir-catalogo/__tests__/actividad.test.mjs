@@ -562,3 +562,38 @@ test("I9 — la description no se recorta a 2000 caracteres", () => {
   );
   assert.equal(r.description.length, 3000);
 });
+
+// Re-revisión de la ola de arreglos (2026-09-14) — el millar del SRD español se escribe con el
+// millar SEPARADO por un espacio («25 000 po», no «25.000 po»): `costeCpDe` solo entendía dígitos
+// seguidos de puntos o comas y, ante el espacio, casaba «000 po» suelto → 0 cp en vez de
+// 2 500 000 (`true-resurrection`, único conjuro con este formato — medido en `--check`).
+test("materiales.costeCp — «25 000 po» (millar con espacio, resurrección verdadera) da 2 500 000 cp, no 0", () => {
+  const r = actividadDe(
+    {
+      type: "utility",
+      activation: { type: "action", override: false },
+      consumption: { targets: [] },
+    },
+    {
+      itemMaterials: { value: "diamantes...", cost: 0, consumed: true },
+      materialesTextoEs:
+        "unas gotas de agua bendita y diamantes que valgan al menos 25 000 po y que se consumen como parte del conjuro",
+    },
+  );
+  assert.equal(r.materiales.costeCp, 2_500_000);
+});
+
+test("materiales.costeCp — sigue funcionando sin millar («300 po»)", () => {
+  const r = actividadDe(
+    {
+      type: "utility",
+      activation: { type: "action", override: false },
+      consumption: { targets: [] },
+    },
+    {
+      itemMaterials: { value: "un diamante", cost: 0, consumed: true },
+      materialesTextoEs: "un diamante que valga al menos 300 po",
+    },
+  );
+  assert.equal(r.materiales.costeCp, 30_000);
+});

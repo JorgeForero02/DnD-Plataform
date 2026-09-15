@@ -311,7 +311,70 @@ function pareceNombreDeRasgo(texto) {
 
 const RE_VIÑETA = /^\s*([A-ZÁÉÍÓÚÑ][^.]{1,58})\.\s+(\S.*)$/;
 
-/** Candidatos de cabecera (los dos formatos) dentro de `lineas[desde, hasta)`. */
+// Re-revisión de la ola de arreglos (2026-09-14) — el Formato B (viñeta en línea) disparaba con
+// una línea que, por pura coincidencia del salto de línea del PDF, EMPIEZA en mayúscula y trae un
+// punto seguido de más texto, pero en realidad es la CONTINUACIÓN de la frase anterior: «...con tu
+// estilo y técnicas de combate, como el de / Campeón. El arquetipo que elijas...» — «Campeón.»
+// parece una viñeta (Nombre. Prosa) pero es solo dónde el PDF cortó la enumeración «como el de
+// Campeón»; mismo defecto en «Abierta. Tu tradición...» (Camino de la Mano Abierta) e «Inspiración
+// Bárdica. Tira el dado...» (dentro de la frase «uno de tus usos de Inspiración Bárdica»). Una
+// viñeta REAL siempre viene después de que la frase anterior ya haya terminado: la línea de texto
+// previa (saltándose pies de página) o bien está vacía (salto de párrafo del PDF) o bien termina en
+// puntuación de cierre de frase. Eso es lo que decide `limiteDeParrafoAntes` — una condición
+// NECESARIA además de las que ya tenía el Formato B, no un reemplazo. NO se aplica al Formato A
+// (cabecera sola en su propia línea): ahí el mismo criterio rechazaba cabeceras reales que vienen
+// justo detrás de una fórmula o tabla sin punto final («Ki» termina en «...tu modificador por
+// Sabiduría» sin punto, y el siguiente rasgo real, «Defensa Paciente», es una cabecera legítima) —
+// el Formato A tiene su propio filtro más abajo (longitud de la prosa siguiente).
+function limiteDeParrafoAntes(lineas, i, desde) {
+  let j = i - 1;
+  while (j >= desde && esPieDePagina(lineas[j])) j--;
+  if (j < desde) return true;
+  const anterior = lineas[j].trim();
+  if (!anterior) return true;
+  return /[.:!?][»"”')]?$/.test(anterior);
+}
+
+// Formato A: la tabla «Formas de bestia» (dentro de `druid:wild-shape`) cortaba el rasgo en su
+// primera celda («Nivel», seguida de «VD», «máx.», «Limitaciones», «Ejemplo» y los propios
+// nombres de bestia «Lobo», «Cocodrilo», «Águila») porque cada una, sola en su línea, sin coma ni
+// punto y con la letra siguiente empezando la celda de al lado, pasa el resto de filtros de una
+// cabecera real — re-review, `druid:wild-shape` cortado a mitad de tabla. No se puede rechazar
+// por el LARGO de la línea siguiente ni por si la línea anterior parece tabla (una celda o un
+// número) sin de paso romper cabeceras que SÍ repiten el propio nombre del rasgo como título de
+// su tabla («Destruir Muertos Vivientes» antes de «Nivel de clérigo / Destruye muertos vivientes
+// de VD...», con su tabla de niveles justo detrás de «Intercesión Divina») o que empiezan justo
+// tras una fila de tabla («Intercesión Divina» viene después de «17 / 4 o inferior»): esas
+// posiciones son AMBIGUAS con solo mirar alrededor. Lo que sí es inequívoco es la palabra exacta:
+// ninguna de estas ocho es nunca el nombre de un rasgo, así que se deniegan por lista — la MISMA
+// disciplina que ya usa `CABECERA_TRAS_LOS_CONJUROS` con "Trampas" para el corte de conjuros,
+// contra un documento cerrado que solo hace crecer la lista si aparece otro caso medido.
+const CABECERAS_DE_COLUMNA_DE_TABLA = new Set([
+  "Nivel",
+  "Rasgos",
+  "Competencias",
+  "Equipo",
+  "VD",
+  "Limitaciones",
+  "Ejemplo",
+  "Lobo",
+  "Cocodrilo",
+  "Águila",
+]);
+
+// Cabeceras de sección DENTRO del capítulo de una clase que no son una aptitud (nadie las busca
+// por nombre) pero SÍ deben acotar la aptitud anterior — si no se reconocen como límite, su prosa
+// se cuela dentro del cuerpo de la última aptitud vista (I3/I13, re-review: «Voz del Amo de la
+// Cadena» arrastraba las ~700 letras de esta sección de brujo). No son un nombre de rasgo
+// («pareceNombreDeRasgo» las rechaza: solo la primera palabra va en mayúscula, como una frase
+// normal, no un título) así que se reconocen por texto exacto — la MISMA disciplina que ya usa
+// `CABECERA_TRAS_LOS_CONJUROS` en este fichero para el corte de conjuros. Se contrastan contra el
+// SRD 5.1 español, un documento cerrado: la lista solo crece si aparece otro caso medido.
+const CABECERAS_DE_SECCION_NO_APTITUD = new Set(["Patrones sobrenaturales"]);
+
+/** Candidatos de cabecera (los dos formatos, más los límites de `CABECERAS_DE_SECCION_NO_APTITUD`)
+ * dentro de `lineas[desde, hasta)`. Un candidato con `esLimiteSolo: true` nunca entra en el mapa
+ * nombre→texto (`mapaDeSeccion` lo salta) pero sí corta el cuerpo del candidato anterior. */
 function candidatosDeSeccion(lineas, desde, hasta) {
   const candidatos = [];
   for (let i = desde; i < hasta; i++) {
@@ -320,13 +383,24 @@ function candidatosDeSeccion(lineas, desde, hasta) {
     const t = cruda.trim();
     if (!t) continue;
 
+    if (CABECERAS_DE_SECCION_NO_APTITUD.has(t) && limiteDeParrafoAntes(lineas, i, desde)) {
+      candidatos.push({ indice: i, nombre: t, inicioMismaLinea: null, esLimiteSolo: true });
+      continue;
+    }
+
     const mB = t.match(RE_VIÑETA);
-    if (mB && pareceNombreDeRasgo(mB[1]) && mB[2]) {
+    if (mB && pareceNombreDeRasgo(mB[1]) && mB[2] && limiteDeParrafoAntes(lineas, i, desde)) {
       candidatos.push({ indice: i, nombre: mB[1].trim(), inicioMismaLinea: mB[2].trim() });
       continue;
     }
 
-    if (!t.includes(",") && !t.endsWith(".") && t.length <= 60 && pareceNombreDeRasgo(t)) {
+    if (
+      !t.includes(",") &&
+      !t.endsWith(".") &&
+      t.length <= 60 &&
+      pareceNombreDeRasgo(t) &&
+      !CABECERAS_DE_COLUMNA_DE_TABLA.has(t)
+    ) {
       const siguiente = (lineas[i + 1] ?? "").trim();
       const esProsa =
         siguiente.length > 0 &&
@@ -357,6 +431,7 @@ function mapaDeSeccion(lineas, desde, hasta) {
   const candidatos = candidatosDeSeccion(lineas, desde, hasta);
   const mapa = new Map();
   for (let k = 0; k < candidatos.length; k++) {
+    if (candidatos[k].esLimiteSolo) continue;
     const nombre = candidatos[k].nombre;
     if (!mapa.has(nombre)) mapa.set(nombre, cuerpoDelCandidato(lineas, candidatos, k, hasta));
   }

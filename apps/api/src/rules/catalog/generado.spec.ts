@@ -548,6 +548,32 @@ describe("catálogo generado de aptitudes — invariantes (T3)", () => {
   it("ninguna '@' de Foundry sobrevivió a la conversión", () => {
     expect(JSON.stringify(SRD_CLASS_FEATURES).includes("@")).toBe(false);
   });
+
+  // Re-revisión de la ola de arreglos (2026-09-14) — `cortarAptitudesEs` (T3b, `srd-es.mjs`)
+  // tomaba una frase intermedia («Campeón.», «Abierta.», «Inspiración Bárdica.») por la cabecera
+  // de la SIGUIENTE aptitud y cortaba `textEs` a media frase (8 aptitudes medidas), y
+  // `warlock:voice-of-the-chain-master` arrastraba la sección de capítulo «Patrones
+  // sobrenaturales» por no reconocerla como límite. Las tres excepciones de
+  // `SIN_PUNTUACION_FINAL_CONOCIDAS` son residuo MEDIDO, no una regresión: el propio SRD termina
+  // ahí sin punto — una fórmula de CD («Ki», «Lanzamiento de Conjuros» del explorador) o el
+  // título de una tabla («Ancestro Dragón» antes de «Linaje dracónico / Dragón / Tipo de daño…»)
+  // — igual que la tabla de `control-weather` en un conjuro. Si esta lista creciera, es una
+  // aptitud nueva cortada mal, no una a añadir sin mirar el SRD.
+  const SIN_PUNTUACION_FINAL_CONOCIDAS = new Set([
+    "monk:ki",
+    "ranger:spellcasting",
+    "sorcerer/draconic-bloodline:dragon-ancestor",
+  ]);
+
+  it('ningún textEs de aptitud termina sin puntuación (salvo residuo medido) ni contiene "Patrones sobrenaturales" de otra sección', () => {
+    for (const f of SRD_CLASS_FEATURES) {
+      if (!f.textEs) continue;
+      expect(f.textEs).not.toMatch(/Patrones sobrenaturales/);
+      const clave = `${f.subclass ? `${f.class}/${f.subclass}` : f.class}:${f.key}`;
+      if (SIN_PUNTUACION_FINAL_CONOCIDAS.has(clave)) continue;
+      expect(f.textEs.trim()).toMatch(/[.!?"”)]$/);
+    }
+  });
 });
 
 describe("enriquecerClases — ninguna ClassFeature de SRD_CLASSES se queda sin texto (T3)", () => {

@@ -299,3 +299,99 @@ Trampas
     "Primera línea del párrafo que sigue en la segunda línea permanen-temente partida.\n\nSegundo párrafo con sangría y su segunda línea.",
   );
 });
+
+// Re-revisión de la ola de arreglos (2026-09-14) — `cortarAptitudesEs` cortaba `textEs` a media
+// frase cuando el SRD escribe una opción con nombre propio EN LÍNEA justo detrás de una
+// enumeración sin punto: «...como el de / Campeón. El arquetipo...» parece Formato B (viñeta)
+// pero es la continuación de «como el de Campeón», no una cabecera nueva. Fragmento REAL,
+// recortado de `srd-5.1-es.txt` en torno a «Arquetipo Marcial» del guerrero (líneas 4256-4263).
+const FRAGMENTO_VIÑETA_A_MEDIA_FRASE = `
+Guerrero
+Rasgos de clase
+Como guerrero, obtienes los siguientes rasgos
+de clase.
+Arquetipo Marcial
+A nivel 3, escoges un arquetipo al que aspiras emular
+con tu estilo y técnicas de combate, como el de
+Campeón. El arquetipo que elijas te proporciona
+ciertos rasgos cuando alcanzas los niveles 3, 7, 10,
+15 y 18.
+Mejora de Característica
+Cuando alcances los niveles 4, 6, 8, 12, 14, 16 y 19,
+podrás elegir una puntuación de característica.
+`;
+
+test("cortarAptitudesEs — una viñeta en línea a media frase («como el de / Campeón.») no corta la aptitud anterior (re-review)", () => {
+  const cortes = cortarAptitudesEs(FRAGMENTO_VIÑETA_A_MEDIA_FRASE);
+  const texto = textoDeAptitud(cortes, "fighter", "Arquetipo Marcial");
+  assert.match(texto, /^A nivel 3, escoges un arquetipo/);
+  assert.match(texto, /niveles 3, 7, 10,\s*15 y 18\.$/);
+  // «Campeón» nunca se registra como cabecera propia — es la continuación de la frase, no un
+  // nombre de rasgo — así que no puede pisar «Mejora de Característica» ni nada más.
+  assert.equal(cortes.porClase.get("fighter").has("campeón"), false);
+});
+
+// Fragmento REAL de la sección de brujo (líneas 2127-2145): la última invocación alfabética
+// («Voz del Amo de la Cadena») iba seguida de la sección de capítulo «Patrones sobrenaturales»,
+// una cabecera de frase (solo la primera palabra en mayúscula) que `pareceNombreDeRasgo` nunca
+// reconoce como nombre de rasgo — y por eso no acotaba la invocación anterior.
+const FRAGMENTO_CABECERA_DE_SECCION = `
+Brujo
+Rasgos de clase
+Como brujo, obtienes los siguientes rasgos.
+Voz del Amo de la Cadena
+Requisitos: rasgo Pacto de la Cadena.
+Puedes comunicarte telepáticamente con tu familiar
+y percibir el mundo a través de sus sentidos.
+Patrones sobrenaturales
+Los seres que sirven de patrones a los brujos son
+poderosos habitantes de otros planos de existencia.
+`;
+
+test("cortarAptitudesEs — «Patrones sobrenaturales» acota la invocación anterior aunque no sea un nombre de rasgo (re-review)", () => {
+  const cortes = cortarAptitudesEs(FRAGMENTO_CABECERA_DE_SECCION);
+  const texto = textoDeAptitud(cortes, "warlock", "Voz del Amo de la Cadena");
+  assert.match(texto, /^Requisitos: rasgo Pacto de la Cadena\./);
+  assert.doesNotMatch(texto, /Patrones sobrenaturales/);
+  // La cabecera de sección nunca se registra como nombre de aptitud buscable — solo acota.
+  assert.equal(cortes.porClase.get("warlock").has("patrones sobrenaturales"), false);
+});
+
+// Fragmento REAL de la sección de druida (líneas 3215-3235): la tabla «Formas de bestia» abre
+// con una celda «Nivel» sola en su línea que, sin la lista de cabeceras de columna conocidas,
+// pasaba por cabecera de un nuevo rasgo y cortaba «Forma Salvaje» a mitad de tabla.
+const FRAGMENTO_TABLA_DENTRO_DE_APTITUD = `
+Druida
+Rasgos de clase
+Como druida, obtienes los siguientes rasgos.
+Forma Salvaje
+A partir del nivel 2, puedes usar tu acción para
+adoptar mágicamente la forma de una bestia que
+hayas visto antes, tal y como indica la tabla
+“Formas de bestia”.
+Formas de bestia
+Nivel
+VD
+máx.
+Limitaciones
+Ejemplo
+2
+1/4
+Sin velocidades nadando
+ni volando
+Lobo
+Círculo Druídico
+A nivel 2, eliges identificarte con un círculo
+druídico concreto.
+`;
+
+test("cortarAptitudesEs — la tabla «Formas de bestia» no corta «Forma Salvaje» a mitad de tabla (re-review)", () => {
+  const cortes = cortarAptitudesEs(FRAGMENTO_TABLA_DENTRO_DE_APTITUD);
+  const texto = textoDeAptitud(cortes, "druid", "Forma Salvaje");
+  assert.match(texto, /^A partir del nivel 2, puedes usar tu acción/);
+  // La tabla entera (título, cabeceras de columna y la fila) queda como texto plano dentro del
+  // rasgo — es prosa del SRD, igual que la tabla de `control-weather` en un conjuro — y el corte
+  // real es «Círculo Druídico», la siguiente aptitud de verdad.
+  assert.match(texto, /Formas de bestia.*Lobo$/s);
+  assert.doesNotMatch(texto, /Círculo Druídico/);
+});

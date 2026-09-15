@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { SRD_CLASSES } from "./classes";
-import { SRD_SPELLS, SRD_SPELL_POR_KEY } from "./generado";
+import { SRD_SPELLS, SRD_SPELL_POR_KEY, SRD_CLASS_FEATURES, SRD_RACE_FEATURES } from "./generado";
 
 const RAIZ_REPO = join(__dirname, "..", "..", "..", "..", "..");
 const CLAVES_DE_CLASE = new Set(SRD_CLASSES.map((c) => c.key));
@@ -214,5 +214,143 @@ describe("catálogo generado — cuatro conjuros contrastados a mano (E-3A1-9.c)
         description: s?.textEs,
       },
     ]);
+  });
+});
+
+// -------------------------------------------------------------------------------------------
+// Tarea 3A.1 (T3) — aptitudes de clase/subclase, rasgos de raza y `enriquecerClases`. Misma
+// disciplina que arriba (E-3A1-9): la fórmula, no cada aptitud — salvo las cuatro contrastadas
+// a mano que pide el brief.
+
+describe("catálogo generado de aptitudes — invariantes (T3)", () => {
+  it("son 234 aptitudes de clase y subclase (constraints.md, d.1 de la tarea 0)", () => {
+    expect(SRD_CLASS_FEATURES.length).toBe(234);
+  });
+
+  it("12 subclases con al menos un rasgo cada una", () => {
+    const subclases = new Set(SRD_CLASS_FEATURES.filter((f) => f.subclass).map((f) => f.subclass));
+    expect(subclases.size).toBe(12);
+  });
+
+  it("toda aptitud tiene class (una de SRD_CLASSES) y level entre 1 y 20", () => {
+    for (const f of SRD_CLASS_FEATURES) {
+      expect(CLAVES_DE_CLASE.has(f.class)).toBe(true);
+      expect(f.level).toBeGreaterThanOrEqual(1);
+      expect(f.level).toBeLessThanOrEqual(20);
+    }
+  });
+
+  it("ninguna sin nameEn", () => {
+    for (const f of SRD_CLASS_FEATURES) {
+      expect(f.nameEn.length).toBeGreaterThan(0);
+    }
+  });
+
+  // **No es 0/234.** Al contrario que los conjuros (una cabecera de cuatro etiquetas por
+  // conjuro en el SRD español), una aptitud no tiene ningún ancla estructural que separe su
+  // nombre del siguiente — el conversor solo puede dar nameEs con confianza donde `classes.ts`
+  // (2A.3, ya verificado contra el SRD) ya declaraba esa clave, o donde el nombre es un término
+  // fijo bien conocido (`emparejamientos.json`, `aptitudesDeClase`). Lo que queda sin nombrar
+  // (~60/234) son opciones de elección — invocaciones sobrenaturales del brujo, metamagia del
+  // hechicero, estilos de combate del cazador— que `classes.ts` nunca desglosó una a una: están
+  // en `rechazos.md`, contadas, no escondidas. El número real (medido, no un techo inventado)
+  // es la barrera de esta prueba: si sube, algo se rompió; si baja, alguien nombró una más.
+  it("la gran mayoría tiene nameEs — las 174 que classes.ts ya nombraba en 2A.3 (60 sin traducción, listadas en rechazos.md)", () => {
+    const sinTraduccion = SRD_CLASS_FEATURES.filter((f) => f.sinTraduccion);
+    expect(sinTraduccion.length).toBe(60);
+    expect(SRD_CLASS_FEATURES.length - sinTraduccion.length).toBe(174);
+  });
+
+  it("ninguna aptitud tiene actividades: [] Y textEn: '' a la vez (nunca las dos vacías)", () => {
+    for (const f of SRD_CLASS_FEATURES) {
+      expect(f.actividades.length > 0 || f.textEn.length > 0).toBe(true);
+    }
+  });
+
+  it("ninguna '@' de Foundry sobrevivió a la conversión", () => {
+    expect(JSON.stringify(SRD_CLASS_FEATURES).includes("@")).toBe(false);
+  });
+});
+
+describe("enriquecerClases — ninguna ClassFeature de SRD_CLASSES se queda sin texto (T3)", () => {
+  it("toda ClassFeature de toda clase y de toda subclase trae textEn no vacío", () => {
+    for (const clase of SRD_CLASSES) {
+      for (const f of clase.features) {
+        expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+      }
+      for (const sub of clase.subclasses) {
+        for (const f of sub.features) {
+          expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+        }
+      }
+    }
+  });
+});
+
+describe("cuatro aptitudes contrastadas a mano (T3, Step 4 del brief)", () => {
+  it("Tomar Aliento (fighter:second-wind): dados 1d10 + nivelDeClase(fighter), usos 1 SHORT_REST", () => {
+    const f = SRD_CLASSES.find((c) => c.key === "fighter")!.features.find(
+      (x) => x.key === "second-wind",
+    )!;
+    expect(f.nameEn).toBe("Second Wind");
+    expect(f.actividades).toEqual([
+      {
+        tipo: "dados",
+        dados: { signo: 1, n: 1, caras: 10, bonus: { tipo: "nivelDeClase", clase: "fighter" } },
+        activation: { coste: "BONUS" },
+        consumption: [{ recurso: "second-wind", cantidad: 1 }],
+        duration: { unidad: "instantanea", concentracion: false },
+        effects: [],
+        description: f.textEn,
+      },
+    ]);
+  });
+
+  it("Ataque Furtivo (rogue:sneak-attack): se queda en texto — dados por escala, hueco A", () => {
+    const f = SRD_CLASSES.find((c) => c.key === "rogue")!.features.find(
+      (x) => x.key === "sneak-attack",
+    )!;
+    expect(f.actividades).toEqual([]);
+    expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+  });
+
+  it("Imponer las Manos (paladin:lay-on-hands): se queda en texto — consumo variable, hueco C", () => {
+    const f = SRD_CLASSES.find((c) => c.key === "paladin")!.features.find(
+      (x) => x.key === "lay-on-hands",
+    )!;
+    expect(f.actividades).toEqual([]);
+    expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+  });
+
+  it("Acción Súbita (fighter:action-surge-1): usos 1 SHORT_REST, utilidad", () => {
+    // classes.ts declara `action-surge-1` (nivel 2, un uso) y `action-surge-2` (nivel 17, dos
+    // usos) — dos ClassFeature sintéticas para el mismo fichero de Foundry (`action-surge`,
+    // requirements "Fighter 2"), que sube de tramo con el nivel; `enriquecerClases` las
+    // resuelve las dos a la misma aptitud quitando el sufijo `-N` (ver `claveSinSufijoDeTramo`
+    // en `generado/index.ts`).
+    const f = SRD_CLASSES.find((c) => c.key === "fighter")!.features.find(
+      (x) => x.key === "action-surge-1",
+    )!;
+    expect(f.nameEn).toBe("Action Surge");
+    expect(f.actividades?.[0]?.tipo).toBe("utilidad");
+    expect(f.actividades?.[0]?.activation).toEqual({ coste: "FREE" });
+  });
+
+  it("un bárbaro de nivel 5 tiene «Ataque adicional» con texto", () => {
+    const f = SRD_CLASSES.find((c) => c.key === "barbarian")!.features.find(
+      (x) => x.key === "extra-attack" && x.level === 5,
+    )!;
+    expect(f).toBeDefined();
+    expect(f.textEn && f.textEn.length > 0).toBeTruthy();
+  });
+});
+
+describe("rasgos de raza — invariantes (T3, alcance reducido — ver razas.mjs)", () => {
+  it("hay rasgos generados, con nameEn y sin '@' de Foundry", () => {
+    expect(SRD_RACE_FEATURES.length).toBeGreaterThan(0);
+    for (const f of SRD_RACE_FEATURES) {
+      expect(f.nameEn.length).toBeGreaterThan(0);
+    }
+    expect(JSON.stringify(SRD_RACE_FEATURES).includes("@")).toBe(false);
   });
 });

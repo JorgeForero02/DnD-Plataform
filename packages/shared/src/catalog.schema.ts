@@ -101,9 +101,9 @@ export const srdFeatureSchema = z
 export type SrdFeature = z.infer<typeof srdFeatureSchema>;
 
 /**
- * Un rasgo de raza (o subraza) del SRD 5.1. **No se convierte en 3A.1** (constraints.md, «No
- * entra»): el esquema existe porque la forma es simétrica a `srdFeatureSchema`, pero el conversor
- * no escribe ningún fichero con esta forma todavía.
+ * Un rasgo de raza (o subraza) del SRD 5.1, convertido (tarea 3A.1, T3). Misma forma que
+ * `srdFeatureSchema` a propósito — simétrica, sin `class`/`level`/`usos` porque una raza no los
+ * tiene.
  */
 export const raceFeatureSchema = z
   .object({
@@ -153,3 +153,33 @@ export const classFeaturesCatalogSchema = z.array(srdFeatureSchema).superRefine(
   ),
 );
 export type ClassFeaturesCatalog = z.infer<typeof classFeaturesCatalogSchema>;
+
+// Tarea 3A.1 (T3) — el envoltorio en array que le faltaba a `raceFeatureSchema`: ya se
+// convierten rasgos de raza (`race-features-srd.json`), la misma forma que `classFeaturesCatalogSchema`
+// le da a las aptitudes de clase.
+export const raceFeaturesCatalogSchema = z.array(raceFeatureSchema).superRefine((features, ctx) =>
+  sinArrobasEnActividades(
+    features.map((f) => f.actividades),
+    ctx,
+  ),
+);
+export type RaceFeaturesCatalog = z.infer<typeof raceFeaturesCatalogSchema>;
+
+/**
+ * Un tramo de tabla de escala inlinado (tarea 3A.1, T3 — Step 3). Misma forma que
+ * `ScaleStep` de `apps/api/src/rules/catalog/types.ts` (`{ desde, valor }`): no se declara una
+ * segunda, se valida aquí y se reexporta con su tipo tal cual desde el catálogo.
+ */
+const scaleStepSchema = z
+  .object({ desde: z.number().int().min(1).max(20), valor: z.number() })
+  .strict();
+
+/**
+ * `class-scales-srd.json`: por clave de clase, un `Record<"<clase>-<identificador>",
+ * ScaleStep[]>` — la forma que `SrdClass.scales` ya usa en `classes.ts` para `barbarian-rages`.
+ */
+export const classScalesCatalogSchema = z.record(
+  z.string().min(1).max(60),
+  z.record(z.string().min(1).max(80), z.array(scaleStepSchema).min(1)),
+);
+export type ClassScalesCatalog = z.infer<typeof classScalesCatalogSchema>;

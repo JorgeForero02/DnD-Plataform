@@ -40,12 +40,17 @@ describe("actividadCatalogada — el catálogo real de ACTIVITY_CATALOG", () => 
   });
 
   it("busca también en las aptitudes de SUBCLASE, no solo en las de la clase base", () => {
-    // Hoy ningún rasgo de subclase concede una actividad completa (solo la Furia, de clase) —
-    // así que esta prueba no puede afirmar un HALLAZGO positivo sin fabricar un segundo grant
-    // que el catálogo no tiene: sería exactamente la clase de dato inventado que esta tanda
-    // pide no escribir. Lo que SÍ es real y verificable es que el bucle de subclases no revienta
-    // ni encuentra nada donde no hay nada — que es la otra mitad honesta de "busca en las dos".
-    expect(actividadCatalogada("frenzy")).toBeUndefined();
+    // Tarea 3A.1 (T3): `enriquecerClases` construye `grant` para cualquier aptitud —de clase o
+    // de subclase— cuya primera actividad generada entre en A (E-3A1-5), no solo para la Furia.
+    // "Frenesí" (Senda del berserker, barbarian/berserker) es la primera de subclase en ganarlo:
+    // su `activity` de Foundry es `type: utility` sin `consumption` ni `duration` propios (el
+    // coste real —un nivel de agotamiento al acabar la Furia— es prosa, no mecánica automatizada
+    // en esta tanda), así que la prueba ya puede afirmar el HALLAZGO positivo que antes no podía
+    // sin inventar un dato: el bucle de subclases SÍ encuentra lo que de verdad hay.
+    const frenzy = actividadCatalogada("frenzy");
+    expect(frenzy).toBeDefined();
+    expect(frenzy?.tipo).toBe("utilidad");
+    expect(frenzy?.activation).toEqual({ coste: "BONUS" });
   });
 });
 

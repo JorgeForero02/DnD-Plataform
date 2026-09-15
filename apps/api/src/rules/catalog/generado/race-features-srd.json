@@ -1,0 +1,372 @@
+[
+  {
+    "key": "breath-weapon-black",
+    "race": "dragonborn",
+    "nameEn": "Black Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive acid.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 acid damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-blue",
+    "race": "dragonborn",
+    "nameEn": "Blue Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale lightning.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 lightning damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-brass",
+    "race": "dragonborn",
+    "nameEn": "Brass Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive fire.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 fire damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-bronze",
+    "race": "dragonborn",
+    "nameEn": "Bronze Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive lightning.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 lightning damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-copper",
+    "race": "dragonborn",
+    "nameEn": "Copper Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive acid.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 acid damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-gold",
+    "race": "dragonborn",
+    "nameEn": "Gold Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive fire.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 fire damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-green",
+    "race": "dragonborn",
+    "nameEn": "Green Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive poison.\n\nWhen you use your breath weapon, in a must make a Constitution saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 poison damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-red",
+    "race": "dragonborn",
+    "nameEn": "Red Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive fire.\n\nWhen you use your breath weapon, in a must make a Dexterity saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 fire damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-silver",
+    "race": "dragonborn",
+    "nameEn": "Silver Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive ice.\n\nWhen you use your breath weapon, in a must make a Constitution saving throw, the type of which is determined by your draconic ancestry. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 cold damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "breath-weapon-white",
+    "race": "dragonborn",
+    "nameEn": "White Breath Weapon",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can use your action to exhale destructive ice.\n\nWhen you use your breath weapon, in a must make a Constitution saving throw, the type of which is determined by your draconic ancestry. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 cold damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you can't use it again until you complete a short or long rest.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "save"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "dwarven-resilience",
+    "race": "dwarf",
+    "nameEn": "Dwarven Resilience",
+    "nameEs": "Resistencia enana",
+    "sinTraduccion": false,
+    "textEn": "You have advantage on saving throws against poison, and you have resistance against poison damage.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "dwarven-toughness",
+    "race": "dwarf",
+    "nameEn": "Dwarven Toughness",
+    "nameEs": "Tenacidad enana",
+    "sinTraduccion": false,
+    "textEn": "Your hit point maximum increases by 1, and it increases by 1 every time you gain a level.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 1
+  },
+  {
+    "key": "stonecunning",
+    "race": "dwarf",
+    "nameEn": "Stonecunning",
+    "nameEs": "Afinidad con la piedra",
+    "sinTraduccion": false,
+    "textEn": "Whenever you make an Intelligence (History) check related to the origin of stonework, you are considered proficient in the History skill and add double your proficiency bonus to the check, instead of your normal proficiency bonus.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "check"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "fey-ancestry",
+    "race": "elf",
+    "nameEn": "Fey Ancestry",
+    "nameEs": "Linaje feérico",
+    "sinTraduccion": false,
+    "textEn": "You have advantage on saving throws against being &amp;reference[charmed apply=false], and magic can't put you to sleep.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "trance",
+    "race": "elf",
+    "nameEn": "Trance",
+    "nameEs": "Trance",
+    "sinTraduccion": false,
+    "textEn": "Elves don't need to sleep. Instead, they meditate deeply, remaining semiconscious, for 4 hours a day. (The Common word for such meditation is \"trance.\") While meditating, you can dream after a fashion; such dreams are actually mental exercises that have become reflexive through years of practice. After resting in this way, you gain the same benefit that a human does from 8 hours of sleep.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "artificers-lore",
+    "race": "gnome",
+    "nameEn": "Artificer's Lore",
+    "nameEs": "Saber del artífice",
+    "sinTraduccion": false,
+    "textEn": "Whenever you make an Intelligence (History) check related to magic items, alchemical objects, or technological devices, you can add twice your proficiency bonus, instead of any proficiency bonus you normally apply.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "check"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "gnome-cunning",
+    "race": "gnome",
+    "nameEn": "Gnome Cunning",
+    "nameEs": "Astucia gnoma",
+    "sinTraduccion": false,
+    "textEn": "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "tinker",
+    "race": "gnome",
+    "nameEn": "Tinker",
+    "nameEs": "Manitas",
+    "sinTraduccion": false,
+    "textEn": "You have proficiency with artisan's tools (tinker's tools). Using those tools, you can spend 1 hour and 10 gp worth of materials to construct a Tiny clockwork device (AC 5, 1 hp). The device ceases to function after 24 hours (unless you spend 1 hour repairing it to keep the device functioning), or when you use your action to dismantle it; at that time, you can reclaim the materials used to create it. You can have up to three such devices active at a time. When you create a device, choose one of the following options:\n\nClockwork Toy: This toy is a clockwork animal, monster, or person, such as a frog, mouse, bird, dragon, or soldier. When placed on the ground, the toy moves 5 feet across the ground on each of your turns in a random direction. It makes noises as appropriate to the creature it represents.\n\nFire Starter: The device produces a miniature flame, which you can use to light a candle, torch, or campfire. Using the device requires your action.\n\nMusic Box: When opened, this music box plays a single song at a moderate volume. The box stops playing when it reaches the song's end or when it is closed.",
+    "textEs": null,
+    "actividades": [
+      {
+        "tipo": "utilidad",
+        "activation": {
+          "tiempo": {
+            "valor": 1,
+            "unidad": "hora"
+          }
+        },
+        "description": "You have proficiency with artisan's tools (tinker's tools). Using those tools, you can spend 1 hour and 10 gp worth of materials to construct a Tiny clockwork device (AC 5, 1 hp). The device ceases to function after 24 hours (unless you spend 1 hour repairing it to keep the device functioning), or when you use your action to dismantle it; at that time, you can reclaim the materials used to create it. You can have up to three such devices active at a time. When you create a device, choose one of the following options:\n\nClockwork Toy: This toy is a clockwork animal, monster, or person, such as a frog, mouse, bird, dragon, or soldier. When placed on the ground, the toy moves 5 feet across the ground on each of your turns in a random direction. It makes noises as appropriate to the creature it represents.\n\nFire Starter: The device produces a miniature flame, which you can use to light a candle, torch, or campfire. Using the device requires your action.\n\nMusic Box: When opened, this music box plays a single song at a moderate volume. The box stops playing when it reaches the song's end or when it is closed."
+      }
+    ],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "relentless-endurance",
+    "race": "half-orc",
+    "nameEn": "Relentless Endurance",
+    "nameEs": "Aguante incansable",
+    "sinTraduccion": false,
+    "textEn": "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest.",
+    "textEs": null,
+    "actividades": [
+      {
+        "tipo": "dados",
+        "dados": {
+          "signo": 1,
+          "bonus": {
+            "tipo": "fijo",
+            "valor": 1
+          }
+        },
+        "activation": {
+          "coste": "FREE"
+        },
+        "consumption": [
+          {
+            "recurso": "relentless-endurance",
+            "cantidad": 1
+          }
+        ],
+        "description": "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest."
+      }
+    ],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "savage-attacks",
+    "race": "half-orc",
+    "nameEn": "Savage Attacks",
+    "nameEs": "Ataques salvajes",
+    "sinTraduccion": false,
+    "textEn": "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 1
+  },
+  {
+    "key": "brave",
+    "race": "halfling",
+    "nameEn": "Brave",
+    "nameEs": "Valiente",
+    "sinTraduccion": false,
+    "textEn": "You have advantage on saving throws against being &amp;reference[frightened apply=false].",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "halfling-nimbleness",
+    "race": "halfling",
+    "nameEn": "Halfling Nimbleness",
+    "nameEs": "Agilidad de mediano",
+    "sinTraduccion": false,
+    "textEn": "You can move through the space of any creature that is of a size larger than yours.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 1
+  },
+  {
+    "key": "lucky",
+    "race": "halfling",
+    "nameEn": "Lucky",
+    "nameEs": "Afortunado",
+    "sinTraduccion": false,
+    "textEn": "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 1
+  },
+  {
+    "key": "naturally-stealthy",
+    "race": "halfling",
+    "nameEn": "Naturally Stealthy",
+    "nameEs": null,
+    "sinTraduccion": true,
+    "textEn": "You can attempt to &amp;reference[hide] even when you are obscured only by a creature that is at least one size larger than you.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [
+      "check"
+    ],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "hellish-resistance",
+    "race": "tiefling",
+    "nameEn": "Hellish Resistance",
+    "nameEs": "Resistencia infernal",
+    "sinTraduccion": false,
+    "textEn": "You have resistance to fire damage.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  },
+  {
+    "key": "infernal-legacy",
+    "race": "tiefling",
+    "nameEn": "Infernal Legacy",
+    "nameEs": "Linaje infernal",
+    "sinTraduccion": false,
+    "textEn": "You know the thaumaturgy cantrip.\n\nWhen you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest.\n\nWhen you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells.",
+    "textEs": null,
+    "actividades": [],
+    "fueraDeA": [],
+    "efectosPasivos": 0
+  }
+]

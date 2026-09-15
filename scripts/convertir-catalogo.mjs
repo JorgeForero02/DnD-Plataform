@@ -3,7 +3,12 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { convertir, escribir, comprobar } from "./convertir-catalogo/salida.mjs";
-import { spellsCatalogSchema } from "../packages/shared/dist/index.js";
+import {
+  spellsCatalogSchema,
+  classFeaturesCatalogSchema,
+  raceFeaturesCatalogSchema,
+  classScalesCatalogSchema,
+} from "../packages/shared/dist/index.js";
 
 // Tarea 3A.1 (T1) — CLI del conversor. `pnpm catalogo:convertir` (env `FOUNDRY_SOURCE_DIR` y
 // `SRD_ES_TXT`); `--out <dir>` cambia el destino (por defecto
@@ -56,6 +61,28 @@ function main() {
   const conjurosRechazadosPorEsquema = validacion.success
     ? []
     : validacion.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+
+  const validacionFeatures = classFeaturesCatalogSchema.safeParse(resultado.features);
+  if (!validacionFeatures.success) {
+    console.error("class-features-srd.json no pasa el esquema Zod:");
+    for (const i of validacionFeatures.error.issues)
+      console.error(`  ${i.path.join(".")}: ${i.message}`);
+    process.exit(1);
+  }
+  const validacionRazas = raceFeaturesCatalogSchema.safeParse(resultado.razas);
+  if (!validacionRazas.success) {
+    console.error("race-features-srd.json no pasa el esquema Zod:");
+    for (const i of validacionRazas.error.issues)
+      console.error(`  ${i.path.join(".")}: ${i.message}`);
+    process.exit(1);
+  }
+  const validacionEscalas = classScalesCatalogSchema.safeParse(resultado.escalas);
+  if (!validacionEscalas.success) {
+    console.error("class-scales-srd.json no pasa el esquema Zod:");
+    for (const i of validacionEscalas.error.issues)
+      console.error(`  ${i.path.join(".")}: ${i.message}`);
+    process.exit(1);
+  }
 
   console.log("Conteos:");
   for (const [k, v] of Object.entries(resultado.conteos)) console.log(`  ${k}: ${v}`);

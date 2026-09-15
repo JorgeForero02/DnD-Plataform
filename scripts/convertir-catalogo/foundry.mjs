@@ -96,3 +96,92 @@ export function leerFoundry(dir) {
 
   return { spells, features, folders, rechazados };
 }
+
+/**
+ * `leerSubclases(dir)` — Tarea 3A.1 (T3). Lee `subclasses/*.yml` (12 ficheros planos,
+ * `type: subclass`, no `feat`): no son una aptitud en sí, son el ENLACE entre una subclase y su
+ * clase base (`system.classIdentifier`) que `leerFoundry` no puede dar porque su filtro
+ * `type !== "feat"` los rechaza a propósito para conjuros y aptitudes. Sin esto no hay forma de
+ * saber que `classfeatures/fighter/champion-features/*.yml` pertenece a la subclase `champion`
+ * de `fighter` — el nombre de la carpeta lo insinúa, pero `system.identifier` de la subclase es
+ * el dato real (E-3A1-2, la misma disciplina que ya exige no adivinar por texto).
+ *
+ * Devuelve `{ subclases }`: `subclases` es `{ key, name, classKey }[]` — `key` es
+ * `system.identifier` (coincide con la `subclasses[].key` de `classes.ts`, p. ej. `"champion"`),
+ * `name` el nombre EN INGLÉS (lo que trae `system.requirements` de cada aptitud, p. ej.
+ * `"Champion 10"`, para poder resolver el propietario de una aptitud de subclase), `classKey`
+ * el `system.classIdentifier` (`"fighter"`).
+ */
+export function leerSubclases(dir) {
+  const raiz = join(dir, "subclasses");
+  let archivos;
+  try {
+    archivos = listarYaml(raiz);
+  } catch {
+    return { subclases: [] };
+  }
+  const subclases = [];
+  for (const ruta of archivos) {
+    const texto = readFileSync(ruta, "utf8");
+    const doc = cargarYaml(texto);
+    if (doc?.type !== "subclass") continue; // por si algún día cuelga otra cosa ahí
+    subclases.push({
+      key: doc.system?.identifier,
+      name: doc.name,
+      classKey: doc.system?.classIdentifier,
+    });
+  }
+  return { subclases };
+}
+
+/**
+ * `leerEscalasDeClase(dir)` — Tarea 3A.1 (T3, Step 3). Lee `classes/*.yml` buscando
+ * `advancement[].type === "ScaleValue"` (el `@scale.<clase>.<clave>` que T1 ya tradujo a
+ * `escala("<clase>-<clave>")`, E-3A1-4) y lo inlina a `ScaleStep[]` (`{ desde, valor }`, la
+ * misma forma que `SrdClass.scales` ya usa en `classes.ts` para `barbarian-rages`).
+ *
+ * **Solo el tramo NUMÉRICO, nunca la fórmula evaluable.** `configuration.type` de Foundry es
+ * `"number"` (un entero por nivel, `{ value: N }`: usos de Indómito, de Acción Súbita…) o
+ * `"dice"` (`{ number, faces }`: Ataque Furtivo, el dado de Artes Marciales…) — de esta segunda
+ * forma solo se guarda `number` (cuántos dados), nunca `faces` (el tamaño del dado): `ScaleStep`
+ * es un solo número por tramo, la misma frontera que ya declaró `origen.mjs` para `escala`. El
+ * tamaño de dado se documenta en la prosa de la aptitud, no en esta tabla — inventar un segundo
+ * campo para que quepa habría sido torcer el esquema para un solo caso, la misma disciplina que
+ * ya evitó `expresionDeDadosSchema.n` como `Origen` (hueco A, T0).
+ *
+ * Devuelve `Record<claveDeClase, Record<"<clase>-<identificador>", ScaleStep[]>>`.
+ */
+export function leerEscalasDeClase(dir) {
+  const raiz = join(dir, "classes");
+  let archivos;
+  try {
+    archivos = listarYaml(raiz);
+  } catch {
+    return {};
+  }
+  const porClase = {};
+  for (const ruta of archivos) {
+    if (ruta.endsWith("_folder.yml")) continue;
+    const doc = cargarYaml(readFileSync(ruta, "utf8"));
+    const classKey = doc?.system?.identifier;
+    if (!classKey) continue;
+    const advancement = doc?.system?.advancement ?? [];
+    const scales = {};
+    for (const bloque of advancement) {
+      if (bloque.type !== "ScaleValue") continue;
+      const cfg = bloque.configuration;
+      const identificador = cfg?.identifier;
+      const escala = cfg?.scale ?? {};
+      const pasos = Object.entries(escala)
+        .map(([nivel, valor]) => ({
+          desde: Number.parseInt(nivel, 10),
+          valor: typeof valor?.value === "number" ? valor.value : (valor?.number ?? null),
+        }))
+        .filter((p) => Number.isFinite(p.desde) && typeof p.valor === "number")
+        .sort((a, b) => a.desde - b.desde);
+      if (identificador && pasos.length > 0) scales[`${classKey}-${identificador}`] = pasos;
+    }
+    if (Object.keys(scales).length > 0) porClase[classKey] = scales;
+  }
+  return porClase;
+}

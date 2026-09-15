@@ -212,7 +212,15 @@ export interface SrdRace {
   subraces: SrdSubrace[];
 }
 
-/** Una aptitud de clase, por nivel. **Solo el nombre**: ver `NOTICE.md` y §"alcance" abajo. */
+/**
+ * Una aptitud de clase, por nivel. **Nombre y nivel son el dato hecho a mano** (ver §"alcance"
+ * arriba); desde la tarea 3A.1 (T3) el resto de campos —`nameEn`, `textEs`, `textEn`,
+ * `actividades`, `sinTraduccion`— llegan por ENRIQUECIMIENTO, no por transcripción: los pone
+ * `enriquecerClases` (`./generado`) al cargar el módulo, buscando por `key` en el catálogo
+ * generado (`class-features-srd.json`, `scripts/convertir-catalogo.mjs`). Un `ClassFeature`
+ * literal en este fichero (el que escribe `f(level, key, name)`) nunca los trae — los añade el
+ * cargador sobre una COPIA, nunca sobre este objeto original.
+ */
 export interface ClassFeature {
   level: number;
   key: string;
@@ -220,10 +228,23 @@ export interface ClassFeature {
   /**
    * Lo que este rasgo concede además de su nombre — hoy, **solo** una actividad con sus usos
    * (`ItemGrant`, tarea A9). Ausente en casi todos los rasgos, que siguen siendo nombre y nivel
-   * a propósito (ver el alcance declarado arriba): **solo la Furia gana su forma completa**,
-   * decisión del autor del 2026-09-06 que no se reabre aquí.
+   * a propósito (ver el alcance declarado arriba). **La Furia sigue siendo la única con `grant`
+   * escrito a mano** (decisión del autor del 2026-09-06, no se reabre); desde T3,
+   * `enriquecerClases` puede añadir `grant` a OTRAS aptitudes cuando el catálogo generado trae
+   * una actividad que entra en A (E-3A1-5) y esta aptitud no tenía ya una a mano — nunca
+   * sustituye la de la Furia, solo la compara.
    */
   grant?: ItemGrant;
+  /** Nombre en inglés (Foundry), tal cual — T3, puesto por `enriquecerClases`. */
+  nameEn?: string;
+  /** Prosa en español del SRD 5.1. `null` cuando el conversor no encontró traducción (T3). */
+  textEs?: string | null;
+  /** Prosa en inglés del SRD 5.1 (Foundry), siempre presente cuando hay enriquecimiento. */
+  textEn?: string;
+  /** Las actividades que el conversor tradujo de esta aptitud (E-3A1-5: puede haber más de una). */
+  actividades?: Actividad[];
+  /** `true` cuando el conversor no encontró nombre español para esta aptitud (T3). */
+  sinTraduccion?: boolean;
 }
 
 export interface SrdSubclass {

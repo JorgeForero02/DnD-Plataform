@@ -279,6 +279,19 @@ export function actividadDe(activity, ctx = {}) {
   const activation = activacionDe(activacion, condicionCruda ? ctx.condicionEs : undefined);
 
   const consumption = consumoDe(activity.consumption, ctx.recurso);
+  // Tarea 3A.1 (T3, encontrado sobre aptitudes de clase): un `value` NEGATIVO en Foundry
+  // (`"-1"`) es una REPOSICIÓN — «cuando tiras iniciativa sin usos de Inspiración bárdica,
+  // recuperas uno» (Inspiración superior) — no un gasto. `consumoSchema.cantidad` es un entero
+  // POSITIVO (gastar, nunca regalar); forzar `Math.abs` mentiría sobre qué hace el botón. Mismo
+  // trato que cualquier otro hueco del esquema: texto, no una actividad torcida.
+  if (consumption.some((c) => c.cantidad <= 0)) {
+    return texto(
+      tipoFoundry,
+      "consumption con cantidad <= 0: no es un gasto, es una reposición automática " +
+        "(p. ej. recuperar un uso al tirar iniciativa) — consumoSchema.cantidad es positivo, " +
+        "gastar es lo único que representa.",
+    );
+  }
 
   const rangoCrudo = activity.range?.units ? activity.range : (ctx.itemRange ?? activity.range);
   const range = rangoDe(rangoCrudo);

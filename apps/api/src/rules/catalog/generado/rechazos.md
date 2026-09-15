@@ -19,11 +19,11 @@
 - thief: type: subclass, no "feat" — no es una aptitud (E-3A1-11: revisado uno a uno en T0).
 - way-of-the-open-hand: type: subclass, no "feat" — no es una aptitud (E-3A1-11: revisado uno a uno en T0).
 
-## Sin traducción al español
+## Sin traducción al español (conjuros)
 
 _ninguno_
 
-## Fórmula o actividad fuera de A
+## Fórmula o actividad fuera de A (conjuros)
 
 - disguise-self: transform
 - disguise-self: check
@@ -87,6 +87,99 @@ _ninguno_
 
 _ninguno_
 
+## Aptitudes de clase — sin nombre español
+
+- fighter:grappler
+- monk:flurry-of-blows
+- monk:patient-defense
+- monk:step-of-the-wind
+- paladin/oath-of-devotion:channel-divinity-turn-the-unholy
+- paladin:channel-divinity
+- ranger/hunter:colossus-slayer
+- ranger/hunter:escape-the-horde
+- ranger/hunter:evasion
+- ranger/hunter:giant-killer
+- ranger/hunter:horde-breaker
+- ranger/hunter:multiattack-defense
+- ranger/hunter:stand-against-the-tide
+- ranger/hunter:steel-will
+- ranger/hunter:uncanny-dodge
+- ranger/hunter:volley
+- ranger/hunter:whirlwind-attack
+- sorcerer:careful-spell
+- sorcerer:distant-spell
+- sorcerer:empowered-spell
+- sorcerer:extended-spell
+- sorcerer:heightened-spell
+- sorcerer:quickened-spell
+- sorcerer:subtle-spell
+- sorcerer:twinned-spell
+- warlock:agonizing-blast
+- warlock:armor-of-shadows
+- warlock:ascendant-step
+- warlock:beast-speech
+- warlock:beguiling-influence
+- warlock:bewitching-whispers
+- warlock:book-of-ancient-secrets
+- warlock:chains-of-carceri
+- warlock:devils-sight
+- warlock:dreadful-word
+- warlock:eldritch-sight
+- warlock:eldritch-spear
+- warlock:eyes-of-the-rune-keeper
+- warlock:fiendish-vigor
+- warlock:gaze-of-two-minds
+- warlock:lifedrinker
+- warlock:mask-of-many-faces
+- warlock:master-of-myriad-forms
+- warlock:minions-of-chaos
+- warlock:mire-the-mind
+- warlock:misty-visions
+- warlock:one-with-shadows
+- warlock:otherworldly-leap
+- warlock:repelling-blast
+- warlock:sculptor-of-flesh
+- warlock:sign-of-ill-omen
+- warlock:thief-of-five-fates
+- warlock:thirsting-blade
+- warlock:visions-of-distant-realms
+- warlock:voice-of-the-chain-master
+- warlock:whispers-of-the-grave
+- warlock:witch-sight
+- warlock:pact-of-the-blade
+- warlock:pact-of-the-chain
+- warlock:pact-of-the-tome
+
+## Aptitudes de clase — fórmula o actividad fuera de A
+
+_ninguno_
+
+## Rasgos de raza — sin nombre español
+
+- dragonborn:breath-weapon-black
+- dragonborn:breath-weapon-blue
+- dragonborn:breath-weapon-brass
+- dragonborn:breath-weapon-bronze
+- dragonborn:breath-weapon-copper
+- dragonborn:breath-weapon-gold
+- dragonborn:breath-weapon-green
+- dragonborn:breath-weapon-red
+- dragonborn:breath-weapon-silver
+- dragonborn:breath-weapon-white
+- halfling:naturally-stealthy
+
+## Rasgos de raza — no es una aptitud (subraza en sí, u otro tipo)
+
+- dragonborn: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- hill-dwarf: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- half-elf: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- high-elf: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- rock-gnome: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- lightfoot-halfling: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- human: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- half-orc: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+- tiefling: type: race — subraza en sí o carpeta, no un rasgo (fuera de alcance de T3, ver cabecera del módulo).
+
 ## Conteos
 
 - conjurosFoundry: 319
@@ -98,3 +191,10 @@ _ninguno_
 - choques: 0
 - sinPareja: 0
 - sinTraduccion: 0
+- aptitudesGeneradas: 234
+- subclases: 12
+- aptitudesSinNombreEspañol: 60
+- aptitudesFueraDeAOrechazadas: 0
+- rasgosDeRaza: 26
+- razasSinNombreEspañol: 11
+- clasesConEscalas: 12

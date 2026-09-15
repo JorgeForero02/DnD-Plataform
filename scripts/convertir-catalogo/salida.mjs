@@ -1,9 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { leerFoundry } from "./foundry.mjs";
+import { leerFoundry, leerSubclases, leerEscalasDeClase } from "./foundry.mjs";
 import { cortarSrdEs } from "./srd-es.mjs";
 import { emparejar } from "./huella.mjs";
 import { actividadDe } from "./actividad.mjs";
+import { convertirAptitudes } from "./aptitudes.mjs";
+import { convertirRazas } from "./razas.mjs";
 
 // Tarea 3A.1 (T1) — junta los módulos puros anteriores en el pipeline completo: lee Foundry,
 // corta el SRD español, empareja por huella, traduce cada actividad, y escribe el catálogo
@@ -334,7 +336,46 @@ export function convertir({ foundryDir, srdEsTxt, emparejamientos }) {
     );
   }
 
-  return { spells, features: [], rechazos, conteos, sinPareja };
+  // Tarea 3A.1 (T3) — las aptitudes (234, `featuresFoundry` ya las trae `leerFoundry`) y las
+  // subclases (12, `leerSubclases` — no son `type: feat`, `leerFoundry` las rechaza a propósito
+  // y por eso se leen aparte, ver `foundry.mjs`).
+  const { subclases } = leerSubclases(foundryDir);
+  const { features: aptitudes, rechazos: rechazosAptitudes } = convertirAptitudes({
+    featuresFoundry,
+    subclases,
+    emparejamientos,
+  });
+  const { features: rasgosDeRaza, rechazos: rechazosRazas } = convertirRazas({
+    foundryDir,
+    emparejamientos,
+  });
+  const escalas = leerEscalasDeClase(foundryDir);
+
+  const conteosAptitudes = {
+    aptitudesGeneradas: aptitudes.length,
+    subclases: subclases.length,
+    aptitudesSinNombreEspañol: rechazosAptitudes.sinTraduccion.length,
+    aptitudesFueraDeAOrechazadas: rechazosAptitudes.fueraDeA.length,
+  };
+  const conteosRazas = {
+    rasgosDeRaza: rasgosDeRaza.length,
+    razasSinNombreEspañol: rechazosRazas.sinTraduccion.length,
+  };
+
+  return {
+    spells,
+    features: aptitudes,
+    razas: rasgosDeRaza,
+    escalas,
+    rechazos: { ...rechazos, aptitudes: rechazosAptitudes, razas: rechazosRazas },
+    conteos: {
+      ...conteos,
+      ...conteosAptitudes,
+      ...conteosRazas,
+      clasesConEscalas: Object.keys(escalas).length,
+    },
+    sinPareja,
+  };
 }
 
 function rechazosMd({ rechazos, conteos, sinPareja }) {
@@ -343,14 +384,32 @@ function rechazosMd({ rechazos, conteos, sinPareja }) {
   return (
     `${CABECERA_GENERADO}\n# Rechazos del conversor\n\n` +
     `## Rechazados al leer Foundry (edición 2024, o type distinto de spell/feat)\n\n${filas(rechazos.edicion2024.map((r) => `${r.identifier}: ${r.motivo}`))}\n` +
-    `## Sin traducción al español\n\n${filas(rechazos.sinTraduccion)}\n` +
-    `## Fórmula o actividad fuera de A\n\n${filas(rechazos.fueraDeA)}\n` +
+    `## Sin traducción al español (conjuros)\n\n${filas(rechazos.sinTraduccion)}\n` +
+    `## Fórmula o actividad fuera de A (conjuros)\n\n${filas(rechazos.fueraDeA)}\n` +
     `## Sin huella hermana (huella sin pareja, T1 revisó a mano)\n\n${filas(sinPareja)}\n` +
+    `## Aptitudes de clase — sin nombre español\n\n${filas(rechazos.aptitudes?.sinTraduccion ?? [])}\n` +
+    `## Aptitudes de clase — fórmula o actividad fuera de A\n\n${filas(rechazos.aptitudes?.fueraDeA ?? [])}\n` +
+    `## Rasgos de raza — sin nombre español\n\n${filas(rechazos.razas?.sinTraduccion ?? [])}\n` +
+    `## Rasgos de raza — no es una aptitud (subraza en sí, u otro tipo)\n\n${filas(rechazos.razas?.noEsAptitud ?? [])}\n` +
     `## Conteos\n\n` +
     Object.entries(conteos)
       .map(([k, v]) => `- ${k}: ${v}\n`)
       .join("")
   );
+}
+
+/** Copia un objeto de dos niveles (`{ clase: { clave: ScaleStep[] } }`) con las claves de ambos
+ * niveles ordenadas — un diff determinista, sin el efecto secundario de filtrar niveles internos
+ * que tiene pasar un ARRAY como segundo argumento de `JSON.stringify` (solo filtra/ordena el
+ * nivel raíz, no los anidados: usarlo aquí vaciaba cada clase a `{}`). */
+function ordenarClaves(porClase) {
+  const salida = {};
+  for (const clase of Object.keys(porClase).sort()) {
+    salida[clase] = {};
+    for (const clave of Object.keys(porClase[clase]).sort())
+      salida[clase][clave] = porClase[clase][clave];
+  }
+  return salida;
 }
 
 /** Escribe el catálogo generado en `outDir`. Sobrescribe sin preguntar — es contenido derivado. */
@@ -364,6 +423,25 @@ export function escribir(outDir, resultado) {
       2,
     );
   writeFileSync(join(outDir, "spells-srd.json"), spellsJson.replace(/^\/\/.*\n/, ""), "utf8");
+  const featuresJson = JSON.stringify(
+    [...resultado.features].sort(
+      (a, b) => a.class.localeCompare(b.class) || a.level - b.level || a.key.localeCompare(b.key),
+    ),
+    null,
+    2,
+  );
+  writeFileSync(join(outDir, "class-features-srd.json"), featuresJson, "utf8");
+  const razasJson = JSON.stringify(
+    [...resultado.razas].sort((a, b) => a.race.localeCompare(b.race) || a.key.localeCompare(b.key)),
+    null,
+    2,
+  );
+  writeFileSync(join(outDir, "race-features-srd.json"), razasJson, "utf8");
+  writeFileSync(
+    join(outDir, "class-scales-srd.json"),
+    JSON.stringify(ordenarClaves(resultado.escalas), null, 2),
+    "utf8",
+  );
   // El JSON no admite comentarios: la cabecera "no editar" va en un fichero hermano `.meta.json`
   // más un comentario Markdown en `rechazos.md`, que sí es texto libre.
   writeFileSync(
@@ -389,6 +467,51 @@ export function comprobar(outDir, resultado) {
       ok: false,
       motivo: "spells-srd.json commiteado no coincide con lo regenerado en memoria.",
     };
+  }
+  const rutaFeatures = join(outDir, "class-features-srd.json");
+  if (existsSync(rutaFeatures)) {
+    const actualFeatures = readFileSync(rutaFeatures, "utf8");
+    const esperadoFeatures = JSON.stringify(
+      [...resultado.features].sort(
+        (a, b) => a.class.localeCompare(b.class) || a.level - b.level || a.key.localeCompare(b.key),
+      ),
+      null,
+      2,
+    );
+    if (actualFeatures !== esperadoFeatures) {
+      return {
+        ok: false,
+        motivo: "class-features-srd.json commiteado no coincide con lo regenerado en memoria.",
+      };
+    }
+  }
+  const rutaEscalas = join(outDir, "class-scales-srd.json");
+  if (existsSync(rutaEscalas)) {
+    const actualEscalas = readFileSync(rutaEscalas, "utf8");
+    const esperadoEscalas = JSON.stringify(ordenarClaves(resultado.escalas), null, 2);
+    if (actualEscalas !== esperadoEscalas) {
+      return {
+        ok: false,
+        motivo: "class-scales-srd.json commiteado no coincide con lo regenerado en memoria.",
+      };
+    }
+  }
+  const rutaRazas = join(outDir, "race-features-srd.json");
+  if (existsSync(rutaRazas)) {
+    const actualRazas = readFileSync(rutaRazas, "utf8");
+    const esperadoRazas = JSON.stringify(
+      [...resultado.razas].sort(
+        (a, b) => a.race.localeCompare(b.race) || a.key.localeCompare(b.key),
+      ),
+      null,
+      2,
+    );
+    if (actualRazas !== esperadoRazas) {
+      return {
+        ok: false,
+        motivo: "race-features-srd.json commiteado no coincide con lo regenerado en memoria.",
+      };
+    }
   }
   return { ok: true };
 }

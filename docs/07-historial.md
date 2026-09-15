@@ -97,7 +97,25 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## 3A.1 «El libro entra» — ola de arreglos tras la revisión final (2026-09-14) — en rama, sin fusionar ni desplegar
+## 3A.1 «El libro entra» (2026-09-14) — cerrada y fusionada a `main`, sin desplegar
+
+Qué — la tanda entera (11 commits sobre `6478092`; [plan](./superpowers/plans/2026-09-14-3a1-el-libro-entra.md),
+[T0](./superpowers/specs/2026-09-14-3a1-tarea-0-prueba-de-fuego.md)): un conversor offline y re-ejecutable
+(`scripts/convertir-catalogo/`, 63 pruebas puras) lee el YAML de Foundry (estructura y números) y el texto
+del **SRD 5.1 en español oficial** (nombres y prosa; PDF de Wizards, CC-BY 4.0, fuera del repo), los casa
+por huella estructural (219 solos + 100 a mano), traduce cada `@` a `Origen` (dos formas nuevas:
+`nivelDeClase`, `ataqueDeConjuro`) y escribe ficheros dorados en `apps/api/src/rules/catalog/generado/`:
+**319 conjuros, 234 aptitudes, 26 rasgos, 22 escalas**, 0 sin nombre español (11 con traducción propia
+marcada), prosa española en 228/233 aptitudes. `SRD_CLASSES`/`SRD_RACES` se enriquecen por clave al cargar;
+la Furia a mano manda. Lo fuera de A (invocar, transformar, encantar; tres huecos de esquema) queda como
+texto y contado en `rechazos.md`. Proceso: rigor según riesgo (sin revisión por tarea), UNA revisión Opus
+que muestreó el dorado contra la fuente (nombres 38/38, mecánica 24/38 mal por cinco causas raíz) y UNA
+ola que las cerró; re-revisión 18/18; un residuo de cortador arreglado a petición del autor. Decisiones
+D-CF-92..115.
+Por qué — «primero lo que hace jugable una partida» (D-CF-71): el mago y el clérigo necesitan su libro.
+Revertir — `git revert -m 1` del merge; los JSON no tocan la base. **Sin desplegar.**
+
+## 3A.1 «El libro entra» — ola de arreglos tras la revisión final (2026-09-14)
 
 Qué — la rama `paso-3a/3a1-el-libro-entra` (319 conjuros, 234 aptitudes, 26 rasgos de raza del SRD 5.1
 convertidos a `Actividad` con nombre y prosa del SRD español) pasó por una revisión Opus de la rama

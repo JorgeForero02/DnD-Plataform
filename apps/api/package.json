@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@dnd/shared": "workspace:*",
+    "@fastify/compress": "^9.2.0",
     "@fastify/helmet": "^13.1.1",
     "@nestjs/common": "^11.2.3",
     "@nestjs/config": "^4.0.4",

@@ -43,8 +43,26 @@ import type { AcFormula, EngineInput, Modifier } from "./engine";
  * +1 sin sintonizar daba +1 igual que uno sintonizado.
  */
 export function efectosActivos(item: ResolvedItem): ItemEffect[] {
+  return [...efectosPropios(item), ...efectosTemporales(item)];
+}
+
+/** Los `effects` del propio objeto, ya filtrados por sintonización — la puerta original de HP-9a. */
+function efectosPropios(item: ResolvedItem): ItemEffect[] {
   if (item.requiresAttunement && !item.attuned) return [];
   return item.effects;
+}
+
+/**
+ * T15 (3A.2) — un `TemporaryModifier` sobre esta fila del inventario (*Arma mágica*), traducido
+ * al mismo vocabulario que un objeto mágico permanente. **Nunca pasa por la sintonización**: un
+ * encantamiento lanzado sobre el arma no es una propiedad del objeto que dependa de llevarlo
+ * puesto de cierta forma — es un efecto de conjuro con su propio vencimiento (el reloj, no
+ * `attuned`), y `item.temporales` ya llega aquí filtrado a los vivos
+ * (`character-sheet.service.ts`, `temporalesPorObjeto`).
+ */
+function efectosTemporales(item: ResolvedItem): ItemEffect[] {
+  if (!item.temporales) return [];
+  return item.temporales.map((t) => ({ kind: t.effect, amount: t.amount }));
 }
 
 /**
@@ -52,9 +70,15 @@ export function efectosActivos(item: ResolvedItem): ItemEffect[] {
  * `item_not_attuned` (`character-sheet.service.ts`), y se define AQUÍ, al lado de la puerta y
  * en sus términos, para que el aviso y el filtro no puedan discrepar: si un día la puerta cambia
  * (una excepción, otra condición), el aviso cambia con ella sin tocar el servicio.
+ *
+ * **Solo mira `efectosPropios` (T15).** Un arma sin sintonizar que además lleva un encantamiento
+ * temporal vivo seguía necesitando el aviso «sin sintonizar» antes de esta tarea; con
+ * `efectosActivos` a secas (que ya suma los temporales) el aviso se apagaba en cuanto alguien la
+ * encantaba, y eso es la fuga exacta que HP-9a cerró para el resto de objetos, abierta por esta
+ * puerta nueva.
  */
 export function sintonizacionPendiente(item: ResolvedItem): boolean {
-  return item.effects.length > 0 && efectosActivos(item).length === 0;
+  return item.effects.length > 0 && efectosPropios(item).length === 0;
 }
 
 /** Equipo que no puede llevarse a la vez. **Se traduce a 400 en el borde** (2A.6). */

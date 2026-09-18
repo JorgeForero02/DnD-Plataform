@@ -8,8 +8,6 @@ import {
   type TraceStep,
   type WeaponProperty,
 } from "@dnd/shared";
-import { efectosActivos } from "./items";
-
 // Carril A5 (fase 2C) — el cuadro de ataques. **Puro**: sin Nest, sin Prisma, sin dados de
 // verdad. Entra qué hay equipado más lo que ya derivó el motor (modificadores y bono de
 // competencia); sale, por cada arma, el bono de ataque **con su traza** y la expresión de daño
@@ -93,14 +91,35 @@ export function buildAttacks(input: BuildAttacksInput): BuildAttacksResult {
     // más común del juego después de la armadura, y hasta la auditoría de mecánica de 2B no
     // había forma de representarlo — el DM entregaba la espada +1 y el cuadro seguía diciendo
     // lo mismo.
-    const bonoAtaque = sumaDeEfecto(item, "weaponAttack");
-    const bonoDano = sumaDeEfecto(item, "weaponDamage");
+    //
+    // **T15 (3A.2) — el bono se parte en dos fuentes, y cada una deja su propio paso.** Un
+    // objeto mágico permanente (`item.effects`) y un encantamiento vivo (`item.temporales`,
+    // *Arma mágica*) pueden coincidir en la misma arma, y son dos orígenes distintos que la
+    // traza no puede fundir en un número sin decir de dónde sale cada mitad —la misma regla que
+    // ya separa `sourceType: "item"` de `sourceType: "temporary"` en el resto de la hoja
+    // (`modificadoresTemporales`, `character-sheet.service.ts`).
+    const bonoAtaquePropio = sumaDeEfectoPropio(item, "weaponAttack");
+    const bonoAtaqueTemporal = sumaDeEfectoTemporal(item, "weaponAttack");
+    const bonoDano =
+      sumaDeEfectoPropio(item, "weaponDamage") + sumaDeEfectoTemporal(item, "weaponDamage").total;
 
     const steps: TraceStep[] = [stepCaracteristica];
     let total = modifier;
-    if (bonoAtaque !== 0) {
-      steps.push(paso("add", bonoAtaque, "item", item.ref, `item.${item.ref}`));
-      total += bonoAtaque;
+    if (bonoAtaquePropio !== 0) {
+      steps.push(paso("add", bonoAtaquePropio, "item", item.ref, `item.${item.ref}`));
+      total += bonoAtaquePropio;
+    }
+    if (bonoAtaqueTemporal.total !== 0) {
+      steps.push(
+        paso(
+          "add",
+          bonoAtaqueTemporal.total,
+          "temporary",
+          item.ref,
+          `temporary:${bonoAtaqueTemporal.reason}`,
+        ),
+      );
+      total += bonoAtaqueTemporal.total;
     }
     if (proficient) {
       steps.push(paso("add", input.proficiencyBonus, "proficiency", "weapon", "proficiencyBonus"));
@@ -238,16 +257,38 @@ function paso(
 }
 
 /**
- * Lo que suman los efectos de un tipo concreto **de este objeto**. Los objetos mágicos del SRD
- * no se copian (`NOTICE.md`); lo que esta función hace posible es que el DM escriba los suyos.
+ * Lo que suma el objeto EN SÍ (nunca un encantamiento vivo) para un efecto concreto. Los objetos
+ * mágicos del SRD no se copian (`NOTICE.md`); lo que esta función hace posible es que el DM
+ * escriba los suyos.
  *
- * HP-9a — se lee por `efectosActivos` (`items.ts`) y no por `item.effects`: el +N es propiedad
- * mágica y, si el arma requiere sintonización, solo cuenta sintonizada (SRD 5.1 §Attunement).
- * El dado del arma es mundano y no pasa por ese filtro.
+ * HP-9a — el +N es propiedad mágica y, si el arma requiere sintonización, solo cuenta
+ * sintonizada (SRD 5.1 §Attunement). El dado del arma es mundano y no pasa por ese filtro.
  */
-function sumaDeEfecto(item: ResolvedItem, kind: "weaponAttack" | "weaponDamage"): number {
-  return efectosActivos(item).reduce(
+function sumaDeEfectoPropio(item: ResolvedItem, kind: "weaponAttack" | "weaponDamage"): number {
+  if (item.requiresAttunement && !item.attuned) return 0;
+  return item.effects.reduce(
     (suma, efecto) => (efecto.kind === kind ? suma + efecto.amount : suma),
     0,
   );
+}
+
+/**
+ * T15 (3A.2) — lo que suma un `TemporaryModifier` VIVO sobre esta fila (*Arma mágica*), y con
+ * qué `reason` etiquetar su paso de traza. **Nunca pasa por la sintonización** (ver el comentario
+ * de `efectosTemporales`, `items.ts`): un encantamiento no es una propiedad del objeto.
+ *
+ * `reason` sale del PRIMER temporal que coincide — hoy solo puede haber uno vivo a la vez sobre
+ * el mismo target del mismo objeto (`magic-weapon` es el único encantamiento, D-CF-130), así que
+ * no hay dos motivos entre los que elegir; si algún día los hay, el paso lleva el del primero y
+ * el resto suma sin dejar su propio texto, que es mejor que reventar la traza.
+ */
+function sumaDeEfectoTemporal(
+  item: ResolvedItem,
+  kind: "weaponAttack" | "weaponDamage",
+): { total: number; reason?: string } {
+  const coincidentes = (item.temporales ?? []).filter((t) => t.effect === kind);
+  return {
+    total: coincidentes.reduce((suma, t) => suma + t.amount, 0),
+    reason: coincidentes[0]?.reason,
+  };
 }

@@ -37,6 +37,10 @@ import { TemporaryModifiersService } from "./temporary-modifiers/temporary-modif
     TemporaryModifiersController,
   ],
   providers: [ResourcesService, RestService, ConditionsService, TemporaryModifiersService],
-  exports: [ResourcesService, ConditionsService],
+  // T15 (3A.2) — `TemporaryModifiersService` se exporta por el mismo motivo que `ConditionsService`
+  // (comentario de arriba): `ActivitiesService.usar` (`caso "encantar"`) necesita
+  // `grantFromActivity(tx, ...)` para dejar *Arma mágica* dentro de la MISMA transacción que gasta
+  // el espacio de conjuro.
+  exports: [ResourcesService, ConditionsService, TemporaryModifiersService],
 })
 export class CharacterStateModule {}

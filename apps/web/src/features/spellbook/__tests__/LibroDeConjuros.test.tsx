@@ -27,6 +27,7 @@ function entrada(
     mecanica: "dados",
     objetivos: "uno",
     escalaPorEspacio: false,
+    encanta: false,
   };
   return { ...base, ...parcial };
 }

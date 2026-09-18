@@ -14,6 +14,7 @@ import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollRequestsService } from "../roll-requests/roll-requests.service";
 import { EncountersService } from "../encounters/encounters.service";
 import { ConditionsService } from "../character-state/conditions/conditions.service";
+import { TemporaryModifiersService } from "../character-state/temporary-modifiers/temporary-modifiers.service";
 import { SpellbookService } from "../spellbook/spellbook.service";
 import { RollsService, DICE_ROLLER } from "../rolls/rolls.service";
 
@@ -95,6 +96,11 @@ describe("ActivitiesService", () => {
     combatant: {
       findFirst: jest.fn(),
     },
+    // T15 (3A.2) — `caso "encantar"` resuelve el `itemId` con esta puerta ANTES de abrir la
+    // transacción (un objeto inválido no debe dejar el espacio ya gastado).
+    inventoryItem: {
+      findFirst: jest.fn(),
+    },
     transaction: jest.fn(),
   };
   const membership = {
@@ -115,6 +121,9 @@ describe("ActivitiesService", () => {
   const rollRequests = { createFromEffect: jest.fn() };
   const encounters = { gastar: jest.fn() };
   const conditions = { apply: jest.fn() };
+  // T15 (3A.2) — `grantFromActivity` es la puerta de `caso "encantar"`, mockeada igual que el
+  // resto: tiene su propia suite (`temporary-modifiers.service.spec.ts`).
+  const temporaryModifiers = { grantFromActivity: jest.fn() };
   // Task 4 (3A.2) — `lanzable` decide si un conjuro se puede lanzar (`SpellbookService`), y
   // `roll` es la puerta que escribe el daño diferido en la bandeja del DM (`RollsService`). Los
   // dos van mockeados, igual que el resto: cada uno tiene su propia suite.
@@ -257,6 +266,22 @@ describe("ActivitiesService", () => {
     description: "Sume a las criaturas en un sueño mágico.",
   };
 
+  // T15 (3A.2) — *Arma mágica*: nivel 2, `BONUS`, 1 hora de concentración (SRD 5.1 real).
+  const magicWeaponDePrueba = {
+    key: "magic-weapon",
+    level: 2,
+    nameEs: "Arma mágica",
+    duration: { unidad: "hora", valor: 1, concentracion: true },
+  } as SrdSpell;
+  const magicWeaponActividad: Actividad = {
+    tipo: "utilidad",
+    activation: { coste: "BONUS" },
+    consumption: [],
+    duration: { unidad: "hora", valor: 1, concentracion: true },
+    effects: [],
+    description: "Tocas un arma no mágica. Se convierte en un arma mágica con un bonificador.",
+  };
+
   const noEsSuyoDePrueba = { key: "no-es-suyo", level: 1, nameEs: "No es suyo" } as SrdSpell;
   const noEsSuyoActividad: Actividad = {
     tipo: "utilidad",
@@ -311,6 +336,12 @@ describe("ActivitiesService", () => {
             name: "No es suyo",
             kind: "SPELL",
             spell: noEsSuyoDePrueba,
+          },
+          "spell:magic-weapon": {
+            actividad: magicWeaponActividad,
+            name: "Arma mágica",
+            kind: "SPELL",
+            spell: magicWeaponDePrueba,
           },
         }) as const satisfies Record<string, ActividadCatalogada>
       )[key],
@@ -502,6 +533,12 @@ describe("ActivitiesService", () => {
       },
     );
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    // T15 (3A.2) — una única espada de mentira, `"inv-espada"`, en la mochila EQUIPADA del
+    // clérigo: la fila que `caso "encantar"` resuelve a partir de `itemId`.
+    prisma.inventoryItem.findFirst.mockImplementation(
+      async ({ where }: { where: { id: string } }) =>
+        where.id === "inv-espada" ? { id: "inv-espada", characterId: clerigoPersonajeId } : null,
+    );
     prisma.combatant.findFirst.mockImplementation(
       async ({ where }: { where: { characterId: string } }) => {
         const fila = [...combatientes.values()].find(
@@ -654,6 +691,7 @@ describe("ActivitiesService", () => {
         { provide: RollRequestsService, useValue: rollRequests },
         { provide: EncountersService, useValue: encounters },
         { provide: ConditionsService, useValue: conditions },
+        { provide: TemporaryModifiersService, useValue: temporaryModifiers },
         { provide: SpellbookService, useValue: spellbook },
         { provide: RollsService, useValue: rolls },
         { provide: ACTIVITY_CATALOG, useValue: catalogo },
@@ -1214,6 +1252,86 @@ describe("ActivitiesService", () => {
       // fire-bolt no gasta recurso, así que el mejor testigo de «no se abrió la transacción de
       // consumo» es que `events.record` (RESOURCE_SPENT/ACTIVITY_USED) nunca se llamó.
       expect(events.record).not.toHaveBeenCalled();
+    });
+  });
+
+  // T15 (3A.2) — `caso "encantar"`: la maga (`personajeId`, dueña `jugadoraId`) encanta la
+  // espada del clérigo (`clerigoPersonajeId`, dueño `clerigoId`, visible PLAYERS) — un
+  // encantamiento entre dos personajes de dos jugadores distintos, el caso real de mesa.
+  describe("el caso `encantar` — magic-weapon sobre un arma del inventario (T15, 3A.2)", () => {
+    it("con nivelDeEspacio 2 (base): +1 a weaponAttack y weaponDamage, gasta spell-slot-2, concentración en quien lanza", async () => {
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {
+        itemId: "inv-espada",
+      });
+
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(1); // de 2
+
+      // Dos filas: weaponAttack y weaponDamage, las dos sobre el DUEÑO DEL ARMA (el clérigo), con
+      // `inventoryItemId` puesto y 3600 segundos (1 hora) de duración.
+      expect(temporaryModifiers.grantFromActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        campaignId,
+        clerigoPersonajeId,
+        jugadoraId,
+        expect.objectContaining({
+          target: "item.weaponAttack",
+          amount: 1,
+          reason: "Arma mágica",
+          inventoryItemId: "inv-espada",
+          durationSeconds: 3600,
+        }),
+      );
+      expect(temporaryModifiers.grantFromActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        campaignId,
+        clerigoPersonajeId,
+        jugadoraId,
+        expect.objectContaining({ target: "item.weaponDamage", amount: 1 }),
+      );
+
+      // La concentración es de QUIEN LANZA (`personajeId`), no de quien lleva el arma.
+      expect(conditions.apply).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        personajeId,
+        expect.objectContaining({ key: "concentrating-magic-weapon", durationSeconds: 3600 }),
+        expect.anything(),
+        { concedidoPorActividad: true },
+      );
+    });
+
+    it("con nivelDeEspacio 4: el bono sube a +2 (SRD, Higher Levels)", async () => {
+      sembrarRecurso(personajeId, "spell-slot-4", 1, 1);
+
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {
+        itemId: "inv-espada",
+        nivelDeEspacio: 4,
+      });
+
+      expect(temporaryModifiers.grantFromActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        campaignId,
+        clerigoPersonajeId,
+        jugadoraId,
+        expect.objectContaining({ target: "item.weaponAttack", amount: 2 }),
+      );
+    });
+
+    it("sin itemId, 400 y no gasta el espacio", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(2); // sin tocar
+      expect(temporaryModifiers.grantFromActivity).not.toHaveBeenCalled();
+    });
+
+    it("un itemId que no existe, 404, y no gasta el espacio", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {
+          itemId: "inv-inexistente",
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(2);
     });
   });
 });

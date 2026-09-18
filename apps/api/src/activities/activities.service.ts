@@ -21,13 +21,22 @@ import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollRequestsService } from "../roll-requests/roll-requests.service";
 import { EncountersService } from "../encounters/encounters.service";
 import { ConditionsService } from "../character-state/conditions/conditions.service";
+import { TemporaryModifiersService } from "../character-state/temporary-modifiers/temporary-modifiers.service";
+import { CONCENTRATION_KEY_PREFIX } from "../character-state/concentration/concentration";
 import { SpellbookService } from "../spellbook/spellbook.service";
 import { RollsService } from "../rolls/rolls.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../common/character-viewer";
 import { loVeLaMesa } from "../common/visibility";
 import { resolverOrigen, tablaDeEscalas, type ContextoDeDerivacion } from "../rules/engine";
-import { consumoDeEspacio, dadosEscalados, findClass, UnknownContentError } from "../rules/catalog";
+import {
+  consumoDeEspacio,
+  dadosEscalados,
+  ENCANTAMIENTOS,
+  findClass,
+  segundosDeDuracion,
+  UnknownContentError,
+} from "../rules/catalog";
 import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER } from "../rolls/rolls.service";
 
@@ -83,6 +92,7 @@ export class ActivitiesService {
     private readonly rollRequests: RollRequestsService,
     private readonly encounters: EncountersService,
     private readonly conditions: ConditionsService,
+    private readonly temporaryModifiers: TemporaryModifiersService,
     private readonly spellbook: SpellbookService,
     private readonly rolls: RollsService,
     @Optional() @Inject(ACTIVITY_CATALOG) private readonly catalog?: ActivityCatalog,
@@ -164,6 +174,12 @@ export class ActivitiesService {
     const { actividad, kind } = catalogado;
     const esSpell = kind === "SPELL";
     const spell = catalogado.spell;
+    // T15 (3A.2) — *Arma mágica*, hoy el único (D-CF-130). No es un `actividad.tipo` más: es un
+    // conjuro cuya actividad de lanzamiento es una `utilidad` SINTÉTICA
+    // (`actividadDeLanzamiento`, `rules/catalog/spell-activities.ts`) porque el catálogo no le
+    // trae ninguna propia — `usar()` necesita saber que ES este conjuro para tomar el `caso
+    // "encantar"` de más abajo en vez del `utilidad` genérico (que no hace nada).
+    const esEncantamiento = esSpell && spell!.key in ENCANTAMIENTOS;
 
     // Task 4 (3A.2) — el libro de conjuros decide si esto se puede lanzar. `NO_ES_SUYO` (no está
     // ni preparado ni conocido: no es de la lista de este personaje) es un 400 que rechaza del
@@ -192,7 +208,33 @@ export class ActivitiesService {
     // «ataco a X con mi rayo de fuego» no tiene la forma de «tres aliados suman 1d4», así que
     // pedir más de uno es un 400, no un ataque que se calla a los sobrantes.
     const objetivos: Character[] = [];
-    if (actividad.tipo === "ataque") {
+    // T15 (3A.2) — el objeto sobre el que actuar, para el `caso "encantar"` de más abajo. Se
+    // resuelve AQUÍ, con el resto de objetivos, y por el mismo motivo: un `itemId` inválido no
+    // debe dejar el espacio de conjuro ya gastado.
+    let filaObjeto: { id: string; characterId: string } | undefined;
+    if (esEncantamiento) {
+      const itemId = opciones?.itemId;
+      if (!itemId) {
+        throw new BadRequestException(`${catalogado.name} necesita el objeto sobre el que actuar.`);
+      }
+      const fila = await this.prisma.inventoryItem.findFirst({ where: { id: itemId } });
+      // El mismo 404 que el resto de la aplicación cuando el dato no existe o no es de esta
+      // campaña: `requireVisibleCharacter`, más abajo, ya distingue "no existe" de "existe pero
+      // no lo ves" con el mismo 404 en los dos casos.
+      if (!fila) throw new NotFoundException("Ese objeto no existe.");
+      // **"aliado visible"**: el dueño del arma tiene que ser alguien que el lanzador pueda ver
+      // en esta campaña — la misma puerta que ya usa cualquier otra actividad con objetivo de
+      // criatura. Un arma de un personaje que no se ve no se puede encantar a ciegas.
+      const propietario = await requireVisibleCharacter(
+        this.prisma,
+        this.membership,
+        userId,
+        campaignId,
+        fila.characterId,
+      );
+      objetivos.push(propietario);
+      filaObjeto = fila;
+    } else if (actividad.tipo === "ataque") {
       const ids = opciones?.objetivos ?? [];
       if (ids.length > 1) {
         throw new BadRequestException("Un ataque tiene un objetivo.");
@@ -488,6 +530,56 @@ export class ActivitiesService {
             await this.conditions.apply(userId, campaignId, destino.id, efecto, tx, {
               concedidoPorActividad: destino.id === actor.id,
             });
+          }
+        }
+
+        // T15 (3A.2) — `caso "encantar"`: *Arma mágica* como `TemporaryModifier` sobre el objeto,
+        // dentro de la MISMA transacción que gastó el espacio (la misma doctrina que `effects[]`,
+        // arriba: gastar el recurso y no dejar el encantamiento aplicado sería el estado a medias
+        // que esa doctrina existe para impedir). SRD 5.1, *Magic Weapon*: «that weapon becomes a
+        // magic weapon with a +1 bonus to attack rolls and damage rolls» — 2.º nivel base, +2 a un
+        // espacio de 4.º o superior, +3 a uno de 6.º o superior (`ENCANTAMIENTOS`).
+        if (esEncantamiento) {
+          const bono = ENCANTAMIENTOS[spell!.key].bonoPorNivel(ctx.nivelDeEspacio ?? spell!.level);
+          // «1 hora» del catálogo, en segundos del reloj de campaña — nunca un `3600` a mano:
+          // si algún día entra un segundo encantamiento con otra duración (Shillelagh, Arma
+          // elemental, 3B), esta cuenta ya vale para él.
+          const segundos = segundosDeDuracion(spell!.duration);
+          // `destinatarios[0]` y no `objetivos[0]`: es la misma fila —`destinatariosOrdenados`
+          // solo reordena— y `destinatarios` es la que ya usa el resto de `usar()` para "a quién
+          // le pasa esto".
+          const propietario = destinatarios[0];
+          for (const target of ["item.weaponAttack", "item.weaponDamage"] as const) {
+            await this.temporaryModifiers.grantFromActivity(
+              tx,
+              campaignId,
+              propietario.id,
+              userId,
+              {
+                target,
+                amount: bono,
+                reason: catalogado.name,
+                inventoryItemId: filaObjeto!.id,
+                ...(segundos !== undefined ? { durationSeconds: segundos } : {}),
+              },
+            );
+          }
+          // **La concentración es de quien LANZA, no de quien lleva el arma** (pueden ser
+          // personajes distintos: un mago encanta la espada del guerrero). SRD 5.1,
+          // *Concentration*: perderla no borra el encantamiento solo — lo quita el DM
+          // (D-CF-130); esta condición solo AVISA de que sigue concentrado.
+          if (spell!.duration.concentracion) {
+            await this.conditions.apply(
+              userId,
+              campaignId,
+              actor.id,
+              {
+                key: `${CONCENTRATION_KEY_PREFIX}-${spell!.key}`,
+                ...(segundos !== undefined ? { durationSeconds: segundos } : {}),
+              },
+              tx,
+              { concedidoPorActividad: true },
+            );
           }
         }
 

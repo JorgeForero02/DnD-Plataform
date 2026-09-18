@@ -47,7 +47,9 @@ describe("InventoryService", () => {
     campaign: { findUniqueOrThrow: jest.fn() },
     // `consume` aplica los efectos del objeto escribiendo aquí **directo con el `tx`**, sin pasar
     // por `TemporaryModifiersService.grant` — que desde el 2026-09-07 es solo del DM.
-    temporaryModifier: { create: jest.fn() },
+    // T15 (3A.2) — `list()` también LEE (`findMany`) los `TemporaryModifier` de objeto vivos,
+    // para adjuntarlos a cada fila (`temporalesPorObjeto`, `character-sheet.service.ts`).
+    temporaryModifier: { create: jest.fn(), findMany: jest.fn() },
     // La bolsa bloquea la fila del personaje antes de mirar el saldo (`FOR UPDATE`), como hacen
     // los puntos de golpe: el Prisma simulado devuelve el personaje que la prueba haya puesto.
     $queryRaw: jest.fn(),
@@ -83,7 +85,9 @@ describe("InventoryService", () => {
     prisma.campaign.findUniqueOrThrow.mockResolvedValue({
       id: "cmp1",
       encumbranceVariant: false,
+      clockSeconds: 0,
     });
+    prisma.temporaryModifier.findMany.mockResolvedValue([]);
     prisma.transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     prisma.$queryRaw.mockImplementation(async () => {
       const actual = await prisma.character.findFirst.mock.results.at(-1)?.value;

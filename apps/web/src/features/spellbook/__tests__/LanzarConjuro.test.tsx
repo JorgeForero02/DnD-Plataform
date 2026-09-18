@@ -10,6 +10,8 @@ import * as encountersApi from "../../encounters/api";
 import * as charactersApi from "../../characters/api";
 import * as bestiarioApi from "../../bestiario/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
+import * as inventoryApi from "../../inventory/api";
+import type { InventoryRow } from "../../inventory/api";
 
 // Tarea 7 de 3A.2 («elegir, lanzar y usar») — el botón «Lanzar» de la pestaña Conjuros. Reusa el
 // mismo patrón de mocks que `TirarAtaqueBoton.test.tsx`: la sesión y el encuentro deciden si hay
@@ -30,6 +32,7 @@ const TRUCO: SpellbookEntry = {
   mecanica: "utilidad",
   objetivos: "ninguno",
   escalaPorEspacio: false,
+  encanta: false,
 };
 
 // «Escudo» — nivel 1, sin objetivo (se lanza sobre uno mismo), no escala. Sirve para probar el
@@ -49,6 +52,7 @@ const ESCUDO: SpellbookEntry = {
   mecanica: "utilidad",
   objetivos: "ninguno",
   escalaPorEspacio: false,
+  encanta: false,
 };
 
 const PROYECTIL: SpellbookEntry = {
@@ -66,7 +70,57 @@ const PROYECTIL: SpellbookEntry = {
   mecanica: "dados",
   objetivos: "varios",
   escalaPorEspacio: true,
+  encanta: false,
 };
+
+// T15 (3A.2) — «Arma mágica»: `objetivos: "ninguno"` (su actividad de lanzamiento es una
+// `utilidad` sintética), pero `encanta: true` — el selector es un arma, no una criatura.
+const ARMA_MAGICA: SpellbookEntry = {
+  key: "magic-weapon",
+  nameEs: "Arma mágica",
+  nameEn: "Magic Weapon",
+  level: 2,
+  school: "trs",
+  castingTime: { coste: "BONUS" },
+  range: { unidad: "toque" },
+  concentration: true,
+  ritual: false,
+  estado: "PREPARADO",
+  lanzable: true,
+  mecanica: "utilidad",
+  objetivos: "ninguno",
+  escalaPorEspacio: false,
+  encanta: true,
+};
+
+function filaDeArma(id: string, nombre: string): InventoryRow {
+  return {
+    id,
+    quantity: 1,
+    location: "EQUIPPED",
+    slot: "MAIN_HAND",
+    attuned: false,
+    storedAt: null,
+    note: null,
+    item: {
+      ref: `SRD:${id}`,
+      source: "SRD",
+      name: nombre,
+      kind: "WEAPON",
+      weightOz: 48,
+      effects: [],
+      requiresAttunement: false,
+      attuned: false,
+      weapon: {
+        category: "MARTIAL",
+        range: "MELEE",
+        damageDice: "1d8",
+        damageType: "SLASHING",
+        properties: [],
+      },
+    },
+  };
+}
 
 const SIN_ESPACIOS: SpellbookResponse["espacios"] = [];
 
@@ -130,6 +184,16 @@ beforeEach(() => {
   vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(null);
   vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([]);
   vi.spyOn(bestiarioApi, "fetchNpcs").mockResolvedValue([]);
+  // T15 (3A.2) — `LanzarConjuro` siempre pide el inventario propio (para el selector de
+  // encantar); sin este mock, cualquier prueba que no sea de encantar dispararía una petición
+  // real sin servidor detrás.
+  vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue({
+    items: [],
+    purse: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+    totalWeightOz: 0,
+    carryCapacityOz: null,
+    encumbrance: null,
+  });
 });
 
 describe("LanzarConjuro — sin objetivo y sin espacio superior", () => {
@@ -287,5 +351,105 @@ describe("LanzarConjuro — el servidor avisa sin bloquear", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lanzar Luz" }));
 
     expect(await screen.findByText("Impacta")).toBeInTheDocument();
+  });
+});
+
+describe("LanzarConjuro — encantar (T15, 3A.2): el objetivo es un arma del inventario", () => {
+  it("con un arma equipada, elegirla manda itemId (no objetivos)", async () => {
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue({
+      items: [filaDeArma("long-sword", "Espada larga")],
+      purse: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+      totalWeightOz: 0,
+      carryCapacityOz: null,
+      encumbrance: null,
+    });
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar(ARMA_MAGICA);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Arma mágica" }));
+    const opcion = await screen.findByRole("option", { name: "Espada larga" });
+    fireEvent.click(opcion);
+
+    await waitFor(() =>
+      expect(usar).toHaveBeenCalledWith("c1", "p-maga", "spell:magic-weapon", {
+        itemId: "long-sword",
+      }),
+    );
+  });
+
+  it("sin ningún arma equipada, la lista lo dice y no hay nada que pulsar", async () => {
+    montar(ARMA_MAGICA);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Arma mágica" }));
+    expect(await screen.findByText("No llevas ningún arma equipada.")).toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  it("un objeto que no es arma (una armadura equipada) no aparece en la lista", async () => {
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue({
+      items: [
+        filaDeArma("long-sword", "Espada larga"),
+        {
+          id: "shield",
+          quantity: 1,
+          location: "EQUIPPED",
+          slot: "OFF_HAND",
+          attuned: false,
+          storedAt: null,
+          note: null,
+          item: {
+            ref: "SRD:shield",
+            source: "SRD",
+            name: "Escudo",
+            kind: "SHIELD",
+            weightOz: 96,
+            effects: [],
+            requiresAttunement: false,
+            attuned: false,
+            armor: {
+              category: "SHIELD",
+              baseAc: 2,
+              strengthRequirement: 0,
+              stealthDisadvantage: false,
+            },
+          },
+        },
+      ],
+      purse: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+      totalWeightOz: 0,
+      carryCapacityOz: null,
+      encumbrance: null,
+    });
+    montar(ARMA_MAGICA);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Arma mágica" }));
+    expect(await screen.findByRole("option", { name: "Espada larga" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Escudo" })).not.toBeInTheDocument();
+  });
+
+  it("con espacio de nivel superior disponible, manda itemId Y nivelDeEspacio juntos", async () => {
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue({
+      items: [filaDeArma("long-sword", "Espada larga")],
+      purse: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+      totalWeightOz: 0,
+      carryCapacityOz: null,
+      encumbrance: null,
+    });
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar(ARMA_MAGICA, [
+      { nivel: 2, actual: 2, max: 2 },
+      { nivel: 4, actual: 1, max: 1 },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Arma mágica" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /^Nivel 4/ }));
+    fireEvent.click(screen.getByRole("option", { name: "Espada larga" }));
+
+    await waitFor(() =>
+      expect(usar).toHaveBeenCalledWith("c1", "p-maga", "spell:magic-weapon", {
+        itemId: "long-sword",
+        nivelDeEspacio: 4,
+      }),
+    );
   });
 });

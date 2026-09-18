@@ -5,6 +5,7 @@ import {
   efectosActivos,
   equipmentToEngineInput,
   InvalidEquipmentError,
+  sintonizacionPendiente,
   type ArmorLike,
 } from "./items";
 
@@ -656,5 +657,57 @@ describe("HP-9a — los efectos de un objeto que requiere sintonización solo cu
     });
     // 16 de la cota (mundano) y nada del +1 (mágico, sin sintonizar).
     expect(caCon([cotaMagica]).total).toBe(16);
+  });
+});
+
+describe("T15 (3A.2) — un TemporaryModifier vivo sobre el objeto (Arma mágica)", () => {
+  it("efectosActivos suma item.temporales como weaponAttack/weaponDamage", () => {
+    const espada = objeto({
+      ref: "SRD:long-sword",
+      kind: "WEAPON",
+      effects: [],
+      temporales: [{ effect: "weaponAttack", amount: 1, reason: "Arma mágica" }],
+    });
+    expect(efectosActivos(espada)).toEqual([{ kind: "weaponAttack", amount: 1 }]);
+  });
+
+  it("se suma a lo que ya trae el objeto de por sí, no lo sustituye", () => {
+    const espadaYaMagica = objeto({
+      ref: "CAMPAIGN:espada-1",
+      source: "CAMPAIGN",
+      kind: "WEAPON",
+      effects: [{ kind: "weaponAttack", amount: 1 }],
+      temporales: [{ effect: "weaponAttack", amount: 2, reason: "Arma mágica (espacio 4)" }],
+    });
+    expect(efectosActivos(espadaYaMagica)).toEqual([
+      { kind: "weaponAttack", amount: 1 },
+      { kind: "weaponAttack", amount: 2 },
+    ]);
+  });
+
+  it("nunca pasa por la sintonización: un encantamiento cuenta aunque el arma no esté sintonizada", () => {
+    const espadaSinSintonizar = objeto({
+      ref: "CAMPAIGN:espada-2",
+      source: "CAMPAIGN",
+      kind: "WEAPON",
+      effects: [],
+      requiresAttunement: true,
+      attuned: false,
+      temporales: [{ effect: "weaponDamage", amount: 1, reason: "Arma mágica" }],
+    });
+    expect(efectosActivos(espadaSinSintonizar)).toEqual([{ kind: "weaponDamage", amount: 1 }]);
+  });
+
+  it("sintonizacionPendiente no se apaga por un encantamiento: sigue avisando de la sintonización que falta", () => {
+    const espadaMagicaSinSintonizar = objeto({
+      ref: "CAMPAIGN:espada-3",
+      source: "CAMPAIGN",
+      kind: "WEAPON",
+      effects: [{ kind: "weaponAttack", amount: 1 }],
+      requiresAttunement: true,
+      attuned: false,
+      temporales: [{ effect: "weaponAttack", amount: 1, reason: "Arma mágica" }],
+    });
+    expect(sintonizacionPendiente(espadaMagicaSinSintonizar)).toBe(true);
   });
 });

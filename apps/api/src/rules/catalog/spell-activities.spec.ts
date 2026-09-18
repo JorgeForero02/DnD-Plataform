@@ -1,13 +1,15 @@
 import { BadRequestException } from "@nestjs/common";
-import type { ExpresionDeDados, SrdSpell } from "@dnd/shared";
+import type { Duracion, ExpresionDeDados, SrdSpell } from "@dnd/shared";
 import {
   actividadDeLanzamiento,
   claveDeConjuro,
   consumoDeEspacio,
   dadosEscalados,
+  ENCANTAMIENTOS,
   mecanicaDe,
   objetivosDe,
   parsearClaveDeActividad,
+  segundosDeDuracion,
 } from "./spell-activities";
 import { SRD_SPELL_POR_KEY } from "./generado";
 
@@ -55,15 +57,70 @@ describe("actividadDeLanzamiento", () => {
     const actividad = actividadDeLanzamiento(spell)!;
     expect(actividad.tipo).toBe("dados");
   });
-  it("magic-weapon: sin actividades, undefined", () => {
+  // T15 (3A.2) — `magic-weapon` sigue sin actividades EN EL CATÁLOGO (`fueraDeA: ["enchant"]`),
+  // pero ahora es un encantamiento conocido (`ENCANTAMIENTOS`): `actividadDeLanzamiento` le
+  // construye una `utilidad` sintética en vez de devolver `undefined`, para que la pantalla del
+  // libro de conjuros pueda ofrecer un botón «Lanzar» — antes de esta tarea no había ninguno.
+  it("magic-weapon: sin actividades en el catálogo, pero es un encantamiento: utilidad sintética con su activation y su duración", () => {
     const spell = SRD_SPELL_POR_KEY.get("magic-weapon")!;
-    expect(actividadDeLanzamiento(spell)).toBeUndefined();
+    expect(spell.actividades).toEqual([]);
+    const actividad = actividadDeLanzamiento(spell)!;
+    expect(actividad.tipo).toBe("utilidad");
+    expect(actividad.activation).toEqual(spell.castingTime);
+    expect(actividad.duration).toEqual(spell.duration);
+  });
+  it("un conjuro sin actividades que NO es un encantamiento conocido sigue dando undefined", () => {
+    const sinActividades: SrdSpell = {
+      ...SRD_SPELL_POR_KEY.get("magic-missile")!,
+      key: "no-esta-en-encantamientos",
+      actividades: [],
+    };
+    expect(actividadDeLanzamiento(sinActividades)).toBeUndefined();
+  });
+});
+
+describe("ENCANTAMIENTOS", () => {
+  it("magic-weapon es el único encantamiento conocido (D-CF-130): Shillelagh y Arma elemental quedan en 3B", () => {
+    expect(Object.keys(ENCANTAMIENTOS)).toEqual(["magic-weapon"]);
+  });
+
+  // SRD 5.1, *Magic Weapon*, «At Higher Levels»: «using a spell slot of 4th level or higher, the
+  // bonus increases to +2 … 6th level or higher, the bonus increases to +3».
+  it.each([
+    [2, 1],
+    [3, 1],
+    [4, 2],
+    [5, 2],
+    [6, 3],
+    [9, 3],
+  ])("nivel de espacio %i → +%i", (nivel, esperado) => {
+    expect(ENCANTAMIENTOS["magic-weapon"].bonoPorNivel(nivel)).toBe(esperado);
+  });
+});
+
+describe("segundosDeDuracion", () => {
+  function duracion(parcial: Partial<Duracion>): Duracion {
+    return { unidad: "instantanea", concentracion: false, ...parcial };
+  }
+  it("una hora son 3600 segundos (magic-weapon)", () => {
+    expect(segundosDeDuracion(duracion({ unidad: "hora", valor: 1 }))).toBe(3600);
+  });
+  it("un minuto son 60 segundos", () => {
+    expect(segundosDeDuracion(duracion({ unidad: "minuto", valor: 10 }))).toBe(600);
+  });
+  it("instantánea no es un número de segundos: undefined", () => {
+    expect(segundosDeDuracion(duracion({ unidad: "instantanea" }))).toBeUndefined();
+  });
+  it("hasta que se disipe no es un número de segundos: undefined", () => {
+    expect(segundosDeDuracion(duracion({ unidad: "hastaQueSeDisipe" }))).toBeUndefined();
   });
 });
 
 describe("mecanicaDe", () => {
-  it("magic-weapon (sin actividad) es texto", () => {
-    expect(mecanicaDe(SRD_SPELL_POR_KEY.get("magic-weapon")!)).toBe("texto");
+  // T15 (3A.2) — ya no es "texto": `actividadDeLanzamiento` le construye una `utilidad`
+  // sintética (encantamiento conocido), y esta función lee justo esa actividad.
+  it("magic-weapon (encantamiento, sin actividad en el catálogo) es utilidad", () => {
+    expect(mecanicaDe(SRD_SPELL_POR_KEY.get("magic-weapon")!)).toBe("utilidad");
   });
   it("fireball (salvación) es salvacion", () => {
     expect(mecanicaDe(SRD_SPELL_POR_KEY.get("fireball")!)).toBe("salvacion");

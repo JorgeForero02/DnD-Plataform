@@ -6,6 +6,7 @@ import { NOMBRE_VEREDICTO } from "../character-sheet/vocabulario";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
 import { useCombatientesDelEncuentro, useUsarActividad } from "../character-sheet/hooks";
+import { useInventory } from "../inventory/hooks";
 import { spellbookKey } from "./hooks";
 import { Button } from "../../ui/Button";
 import { PanelFlotante } from "../../ui/PanelFlotante";
@@ -72,6 +73,15 @@ export function LanzarConjuro({
   // de un `enabled` que tuviera que adivinar si hay combate ANTES de saberlo.
   const personajesQ = useCharacters(campaignId);
   const npcsQ = useNpcs(campaignId);
+  // T15 (3A.2) — un encantamiento (`entrada.encanta`) no apunta a una criatura: apunta a un
+  // arma del inventario. **Solo las del propio personaje** (Ruling, ver el informe): no hay hoy
+  // un hook que traiga el inventario de un aliado sin pedirlo personaje por personaje, y montar
+  // ese hueco es más que "sin esfuerzo" — queda como límite conocido, no como un selector que
+  // finge ofrecer más de lo que ofrece.
+  const inventarioQ = useInventory(campaignId, characterId);
+  const armasEquipadas = (inventarioQ.data?.items ?? []).filter(
+    (fila) => fila.location === "EQUIPPED" && fila.item.weapon !== undefined,
+  );
 
   const [abierto, setAbierto] = useState(false);
   const [objetivosVarios, setObjetivosVarios] = useState<ReadonlySet<string>>(new Set());
@@ -94,7 +104,9 @@ export function LanzarConjuro({
   );
 
   const necesitaObjetivo = entrada.objetivos !== "ninguno";
-  const necesitaPanel = necesitaObjetivo || mostrarSelectorDeEspacio;
+  // T15 (3A.2) — un encantamiento siempre necesita el panel: hay que elegir el arma, aunque no
+  // haya selector de espacio (`entrada.objetivos` es "ninguno" para el `utilidad` sintético).
+  const necesitaPanel = necesitaObjetivo || mostrarSelectorDeEspacio || entrada.encanta;
 
   const objetivosDisponibles: AudienciaDeLanzamiento[] = combate.enCombate
     ? combate.combatientes.map((c) => ({ id: c.characterId, nombre: c.nombre }))
@@ -111,12 +123,13 @@ export function LanzarConjuro({
     setObjetivosVarios(new Set());
   };
 
-  const lanzar = (objetivos?: string[]) => {
+  const lanzar = (objetivos?: string[], itemId?: string) => {
     usar.mutate(
       {
         activityKey: `spell:${entrada.key}`,
         input: {
           ...(objetivos && objetivos.length > 0 ? { objetivos } : {}),
+          ...(itemId ? { itemId } : {}),
           ...(mostrarSelectorDeEspacio ? { nivelDeEspacio } : {}),
         },
       },
@@ -223,6 +236,38 @@ export function LanzarConjuro({
               </fieldset>
             )}
 
+            {/* T15 (3A.2) — encantar: el objetivo es un ARMA, no una criatura. Un solo clic
+                elige y lanza, igual que `objetivos === "uno"`: es la misma mecánica de mesa
+                (tocas el arma), solo que apunta al inventario en vez de a la lista de la mesa. */}
+            {entrada.encanta && (
+              <ul
+                role="listbox"
+                aria-label={`Arma de ${entrada.nameEs}`}
+                className="flex flex-col gap-1"
+              >
+                {armasEquipadas.length === 0 && (
+                  <li className="font-chrome text-chrome-xs text-muted">
+                    No llevas ningún arma equipada.
+                  </li>
+                )}
+                {armasEquipadas.map((fila) => (
+                  <li key={fila.id} role="presentation">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      role="option"
+                      aria-selected="false"
+                      disabled={usar.isPending}
+                      onClick={() => lanzar(undefined, fila.id)}
+                      className="!flex w-full justify-start text-left font-normal hover:bg-[color:var(--accent-tint)]"
+                    >
+                      {fila.item.name}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {entrada.objetivos === "uno" && (
               <ul
                 role="listbox"
@@ -277,7 +322,7 @@ export function LanzarConjuro({
               </>
             )}
 
-            {entrada.objetivos === "ninguno" && mostrarSelectorDeEspacio && (
+            {entrada.objetivos === "ninguno" && !entrada.encanta && mostrarSelectorDeEspacio && (
               <div className="mt-s2">
                 <Button
                   type="button"

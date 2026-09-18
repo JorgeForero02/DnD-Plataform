@@ -375,6 +375,50 @@ export function modificadoresTemporales(
 }
 
 /**
+ * T15 (3A.2) — los `TemporaryModifier` VIVOS de un objeto (*Arma mágica*), agrupados por
+ * `inventoryItemId` y ya traducidos a la forma que lee `ResolvedItem.temporales`
+ * (`rules/items.ts`, `efectosActivos`).
+ *
+ * **Misma doctrina que `modificadoresTemporales`, hermana de esta función**: la caducidad se
+ * resuelve AQUÍ, al leer, con `condicionesActivas` (2C.4) — sin barrido y sin una segunda verdad.
+ * Se le pasan solo las filas con `inventoryItemId` puesto: las de personaje (`ability.*`, `ac`,
+ * `speed.*`) no tienen nada que agrupar por objeto y `modificadoresTemporales` ya las cubre.
+ *
+ * `target` llega con el prefijo `"item."` (`TEMPORARY_MODIFIER_TARGETS`) y `ResolvedItem.temporales`
+ * lo guarda SIN él (`effect: "weaponAttack"`, no `"item.weaponAttack"`) — es el mismo vocabulario
+ * que `ItemEffect.kind`, y ese no lleva el prefijo.
+ */
+export function temporalesPorObjeto(
+  filas: {
+    target: string;
+    amount: number;
+    reason: string;
+    expiresAtClock: number | null;
+    inventoryItemId: string | null;
+  }[],
+  relojSegundos: number,
+): Map<string, { effect: "weaponAttack" | "weaponDamage"; amount: number; reason: string }[]> {
+  const deObjeto = filas.filter(
+    (f): f is typeof f & { inventoryItemId: string } => f.inventoryItemId !== null,
+  );
+  const vivos = condicionesActivas(
+    deObjeto.map((f) => ({ ...f, key: `${f.inventoryItemId}:${f.target}` })),
+    relojSegundos,
+  );
+  const mapa = new Map<
+    string,
+    { effect: "weaponAttack" | "weaponDamage"; amount: number; reason: string }[]
+  >();
+  for (const f of vivos) {
+    const effect = f.target.replace(/^item\./, "") as "weaponAttack" | "weaponDamage";
+    const lista = mapa.get(f.inventoryItemId) ?? [];
+    lista.push({ effect, amount: f.amount, reason: f.reason });
+    mapa.set(f.inventoryItemId, lista);
+  }
+  return mapa;
+}
+
+/**
  * En 2A solo hay contenido SRD (2B abrirá `CAMPAIGN`). Extrae la clave o rechaza con 400 —nunca
  * con el 500 que daría dejar pasar una referencia que el catálogo no sabe resolver.
  */
@@ -532,6 +576,24 @@ export class CharacterSheetService {
     });
     if (filas.length === 0) return { items: [], warnings: [] };
 
+    // T15 (3A.2) — los `TemporaryModifier` de objeto vivos (*Arma mágica*), agrupados por fila.
+    // Se piden aquí, no dentro del bucle de resolución: es la misma consulta para TODAS las
+    // filas equipadas, y una por fila sería N consultas donde una basta.
+    const [temporalesFilas, campana] = await Promise.all([
+      cliente.temporaryModifier.findMany({
+        where: { characterId: character.id, inventoryItemId: { not: null } },
+        select: {
+          target: true,
+          amount: true,
+          reason: true,
+          expiresAtClock: true,
+          inventoryItemId: true,
+        },
+      }),
+      cliente.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
+    ]);
+    const temporalesPorFila = temporalesPorObjeto(temporalesFilas, campana.clockSeconds);
+
     const viewer = await viewerFor(this.prisma, this.membership, userId, character.campaignId, tx);
     const items: ResolvedItem[] = [];
     const warnings: DerivationWarning[] = [];
@@ -557,10 +619,14 @@ export class CharacterSheetService {
         // HP-9a — **y la sintonización también es de la fila.** El catálogo no sabe quién lo
         // lleva; el motor (`rules/items.ts`, `efectosActivos`) decide con este campo si los
         // `effects` cuentan (SRD 5.1 §Attunement: sin sintonizar, solo lo mundano).
+        // T15 (3A.2) — los temporales de ESTA fila, si tiene alguno vivo. `undefined` y no `[]`
+        // cuando no hay ninguno: la misma convención que `effects: []` no significa "sin objeto".
+        const temporalesDeLaFila = temporalesPorFila.get(fila.id);
         const conRanura: ResolvedItem = {
           ...resolved,
           slot: fila.slot ?? resolved.slot,
           attuned: fila.attuned,
+          ...(temporalesDeLaFila ? { temporales: temporalesDeLaFila } : {}),
         };
         // Fix round 2 (R2) — **la MISMA función que usa `InventoryService.list()`**
         // (`filaComoLaVeElViewer`), para que el dueño de un objeto sin identificar cuyo

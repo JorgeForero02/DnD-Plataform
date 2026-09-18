@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { MembershipService } from "../../campaigns/membership.service";
 import { GameEventsService } from "../../game-events/game-events.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -110,5 +110,99 @@ describe("TemporaryModifiersService", () => {
       expect.objectContaining({ visibility: "DM_ONLY" }),
       expect.anything(),
     );
+  });
+
+  // T15 (3A.2) — un target de OBJETO exige un `inventoryItemId` que sea del personaje y sea un
+  // arma. `long-sword` (arma) y `leather` (armadura) son objetos reales del catálogo SRD: probar
+  // contra el catálogo real, no un doble, es lo que asegura que "es un arma" no se le pregunte a
+  // un mock que siempre dice que sí.
+  describe("un target de objeto (item.weaponAttack/item.weaponDamage)", () => {
+    const filaConEspada = {
+      id: "inv1",
+      characterId: "pj1",
+      srdKey: "long-sword",
+      campaignItemId: null,
+    };
+    const filaConArmadura = {
+      id: "inv2",
+      characterId: "pj1",
+      srdKey: "leather",
+      campaignItemId: null,
+    };
+    const encantarEspada = {
+      target: "item.weaponAttack" as const,
+      amount: 1,
+      reason: "Arma mágica",
+      inventoryItemId: "inv1",
+    };
+
+    beforeEach(() => {
+      membership.getMembership.mockResolvedValue({ role: "DM", userId: "dm" });
+      membership.requireDM.mockResolvedValue({ role: "DM", userId: "dm" });
+    });
+
+    it("grant(): sobre un arma del propio personaje, escribe la fila con inventoryItemId", async () => {
+      (prisma as unknown as { inventoryItem: { findFirst: jest.Mock } }).inventoryItem = {
+        findFirst: jest.fn().mockResolvedValue(filaConEspada),
+      };
+      await service.grant("dm", "c1", "pj1", encantarEspada);
+      expect(prisma.temporaryModifier.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ target: "item.weaponAttack", inventoryItemId: "inv1" }),
+        }),
+      );
+    });
+
+    it("grant(): sobre una fila que no es del personaje, 400 y no escribe", async () => {
+      (prisma as unknown as { inventoryItem: { findFirst: jest.Mock } }).inventoryItem = {
+        findFirst: jest.fn().mockResolvedValue(null),
+      };
+      await expect(service.grant("dm", "c1", "pj1", encantarEspada)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(prisma.temporaryModifier.create).not.toHaveBeenCalled();
+    });
+
+    it("grant(): sobre una armadura (no un arma), 400 y no escribe", async () => {
+      (prisma as unknown as { inventoryItem: { findFirst: jest.Mock } }).inventoryItem = {
+        findFirst: jest.fn().mockResolvedValue(filaConArmadura),
+      };
+      await expect(
+        service.grant("dm", "c1", "pj1", { ...encantarEspada, inventoryItemId: "inv2" }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.temporaryModifier.create).not.toHaveBeenCalled();
+    });
+
+    it("grantFromActivity(): NO exige requireDM — la llama el propio lanzador vía usar()", async () => {
+      const tx = {
+        ...prisma,
+        inventoryItem: { findFirst: jest.fn().mockResolvedValue(filaConEspada) },
+      } as never;
+      membership.requireDM.mockRejectedValue(new ForbiddenException("no llamado aquí"));
+
+      await service.grantFromActivity(tx, "c1", "pj1", "mago1", encantarEspada);
+
+      expect(membership.requireDM).not.toHaveBeenCalled();
+      expect(prisma.temporaryModifier.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            characterId: "pj1",
+            target: "item.weaponAttack",
+            inventoryItemId: "inv1",
+            grantedById: "mago1",
+          }),
+        }),
+      );
+    });
+
+    it("grantFromActivity(): sobre un objeto que no es del personaje, 400", async () => {
+      const tx = {
+        ...prisma,
+        inventoryItem: { findFirst: jest.fn().mockResolvedValue(null) },
+      } as never;
+      await expect(
+        service.grantFromActivity(tx, "c1", "pj1", "mago1", encantarEspada),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 });

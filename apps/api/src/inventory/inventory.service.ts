@@ -35,6 +35,7 @@ import {
   viewerForCharacterOwner,
 } from "../common/character-viewer";
 import { resolveContentRef, resolveInventoryRowItem } from "./common/resolve-item";
+import { temporalesPorObjeto } from "../characters/character-sheet.service";
 import {
   filaComoLaVeElViewer,
   filaCrudaVisible,
@@ -199,16 +200,43 @@ export class InventoryService {
       orderBy: { createdAt: "asc" },
     });
 
+    // T15 (3A.2) — los `TemporaryModifier` de objeto vivos (*Arma mágica*), agrupados por fila —
+    // misma consulta y misma función que `character-sheet.service.ts` (`equipoEquipado`), para
+    // que el listado del inventario y el cuadro de ataques nunca discrepen sobre qué arma está
+    // encantada. Se piden ANTES de resolver las filas: `filaComoLaVeElViewer` reconstruye el
+    // objeto para uno oculto (`redactado`), así que los temporales tienen que ir puestos en
+    // `resolved` antes de esa puerta, igual que ya hace `attuned`/`slot`.
+    const [temporalesFilas, campana] = await Promise.all([
+      this.prisma.temporaryModifier.findMany({
+        where: { characterId, inventoryItemId: { not: null } },
+        select: {
+          target: true,
+          amount: true,
+          reason: true,
+          expiresAtClock: true,
+          inventoryItemId: true,
+        },
+      }),
+      this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    ]);
+    const temporalesPorFila = temporalesPorObjeto(temporalesFilas, campana.clockSeconds);
+
     const resolvedRows = await Promise.all(
       rows.map(async (row) => {
+        const temporales = temporalesPorFila.get(row.id);
         if (row.srdKey) {
-          return { row, resolved: await resolveInventoryRowItem(this.prisma, campaignId, row) };
+          const resuelto = await resolveInventoryRowItem(this.prisma, campaignId, row);
+          return { row, resolved: temporales ? { ...resuelto, temporales } : resuelto };
         }
         const { resolved, campaignItem } = await resolveContentRef(this.prisma, campaignId, {
           source: "CAMPAIGN",
           id: row.campaignItemId as string,
         });
-        return { row, resolved, campaignItem };
+        return {
+          row,
+          resolved: temporales ? { ...resolved, temporales } : resolved,
+          campaignItem,
+        };
       }),
     );
 
@@ -269,8 +297,9 @@ export class InventoryService {
     // visor no pueda ver ni la fila ni su peso. Lo único que sale es el ESTADO — nunca el peso
     // real ni el de la fila escondida, que seguirían revelando que hay algo ahí.
     let encumbrance: EncumbranceInfo | null = null;
-    const campaign = await this.prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
-    if (campaign.encumbranceVariant && character.str != null) {
+    // T15 (3A.2) — `campana` ya se pidió arriba (para vencer los temporales de objeto); es la
+    // misma fila, y una segunda consulta idéntica no aporta nada.
+    if (campana.encumbranceVariant && character.str != null) {
       const pesoRealOz = carriedWeightOz(resolvedRows, character);
       encumbrance = {
         state: estadoDeSobrecarga(pesoRealOz, character.str),

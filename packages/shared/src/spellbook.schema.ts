@@ -68,6 +68,14 @@ export interface SpellbookEntry {
   /** Tiene `escalado.por === "espacio"` (se ofrece elegir espacio). */
   escalaPorEspacio: boolean;
   /**
+   * **T15 (3A.2) — es un encantamiento** (`ENCANTAMIENTOS`,
+   * `apps/api/src/rules/catalog/spell-activities.ts`): *Arma mágica*, hoy la única entrada. La
+   * pantalla lo usa para ofrecer un arma del inventario como objetivo en vez del selector de
+   * criaturas de `objetivos` — un encantamiento no tiene `objetivos` de criatura (su actividad de
+   * lanzamiento es sintética, `tipo: "utilidad"`, y esa mecánica pide "ninguno").
+   */
+  encanta: boolean;
+  /**
    * **Solo en el detalle** (`GET …/spellbook/:spellKey`), nunca en `list()` — ronda de arreglo
    * 1: una lista de hasta 204 conjuros con su prosa completa del SRD (hasta 8000 caracteres por
    * campo, en dos idiomas) pesaba ~460 KB por petición para una pantalla que solo abre el texto

@@ -4,6 +4,7 @@ import type {
   Activacion,
   Consumo,
   DamageType,
+  Duracion,
   ExpresionDeDados,
   MecanicaDeConjuro,
   Origen,
@@ -55,9 +56,56 @@ function mismaActivacion(a: Activacion, b: Activacion): boolean {
 }
 
 /**
+ * **T15 (3A.2) — los encantamientos que `usar()` sabe aplicar como `TemporaryModifier` sobre un
+ * objeto**, y a cuánto sube su bono según el nivel del espacio con que se lanzan.
+ *
+ * SRD 5.1, *Magic Weapon* (2.º nivel, transmutación, concentración, 1 hora): *«You touch a
+ * nonmagical weapon. Until the spell ends, that weapon becomes a magic weapon with a +1 bonus to
+ * attack rolls and damage rolls. At Higher Levels: When you cast this spell using a spell slot of
+ * 4th level or higher, the bonus increases to +2. When you use a spell slot of 6th level or
+ * higher, the bonus increases to +3.»*
+ *
+ * **Solo entra este conjuro (D-CF-130).** *Shillelagh* y *Arma elemental* son el mismo mecanismo
+ * —un `TemporaryModifier` sobre un arma— pero quedan para 3B: no forman parte de este brief y
+ * añadirlos sin que nadie los pidiera sería alcance que nadie declaró.
+ *
+ * **Es el único conjuro del catálogo con CERO actividades** (`fueraDeA: ["enchant"]`,
+ * `catalog.schema.ts`): Foundry lo modela con su propio tipo `enchant`, que A6 dejó fuera de
+ * alcance (comentario de cabecera de `activity.schema.ts`) porque pide tablero. `usar()` no
+ * necesita esa mecánica genérica para lanzarlo — solo necesita SABER que es este conjuro, para
+ * tomar la rama de `caso "encantar"` en vez de la de un `utilidad` cualquiera.
+ */
+export const ENCANTAMIENTOS: Record<string, { bonoPorNivel: (nivelDeEspacio: number) => number }> =
+  {
+    "magic-weapon": {
+      bonoPorNivel: (nivelDeEspacio) => (nivelDeEspacio >= 6 ? 3 : nivelDeEspacio >= 4 ? 2 : 1),
+    },
+  };
+
+/**
+ * La actividad SINTÉTICA de lanzamiento de un encantamiento: no sale del catálogo (que no trae
+ * ninguna para estos conjuros), la construye esta función con lo mínimo que `usar()` necesita
+ * para tratarlo como cualquier otra actividad — su `activation` (para el coste de turno,
+ * `gastarActivacion`) y su `duration` (para la concentración y el vencimiento). `tipo: "utilidad"`
+ * porque no deja mecánica de las otras cuatro: su mecánica real la aplica `usar()` a mano en el
+ * `caso "encantar"`, no el `switch` genérico sobre `actividad.tipo`.
+ */
+function actividadSinteticaDeEncantamiento(spell: SrdSpell): Actividad {
+  return {
+    tipo: "utilidad",
+    activation: spell.castingTime,
+    consumption: [],
+    duration: spell.duration,
+    effects: [],
+    description: spell.textEs ?? spell.textEn,
+  };
+}
+
+/**
  * La actividad con la que se LANZA el conjuro — la primera cuya `activation` coincide con su
- * `castingTime` y, si ninguna coincide, la `[0]`. `undefined` si el conjuro no trae ninguna
- * (`magic-weapon`, importado solo con su texto — ver `catalog.schema.ts`, `fueraDeA`).
+ * `castingTime` y, si ninguna coincide, la `[0]`. `undefined` si el conjuro no trae ninguna Y no
+ * es un encantamiento conocido (T15: `magic-weapon` SÍ trae una, sintética — ver
+ * `actividadSinteticaDeEncantamiento`).
  *
  * **Por qué hace falta comparar y no coger siempre `[0]`.** `hunters-mark` (SRD 5.1) trae DOS
  * actividades: un `dados` con activación `FREE` (el daño extra que se dispara al pegar, cada
@@ -66,7 +114,9 @@ function mismaActivacion(a: Activacion, b: Activacion): boolean {
  * actividad equivocada.
  */
 export function actividadDeLanzamiento(spell: SrdSpell): Actividad | undefined {
-  if (spell.actividades.length === 0) return undefined;
+  if (spell.actividades.length === 0) {
+    return ENCANTAMIENTOS[spell.key] ? actividadSinteticaDeEncantamiento(spell) : undefined;
+  }
   const porCastingTime = spell.actividades.find((a) =>
     mismaActivacion(a.activation, spell.castingTime),
   );
@@ -165,4 +215,31 @@ export function dadosEscalados(
 
   const extra = expresion.escalado.n * tramos;
   return { ...base, n: (base.n ?? 0) + extra, caras: base.caras ?? expresion.escalado.caras };
+}
+
+/**
+ * T15 (3A.2) — una `Duracion` del catálogo, en segundos del reloj de campaña. `undefined` cuando
+ * la duración no es un número de segundos que contar: instantánea (no dura), «hasta que se
+ * disipe» y «especial» son sucesos de la mesa, no una resta contra el reloj — la misma distinción
+ * que ya declara `character-state.schema.ts` para «hasta el próximo descanso».
+ *
+ * Usada por `ActivitiesService.usar` (`caso "encantar"`) para el `expiresAtClock` del
+ * `TemporaryModifier` que deja un encantamiento: *Magic Weapon* dura `{ valor: 1, unidad: "hora"
+ * }`, y esta función es la que sabe que eso son 3600 segundos sin que `usar()` tenga que repetir
+ * la tabla de conversión.
+ */
+export function segundosDeDuracion(duracion: Duracion): number | undefined {
+  const valor = duracion.valor ?? 0;
+  switch (duracion.unidad) {
+    case "asalto":
+      return valor * 6;
+    case "minuto":
+      return valor * 60;
+    case "hora":
+      return valor * 3600;
+    case "dia":
+      return valor * 86400;
+    default:
+      return undefined;
+  }
 }

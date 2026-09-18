@@ -41,7 +41,22 @@ const NOMBRE_OBJETIVO: Record<TemporaryModifierTarget, string> = {
   "speed.swim": "Velocidad al nadar",
   "speed.fly": "Velocidad al volar",
   "speed.burrow": "Velocidad al excavar",
+  // T15 (3A.2) — solo para que `Record<TemporaryModifierTarget, string>` siga cerrado: este
+  // panel del DM concede modificadores DEL PERSONAJE, y los dos de abajo son DE UN OBJETO
+  // (piden `inventoryItemId`, que esta pantalla no pregunta). `TARGETS_DEL_PERSONAJE`, más abajo,
+  // es la que de verdad decide qué ofrece el `<select>` — estas dos etiquetas no se pintan nunca.
+  "item.weaponAttack": "Ataque de un arma (no disponible aquí — se lanza como conjuro)",
+  "item.weaponDamage": "Daño de un arma (no disponible aquí — se lanza como conjuro)",
 };
+
+/**
+ * T15 (3A.2) — los targets que este panel SÍ sabe conceder: los del personaje. Los de objeto
+ * (`item.weaponAttack`/`item.weaponDamage`, *Arma mágica*) piden un `inventoryItemId` que esta
+ * pantalla no pregunta — se conceden lanzando el conjuro (`LanzarConjuro.tsx`), no desde aquí.
+ * Ofrecerlos en este `<select>` dejaría al DM mandar un target de objeto sin su fila, que el
+ * servidor rechaza con 400 — mejor no ofrecer la opción que ofrecer un botón que siempre falla.
+ */
+const TARGETS_DEL_PERSONAJE = TEMPORARY_MODIFIER_TARGETS.filter((t) => !t.startsWith("item."));
 
 /** Las duraciones que una mesa dice en voz alta. **En segundos del reloj de campaña.** */
 const DURACIONES: { etiqueta: string; segundos?: number }[] = [
@@ -149,7 +164,7 @@ export function ModificadoresTemporales({
                 value={objetivo}
                 onChange={(e) => setObjetivo(e.target.value as TemporaryModifierTarget)}
               >
-                {TEMPORARY_MODIFIER_TARGETS.map((t) => (
+                {TARGETS_DEL_PERSONAJE.map((t) => (
                   <option key={t} value={t}>
                     {NOMBRE_OBJETIVO[t]}
                   </option>

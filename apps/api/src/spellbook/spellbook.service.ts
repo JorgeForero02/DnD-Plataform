@@ -15,6 +15,7 @@ import { requireOwnerOrDM, requireVisibleCharacter } from "../common/character-v
 import {
   actividadDeLanzamiento,
   conjurosConocidos,
+  ENCANTAMIENTOS,
   findClass,
   mecanicaDe,
   modeloDePreparacion,
@@ -275,6 +276,10 @@ export class SpellbookService {
       escalaPorEspacio: Boolean(
         actividad && "dados" in actividad && actividad.dados?.escalado?.por === "espacio",
       ),
+      // T15 (3A.2) — es un encantamiento conocido (`magic-weapon`, hoy el único, D-CF-130): la
+      // pantalla lo usa para ofrecer un arma del inventario como objetivo, no el selector de
+      // criaturas.
+      encanta: spell.key in ENCANTAMIENTOS,
     };
   }
 

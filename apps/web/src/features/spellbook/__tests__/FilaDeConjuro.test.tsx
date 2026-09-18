@@ -23,6 +23,7 @@ const PROYECTIL: SpellbookEntry = {
   mecanica: "dados",
   objetivos: "varios",
   escalaPorEspacio: true,
+  encanta: false,
 };
 
 function montar(entrada: SpellbookEntry, extra: Partial<Parameters<typeof FilaDeConjuro>[0]> = {}) {

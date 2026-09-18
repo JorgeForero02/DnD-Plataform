@@ -1454,9 +1454,34 @@ filas en `campaigns.e2e-spec.ts`, no por el tamaño de un volcado).
 
 **`createdAt`, sin más columnas de auditoría.** Cuándo cambió de estado —cuándo se preparó, cuándo
 se aprendió— no vive aquí: es `GameEvent` quien lo cuenta, con el suceso `SPELLBOOK_CHANGED`
-(mismo commit) que trae `cambio` (`PREPARADO` | `DESPREPARADO` | `APRENDIDO` | `OLVIDADO` |
-`SEMBRADO`) y el `estado` resultante. La misma separación que ya declara el encabezado de este
-fichero para `GameEvent` en general: la tabla es el estado, el registro es la historia.
+(siguiente sección, misma tarea) que trae `cambio` (`PREPARADO` | `DESPREPARADO` | `APRENDIDO` |
+`OLVIDADO` | `SEMBRADO`) y el `estado` resultante. La misma separación que ya declara el
+encabezado de este fichero para `GameEvent` en general: la tabla es el estado, el registro es la
+historia.
 
 **Revertir**: `DROP TABLE "CharacterSpell"; DROP TYPE "CharacterSpellState";` — sin filas que
 dependan de ninguna de las dos hasta que la Task 3 empiece a escribirlas.
+
+### `ACTIVITY_USED` y `SPELLBOOK_CHANGED` (3A.2, Task 2, migración `20260918083644_activity_events`)
+
+Dos valores más de `GameEventType` (`ALTER TYPE … ADD VALUE`, cada uno en su propia sentencia —
+la misma regla que ya declaran `NPC_REVEALED`/`NPC_HIDDEN`/`COMBATANT_LEFT`: un valor se añade,
+nunca se edita ni se borra, así que revertir la migración no quita el valor del tipo).
+
+- **`ACTIVITY_USED`**: usar una actividad —lanzar un conjuro o activar un rasgo— es un hecho
+  propio y no un eco de `RESOURCE_SPENT`. `RESOURCE_SPENT` ya cuenta que se gastó un espacio o un
+  uso, pero no dice CON QUÉ: la crónica dice «Elara lanza Proyectil mágico», no «gasta 1 de
+  Espacios (nivel 1)». `kind` distingue `SPELL` de `FEATURE`; `spellLevel`/`nivelDeEspacio` solo
+  aparecen con un conjuro, y `fueraDeRegla` (`SIN_ESPACIO` | `NO_PREPARADO`) sigue la doctrina de
+  siempre — el sistema avisa, no bloquea (paso 2, tarea A2).
+- **`SPELLBOOK_CHANGED`**: cambiar el libro de conjuros —preparar, dejar de preparar, aprender,
+  olvidar, o el sembrado inicial de la clase (`"SEMBRADO"`, el primer libro que recibe un mago al
+  crear el personaje, D-CF-125)— es un hecho de la ficha, igual que subir de nivel. `estado` es
+  el estado DESPUÉS del cambio, `null` si el conjuro salió de la lista — la misma forma que
+  `HP_CHANGED.to`, para que la línea de tiempo no tenga que recalcular el historial. `fueraDeRegla`
+  (`EN_COMBATE` | `SOBRE_EL_TOPE`) avisa sin bloquear, igual que en `ACTIVITY_USED`.
+
+Sus frases del hilo viven en `apps/web/src/features/sessions/linea-de-log.ts`; las dos se
+clasifican como «personaje» en `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts`, el mismo
+cubo que `RESOURCE_SPENT` — le pasan a alguien de la mesa, no son el mundo hablando ni andamiaje
+del sistema.

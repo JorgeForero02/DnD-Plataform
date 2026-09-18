@@ -445,6 +445,53 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
     case "CHARACTER_DIED":
       return `Muere ${p.name} — ${CAUSA_DE_MUERTE[p.cause]}`;
 
+    // --- 3A.2 (Task 2, «elegir, lanzar y usar») ---
+    case "ACTIVITY_USED": {
+      // «lanza Proyectil mágico» / «usa Segundo aliento». Sin CONDICIONAL sobre `nombre`: `name`
+      // ya viaja en español desde el catálogo (`nameEs`), nunca una clave.
+      const base = p.kind === "SPELL" ? `lanza ${p.name}` : `usa ${p.name}`;
+      const espacio =
+        p.nivelDeEspacio !== undefined ? ` (espacio de nivel ${p.nivelDeEspacio})` : "";
+      // **Se escribe aunque incumpla una regla** (doctrina de siempre, paso 2 tarea A2): el
+      // sistema avisa, no bloquea — así que la frase cuenta la infracción en vez de impedirla.
+      const sinEspacio = p.fueraDeRegla?.includes("SIN_ESPACIO") ? " — sin espacio" : "";
+      const sinPreparar = p.fueraDeRegla?.includes("NO_PREPARADO")
+        ? " — sin tenerlo preparado"
+        : "";
+      const resto = `${espacio}${sinEspacio}${sinPreparar}`;
+      if (ctx?.sujeto) {
+        // **La cabecera ya dijo quién es**, como en `HP_CHANGED`/`XP_AWARDED`.
+        const sujetoDeLaFrase = ctx.sujetoEnCabecera ? "" : `${ctx.sujeto} `;
+        return `${sujetoDeLaFrase}${base}${resto}`;
+      }
+      return `${base.charAt(0).toUpperCase()}${base.slice(1)}${resto}`;
+    }
+    case "SPELLBOOK_CHANGED": {
+      // Los cinco cambios del libro, con el nombre del conjuro en español salvo el sembrado
+      // inicial (D-CF-125): «recibe su libro de conjuros» no nombra uno porque son varios a la
+      // vez.
+      const base =
+        p.cambio === "PREPARADO"
+          ? `prepara ${p.name}`
+          : p.cambio === "DESPREPARADO"
+            ? `deja de preparar ${p.name}`
+            : p.cambio === "APRENDIDO"
+              ? `aprende ${p.name}`
+              : p.cambio === "OLVIDADO"
+                ? `olvida ${p.name}`
+                : `recibe su libro de conjuros`;
+      // Igual doctrina que `ACTIVITY_USED`: el servidor avisa sin bloquear.
+      const avisos = [
+        p.fueraDeRegla?.includes("EN_COMBATE") ? " · fuera de regla: en combate" : "",
+        p.fueraDeRegla?.includes("SOBRE_EL_TOPE") ? " · por encima del tope" : "",
+      ].join("");
+      if (ctx?.sujeto) {
+        const sujetoDeLaFrase = ctx.sujetoEnCabecera ? "" : `${ctx.sujeto} `;
+        return `${sujetoDeLaFrase}${base}${avisos}`;
+      }
+      return `${base.charAt(0).toUpperCase()}${base.slice(1)}${avisos}`;
+    }
+
     // --- 2.5.3: el ataque comparado en el servidor ---
     case "ATTACK_RESOLVED": {
       // **Sin CA, con o sin nombres.** El número contra el que se tiró no sale nunca, ni con

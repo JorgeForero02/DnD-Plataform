@@ -125,3 +125,64 @@ describe("gameEventPayloadSchema — ABILITY_ROLL con pendingDamage", () => {
     }
   });
 });
+
+// Tarea 2 de 3A.2 (Task 2, brief) — «elegir, lanzar y usar». Dos sucesos nuevos: usar una
+// actividad (conjuro o rasgo) y cambiar el libro de conjuros de un personaje.
+describe("gameEventPayloadSchema — ACTIVITY_USED", () => {
+  it("acepta un ACTIVITY_USED de conjuro, válido", () => {
+    const r = gameEventPayloadSchema.safeParse({
+      type: "ACTIVITY_USED",
+      actividadKey: "spell:magic-missile",
+      name: "Proyectil mágico",
+      kind: "SPELL",
+      spellLevel: 1,
+      nivelDeEspacio: 1,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta un ACTIVITY_USED de rasgo, sin campos de conjuro", () => {
+    const r = gameEventPayloadSchema.safeParse({
+      type: "ACTIVITY_USED",
+      actividadKey: "second-wind",
+      name: "Segundo aliento",
+      kind: "FEATURE",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza un kind que no es SPELL ni FEATURE", () => {
+    const r = gameEventPayloadSchema.safeParse({
+      type: "ACTIVITY_USED",
+      actividadKey: "spell:fireball",
+      name: "Bola de fuego",
+      kind: "OTRO",
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("gameEventPayloadSchema — SPELLBOOK_CHANGED", () => {
+  it("acepta un SPELLBOOK_CHANGED con cambio SEMBRADO", () => {
+    const r = gameEventPayloadSchema.safeParse({
+      type: "SPELLBOOK_CHANGED",
+      spellKey: "fireball",
+      name: "Bola de fuego",
+      cambio: "SEMBRADO",
+      estado: "EN_EL_LIBRO",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta estado null (se olvida el conjuro) y fueraDeRegla", () => {
+    const r = gameEventPayloadSchema.safeParse({
+      type: "SPELLBOOK_CHANGED",
+      spellKey: "fireball",
+      name: "Bola de fuego",
+      cambio: "OLVIDADO",
+      estado: null,
+      fueraDeRegla: ["SOBRE_EL_TOPE"],
+    });
+    expect(r.success).toBe(true);
+  });
+});

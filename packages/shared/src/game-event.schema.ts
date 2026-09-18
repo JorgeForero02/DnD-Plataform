@@ -4,6 +4,7 @@ import { damageTypeSchema } from "./item.schema";
 import { costeSchema } from "./action-economy.schema";
 import { dieRolledSchema } from "./roll.schema";
 import { MAX_DADOS_POR_TIRADA } from "./dice-limits";
+import { characterSpellStateSchema } from "./spellbook.schema";
 
 // Tarea 2A.5 — el log de partida.
 //
@@ -150,6 +151,13 @@ export const GAME_EVENT_TYPES = [
   "NPC_HIDDEN",
   // Sacar del combate (spec §3.3): «Garrik sale del combate».
   "COMBATANT_LEFT",
+  // 3A.2 (Task 2) — «elegir, lanzar y usar». Usar una actividad (conjuro o rasgo) es un hecho
+  // propio: la mesa quiere ver «Elara lanza Bola de fuego», no un RESOURCE_SPENT genérico que no
+  // dice qué se hizo con el espacio que se gastó.
+  "ACTIVITY_USED",
+  // Cambiar el libro de conjuros —preparar, dejar de preparar, aprender, olvidar, o el sembrado
+  // inicial de la clase— es un hecho de la ficha, igual que subir de nivel o ganar un rasgo.
+  "SPELLBOOK_CHANGED",
 ] as const;
 
 export const gameEventTypeSchema = z.enum(GAME_EVENT_TYPES);
@@ -796,6 +804,43 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     type: z.literal("COMBATANT_LEFT"),
     encounterId: z.string().min(1).max(60),
     characterName: z.string().max(120).optional(),
+  }),
+  /**
+   * 3A.2 (Task 2) — **usar una actividad deja rastro propio.** `RESOURCE_SPENT` ya cuenta que se
+   * gastó un espacio o un uso, pero no dice CON QUÉ: «gasta 1 de Espacios (nivel 1)» no es
+   * «lanza Proyectil mágico». `name` viaja en español desde el catálogo (`nameEs`), nunca una
+   * clave — la misma regla que `RESOURCE_SPENT.label`.
+   *
+   * `fueraDeRegla` es la doctrina de siempre («el sistema avisa, no bloquea»): lanzar sin espacio
+   * o sin tenerlo preparado no se impide en el servidor —hay reglas de la casa y rasgos que lo
+   * permiten—, pero queda escrito para que la mesa lo sepa.
+   */
+  z.object({
+    type: z.literal("ACTIVITY_USED"),
+    /** `"spell:magic-missile"` o `"second-wind"` — la clave de la actividad en el catálogo. */
+    actividadKey: z.string().min(1),
+    name: z.string().min(1),
+    kind: z.enum(["SPELL", "FEATURE"]),
+    spellLevel: z.number().int().min(0).max(9).optional(),
+    nivelDeEspacio: z.number().int().min(1).max(9).optional(),
+    targetCharacterIds: z.array(z.string().min(1)).max(12).optional(),
+    fueraDeRegla: z.array(z.enum(["SIN_ESPACIO", "NO_PREPARADO"])).optional(),
+  }),
+  /**
+   * 3A.2 (Task 2) — **cambiar el libro de conjuros es un hecho de la ficha**, igual que subir de
+   * nivel o ganar un rasgo: preparar, dejar de preparar, aprender, olvidar, o el sembrado inicial
+   * de la clase (`"SEMBRADO"`, el primer libro que recibe un mago al crear el personaje).
+   * `estado` es el estado DESPUÉS del cambio —`null` si se olvidó y salió de la lista—, la misma
+   * forma que `HP_CHANGED.to`: sin él, la línea de tiempo no puede leerse sin recalcular el
+   * historial entero.
+   */
+  z.object({
+    type: z.literal("SPELLBOOK_CHANGED"),
+    spellKey: z.string().min(1),
+    name: z.string().min(1),
+    cambio: z.enum(["PREPARADO", "DESPREPARADO", "APRENDIDO", "OLVIDADO", "SEMBRADO"]),
+    estado: characterSpellStateSchema.nullable(),
+    fueraDeRegla: z.array(z.enum(["EN_COMBATE", "SOBRE_EL_TOPE"])).optional(),
   }),
 ]);
 export type GameEventPayload = z.infer<typeof gameEventPayloadSchema>;

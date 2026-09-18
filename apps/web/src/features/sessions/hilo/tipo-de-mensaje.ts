@@ -118,6 +118,12 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
       // gastar un recurso o perder puntos de golpe.
       return "personaje";
 
+    // 3A.2 (Task 2): usar una actividad y cambiar el libro de conjuros le pasan a alguien de la
+    // mesa, igual que gastar un recurso (RESOURCE_SPENT) — el mismo cubo, por el mismo criterio.
+    case "ACTIVITY_USED":
+    case "SPELLBOOK_CHANGED":
+      return "personaje";
+
     case "FLAG_SET":
     case "SET_CHANGED":
     case "SIGNAL_RAISED":

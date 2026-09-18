@@ -121,6 +121,10 @@ enum GameEventType {
   NPC_HIDDEN
   // Sacar del combate (PNJ del mundo y la mesa, spec §3.3).
   COMBATANT_LEFT
+  // 3A.2 (Task 2, «elegir, lanzar y usar»): usar una actividad y cambiar el libro de conjuros.
+  // Un valor de este enum se ANADE, nunca se edita ni se borra.
+  ACTIVITY_USED
+  SPELLBOOK_CHANGED
 }
 
 enum ResourceReset {

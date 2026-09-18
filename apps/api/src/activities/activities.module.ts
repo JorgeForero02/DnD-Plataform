@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { BadRequestException, Module } from "@nestjs/common";
 import { SRD_SPELL_POR_KEY } from "../rules/catalog/generado";
 import { CampaignsModule } from "../campaigns/campaigns.module";
 import { GameEventsModule } from "../game-events/game-events.module";
@@ -10,6 +10,7 @@ import { SpellbookModule } from "../spellbook/spellbook.module";
 import { RollsModule } from "../rolls/rolls.module";
 import { SRD_CLASSES } from "../rules/catalog/classes";
 import { actividadDeLanzamiento, parsearClaveDeActividad } from "../rules/catalog/spell-activities";
+import { BASIC_ACTIONS, type BasicActionKey } from "../rules/catalog/basic-actions";
 import { ActivitiesController } from "./activities.controller";
 import {
   ActivitiesService,
@@ -47,6 +48,23 @@ import {
  */
 export function actividadCatalogada(key: string): ActividadCatalogada | undefined {
   const clave = parsearClaveDeActividad(key);
+
+  // Tarea 1 del plan 3A.3 (T21) — las ocho básicas del SRD, cableadas de verdad. `basic:help` es
+  // la única que NO se resuelve por aquí: Ayudar afecta a OTRO personaje y tiene su propia puerta
+  // (`AyudarA`, `POST …/help`); dejarla entrar por `usar()` la convertiría en un segundo camino
+  // para el mismo efecto, con su propia idea de a quién beneficia. `GET …/actions` la enseña
+  // igual (`grupos.BASICAS`, la web la enruta a esa otra puerta) — este rechazo es solo para
+  // quien intente `POST …/activities/basic:help/use` directamente.
+  if (clave.tipo === "feature" && clave.key.startsWith("basic:")) {
+    const basicKey = clave.key.slice("basic:".length) as BasicActionKey;
+    if (basicKey === "help") {
+      throw new BadRequestException("Ayudar va por su propia puerta (POST …/help).");
+    }
+    const basica = BASIC_ACTIONS[basicKey];
+    if (!basica) return undefined;
+    return { actividad: basica.actividad, name: basica.name, kind: "FEATURE" };
+  }
+
   if (clave.tipo === "spell") {
     const spell = SRD_SPELL_POR_KEY.get(clave.spellKey);
     if (!spell) return undefined;

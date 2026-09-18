@@ -31,6 +31,7 @@ export * from "./spell-slots";
 export * from "./spell-knowledge";
 export * from "./spell-starters";
 export * from "./spell-activities";
+export * from "./basic-actions";
 export * from "./resolve";
 export * from "./difficulty";
 

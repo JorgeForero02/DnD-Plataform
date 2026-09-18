@@ -114,3 +114,21 @@ export interface SpellbookResponse {
   /** Espacios por nivel, para pintar «nivel 2 · 1/2» sin una segunda consulta. */
   espacios: Array<{ nivel: number; actual: number; max: number }>;
 }
+
+/**
+ * Ola de arreglos de 3A.2 (fix round 2) — **la respuesta de `PUT …/spellbook/:spellKey` ya no es
+ * la lista entera.** Devolvía `SpellbookResponse` (hasta 204 entradas, ~67 KB para un mago) por
+ * cambiar UNA fila, y ese cuerpo grande en una mutación es lo que el proxy de Vite cortaba con
+ * `ECONNRESET` desde el cliente HTTP de Playwright (`lanzar.spec.ts`, 4/4 rojo). Ahora viaja solo
+ * lo que cambió: la entrada tocada (sin prosa), los topes y avisos recontados, los espacios, y el
+ * `fueraDeRegla` de ESE cambio (D-CF-126: hasta aquí solo iba al suceso `SPELLBOOK_CHANGED`). La
+ * pantalla invalida la lista (`spellbookKey`) y la vuelve a pedir por `GET`.
+ */
+export interface SetSpellResponse {
+  entrada: SpellbookEntry;
+  topes: SpellbookResponse["topes"];
+  avisos: SpellbookResponse["avisos"];
+  espacios: SpellbookResponse["espacios"];
+  /** Lo que este cambio hizo fuera de regla; `[]` si nada (o si no cambió nada). */
+  fueraDeRegla: Array<"EN_COMBATE" | "SOBRE_EL_TOPE">;
+}

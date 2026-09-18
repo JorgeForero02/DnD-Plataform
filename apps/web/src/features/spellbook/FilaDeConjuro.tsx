@@ -44,6 +44,7 @@ export function FilaDeConjuro({
   accionPrincipal,
   fueraDelLibro,
   error,
+  aviso,
 }: {
   campaignId: string;
   characterId: string;
@@ -57,6 +58,8 @@ export function FilaDeConjuro({
   fueraDelLibro?: boolean;
   /** El rechazo del servidor para ESTA fila, en español tal cual llegó — nunca en un flotante. */
   error?: string;
+  /** Lo que el último cambio de ESTA fila hizo fuera de regla (se escribió igual): en línea. */
+  aviso?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
   const detalle = useSpellDetail(campaignId, characterId, entrada.key, { enabled: abierto });
@@ -140,6 +143,11 @@ export function FilaDeConjuro({
       {error && (
         <p role="alert" className="mt-1 font-chrome text-chrome-xs text-danger-text">
           {error}
+        </p>
+      )}
+      {aviso && (
+        <p role="status" className="mt-1 font-chrome text-chrome-xs text-warning-text">
+          {aviso}
         </p>
       )}
     </li>

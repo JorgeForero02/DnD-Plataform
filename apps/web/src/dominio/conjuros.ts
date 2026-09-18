@@ -1,6 +1,7 @@
 import type {
   CharacterSpellState,
   MecanicaDeConjuro,
+  SetSpellResponse,
   SpellbookTope,
   SpellSchool,
 } from "@dnd/shared";
@@ -31,6 +32,15 @@ export const NOMBRE_ESTADO_CONJURO: Record<CharacterSpellState, string> = {
   EN_EL_LIBRO: "En el libro",
   PREPARADO: "Preparado",
   CONOCIDO: "Conocido",
+};
+
+/**
+ * Lo que un cambio del libro hizo fuera de regla (`SetSpellResponse.fueraDeRegla`, D-CF-126):
+ * el servidor lo escribe igual y avisa; la frase se compone aquí, nunca llega el código.
+ */
+export const NOMBRE_FUERA_DE_REGLA: Record<SetSpellResponse["fueraDeRegla"][number], string> = {
+  EN_COMBATE: "Fuera de regla: en combate.",
+  SOBRE_EL_TOPE: "Fuera de regla: por encima del tope; el DM decide.",
 };
 
 /** «Truco» para nivel 0; «Nivel N» para el resto — igual que el resto del catálogo lo nombra. */

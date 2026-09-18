@@ -162,9 +162,24 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
       .send({ estado: "PREPARADO" });
     expect(res.status).toBe(200);
     expect(res.body.topes.preparados.actual).toBe(1);
-    const entrada = res.body.entradas.find((e: { key: string }) => e.key === "magic-missile");
+    // Fix round 2 de la ola — el PUT responde con la ENTRADA tocada y los topes, no con la lista
+    // entera (~67 KB para un mago): `entradas` ya no viaja; la lista se pide por GET.
+    expect(res.body).not.toHaveProperty("entradas");
+    expect(res.body.entrada).toMatchObject({ key: "magic-missile", estado: "PREPARADO" });
+    expect(res.body.entrada.lanzable).toBe(true);
+    expect(res.body.entrada).not.toHaveProperty("textEs");
+    expect(res.body.fueraDeRegla).toEqual([]);
+    expect(Number(res.headers["content-length"] ?? JSON.stringify(res.body).length)).toBeLessThan(
+      4_000,
+    );
+
+    const lista = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    const entrada = lista.body.entradas.find((e: { key: string }) => e.key === "magic-missile");
     expect(entrada.estado).toBe("PREPARADO");
     expect(entrada.lanzable).toBe(true);
+    expect(lista.body.topes.preparados.actual).toBe(1);
   });
 
   it("ronda de arreglo 1 — GET spellbook/magic-missile trae el detalle con su prosa y el estado", async () => {
@@ -275,6 +290,8 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
       expect(ultima.status).toBe(200);
     }
     expect(ultima!.body.topes.preparados).toEqual({ max: 6, actual: 7 });
+    // Fix round 2 — el `fueraDeRegla` de ESE cambio viaja en la respuesta, no solo en el suceso.
+    expect(ultima!.body.fueraDeRegla).toEqual(["SOBRE_EL_TOPE"]);
 
     const log = await request(s)
       .get(`/campaigns/${campaignId}/events`)

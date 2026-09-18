@@ -4,6 +4,7 @@ import {
   fraseDeTope,
   NOMBRE_ESCUELA,
   NOMBRE_ESTADO_CONJURO,
+  NOMBRE_FUERA_DE_REGLA,
   NOMBRE_MECANICA,
   NOMBRE_NIVEL_CONJURO,
 } from "../conjuros";
@@ -24,6 +25,13 @@ describe("el vocabulario de conjuros", () => {
     for (const estado of characterSpellStateSchema.options) {
       expect(NOMBRE_ESTADO_CONJURO[estado]).toBeTruthy();
       expect(NOMBRE_ESTADO_CONJURO[estado]).not.toBe(estado);
+    }
+  });
+
+  it("NOMBRE_FUERA_DE_REGLA cubre los dos códigos del PUT del libro, en español", () => {
+    for (const codigo of ["EN_COMBATE", "SOBRE_EL_TOPE"] as const) {
+      expect(NOMBRE_FUERA_DE_REGLA[codigo]).toBeTruthy();
+      expect(NOMBRE_FUERA_DE_REGLA[codigo]).not.toContain(codigo);
     }
   });
 

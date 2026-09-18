@@ -44,8 +44,13 @@ export function useSetSpellState(campaignId: string, characterId: string) {
   return useMutation({
     mutationFn: (vars: { spellKey: string; estado: CharacterSpellState | null }) =>
       spellbookApi.setSpellState(campaignId, characterId, vars.spellKey, { estado: vars.estado }),
-    onSuccess: (data) => {
-      qc.setQueryData(spellbookKey(campaignId, characterId), data);
+    // Fix round 2 de la ola de 3A.2 — el PUT ya no devuelve la lista entera (`SetSpellResponse`:
+    // la entrada tocada, topes, avisos, espacios y `fueraDeRegla`), así que no hay nada que
+    // escribir con `setQueryData`: se invalida `spellbookKey` y la lista se vuelve a pedir por
+    // GET. El detalle de UN conjuro (`useSpellDetail`) cuelga de la misma clave y se invalida con
+    // ella (su `estado` cambió).
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: spellbookKey(campaignId, characterId) });
     },
   });
 }

@@ -5,7 +5,12 @@ import type {
   SpellbookEntry,
   SpellSchool,
 } from "@dnd/shared";
-import { fraseDeTope, NOMBRE_ESCUELA, NOMBRE_NIVEL_CONJURO } from "../../dominio/conjuros";
+import {
+  fraseDeTope,
+  NOMBRE_ESCUELA,
+  NOMBRE_FUERA_DE_REGLA,
+  NOMBRE_NIVEL_CONJURO,
+} from "../../dominio/conjuros";
 import { TarjetaDeHoja } from "../character-sheet/Tarjeta";
 import { EmptyState, FilterChip } from "../../ui/Collection";
 import { fieldControlClass } from "../../ui/Field";
@@ -95,6 +100,14 @@ export function LibroDeConjuros({
     setEstado.isError && setEstado.variables?.spellKey === spellKey
       ? (setEstado.error as Error).message
       : undefined;
+  // Fix round 2 de la ola — el PUT responde con el `fueraDeRegla` de ESE cambio (D-CF-126: se
+  // escribió igual, y esto es el aviso). Se pinta en la fila que lo causó, en línea, como el
+  // rechazo; la cabecera sigue con los `avisos` de topes que trae el GET.
+  const avisoDe = (spellKey: string): string | undefined =>
+    setEstado.isSuccess && setEstado.variables?.spellKey === spellKey
+      ? setEstado.data.fueraDeRegla.map((codigo) => NOMBRE_FUERA_DE_REGLA[codigo]).join(" ") ||
+        undefined
+      : undefined;
 
   const listos = ordenar(data.entradas.filter((e) => e.lanzable));
   const disponiblesTodas = ordenar(data.entradas.filter((e) => !e.lanzable));
@@ -143,6 +156,7 @@ export function LibroDeConjuros({
                   characterId={characterId}
                   entrada={entrada}
                   error={errorDe(entrada.key)}
+                  aviso={avisoDe(entrada.key)}
                   accion={
                     puedeEditar
                       ? {
@@ -230,6 +244,7 @@ export function LibroDeConjuros({
                   characterId={characterId}
                   entrada={entrada}
                   error={errorDe(entrada.key)}
+                  aviso={avisoDe(entrada.key)}
                   fueraDelLibro={
                     data.modelo === "LIBRO" && entrada.estado === null && entrada.level > 0
                   }

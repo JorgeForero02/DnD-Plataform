@@ -1,4 +1,9 @@
-import type { SetCharacterSpellInput, SpellbookEntry, SpellbookResponse } from "@dnd/shared";
+import type {
+  SetCharacterSpellInput,
+  SetSpellResponse,
+  SpellbookEntry,
+  SpellbookResponse,
+} from "@dnd/shared";
 import { apiFetch } from "../../lib/api";
 
 // Tarea 6 de 3A.2 — el cliente HTTP del libro de conjuros. `apiFetch` es el único que habla
@@ -33,7 +38,7 @@ export function setSpellState(
   characterId: string,
   spellKey: string,
   input: SetCharacterSpellInput,
-): Promise<SpellbookResponse> {
+): Promise<SetSpellResponse> {
   return apiFetch(
     `/campaigns/${campaignId}/characters/${characterId}/spellbook/${encodeURIComponent(spellKey)}`,
     {

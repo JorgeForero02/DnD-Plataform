@@ -363,10 +363,48 @@ describe("SpellbookService", () => {
       });
       combatientesActivos.add(id);
 
-      await service.setEstado(dueñoId, campaignId, id, "cure-wounds", { estado: "PREPARADO" });
+      const res = await service.setEstado(dueñoId, campaignId, id, "cure-wounds", {
+        estado: "PREPARADO",
+      });
 
       const suceso = events.record.mock.calls[0][2];
       expect(suceso.payload.fueraDeRegla).toContain("EN_COMBATE");
+      // Fix round 2 de la ola — la respuesta del PUT es pequeña: la entrada tocada, los topes
+      // recontados y el `fueraDeRegla` de ESTE cambio (no la lista entera).
+      expect(res.fueraDeRegla).toEqual(["EN_COMBATE"]);
+      expect(res.entrada).toMatchObject({
+        key: "cure-wounds",
+        estado: "PREPARADO",
+        lanzable: true,
+      });
+      expect(res.entrada).not.toHaveProperty("textEs");
+      expect(res.topes.preparados?.actual).toBe(1);
+      expect(res).not.toHaveProperty("entradas");
+    });
+
+    it("fix round 2: repetir el mismo estado responde igual de pequeño, con fueraDeRegla: []", async () => {
+      const id = "clerigo5";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "cleric",
+        level: 5,
+      });
+      characterSheet.getSheet.mockResolvedValue({
+        sheet: { derived: { "abilityMod.wis": { key: "abilityMod.wis", total: 3, steps: [] } } },
+      });
+      spells.set(clave(id, "cure-wounds"), "PREPARADO");
+      combatientesActivos.add(id);
+
+      const res = await service.setEstado(dueñoId, campaignId, id, "cure-wounds", {
+        estado: "PREPARADO",
+      });
+
+      expect(events.record).not.toHaveBeenCalled();
+      expect(res.fueraDeRegla).toEqual([]);
+      expect(res.entrada.estado).toBe("PREPARADO");
     });
 
     it("mago: PREPARADO → null es DESPREPARADO y deja el conjuro EN_EL_LIBRO", async () => {

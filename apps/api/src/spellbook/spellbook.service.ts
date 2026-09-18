@@ -4,6 +4,7 @@ import type {
   CharacterSpellState,
   SetCharacterSpellInput,
   SpellbookEntry,
+  SetSpellResponse,
   SpellbookResponse,
   SrdSpell,
 } from "@dnd/shared";
@@ -103,7 +104,7 @@ export class SpellbookService {
     characterId: string,
     spellKey: string,
     input: SetCharacterSpellInput,
-  ): Promise<SpellbookResponse> {
+  ): Promise<SetSpellResponse> {
     const character = await requireVisibleCharacter(
       this.prisma,
       this.membership,
@@ -151,7 +152,7 @@ export class SpellbookService {
     // hace aritmética con el número que se trae de aquí.
     const modMaximo = await this.modificadorDeLanzamiento(userId, campaignId, character);
 
-    await this.prisma.transaction(async (tx) => {
+    const fueraDeRegla = await this.prisma.transaction(async (tx) => {
       const filaAntes = await tx.characterSpell.findUnique({
         where: { characterId_spellKey: { characterId: character.id, spellKey } },
       });
@@ -169,7 +170,7 @@ export class SpellbookService {
       // estado pedido: `PUT {estado: "EN_EL_LIBRO"}` sobre un conjuro PREPARADO (el mago que deja
       // de prepararlo por la puerta explícita) era «APRENDIDO». Y **repetir el mismo estado no
       // escribe nada**: el hilo no gana con un `SPELLBOOK_CHANGED` idéntico al anterior.
-      if (estadoFinal === estadoAntes) return;
+      if (estadoFinal === estadoAntes) return [] as SetSpellResponse["fueraDeRegla"];
       const cambio: "PREPARADO" | "DESPREPARADO" | "APRENDIDO" | "OLVIDADO" =
         estadoFinal === "PREPARADO"
           ? "PREPARADO"
@@ -193,7 +194,7 @@ export class SpellbookService {
 
       // D-CF-126: pasarse del tope o preparar en combate se escribe igual — el aviso va en el
       // suceso, no en un rechazo.
-      const fueraDeRegla: Array<"EN_COMBATE" | "SOBRE_EL_TOPE"> = [];
+      const fueraDeRegla: SetSpellResponse["fueraDeRegla"] = [];
       const combatiente = await tx.combatant.findFirst({
         where: {
           characterId: character.id,
@@ -233,9 +234,32 @@ export class SpellbookService {
         },
         tx,
       );
+      return fueraDeRegla;
     });
 
-    return this.list(userId, campaignId, characterId);
+    // **Fix round 2 de la ola — la respuesta es pequeña a propósito** (ver `SetSpellResponse`):
+    // la entrada que cambió, los topes recontados (misma cuenta que `list()`, `topesYAvisos`) y
+    // el `fueraDeRegla` de este cambio. La lista entera se pide por `GET` — la pantalla invalida
+    // `spellbookKey`. Se relee la fila para no fiarse de lo que la transacción creyó escribir.
+    const fila = await this.prisma.characterSpell.findUnique({
+      where: { characterId_spellKey: { characterId: character.id, spellKey } },
+    });
+    const filas = await this.prisma.characterSpell.findMany({
+      where: { characterId: character.id },
+    });
+    const { topes, avisos } = this.topesYAvisos(
+      character.classKey,
+      character.level,
+      modMaximo,
+      filas,
+    );
+    return {
+      entrada: this.entradaBase(spell, fila?.estado ?? null),
+      topes,
+      avisos,
+      espacios: await this.espaciosDe(character.id),
+      fueraDeRegla,
+    };
   }
 
   /** ¿Puede lanzarse ahora? Solo PREPARADO o CONOCIDO (los trucos son CONOCIDO). */
@@ -299,68 +323,62 @@ export class SpellbookService {
     }
   }
 
-  private async construirRespuesta(
-    userId: string,
-    campaignId: string,
-    character: Character,
-  ): Promise<SpellbookResponse> {
+  /** Espacios por nivel, de `CharacterResource` (`spell-slot-N`), ordenados por nivel. */
+  private async espaciosDe(characterId: string): Promise<SpellbookResponse["espacios"]> {
     const espaciosFilas = await this.prisma.characterResource.findMany({
-      where: { characterId: character.id, key: { startsWith: "spell-slot-" } },
+      where: { characterId, key: { startsWith: "spell-slot-" } },
     });
-    const espacios = espaciosFilas
+    return espaciosFilas
       .map((r) => {
         const coincide = /^spell-slot-(\d+)$/.exec(r.key);
         return { nivel: coincide ? Number(coincide[1]) : 0, actual: r.current, max: r.max ?? 0 };
       })
       .filter((e) => e.nivel > 0)
       .sort((a, b) => a.nivel - b.nivel);
+  }
 
-    const classKey = character.classKey ?? undefined;
-    const modelo = modeloDePreparacion(classKey);
-    if (modelo === "NINGUNO" || !classKey) {
-      return { modelo, entradas: [], topes: {}, avisos: [], espacios };
-    }
+  /**
+   * Los topes y sus avisos, contados sobre las filas `CharacterSpell` del personaje **que sean de
+   * la lista de su clase** (un conjuro de una clase anterior no cuenta — la misma población que
+   * `list()` pinta). Compartido por `list()` y `setEstado` (fix round 2 de la ola) para que la
+   * respuesta del `PUT` y la del `GET` no puedan dar dos cuentas distintas.
+   */
+  private topesYAvisos(
+    classKey: string | null,
+    level: number,
+    mod: number,
+    filas: Array<{ spellKey: string; estado: CharacterSpellState }>,
+  ): Pick<SpellbookResponse, "topes" | "avisos"> {
+    const topes: SpellbookResponse["topes"] = {};
+    const avisos: SpellbookResponse["avisos"] = [];
+    const modelo = modeloDePreparacion(classKey ?? undefined);
+    if (modelo === "NINGUNO" || !classKey) return { topes, avisos };
 
-    const conjurosDeClase = SRD_SPELLS.filter((s) => s.classes.includes(classKey));
-
-    const filas = await this.prisma.characterSpell.findMany({
-      where: { characterId: character.id },
-    });
-    const estadoPorClave = new Map(filas.map((f) => [f.spellKey, f.estado]));
-
-    const mod = await this.modificadorDeLanzamiento(userId, campaignId, character);
-
-    const trucosMax = trucosConocidos(classKey, character.level);
-    const preparadosMax = topeDePreparados(classKey, character.level, mod) ?? 0;
-    const libroMax = tamanoDelLibro(classKey, character.level) ?? 0;
-    const conocidosMax = conjurosConocidos(classKey, character.level) ?? 0;
-
+    const nivelPorClave = new Map(
+      SRD_SPELLS.filter((s) => s.classes.includes(classKey)).map((s) => [s.key, s.level]),
+    );
     let trucosActual = 0;
     let preparadosActual = 0;
     let libroActual = 0;
     let conocidosActual = 0;
-
-    const entradas: SpellbookEntry[] = conjurosDeClase.map((spell) => {
-      const estado = estadoPorClave.get(spell.key) ?? null;
-      const esTruco = spell.level === 0;
-      if (estado === "CONOCIDO" && esTruco) trucosActual += 1;
-      if (estado === "CONOCIDO" && !esTruco) conocidosActual += 1;
-      if (estado === "PREPARADO") {
+    for (const fila of filas) {
+      const nivel = nivelPorClave.get(fila.spellKey);
+      if (nivel === undefined) continue;
+      const esTruco = nivel === 0;
+      if (fila.estado === "CONOCIDO" && esTruco) trucosActual += 1;
+      if (fila.estado === "CONOCIDO" && !esTruco) conocidosActual += 1;
+      if (fila.estado === "PREPARADO") {
         preparadosActual += 1;
         libroActual += 1;
       }
-      if (estado === "EN_EL_LIBRO") libroActual += 1;
+      if (fila.estado === "EN_EL_LIBRO") libroActual += 1;
+    }
 
-      // **Ronda de arreglo 1 — sin prosa aquí.** `entradaBase` no trae `textEs`/`textEn`/
-      // `higherLevels*`: `list()` pinta hasta 204 filas a la vez (la clase entera del
-      // personaje), y cargar el texto completo del SRD (hasta 8000 caracteres × 2 idiomas) de
-      // cada una pesaba ~460 KB por petición para una pantalla que solo abre el texto de UNA. El
-      // texto vive en `detalle()`, que se pide conjuro a conjuro.
-      return this.entradaBase(spell, estado);
-    });
+    const trucosMax = trucosConocidos(classKey, level);
+    const preparadosMax = topeDePreparados(classKey, level, mod) ?? 0;
+    const libroMax = tamanoDelLibro(classKey, level) ?? 0;
+    const conocidosMax = conjurosConocidos(classKey, level) ?? 0;
 
-    const topes: SpellbookResponse["topes"] = {};
-    const avisos: SpellbookResponse["avisos"] = [];
     if (modelo === "LIBRO") {
       topes.preparados = { max: preparadosMax, actual: preparadosActual };
       topes.trucos = { max: trucosMax, actual: trucosActual };
@@ -379,7 +397,43 @@ export class SpellbookService {
       if (conocidosActual > conocidosMax) avisos.push("CONOCIDOS_DE_MAS");
       if (trucosActual > trucosMax) avisos.push("TRUCOS_DE_MAS");
     }
+    return { topes, avisos };
+  }
 
+  private async construirRespuesta(
+    userId: string,
+    campaignId: string,
+    character: Character,
+  ): Promise<SpellbookResponse> {
+    const espacios = await this.espaciosDe(character.id);
+
+    const classKey = character.classKey ?? undefined;
+    const modelo = modeloDePreparacion(classKey);
+    if (modelo === "NINGUNO" || !classKey) {
+      return { modelo, entradas: [], topes: {}, avisos: [], espacios };
+    }
+
+    const conjurosDeClase = SRD_SPELLS.filter((s) => s.classes.includes(classKey));
+
+    const filas = await this.prisma.characterSpell.findMany({
+      where: { characterId: character.id },
+    });
+    const estadoPorClave = new Map(filas.map((f) => [f.spellKey, f.estado]));
+
+    const mod = await this.modificadorDeLanzamiento(userId, campaignId, character);
+
+    const entradas: SpellbookEntry[] = conjurosDeClase.map((spell) => {
+      const estado = estadoPorClave.get(spell.key) ?? null;
+
+      // **Ronda de arreglo 1 — sin prosa aquí.** `entradaBase` no trae `textEs`/`textEn`/
+      // `higherLevels*`: `list()` pinta hasta 204 filas a la vez (la clase entera del
+      // personaje), y cargar el texto completo del SRD (hasta 8000 caracteres × 2 idiomas) de
+      // cada una pesaba ~460 KB por petición para una pantalla que solo abre el texto de UNA. El
+      // texto vive en `detalle()`, que se pide conjuro a conjuro.
+      return this.entradaBase(spell, estado);
+    });
+
+    const { topes, avisos } = this.topesYAvisos(classKey, character.level, mod, filas);
     return { modelo, entradas, topes, avisos, espacios };
   }
 

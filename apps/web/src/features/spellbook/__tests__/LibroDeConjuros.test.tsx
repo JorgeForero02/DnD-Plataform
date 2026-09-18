@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SpellbookEntry, SpellbookResponse } from "@dnd/shared";
+import type { SetSpellResponse, SpellbookEntry, SpellbookResponse } from "@dnd/shared";
 import * as api from "../api";
 import { LibroDeConjuros } from "../LibroDeConjuros";
 
@@ -73,6 +73,17 @@ function respuesta(overrides: Partial<SpellbookResponse> = {}): SpellbookRespons
   };
 }
 
+/** Fix round 2 — lo que responde el PUT: la entrada tocada, topes y el `fueraDeRegla` del cambio. */
+function respuestaDelPut(fueraDeRegla: SetSpellResponse["fueraDeRegla"] = []): SetSpellResponse {
+  return {
+    entrada: { ...ESCUDO_EN_LIBRO, estado: "PREPARADO", lanzable: true },
+    topes: { preparados: { max: 6, actual: 2 }, trucos: { max: 3, actual: 0 } },
+    avisos: [],
+    espacios: [{ nivel: 1, actual: 3, max: 4 }],
+    fueraDeRegla,
+  };
+}
+
 function montar() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -94,9 +105,22 @@ describe("LibroDeConjuros", () => {
     expect(screen.queryByText(/PREPARADO|EN_EL_LIBRO|^evo$|^abj$|LIBRO/)).not.toBeInTheDocument();
   });
 
+  // Fix round 2 de la ola — el PUT responde pequeño (`SetSpellResponse`); la lista se relee.
+  it("fix round 2: tras el PUT se invalida la lista (se vuelve a pedir el GET) y el `fueraDeRegla` sale en la fila", async () => {
+    const leer = vi.spyOn(api, "fetchSpellbook").mockResolvedValue(respuesta());
+    vi.spyOn(api, "setSpellState").mockResolvedValue(respuestaDelPut(["EN_COMBATE"]));
+    montar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Preparar" }));
+
+    await waitFor(() => expect(leer).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Fuera de regla: en combate.")).toBeInTheDocument();
+    expect(screen.queryByText("EN_COMBATE")).not.toBeInTheDocument();
+  });
+
   it("pulsar «Preparar» sobre un conjuro EN_EL_LIBRO manda {spellKey, estado: PREPARADO}", async () => {
     vi.spyOn(api, "fetchSpellbook").mockResolvedValue(respuesta());
-    const mutar = vi.spyOn(api, "setSpellState").mockResolvedValue(respuesta());
+    const mutar = vi.spyOn(api, "setSpellState").mockResolvedValue(respuestaDelPut());
     montar();
 
     const boton = await screen.findByRole("button", { name: "Preparar" });
@@ -108,7 +132,7 @@ describe("LibroDeConjuros", () => {
 
   it("un mago con un conjuro fuera del libro ofrece «Añadir al libro», y manda EN_EL_LIBRO", async () => {
     vi.spyOn(api, "fetchSpellbook").mockResolvedValue(respuesta());
-    const mutar = vi.spyOn(api, "setSpellState").mockResolvedValue(respuesta());
+    const mutar = vi.spyOn(api, "setSpellState").mockResolvedValue(respuestaDelPut());
     montar();
 
     expect(await screen.findByText("Bola de fuego")).toBeInTheDocument();

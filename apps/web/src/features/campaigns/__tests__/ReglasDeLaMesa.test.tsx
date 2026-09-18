@@ -192,6 +192,29 @@ describe("ReglasDeLaMesa", () => {
     expect(screen.getByLabelText("Nivel inicial")).toHaveValue(5);
   });
 
+  it("M-14 (revisión final, menor #5): tras guardar con éxito, un rerender con un objeto NUEVO de iguales valores viejos NO pisa el borrador; uno con valores distintos sí", () => {
+    mutate.mockImplementation((_v, opts) => opts?.onSuccess?.());
+    const { rerender } = montarConRerender(1);
+
+    // El DM edita (sucio: true) y guarda con éxito (sucio vuelve a false, pero el borrador
+    // sigue siendo el editado — la mutación solo invalida, no reescribe la caché).
+    fireEvent.change(screen.getByLabelText("Nivel inicial"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar las reglas" }));
+    expect(screen.getByLabelText("Nivel inicial")).toHaveValue(5);
+
+    // La ventana del hallazgo: el padre re-renderiza con un objeto NUEVO (`reglasCompletas`
+    // crea uno cada vez) pero de los mismos valores VIEJOS (nivelInicial: 1, como al montar).
+    // Comparar por identidad lo tomaría por «reglas nuevas del servidor» y pisaría el 5 recién
+    // guardado; comparar por valor lo reconoce como el mismo dato de siempre y no toca nada.
+    rerender(1);
+    expect(screen.getByLabelText("Nivel inicial")).toHaveValue(5);
+
+    // Un rerender con valores REALMENTE distintos (el refetch de verdad llegando) sí re-siembra,
+    // porque sigue sin estar sucio.
+    rerender(3);
+    expect(screen.getByLabelText("Nivel inicial")).toHaveValue(3);
+  });
+
   it("el botón de guardar no se deshabilita para un jugador: los controles sí, con el motivo a la vista", () => {
     montar({
       campaignId: "c1",

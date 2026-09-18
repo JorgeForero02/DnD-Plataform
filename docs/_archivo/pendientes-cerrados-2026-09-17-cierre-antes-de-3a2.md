@@ -199,10 +199,11 @@ importadores, `DesgloseDelMundo.tsx` y `EditorDeHilos.tsx`, pasan a `<IconoPunta
 "abajo" : "derecha"} />`) e `IconoFlechaIzquierda` rotada en `CajonDelRegistro.tsx`, que pasa a
 `<IconoPunta hacia={plegado ? "arriba" : "abajo"} className="h-4 w-4" />`. El contador de líneas
 nuevas ya no se apaga si el cajón se pliega antes de que el registro haya cargado ninguna línea
-(`idAlPlegar === null`): ese caso ahora cuenta `eventos.length`, no 0. De paso, la etiqueta del
-botón deja de decir «Plegar»/«Desplegar el registro» — la punta que apunta y `aria-expanded` ya
-dicen el estado, y el nombre accesible es «Registro» a secas (más el contador si hay líneas
-nuevas). P-1 (bajar `min-h-[14rem]` del cajón) **no entró**: se queda en `06-pendientes.md`
+(`idAlPlegar === null`): ese caso ahora cuenta `eventos.length`, no 0. La etiqueta del botón
+«Plegar el registro»/«Desplegar el registro» **se conserva** (decisión previa del autor); un
+intento de quitarla se hizo en `c458da2` y `4aeb712` lo revirtió por ruling del controlador antes
+de que esta ficha se cerrara — lo que sí cambió aquí es `IconoPunta` y el contador con carga
+tardía. P-1 (bajar `min-h-[14rem]` del cajón) **no entró**: se queda en `06-pendientes.md`
 pendiente de que lo decida el autor.
 
 | Área | Qué | Dónde |

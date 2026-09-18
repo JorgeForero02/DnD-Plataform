@@ -387,6 +387,19 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
     expect(abilityRolls.requireAttempt).not.toHaveBeenCalled();
   });
 
+  it("updateSheet: con la regla en LIBRE un `attemptId` también se rechaza con 400 (revisión final, menor #6)", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, {});
+
+    await expect(
+      service.updateSheet("owner", "c1", "ch1", {
+        attemptId: "intento-viejo",
+        abilities: { str: 16 },
+      }),
+    ).rejects.toThrow(/no se tiran con dados/);
+    expect(abilityRolls.requireAttempt).not.toHaveBeenCalled();
+  });
+
   it("DADOS: con attemptId cuyos valores encajan, guarda y marca chosen; sin attemptId es 400", async () => {
     const { service, prisma, characters, abilityRolls } = montar();
     prep(prisma, characters, {

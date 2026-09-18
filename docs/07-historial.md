@@ -101,8 +101,8 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ## Cierre antes de 3A.2 (2026-09-17/18) — rama `cierre/antes-de-3a2`, sin fusionar
 
-Qué — RM-2 entera; de las menores de la revisión del 13, las arregladas, las 7 que ya estaban
-cerradas o eran falsas (F) y las 6 descartadas con motivo (D) — apuntar al §0 del plan
+Qué — RM-2 entera; de las menores de la revisión del 13, las arregladas y las marcadas F (ya
+cerradas o falsas) y D (descartadas con motivo) en el §0 del plan — apuntar al §0 del plan
 [`2026-09-17-cierre-antes-de-3a2.md`](./superpowers/plans/2026-09-17-cierre-antes-de-3a2.md);
 `CharacterRow.entityId`; EM-1; y **el hallazgo real**: `dadosTirados` tachaba el dado equivocado
 con valores repetidos (D-CF-122). Commits (`git log --oneline main..HEAD`):
@@ -125,6 +125,8 @@ Por qué — deuda barata fuera antes de abrir 3A.2.
 Revertir — la rama entera; ningún cambio de datos ni migración.
 
 El autor entregó el prototipo de la mesa (D-CF-123).
+
+Ola final tras la revisión Opus (`review-final.md`): I-1..I-3 y cuatro menores; el resto, en 06.
 
 ## Despliegue de `main` `334912b` (2026-09-15) — lo lanzó el autor
 

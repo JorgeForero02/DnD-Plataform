@@ -29,6 +29,19 @@ y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
 
+## Menores dejados por la revisión final de `cierre/antes-de-3a2` (revisión final 2026-09-18)
+
+La ola de arreglos tras `review-final.md` cerró los tres importantes y cuatro menores baratos con
+ruling del controlador; estos cuatro se quedan como ficha, tal como dice el veredicto de la
+revisión («el resto son menores que pueden quedarse como ficha»).
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Catálogo | `Collection.tsx` pasa `role="toolbar"` con `ariaLabel`, pero no implementa la navegación por flechas ni el tabstop único del patrón *Toolbar* de WAI-ARIA APG — cada `FilterChip` sigue siendo su propio tabstop. `role="group"` describiría lo que hay sin prometer lo que falta (revisión final 2026-09-18, menor) | `apps/web/src/ui/Collection.tsx:80` |
+| Mundo (árbol) | Las raíces plegadas/desplegadas de `DesgloseDelMundo` se calculan una sola vez, en el `useState` inicial (al montar); una raíz que nace vacía y recibe su primera ficha después se queda plegada con el contador en 1 hasta que alguien la pulsa a mano (revisión final 2026-09-18, menor) | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx:497-500` |
+| Dados | `id="ventaja-motivo"` está escrito literal en `BandejaDeDados`; hoy no colisiona porque el componente se monta una sola vez por pantalla, pero un `useId` lo haría robusto a un segundo montaje futuro (revisión final 2026-09-18, menor) | `apps/web/src/features/rolls/BandejaDeDados.tsx:289` |
+| API / reglas de la mesa | El e2e de concurrencia de `ability-rolls` (`reglas-de-la-mesa.e2e-spec.ts`) prueba el RESULTADO (`[201, 409]` de dos `POST` en `Promise.all`), no el cerrojo: si alguien quitara el `FOR UPDATE`, las dos transacciones podrían serializarse por azar y el test seguiría en verde — falso negativo probabilístico, nunca falso positivo. Decidido en el plan tal cual; se anota para que nadie lo lea como prueba determinista del candado (revisión final 2026-09-18, menor) | `apps/api/test/reglas-de-la-mesa.e2e-spec.ts:307-319` |
+
 > **Cómo se nombra una ficha, y por qué algunas llevan sufijo.** Este documento fue creciendo
 > por tandas, y cada tanda repartió identificadores de una letra y un número (`S7`, `U6`, `A1`)
 > **sin mirar los que ya existían**. El 2026-09-03 había **siete colisiones** —`A1`, `A3`, `N3`,

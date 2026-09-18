@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_DADOS_POR_TIRADA, dieRolledSchema } from "@dnd/shared";
+import { MAX_DADOS_POR_TIRADA, dieRolledSchema, gameEventPayloadSchema } from "@dnd/shared";
 import {
   rollExpression,
   dadosTirados,
@@ -322,6 +322,23 @@ describe("contrato de `dice` (2026-09-17)", () => {
     const dice = dadosTirados(r.terms);
     expect(dice).toHaveLength(200);
     expect(() => z.array(dieRolledSchema).max(MAX_DADOS_POR_TIRADA).parse(dice)).not.toThrow();
+
+    // El contrato completo del evento tampoco miente: `rolls`/`kept`/`dropped` comparten el
+    // mismo tope que `dice` (revisión final, #4) — 200 valores en cada uno debe pasar el
+    // esquema del payload `ABILITY_ROLL`, no solo el de `dieRolledSchema` suelto.
+    const doscientos = Array.from({ length: 200 }, () => 1);
+    expect(() =>
+      gameEventPayloadSchema.parse({
+        type: "ABILITY_ROLL",
+        expression: "100d6r1",
+        rolls: doscientos,
+        kept: doscientos,
+        dropped: [],
+        dice,
+        modifier: 0,
+        total: r.total,
+      }),
+    ).not.toThrow();
   });
 
   it("empate en kh: se conserva el primero en caer (sort estable), siempre el mismo", () => {

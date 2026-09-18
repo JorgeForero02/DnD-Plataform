@@ -92,7 +92,7 @@ describe("MensajeDelHilo — la cabecera lleva el sujeto, la línea no lo repite
 
     const li = liDelSuceso(container, "e1");
     const [parrafoDeLaFrase, parrafoDeLaFirma] = li.querySelectorAll("p");
-    expect(parrafoDeLaFrase.textContent).toBe("Sylas pierde 7 PG (20 → 13) (cortante) ← Klarg");
+    expect(parrafoDeLaFrase.textContent).toBe("Sylas pierde 7 PG (cortante) (20 → 13) ← Klarg");
     expect(parrafoDeLaFirma.textContent).toBe(`Jorge · ${HORA}`);
   });
 
@@ -121,7 +121,7 @@ describe("MensajeDelHilo — la cabecera lleva el sujeto, la línea no lo repite
 
     const li = liDelSuceso(container, "e1");
     const [parrafoDeLaFrase, parrafoDeLaFirma] = li.querySelectorAll("p");
-    expect(parrafoDeLaFrase.textContent).toBe("Klarg pierde 3 PG (15 → 12) (perforante)");
+    expect(parrafoDeLaFrase.textContent).toBe("Klarg pierde 3 PG (perforante) (15 → 12)");
     expect(parrafoDeLaFirma.textContent).toBe(`Ada · ${HORA}`);
   });
 

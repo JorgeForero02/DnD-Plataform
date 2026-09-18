@@ -177,7 +177,7 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
     data: { delta: -3, rollEventId },
   });
   expect(golpe.ok()).toBe(true);
-  await expect(sucesos.getByText(/Brann pierde 3 PG ← ataque de Thora/)).toBeVisible({
+  await expect(sucesos.getByText(/Brann pierde 3 PG \(\d+ → \d+\) ← ataque de Thora/)).toBeVisible({
     timeout: 15_000,
   });
 

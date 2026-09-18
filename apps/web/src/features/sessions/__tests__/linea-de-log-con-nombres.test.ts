@@ -71,7 +71,7 @@ describe("el hilo, con nombres", () => {
         },
         { sujeto: "Sylas", nombres },
       ),
-    ).toBe("Sylas pierde 7 PG (20 → 13) (cortante) ← Klarg");
+    ).toBe("Sylas pierde 7 PG (cortante) (20 → 13) ← Klarg");
   });
 
   it("con rollEventId, el origen sale del ataque que la tirada resolvió", () => {
@@ -196,7 +196,7 @@ describe("el hilo, con nombres", () => {
           },
           { sujeto: "Sylas", sujetoEnCabecera: true, nombres },
         ),
-      ).toBe("pierde 7 PG (20 → 13) (cortante) ← Klarg");
+      ).toBe("pierde 7 PG (cortante) (20 → 13) ← Klarg");
     });
 
     it("ATTACK_RESOLVED omite al atacante y conserva a quién ataca", () => {

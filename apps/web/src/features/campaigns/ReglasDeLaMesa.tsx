@@ -73,10 +73,17 @@ export function ReglasDeLaMesa({
   // Patrón «ajustar el estado durante el render» de la documentación de React (mismo patrón que
   // `revelado` en `DesgloseDelMundo.tsx`), no un efecto: `react-hooks/set-state-in-effect` prohíbe
   // llamar a `setState` sin condición externa dentro de un efecto, con razón (un render de más).
+  // Revisión final (menor #5, 2026-09-18): comparar `reglas` por IDENTIDAD no basta — el padre
+  // (`CampaignSettings`) construye el objeto con `tableRulesSchema.parse(...)` en cada render
+  // suyo, así que cambia de identidad aunque el valor sea el mismo. Con `sucio` recién apagado
+  // (justo tras guardar) un render de más del padre en esa ventana volvía a sembrar el borrador
+  // con las reglas VIEJAS de la caché (la mutación solo invalida, no `setQueryData`) hasta que
+  // llegaba el refetch. Comparar por valor evita la re-siembra fantasma.
   const [sucio, setSucio] = useState(false);
-  const [ultimasReglas, setUltimasReglas] = useState(reglas);
-  if (reglas !== ultimasReglas) {
-    setUltimasReglas(reglas);
+  const claveDeReglas = JSON.stringify(reglas);
+  const [ultimaClave, setUltimaClave] = useState(claveDeReglas);
+  if (claveDeReglas !== ultimaClave) {
+    setUltimaClave(claveDeReglas);
     if (!sucio) setBorrador(reglas);
   }
   const editar = (siguiente: TableRules) => {

@@ -292,9 +292,9 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     type: z.literal("ABILITY_ROLL"),
     expression: z.string().min(1).max(120),
     /** Lo que salió, lo que se conservó y lo que se descartó. Los tres, o no se puede auditar. */
-    rolls: z.array(z.number().int()).max(100),
-    kept: z.array(z.number().int()).max(100),
-    dropped: z.array(z.number().int()).max(100),
+    rolls: z.array(z.number().int()).max(MAX_DADOS_POR_TIRADA),
+    kept: z.array(z.number().int()).max(MAX_DADOS_POR_TIRADA),
+    dropped: z.array(z.number().int()).max(MAX_DADOS_POR_TIRADA),
     /**
      * Cada dado, en el orden en que cayó, con sus caras y si cuenta (C5). **Opcional**: el
      * historial ya escrito antes de esta tarea no lo trae.

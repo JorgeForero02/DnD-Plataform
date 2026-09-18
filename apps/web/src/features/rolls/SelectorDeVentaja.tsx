@@ -49,7 +49,11 @@ export function SelectorDeVentaja({
   const grupo = useId();
 
   return (
-    <fieldset className="min-w-0" disabled={disabled}>
+    // Revisión final del pulido (2026-09-13) — **sin `disabled` en el `fieldset`**: un fieldset
+    // nativo apagado desactiva TODOS sus controles descendientes, por debajo de cualquier
+    // `aria-disabled` que se ponga en el radio — el candado real tiene que estar solo en el
+    // input, para que el control siga en la secuencia de tabulación.
+    <fieldset className="min-w-0">
       <legend className="sr-only">Cómo tirar {etiqueta}</legend>
       <div className="flex flex-col gap-1">
         {MODOS_DE_TIRADA.map((m) => {
@@ -75,15 +79,18 @@ export function SelectorDeVentaja({
                 name={grupo}
                 value={m.modo}
                 checked={elegido}
-                disabled={disabled}
-                onChange={() => onChange(m.modo)}
+                aria-disabled={disabled || undefined}
+                onChange={() => {
+                  if (disabled) return;
+                  onChange(m.modo);
+                }}
                 aria-describedby={idFrase}
-                className="accent-[var(--accent)]"
+                className="accent-[var(--accent)] aria-disabled:cursor-not-allowed"
               />
               <label
                 htmlFor={idRadio}
-                className={`shrink-0 font-chrome text-chrome-sm text-text ${
-                  disabled ? "cursor-not-allowed" : "cursor-pointer"
+                className={`shrink-0 font-chrome text-chrome-sm ${
+                  disabled ? "cursor-not-allowed text-muted" : "cursor-pointer text-text"
                 }`}
               >
                 {m.etiqueta}

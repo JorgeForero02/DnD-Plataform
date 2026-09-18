@@ -74,7 +74,7 @@ export function DarTemporales({
         expectedVersion: version,
         reason: `Temporales para ${nombre}`,
       },
-      { onSuccess: () => setPreguntando(false), onError: (e) => setError((e as Error).message) },
+      { onSettled: () => setPreguntando(false), onError: (e) => setError((e as Error).message) },
     );
   };
   const alPulsarDarselos = () => {

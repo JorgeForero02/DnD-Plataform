@@ -176,12 +176,12 @@ export function AjustesDePersonaje({
               />
             )}
             {errorAlArchivar && (
-              <p className="w-full font-chrome text-chrome-xs text-danger-text">
+              <p className="w-full font-chrome text-chrome-sm text-danger-text">
                 {errorAlArchivar}
               </p>
             )}
             {errorAlBorrar && (
-              <p className="w-full font-chrome text-chrome-xs text-danger-text">{errorAlBorrar}</p>
+              <p className="w-full font-chrome text-chrome-sm text-danger-text">{errorAlBorrar}</p>
             )}
           </div>
         ) : undefined

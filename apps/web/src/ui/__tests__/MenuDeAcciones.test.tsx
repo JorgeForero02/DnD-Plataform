@@ -113,6 +113,23 @@ describe("MenuDeAcciones", () => {
     expect(ambos).toHaveAccessibleDescription("Qué hace de verdad Enviando");
   });
 
+  // Revisión final del pulido (2026-09-13) — **Espacio activa el ítem una sola vez.** El
+  // `<button>` nativo dispara su `click` al SOLTAR Espacio (Enter lo dispara al pulsar); manejar
+  // Espacio en `keydown` con un `click()` a mano abría la puerta a un doble disparo si el foco
+  // real del navegador coincidía con el ítem activo. Se resuelve en `keyup`.
+  it("Espacio activa el ítem UNA vez: keydown no dispara, keyup sí, y el click nativo no suma", () => {
+    const onSelect = vi.fn();
+    render(
+      <MenuDeAcciones etiqueta="Acciones" acciones={[{ id: "a", rotulo: "Atacar", onSelect }]} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /acciones/i }));
+    const menu = screen.getByRole("menu");
+    fireEvent.keyDown(menu, { key: " " });
+    expect(onSelect).not.toHaveBeenCalled();
+    fireEvent.keyUp(menu, { key: " " });
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
   it("clic fuera del menú lo cierra", () => {
     render(
       <div>

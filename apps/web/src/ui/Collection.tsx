@@ -18,18 +18,30 @@ export function Toolbar({
   filters,
   action,
   count,
+  ariaLabel,
 }: {
   search?: ReactNode;
   filters?: ReactNode;
   action?: ReactNode;
   count?: ReactNode;
+  /**
+   * Rótulo accesible del grupo de filtros, para cuando hay más de una `Toolbar` en la misma
+   * pantalla (revisión final del pulido, 2026-09-13: el catálogo de objetos apila una de tipo y
+   * otra de origen). Se pinta como `role="toolbar"` con este nombre; sin él, el `<div>` no lleva
+   * rol propio, como hasta ahora.
+   */
+  ariaLabel?: string;
 }) {
   // Maqueta 2026-09-03: la barra deja de ser una caja. Era un panel con su borde y su fondo
   // encima de otra caja con borde y fondo —la lista—, así que dos rectángulos idénticos
   // competían por ser el marco. En la maqueta el buscador es un campo ancho y los filtros son
   // fichas a su derecha, en la misma línea: se lee como un instrumento, no como una sección.
   return (
-    <div className="mb-s4 flex flex-wrap items-center gap-s3">
+    <div
+      role={ariaLabel ? "toolbar" : undefined}
+      aria-label={ariaLabel}
+      className="mb-s4 flex flex-wrap items-center gap-s3"
+    >
       {search && <div className="min-w-[16rem] flex-1">{search}</div>}
       {filters && <div className="flex flex-wrap items-center gap-s2">{filters}</div>}
       {count && (

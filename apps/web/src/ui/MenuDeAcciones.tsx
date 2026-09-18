@@ -115,15 +115,31 @@ export function MenuDeAcciones({
     } else if (e.key === "End") {
       e.preventDefault();
       setActivo(n - 1);
-    } else if (e.key === "Enter" || e.key === " ") {
-      // El propio `<button>` de cada ítem ya responde a Enter/Espacio de forma nativa cuando
-      // TIENE el foco del navegador — pero el que se mueve con las flechas es `activo`, no
-      // necesariamente el foco real del DOM en todos los entornos de prueba, así que se dispara
-      // el clic a mano sobre el ítem activo en vez de confiar en el comportamiento nativo.
+    } else if (e.key === "Enter") {
+      // El propio `<button>` de cada ítem ya responde a Enter de forma nativa cuando TIENE el
+      // foco del navegador — pero el que se mueve con las flechas es `activo`, no necesariamente
+      // el foco real del DOM en todos los entornos de prueba, así que se dispara el clic a mano
+      // sobre el ítem activo en vez de confiar en el comportamiento nativo.
       e.preventDefault();
       itemsRef.current[activo]?.click();
+    } else if (e.key === " ") {
+      // Solo se corta el nativo aquí: **Espacio se resuelve en `keyup`** (`alSoltar`, más abajo).
+      e.preventDefault();
     } else if (e.key === "Tab") {
       cerrar(false);
+      // Tab NO se previene a propósito: el patrón *Menu Button* de WAI-ARIA APG dice «Tab: closes
+      // the menu and moves focus to the next element in the tab sequence». (Ficha de la revisión
+      // final 2026-09-13, descartada el 2026-09-17.)
+    }
+  };
+
+  // **Espacio se resuelve en keyup, no en keydown.** El `<button>` nativo dispara su `click` al
+  // soltar Espacio (Enter lo dispara al pulsar): manejarlo en keydown y llamar `click()` a mano
+  // dejaba dos disparos posibles. Los dos `preventDefault` cortan el nativo en ambos eventos.
+  const alSoltar = (e: React.KeyboardEvent) => {
+    if (e.key === " ") {
+      e.preventDefault();
+      itemsRef.current[activo]?.click();
     }
   };
 
@@ -159,6 +175,7 @@ export function MenuDeAcciones({
           aria-label={etiqueta}
           data-direccion={direccion}
           onKeyDown={alTeclear}
+          onKeyUp={alSoltar}
           className={[
             "min-w-[11rem] rounded-radius-sm border border-muted bg-surface py-1 shadow-lg",
             direccion === "arriba" ? "bottom-full mb-1" : "top-full mt-1",

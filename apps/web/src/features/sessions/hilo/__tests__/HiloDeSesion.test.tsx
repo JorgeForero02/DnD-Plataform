@@ -73,6 +73,6 @@ describe("HiloDeSesion — un suceso sobre un PNJ nombra al PNJ, no a quien actu
 
     // Y la frase no repite el nombre: la cabecera ya lo dijo.
     const parrafo = li.querySelector("p");
-    expect(parrafo?.textContent).toBe("Klarg pierde 5 PG");
+    expect(parrafo?.textContent).toBe("Klarg pierde 5 PG (10 → 5)");
   });
 });

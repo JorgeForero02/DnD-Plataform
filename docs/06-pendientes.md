@@ -347,33 +347,16 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 
 | Área | Qué | Dónde |
 |---|---|---|
-| Hoja / Casilla | Comentario «ancho mínimo» caducado (la anchura ya es fija) | `apps/web/e2e/hoja.spec.ts:92` |
 | Hoja / Casilla | El rótulo «Vel.» se repite en varios test como literal, sin motivo en el fichero de por qué es ese y no «Vel. (pies)» | `hoja.spec.ts:72,87`; `Cabecera.test.tsx:73,96` |
 | Hoja / Casilla | Aserción `>= 4` en vez de `toBe(5)` para el número de casillas | `hoja.spec.ts:160` |
 | Hoja / Casilla | Selector de Playwright `[class*='w-[6rem]']` es frágil a un cambio de clase; un `data-casilla` sería estable | `hoja.spec.ts` |
-| Hoja | `Dialog` fija `--tira-fija-bg=surface` también sobre pergamino, sin que nada lo consuma hoy | `apps/web/src/ui/Dialog.tsx` |
-| Hoja | `Field.reservaEspacio` reserva el alto con el `line-height` por defecto del navegador, no un valor explícito — depende del *preflight* de Tailwind | `apps/web/src/ui/Field.tsx` |
-| Hoja | `campaignId` se parsea dos veces en la misma pantalla | `apps/web/src/pages/CampaignDetailPage.tsx` (leer antes de tocar) |
-| Hoja | `HojaCalculada.test` fija la variable `--banda-fija-alto` con una regex de «0px» que no prueba que el `ResizeObserver` esté enlazado de verdad | `apps/web/src/features/character-sheet/__tests__/HojaCalculada.test.tsx` |
 | Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
-| Ajustes del personaje | El tamaño del texto de error difiere entre el bloque archivado (`sm`) y el pie (`xs`) | `apps/web/src/features/characters/AjustesDePersonaje.tsx` |
-| Ajustes del personaje | `PanelDeDados.test.tsx` no fija las clases de la rejilla del reloj, así que un cambio de rejilla no lo detecta | `apps/web/src/features/rolls/__tests__/PanelDeDados.test.tsx` |
 | Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
 | Mesa / tablero | **Revisión final, #7**: dos implementaciones del mismo *chevron* — `Punta.tsx` (privado del árbol) e `IconoFlechaIzquierda` rotada en el cajón del registro, que además queda invertido al plegarse hacia abajo. Un `IconoPunta` único en `ui/Iconos.tsx` cierra las dos | `apps/web/src/features/sessions/taller/mundo/Punta.tsx`; `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx:78-82` |
 | Mesa / tablero | Plegar el cajón antes de que cargue el registro deja el contador de líneas nuevas en 0 | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
-| Elenco / menú | Sin `preventDefault` en Tab dentro del menú de acciones; Espacio activa por `keydown` y por `click` a la vez (doble disparo posible) | `apps/web/src/ui/MenuDeAcciones.tsx` |
-| Elenco / menú | `FichaDeElenco.test.tsx` perdió su `queryByRole` de «enemigo» al reescribir el test de la fila | `apps/web/src/features/sessions/elenco/__tests__/FichaDeElenco.test.tsx` |
-| Elenco / menú | `hoja.spec.ts` y `sesion.spec.ts` usan timeouts desiguales para el mismo tipo de espera | `apps/web/e2e/hoja.spec.ts`, `apps/web/e2e/sesion.spec.ts` |
-| Dados | `SelectorDeVentaja` usa `disabled` nativo: los radios apagados no son alcanzables por teclado, y la línea de motivo no está enlazada por `aria-describedby` — candidato ya señalado por la propia revisión de la Tarea 10 | `apps/web/src/features/rolls/BandejaDeDados.tsx` |
-| Dados | El `<details>`/`<summary>` de «Modo avanzado» muestra el error de la expresión aunque esté plegado | `apps/web/src/features/rolls/PanelDeDados.tsx` |
-| Hilo | **Revisión final, #5**: la frase con sujeto resuelto (`HP_CHANGED` con `ctx.sujeto`) pierde el `(from → to)` que sí lleva la frase sin sujeto — considerar «Sylas pierde 7 PG (20 → 13) ← Klarg» | `apps/web/src/features/sessions/linea-de-log.ts:196-201` |
-| Bestiario | `DarTemporales`: `preguntando` no se resetea si la petición falla, así que un reintento tras error puede arrancar con el diálogo ya abierto | `apps/web/src/features/bestiario/DarTemporales.tsx` |
-| Catálogo de objetos | Los `FilterChip` de tipo y origen no llevan `aria-pressed` | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
-| Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
 | Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
 | Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
-| Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 | Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 
 **Descartado como ruido, con motivo** (no entra como ficha): la cita de Epip «resolver functions»

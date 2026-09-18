@@ -233,14 +233,21 @@ export function BandejaDeDados({
           `4d6kh3` — o `1d6+1d20` escrito a mano, que el servidor tampoco reescribe — no admite
           ventaja, el `fieldset` se apaga y una línea reservada (`min-h-[1.125rem]`, vacía si no
           hace falta) dice por qué, en vez de que el control desaparezca y la tarjeta se mueva. */}
-      <div role="radiogroup" aria-label="Ventaja">
+      <div
+        role="radiogroup"
+        aria-label="Ventaja"
+        aria-describedby={ofreceVentaja ? undefined : "ventaja-motivo"}
+      >
         <SelectorDeVentaja
           value={modo}
           onChange={onModoChange}
           etiqueta="esta tirada"
           disabled={disabled || !ofreceVentaja}
         />
-        <p className="mt-1 min-h-[1.125rem] font-chrome text-chrome-xs text-muted">
+        <p
+          id="ventaja-motivo"
+          className="mt-1 min-h-[1.125rem] font-chrome text-chrome-xs text-muted"
+        >
           {ofreceVentaja ? "" : "Solo con un d20 al principio de la tirada."}
         </p>
       </div>

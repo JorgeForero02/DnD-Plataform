@@ -41,7 +41,7 @@ describe("BandejaDeDados", () => {
     rerender(<BandejaDeDados valor={{ dados: [6], modificador: 0 }} onChange={() => {}} />);
     // Sigue montado — no desaparece — pero apagado, y con el motivo a la vista.
     expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
   });
 
@@ -78,7 +78,7 @@ describe("BandejaDeDados", () => {
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d6+1d20" } });
     // Sigue montado, apagado — no desmontado: es justo lo que el anexo #8 exige.
     expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
 
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20+3" } });
     expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
@@ -200,6 +200,30 @@ describe("BandejaDeDados", () => {
     render(<BandejaDeDados valor={BANDEJA_VACIA} onChange={() => {}} compacta />);
     expect(screen.queryByText("Atajos")).toBeNull();
     expect(screen.getByRole("button", { name: "Añadir un d6" })).toBeInTheDocument();
+  });
+
+  // Revisión final del pulido (2026-09-13) — **`SelectorDeVentaja` con `disabled` nativo dejaba
+  // los radios apagados inalcanzables por teclado**, y la línea de motivo no estaba enlazada por
+  // `aria-describedby`. Apagado es `aria-disabled`, nunca `disabled`: el control sigue en la
+  // secuencia de tabulación, solo que no hace nada y dice por qué.
+  it("apagado, el radio sigue alcanzable por teclado, dice por qué y no cambia el modo", () => {
+    const onModoChange = vi.fn();
+    render(
+      <BandejaDeDados
+        valor={{ dados: [6], modificador: 0 }}
+        onChange={() => {}}
+        modo="NORMAL"
+        onModoChange={onModoChange}
+      />,
+    );
+    const radio = screen.getByRole("radio", { name: "Ventaja" });
+    expect(radio).not.toBeDisabled();
+    expect(radio).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("radiogroup", { name: "Ventaja" })).toHaveAccessibleDescription(
+      "Solo con un d20 al principio de la tirada.",
+    );
+    fireEvent.click(radio);
+    expect(onModoChange).not.toHaveBeenCalled();
   });
 
   it("sin dados en la pila no se pinta ninguna lista", () => {

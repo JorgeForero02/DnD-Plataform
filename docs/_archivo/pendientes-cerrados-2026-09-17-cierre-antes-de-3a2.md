@@ -78,3 +78,80 @@ no declara `entityId` en su tipo, aunque el servidor ya lo manda desde `GET
 .../characters/:id/sheet` (redactado por `entityIdsVisibleFor`, como el resto de lecturas). No
 rompe nada hoy —nada de la hoja lee ese campo—, pero una pantalla de la hoja que quisiera enlazar
 «Ficha del mundo» desde ahí tendría que ensanchar el tipo primero.
+
+### Interfaz que se mide — menú, ventaja, temporales, hilo, catálogo, 80 caracteres, `sm` (cerradas en T5)
+
+Diecisiete filas de la revisión final del pulido (2026-09-13), triadas por el plan de esta tanda
+(§0) y cerradas en la Tarea 5. Cada una lleva su veredicto y su motivo:
+
+- **Elenco / menú** (una fila, dos veredictos): **A** — Espacio se resuelve en `keyup`
+  (`alSoltar`), no en `keydown` con un `click()` a mano: el nativo dispara su propio `click` al
+  SOLTAR Espacio (Enter lo dispara al pulsar), y manejarlo en `keydown` abría la puerta al doble
+  disparo. **D** — Tab sigue sin `preventDefault`: es el patrón *Menu Button* de WAI-ARIA APG
+  («Tab: closes the menu and moves focus to the next element in the tab sequence»), no un olvido.
+- **Dados · `SelectorDeVentaja`**: **A** — de `disabled` nativo a `aria-disabled` (con el
+  `onChange` cortado a mano) en el radio, y `aria-disabled` en vez de `disabled` en el `fieldset`;
+  un fieldset nativo apagado saca a TODOS sus hijos de la secuencia de tabulación por debajo de
+  cualquier `aria-disabled` que se les ponga. `BandejaDeDados.tsx` enlaza el motivo con
+  `aria-describedby="ventaja-motivo"` en el `radiogroup`.
+- **Dados · `<details>` con el error plegado**: **D** — a propósito (comentario ya en el código):
+  el error abre el modo avanzado para no esconderlo; es la regla de interfaz, no un descuido.
+- **Bestiario · `DarTemporales.preguntando`**: **A** — `onSuccess` pasa a `onSettled`: un fallo
+  también cierra la pregunta, así que el siguiente «Dárselos» vuelve a preguntar en vez de
+  arrancar con el diálogo de una petición vieja ya abierto.
+- **Hilo · frase con sujeto (#5)**: **A** — `HP_CHANGED` con `ctx.sujeto` vuelve a llevar el
+  `(from → to)`: «Sylas pierde 7 PG (20 → 13) ← Klarg», la misma verdad que la frase sin sujeto,
+  con el número dentro.
+- **Catálogo de objetos** (dos filas): **F** — los `FilterChip` de tipo y origen YA llevan
+  `aria-pressed` (`FilterChip.tsx:33`); no había nada que cerrar. **A** — las dos `Toolbar`
+  (tipo y origen) se envuelven en un `<div className="flex flex-col gap-s2">` y cada una lleva su
+  `aria-label` (`Toolbar` ahora acepta `ariaLabel` y pinta `role="toolbar"` cuando se lo dan).
+  Medido en Playwright a 1280×800 y 390 px (`.superpowers/sdd/2026-09-17-cierre-antes-de-3a2/
+  catalogo-1280x800.png`, `catalogo-390px.png`): separación clara entre las dos barras en los dos
+  anchos, sin solape.
+- **Mundo (árbol) · rótulo libre > 80 caracteres**: **A** — el campo de rótulo de
+  `EditorDeHilos.tsx` topa a 80 (`maxLength` + recorte en el propio `onChange`, por si algo
+  escribe el valor a mano) y explica «Como mucho 80 caracteres; el servidor corta ahí.» al llegar
+  al límite.
+- **Ajustes del personaje · `sm`/`xs`**: **A** — los dos errores del bloque archivado
+  (`AjustesDePersonaje.tsx:179,184`) pasan de `text-chrome-xs` a `text-chrome-sm`, igual que el
+  resto de errores de la pantalla: el error se lee, no es una nota al pie.
+- **Ajustes del personaje · `PanelDeDados.test` y la rejilla del reloj**: **D** — fijar las clases
+  de una rejilla es probar Tailwind, no comportamiento; `jsdom` no maqueta.
+- **Hoja · `Field.reservaEspacio` sin `line-height` explícito**: **D** — el *preflight* de
+  Tailwind es dependencia declarada del proyecto; fijar un alto en `rem` duplicaría el token
+  tipográfico que ya existe.
+- **Hoja · regex `/^\d+px$/` de `HojaCalculada.test`**: **D** — `jsdom` no tiene `ResizeObserver`
+  real; lo que de verdad mide altura se mide en Playwright (`espacios.spec.ts`), regla de
+  `08-pruebas.md`.
+- **Hoja · comentario «ancho mínimo» caducado**: **F** — la línea 92 de `hoja.spec.ts` no lo dice;
+  los comentarios de «ancho mínimo» viven en `:337` y `:766` y son verdaderos (hablan del
+  `w-[6rem]` compartido y de la tabla de ataques).
+- **Hoja · `Dialog` fija `--tira-fija-bg` sin consumidor**: **F** — sí tiene consumidor:
+  `Cabecera.tsx:100` lo lee cuando la hoja se abre dentro de un diálogo (el editor de personaje).
+- **Hoja · `campaignId` parseado dos veces**: **F** — `CampaignDetailPage.tsx:610` hace un solo
+  `useParams`; el resto son props.
+- **Elenco / menú · `FichaDeElenco.test` sin `queryByRole` de «enemigo»**: **F** —
+  `FichaDeElenco.test.tsx:175` ya lo tiene.
+- **e2e · timeouts desiguales `hoja`/`sesion`**: **F** — los dos usan 15 000 para la primera
+  pintura y 10 000 para el resto; no hay desigualdad que corregir.
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Hoja / Casilla | Comentario «ancho mínimo» caducado (la anchura ya es fija) | `apps/web/e2e/hoja.spec.ts:92` |
+| Hoja | `Dialog` fija `--tira-fija-bg=surface` también sobre pergamino, sin que nada lo consuma hoy | `apps/web/src/ui/Dialog.tsx` |
+| Hoja | `Field.reservaEspacio` reserva el alto con el `line-height` por defecto del navegador, no un valor explícito — depende del *preflight* de Tailwind | `apps/web/src/ui/Field.tsx` |
+| Hoja | `campaignId` se parsea dos veces en la misma pantalla | `apps/web/src/pages/CampaignDetailPage.tsx` (leer antes de tocar) |
+| Hoja | `HojaCalculada.test` fija la variable `--banda-fija-alto` con una regex de «0px» que no prueba que el `ResizeObserver` esté enlazado de verdad | `apps/web/src/features/character-sheet/__tests__/HojaCalculada.test.tsx` |
+| Ajustes del personaje | El tamaño del texto de error difiere entre el bloque archivado (`sm`) y el pie (`xs`) | `apps/web/src/features/characters/AjustesDePersonaje.tsx` |
+| Ajustes del personaje | `PanelDeDados.test.tsx` no fija las clases de la rejilla del reloj, así que un cambio de rejilla no lo detecta | `apps/web/src/features/rolls/__tests__/PanelDeDados.test.tsx` |
+| Elenco / menú | Sin `preventDefault` en Tab dentro del menú de acciones; Espacio activa por `keydown` y por `click` a la vez (doble disparo posible) | `apps/web/src/ui/MenuDeAcciones.tsx` |
+| Elenco / menú | `FichaDeElenco.test.tsx` perdió su `queryByRole` de «enemigo» al reescribir el test de la fila | `apps/web/src/features/sessions/elenco/__tests__/FichaDeElenco.test.tsx` |
+| Elenco / menú | `hoja.spec.ts` y `sesion.spec.ts` usan timeouts desiguales para el mismo tipo de espera | `apps/web/e2e/hoja.spec.ts`, `apps/web/e2e/sesion.spec.ts` |
+| Dados | `SelectorDeVentaja` usa `disabled` nativo: los radios apagados no son alcanzables por teclado, y la línea de motivo no está enlazada por `aria-describedby` — candidato ya señalado por la propia revisión de la Tarea 10 | `apps/web/src/features/rolls/BandejaDeDados.tsx` |
+| Dados | El `<details>`/`<summary>` de «Modo avanzado» muestra el error de la expresión aunque esté plegado | `apps/web/src/features/rolls/PanelDeDados.tsx` |
+| Hilo | **Revisión final, #5**: la frase con sujeto resuelto (`HP_CHANGED` con `ctx.sujeto`) pierde el `(from → to)` que sí lleva la frase sin sujeto — considerar «Sylas pierde 7 PG (20 → 13) ← Klarg» | `apps/web/src/features/sessions/linea-de-log.ts:196-201` |
+| Bestiario | `DarTemporales`: `preguntando` no se resetea si la petición falla, así que un reintento tras error puede arrancar con el diálogo ya abierto | `apps/web/src/features/bestiario/DarTemporales.tsx` |
+| Catálogo de objetos | Los `FilterChip` de tipo y origen no llevan `aria-pressed` | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
+| Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
+| Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |

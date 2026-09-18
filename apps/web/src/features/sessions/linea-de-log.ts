@@ -204,7 +204,7 @@ export function lineaDeLog(p: GameEventPayload, ctx?: ContextoDeLinea): string {
         // **La cabecera ya dijo quién es**, así que la frase no repite el nombre y arranca por
         // el verbo — ver el comentario de `ContextoDeLinea.sujetoEnCabecera`.
         const sujetoDeLaFrase = ctx.sujetoEnCabecera ? "" : `${ctx.sujeto} `;
-        return `${sujetoDeLaFrase}${verbo} ${Math.abs(p.delta)} PG${tipo}${critico}${origen}${motivo}`;
+        return `${sujetoDeLaFrase}${verbo} ${Math.abs(p.delta)} PG (${p.from} → ${p.to})${tipo}${critico}${origen}${motivo}`;
       }
       const verbo = p.delta < 0 ? "Pierde" : "Recupera";
       const critico = p.critical ? ", crítico" : "";

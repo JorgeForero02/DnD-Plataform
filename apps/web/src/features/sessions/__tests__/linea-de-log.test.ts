@@ -64,3 +64,17 @@ describe("COMBATANT_LEFT tiene frase", () => {
     );
   });
 });
+
+// Revisión final del pulido (2026-09-13), ítem #5 — **la frase con sujeto resuelto perdía el
+// `(from → to)`** que sí lleva la frase sin sujeto: se sabía CUÁNTO cambió pero no el rastro
+// completo del cambio. Las dos ramas de `HP_CHANGED` cuentan ahora la misma verdad, con el
+// número dentro.
+describe("HP_CHANGED con sujeto conserva el (from → to)", () => {
+  it("con sujeto resuelto la frase conserva el (from → to)", () => {
+    const frase = lineaDeLog(
+      { type: "HP_CHANGED", from: 20, to: 13, delta: -7 },
+      { sujeto: "Sylas", sujetoEnCabecera: false },
+    );
+    expect(frase).toBe("Sylas pierde 7 PG (20 → 13)");
+  });
+});

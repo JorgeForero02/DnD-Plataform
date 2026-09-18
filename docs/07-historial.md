@@ -101,6 +101,35 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## 3A.2 Task 6 — la pestaña «Conjuros»: elegir (2026-09-18), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
+
+Qué — `features/spellbook/` en la web (T11, parte 1): `LibroDeConjuros.tsx` monta «Listos para
+lanzar» (con el contador «5 de 6 preparados · 2 de 3 trucos» y el aviso en línea si `avisos` trae
+algo) y «Disponibles» (buscador sin acentos, `FilterChip` por nivel/escuela), con `FilaDeConjuro.tsx`
+compartida por las dos y su `<details>` que pide la prosa del SRD (`useSpellDetail`) solo al abrir.
+Vocabulario en `dominio/conjuros.ts`, mismo patrón que `dominio/dano.ts`. **Ningún botón se apaga
+por tope**: el servidor cuenta y avisa. La pestaña `Conjuros.tsx` pinta ahora el `actual/max` real de
+los espacios (antes solo tenía `max`) y monta `LibroDeConjuros` debajo; el viejo `EmptyState` «Los
+conjuros llegan con el paso 3» desaparece.
+
+Por qué — Task 3 dejó `GET`/`PUT …/spellbook` sin ninguna pantalla que los usara.
+
+Ruling — el brief citaba «Rayo de fuego» para el truco de ejemplo del e2e; el nombre real del
+catálogo sembrado es «Descarga de fuego» (`fire-bolt`) — se usa ese, con la nota en la cabecera de
+`apps/web/e2e/conjuros.spec.ts`.
+
+Tests — `dominio/__tests__/conjuros.test.ts` (5), `FilaDeConjuro.test.tsx` (8) y
+`LibroDeConjuros.test.tsx` (9) con `api.ts` simulado; el `Conjuros.test.tsx` de la pestaña reescrito para
+el `actual/max` real y `HojaCalculada.test.tsx` ajustado (mock de `spellbookApi.fetchSpellbook`, y
+el rótulo «Listos para lanzar» en la tabla de las siete pestañas). `pnpm verify` en verde
+(apps/web: 190 ficheros/1772 tests). `apps/web/e2e/conjuros.spec.ts` escrito, no corrido (D-CF-65).
+`apps/web/e2e/hoja-pestanas.spec.ts` ajustado en el mismo commit por el mismo motivo.
+
+Revertir — `git revert` del commit; sin desplegar. La Task 7 (el botón «Lanzar») cuelga del hueco
+`accionPrincipal?: ReactNode` que deja `FilaDeConjuro`.
+
+---
+
 ## 3A.2 Task 3 — `SpellbookService`: listar, cambiar estado y sembrar el libro (2026-09-18), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
 
 Qué — el módulo `spellbook` de la API (D-CF-125/126/127): `GET`/`PUT
@@ -232,23 +261,14 @@ D-CF-92..115.
 Por qué — «primero lo que hace jugable una partida» (D-CF-71): el mago y el clérigo necesitan su libro.
 Revertir — `git revert -m 1` del merge; los JSON no tocan la base. **Sin desplegar.**
 
-## 3A.1 «El libro entra» — ola de arreglos tras la revisión final (2026-09-14)
+## 3A.1 «El libro entra» — ola de arreglos tras la revisión final (2026-09-14) — archivada
 
-Qué — la rama `paso-3a/3a1-el-libro-entra` (319 conjuros, 234 aptitudes, 26 rasgos de raza del SRD 5.1
-convertidos a `Actividad` con nombre y prosa del SRD español) pasó por una revisión Opus de la rama
-entera (`.superpowers/sdd/2026-09-14-3a1-el-libro-entra/review-final.md`: 5 críticos, 13 importantes,
-12 menores; muestreo 14 ok / 24 desajustes de 38, todos estructurales) y una única ola acotada (D-CF-65)
-los cierra: `override: false` manda al ítem (Escudo vuelve a ser reacción; 0 actividades «instantánea +
-concentración»), `classKey` en los dos contextos (un monje de nivel 5 tiene 5 ki, no 0), los `grant`
-solo con recursos que la clase siembra y uno por aptitud, pie de página del PDF fuera de 115 textos y
-Zona de la verdad sin el capítulo de trampas, `rechazos.md` con el motivo de todo (49 huecos de esquema
-y 48 fuera de A por autor, con causa), claves de 2014, `shared`/`feat` en vez de «fighter 1», nada
-recortado (topes a 8000), CD/daño/onSave que no caben rechazados enteros. Decisiones D-CF-108 a D-CF-115;
-06-pendientes se copia ahora del informe. Pruebas: 58 unitarias del conversor (+11), `generado.spec.ts`
-con los invariantes nuevos (por actividad, recursos de los grants, sin pie, claves 2014, LABEL_KEYS),
-`resolve.spec.ts` con Ki/Acción Súbita/Tomar Aliento sembrados.
-Por qué — la mitad mecánica del dorado estaba mal en el 40–75 % de las actividades y el informe callaba.
-Revertir — `git revert` del commit de la ola; el catálogo generado vuelve solo con `pnpm catalogo:convertir`.
+**Movida entera** a [`_archivo/historial-2026-09-14-ola-pe1-fusion-pnj.md`](./_archivo/historial-2026-09-14-ola-pe1-fusion-pnj.md)
+el 2026-09-18, al insertar la entrada de la Task 6 de 3A.2 (la pestaña «Conjuros»): el fichero
+quedó en 1027 de 1000 y esta era una de las tres entradas completas más antiguas. En una línea: la
+revisión Opus de la rama de 3A.1 (5 críticos, 13 importantes, 12 menores) se cerró en una sola ola
+acotada — `override` del ítem manda, el monje de nivel 5 tiene sus 5 ki, y `rechazos.md` explica
+cada hueco.
 
 ## Despliegue de `main` `b6bbeb0` (2026-09-14, noche) — lo lanzó el autor
 
@@ -260,29 +280,18 @@ mesa, desbordes, puerta de efectos, PNJ del mundo y la mesa + su cierre, PE-1. L
 Por qué — el autor: «ya desplegué». Antes de esto producción llevaba en `4830b8a` desde el 13.
 Revertir — redesplegar `4830b8a` desde Coolify; las migraciones son aditivas y no estorban.
 
-## PE-1 cerrada y fusionada (2026-09-14, noche) — desplegada esa misma noche (ver arriba)
+## PE-1 cerrada y fusionada (2026-09-14, noche) — desplegada esa misma noche (ver arriba) — archivada
 
-Qué — `pe-1/cierre` → `main` en `baea692`: los seis menores de código de «puerta de efectos» (a ciegas
-el veredicto no viaja, D-CF-88; el daño solo cobra la tirada de SU ataque, por `GameEvent.attackRef`;
-`XpService` bloquea por `id`; `GrupoDeRadios` una sola vez en `ui/`; `DarXp` con `key` por propuesta;
-el bucle «hasta impactar» del e2e lee `data-veredicto`), y las cuatro de producto decididas por el
-autor sin código (D-CF-89..91). Rigor bajo a propósito: un brief, un implementador, pruebas solo donde
-cambió comportamiento; e2e de API 33/33 en los tres ficheros tocados, Playwright 7/7 en tres spec.
-Por qué — el autor: «es pequeño, debería salir rápido» — y salió en 2 h.
-Revertir — `git revert -m 1 baea692`.
+**Movida entera** a [`_archivo/historial-2026-09-14-ola-pe1-fusion-pnj.md`](./_archivo/historial-2026-09-14-ola-pe1-fusion-pnj.md)
+el 2026-09-18, en el mismo corte. En una línea: `pe-1/cierre` → `main` en `baea692`, seis menores de
+código de «puerta de efectos» y cuatro decisiones de producto sin código, en 2 h.
 
-## Fusión a `main` de «PNJ del mundo y la mesa» + su cierre (2026-09-14, tarde) — sin desplegar
+## Fusión a `main` de «PNJ del mundo y la mesa» + su cierre (2026-09-14, tarde) — sin desplegar — archivada
 
-Qué — `main` recibe las dos ramas apiladas en `07c9a9d` (merge `--no-ff`; `pnpm verify` entero en
-verde sobre `main`: 219 + 2102 + 1715 unitarias). La segunda, `pnj-del-mundo/cierre` (`94a4755`),
-cerró en una sola pasada de rigor bajo —decisión del autor: «pruebas no tan rigurosas si es solo mover
-cosas de lugar»— los pendientes que dejó la primera: PM-1 (`entityId` no viaja en respuestas de
-mutación), T3 (la tira revela el grupo entero, `POST …/characters/reveal-many`, D-CF-87), PE-2 (e2e
-de concurrencia de `apply-damage` y `POST /xp`), el caso de la tarea 11 (origen oculto → 404) y la
-cabecera huérfana del 13-09 en 06. e2e de API 32/32 en los tres ficheros; Playwright
-`pnj-del-mundo-en-vivo` + `combate` 2/2.
-Por qué — el autor dio permiso de fusionar al cerrar; el despliegue sigue siendo suyo.
-Revertir — `git revert -m 1 07c9a9d`. **Producción sigue en `4830b8a`.**
+**Movida entera** a [`_archivo/historial-2026-09-14-ola-pe1-fusion-pnj.md`](./_archivo/historial-2026-09-14-ola-pe1-fusion-pnj.md)
+el 2026-09-18, en el mismo corte. En una línea: las dos ramas apiladas de «PNJ del mundo y la mesa»
+llegan a `main` en `07c9a9d`, con `pnpm verify` entero en verde y los pendientes de la primera rama
+cerrados en la segunda con rigor bajo declarado.
 
 ## El PNJ del mundo y la mesa (2026-09-14) — archivada
 

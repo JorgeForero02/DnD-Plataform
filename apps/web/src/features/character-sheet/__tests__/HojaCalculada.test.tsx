@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { HojaCalculada } from "../HojaCalculada";
 import * as characterSheetApi from "../api";
 import * as inventoryApi from "../../inventory/api";
+import * as spellbookApi from "../../spellbook/api";
 import * as members from "../../campaigns/members";
 import type { Catalog, ConditionRow, ResourceRow, SheetResponse } from "../api";
 import type { RollSuggestions, SuggestedRollMode } from "@dnd/shared";
@@ -627,6 +628,17 @@ describe("Fix round 1 — `Conjuros` solo se monta para quien lanza", () => {
 describe("La hoja en pestañas", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // `LibroDeConjuros` (3A.2) pide su propio `GET …/spellbook`: un valor mínimo y determinista
+    // por defecto, para que las pruebas de esta suite —que no son sobre el libro de conjuros—
+    // no dependan de una llamada de red sin mockear. Las que sí necesitan un libro concreto lo
+    // sobrescriben.
+    vi.spyOn(spellbookApi, "fetchSpellbook").mockResolvedValue({
+      modelo: "LIBRO",
+      entradas: [],
+      topes: {},
+      avisos: [],
+      espacios: [{ nivel: 1, actual: 0, max: 4 }],
+    });
   });
 
   it("cada tarjeta está en su pestaña y en ninguna otra", async () => {
@@ -680,7 +692,7 @@ describe("La hoja en pestañas", () => {
       { rotulo: "Rasgos", dentro: ["Rasgos y aptitudes", "Ficha", "Personalidad"] },
       {
         rotulo: "Conjuros",
-        dentro: [/^Espacios de conjuro/, { texto: "Los conjuros llegan con el paso 3" }],
+        dentro: [/^Espacios de conjuro/, "Listos para lanzar"],
       },
     ];
     const buscar = (t: Rotulo) =>

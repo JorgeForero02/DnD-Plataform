@@ -233,7 +233,7 @@ const PESTANAS: Array<{ id: string; rotulo: string; dentro: Rotulo[]; fuera: str
   {
     id: "conjuros",
     rotulo: "Conjuros",
-    dentro: ["Espacios de conjuro", { texto: "Los conjuros llegan con el paso 3" }],
+    dentro: ["Espacios de conjuro", "Listos para lanzar"],
     fuera: ["Salvaciones"],
   },
 ];

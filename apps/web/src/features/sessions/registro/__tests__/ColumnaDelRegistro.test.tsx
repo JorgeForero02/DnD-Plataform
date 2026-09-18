@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ColumnaDelRegistro } from "../ColumnaDelRegistro";
 import type { GameEventRow } from "../../log-api";
@@ -66,21 +66,30 @@ beforeEach(() => {
 });
 
 describe("ColumnaDelRegistro", () => {
-  it("pinta los tres filtros como radios, con «Todo» elegido de entrada", async () => {
+  // Fix round 1 — los filtros se mudaron a la cabecera del propio `HiloDeSesion`, como un
+  // segmento `button role="radio" aria-checked` (el mismo patrón que el conmutador «Con
+  // tablero / Sin tablero» de `BandaUnica.tsx`), no un `input type="radio"` con su frase
+  // visible debajo. El nombre accesible de cada botón es EXACTO («Todo», no «Todo…frase…»): la
+  // frase vive fuera, referenciada por `aria-describedby`, para no colarse en el nombre.
+  it("pinta los tres filtros como un segmento de radios, con «Todo» elegido de entrada", async () => {
     montar([RELATO, NUMEROS]);
     await waitFor(() => expect(screen.getByText("El puerto arde en el horizonte")).toBeVisible());
 
+    const grupo = screen.getByRole("radiogroup", { name: "Qué se ve" });
     for (const nombre of ["Todo", "Relato", "Números"]) {
-      expect(screen.getByRole("radio", { name: new RegExp(`^${nombre}`) })).toBeInTheDocument();
+      expect(within(grupo).getByRole("radio", { name: nombre })).toBeInTheDocument();
     }
-    expect(screen.getByRole("radio", { name: /^Todo/ })).toBeChecked();
+    expect(within(grupo).getByRole("radio", { name: "Todo" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 
   it("con «Números» puesto, el suceso de relato desaparece y el de números se queda", async () => {
     montar([RELATO, NUMEROS]);
     await waitFor(() => expect(screen.getByText("El puerto arde en el horizonte")).toBeVisible());
 
-    fireEvent.click(screen.getByRole("radio", { name: /^Números/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Números" }));
 
     expect(screen.queryByText("El puerto arde en el horizonte")).not.toBeInTheDocument();
     // El texto exacto de HP_CHANGED lo prueba `linea-de-log.test.ts`; aquí basta con que el
@@ -98,7 +107,7 @@ describe("ColumnaDelRegistro", () => {
     montar([RELATO, NUMEROS]);
     await waitFor(() => expect(screen.getByText("El puerto arde en el horizonte")).toBeVisible());
 
-    fireEvent.click(screen.getByRole("radio", { name: /^Relato/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Relato" }));
 
     expect(
       screen
@@ -112,7 +121,7 @@ describe("ColumnaDelRegistro", () => {
   it("el nodo de la lista es el mismo antes y después de cambiar de filtro", async () => {
     montar([RELATO, NUMEROS]);
     const listaAntes = await screen.findByRole("list", { name: "Sucesos de la sesión" });
-    fireEvent.click(screen.getByRole("radio", { name: /^Números/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Números" }));
     const listaDespues = screen.getByRole("list", { name: "Sucesos de la sesión" });
     expect(listaDespues).toBe(listaAntes);
   });

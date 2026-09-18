@@ -161,6 +161,27 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
     .boundingBox();
   expect(registroBox).not.toBeNull();
   expect(registroBox!.x).toBeGreaterThanOrEqual(marcoBox!.x + marcoBox!.width - 1);
+
+  // (g) Fix round 1 — **la cabecera «Registro en vivo», con sus filtros dentro, no pasa de
+  //     48 px de alto.** Vivían como un `GrupoDeRadios` completo encima del panel (~200 px); el
+  //     ruling los mudó a un segmento inline DENTRO de esta misma cabecera (`role="radiogroup"
+  //     aria-label="Qué se ve"`, tres chips de una palabra) — ver `OPCIONES_DE_FILTRO` en
+  //     `HiloDeSesion.tsx`. Esta es la medida que demuestra que el bloque volvió a caber en una
+  //     cabecera normal, no en un panel aparte.
+  const cabeceraDelRegistro = page
+    .getByRole("heading", { name: "Registro en vivo" })
+    .locator("xpath=..");
+  const cabeceraBox = await cabeceraDelRegistro.boundingBox();
+  expect(cabeceraBox).not.toBeNull();
+  expect(cabeceraBox!.height).toBeLessThanOrEqual(48);
+
+  // Y los tres filtros de verdad están ahí, dentro de esa misma cabecera.
+  const filtros = page.getByRole("radiogroup", { name: "Qué se ve" });
+  await expect(filtros).toBeVisible();
+  await expect(filtros.getByRole("radio", { name: "Todo" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 });
 
 // **La mesa a 390 px sigue aplazada (D-CF-26): la rejilla de tres columnas no se apila ahí, y la

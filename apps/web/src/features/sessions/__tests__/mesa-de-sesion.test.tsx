@@ -408,8 +408,9 @@ describe("el tablero enmarcado (C1 bis)", () => {
     );
     // El hilo sigue montado: no se pierde por enmarcar el tablero, solo se muda a la lateral.
     expect(screen.getByRole("region", { name: "Registro de la sesión" })).toBeInTheDocument();
-    // Y sus filtros están ahí, con «Todo» elegido de entrada.
-    expect(screen.getByRole("radio", { name: /^Todo/ })).toBeChecked();
+    // Y sus filtros están ahí, con «Todo» elegido de entrada. Fix round 1: segmento de botones
+    // `role="radio" aria-checked`, no `input type="radio"` — nombre accesible exacto.
+    expect(screen.getByRole("radio", { name: "Todo" })).toHaveAttribute("aria-checked", "true");
     // Las herramientas del DM conviven con el registro en la misma lateral.
     expect(screen.getByRole("heading", { name: "Herramientas del DM" })).toBeInTheDocument();
   });

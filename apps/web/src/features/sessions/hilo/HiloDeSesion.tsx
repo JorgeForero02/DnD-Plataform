@@ -88,6 +88,32 @@ import { grupoDeMensaje, tipoDeMensaje, type FiltroDeRegistro } from "./tipo-de-
  */
 const TOLERANCIA_FONDO = 80;
 
+/**
+ * Fix round 1 — **los tres filtros, como los ve la maqueta: chips de una palabra en la cabecera,
+ * no un bloque de radios con su frase debajo.** `ColumnaDelRegistro` los pintaba como
+ * `GrupoDeRadios` (radio + etiqueta + frase visible), ~200 px de alto — la medida a 1280×720 del
+ * orquestador lo marcó como el bloque que se comía el registro.
+ *
+ * **Por qué sigue siendo un `radiogroup`, y por qué eso no contradice «cabecera compacta».** La
+ * regla de `04-convenciones.md` («opción con significado → radios, con la frase que explica qué
+ * hace») no dice DÓNDE va esa frase, solo que exista. Aquí vive en `title` (para quien pasa el
+ * ratón) y en `aria-describedby` (para un lector de pantalla), exactamente como ya hace el
+ * conmutador «Con tablero / Sin tablero» de `BandaUnica.tsx` — un segmento de `role="radio"` con
+ * su nombre visible corto y nada más. Tres letras («Todo») visibles y una frase que no ocupa
+ * sitio son las dos mitades de la misma regla, no una excepción a ella.
+ */
+const OPCIONES_DE_FILTRO: Record<FiltroDeRegistro, { etiqueta: string; frase: string }> = {
+  TODO: { etiqueta: "Todo", frase: "Cada suceso del registro, sin recortar." },
+  RELATO: {
+    etiqueta: "Relato",
+    frase: "El mundo hablando: lo revelado, los hitos de la sesión, el andamiaje de la mesa.",
+  },
+  NUMEROS: {
+    etiqueta: "Números",
+    frase: "Tiradas, daño, condiciones, recursos: lo que le pasa a alguien de la mesa.",
+  },
+};
+
 /** Si al lector le queda menos que la tolerancia por debajo, está leyendo lo último. */
 function estaAlFondo(el: HTMLElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight < TOLERANCIA_FONDO;
@@ -108,6 +134,7 @@ export function HiloDeSesion({
   comoUsuario,
   pnjs = [],
   filtro = "TODO",
+  onFiltroChange,
 }: {
   campaignId: string;
   eventos: GameEventRow[];
@@ -128,6 +155,14 @@ export function HiloDeSesion({
    * el brief («sin desmontar la lista al filtrar»).
    */
   filtro?: FiltroDeRegistro;
+  /**
+   * Fix round 1 — **el segmento de filtros vive en la cabecera del propio panel**, no encima de
+   * él. `ColumnaDelRegistro` sigue siendo dueña del ESTADO (`useState`); esta prop es solo el
+   * cableado para que el cambio suba. Sin ella (nadie la pasa) el segmento no se pinta — es el
+   * caso de un `HiloDeSesion` montado suelto, si alguna vez lo hay, que no tiene nada de qué
+   * filtrar sin un padre que lleve la cuenta.
+   */
+  onFiltroChange?: (siguiente: FiltroDeRegistro) => void;
 }) {
   const { data: miembros } = useMembers(campaignId);
   const sellar = useStampNote(campaignId);
@@ -334,11 +369,61 @@ export function HiloDeSesion({
     }
   };
 
+  // El segmento solo se pinta con `onFiltroChange`: sin él no hay a quién avisar del cambio, y un
+  // filtro que no filtra nada sería un control muerto en la cabecera.
+  //
+  // **`button role="radio" aria-checked`, no `input type="radio"`** — el mismo patrón que el
+  // conmutador «Con tablero / Sin tablero» de `BandaUnica.tsx` («como ya hace el conmutador…»,
+  // ruling del orquestador). Y la frase va SIEMPRE fuera del botón, como hermana suya referenciada
+  // por `aria-describedby`, nunca dentro: un `<span>` con la frase DENTRO del botón sería
+  // invisible en pantalla pero seguiría formando parte del nombre accesible (el cálculo de
+  // «accessible name» incluye el texto de los descendientes aunque estén ocultos por CSS), así
+  // que un lector de pantalla diría «Todo, cada suceso del registro sin recortar» como si fuera
+  // el ROTULO del botón, no su descripción. Sacándolo del botón, el nombre se queda en «Todo» y
+  // la frase llega como DESCRIPCIÓN aparte — que es justo lo que pide el ruling.
+  const filtros = onFiltroChange && (
+    <div
+      role="radiogroup"
+      aria-label="Qué se ve"
+      className="flex shrink-0 items-center gap-0.5 rounded-radius-sm border border-muted/30 bg-bg p-0.5"
+    >
+      {(Object.keys(OPCIONES_DE_FILTRO) as FiltroDeRegistro[]).map((clave) => {
+        const opcion = OPCIONES_DE_FILTRO[clave];
+        const elegido = filtro === clave;
+        const idDeLaFrase = `filtro-registro-frase-${clave}`;
+        return (
+          <Fragment key={clave}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={elegido}
+              aria-describedby={idDeLaFrase}
+              title={opcion.frase}
+              onClick={() => onFiltroChange(clave)}
+              className={[
+                "rounded-radius-sm px-s2 py-0.5 font-chrome text-chrome-xs transition-colors",
+                elegido
+                  ? "bg-[color:var(--accent-tint)] text-accent-text"
+                  : "text-muted hover:bg-muted/20 hover:text-text",
+              ].join(" ")}
+            >
+              {opcion.etiqueta}
+            </button>
+            <span id={idDeLaFrase} className="sr-only">
+              {opcion.frase}
+            </span>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+
   return (
     <PanelDeMesa
       etiqueta="Registro de la sesión"
       titulo="Registro en vivo"
       icono={<IconoRegistro className="h-4 w-4" />}
+      accion={filtros}
       cuerpoClassName="flex min-h-0 flex-col"
     >
       {esDm && comoUsuario && (

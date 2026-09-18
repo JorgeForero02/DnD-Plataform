@@ -1000,3 +1000,40 @@ test("los paneles se abren encima, uno a la vez, y Escape devuelve el foco donde
   );
   expect(focoTrasCerrar).toContain("Bolsa");
 });
+
+// Fix round 1 (2026-09-18, medido en captura a 1280×720 por el orquestador) — **la banda única
+// se partía en dos filas a 1280.** `jsdom` no maqueta: el defecto solo se ve pidiendo la altura
+// real de la banda en un navegador de verdad, la misma razón de ser que el resto de medidas de
+// este fichero.
+//
+// Ruling: a ≥1024 la banda es UNA fila — el título de la escena se encoge y trunca
+// (`min-w-0 truncate`, con `title` nativo), todo lo demás es `shrink-0 whitespace-nowrap`, y si
+// aún no cabe se sacrifica primero el lugar (`hidden xl:inline`) y después la asistencia
+// (`hidden lg:inline`). Por debajo de 1024 sí puede partirse en dos.
+//
+// Se mide **sin asistencia declarada** («asistencia sin declarar», como en la primera prueba de
+// este fichero): con datos de asistencia, la línea «En la escena: …» se pinta a propósito en su
+// PROPIA fila (`w-full`, comentario de `BandaUnica.tsx`) — esa segunda fila es deliberada y no es
+// el defecto que este ruling corrige, así que medirla junto habría mezclado dos preguntas.
+test("a 1280×800 la banda de la mesa cabe en una sola fila", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await registrarse(page);
+  await crearCampanaConSesion(page);
+
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await expect(banda).toBeVisible();
+  await expect(banda).toContainText("asistencia sin declarar");
+
+  // Una fila de `font-chrome text-chrome-md` (título) con `py-s2` (8 px arriba y abajo) mide
+  // bastante menos de 56 px; dos filas apiladas superan esa cota con holgura. 56 px es el techo
+  // con margen, no la medida exacta — lo exacto se mide con capturas, como dijo el autor.
+  const caja = await banda.boundingBox();
+  expect(caja).not.toBeNull();
+  expect(caja!.height).toBeLessThanOrEqual(56);
+});

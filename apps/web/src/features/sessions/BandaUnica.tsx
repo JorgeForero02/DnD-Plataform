@@ -119,35 +119,57 @@ export function BandaUnica({
   return (
     <header
       aria-label="Estado de la mesa"
-      className="flex shrink-0 flex-wrap items-center gap-x-s3 gap-y-s2 border-b border-muted bg-surface px-s4 py-s2"
+      className="flex shrink-0 flex-wrap items-center gap-x-s3 gap-y-s2 border-b border-muted bg-surface px-s4 py-s2 lg:flex-nowrap"
     >
       {/* Anexo #18 — salir de la mesa vuelve a la CAMPAÑA que se estaba jugando, a su pestaña
-          Sesiones, no a la lista entera. */}
+          Sesiones, no a la lista entera.
+
+          Fix round 1 — **`shrink-0` desde aquí hasta el atajo de teclado, a propósito.** La
+          regla del ruling es «una sola cosa se encoge»: el título de la escena. Todo lo demás
+          —este enlace, el separador, «Tus crónicas», la duración, el reloj, el conmutador, el
+          atajo— mantiene su ancho natural en `lg:flex-nowrap`; si no fueran `shrink-0`, el
+          navegador los encogería a todos un poco en vez de dejar que el título (que SÍ sabe
+          truncarse con puntos suspensivos) absorba el hueco que falta. */}
       <Link
         to={`/campaigns/${campaignId}?seccion=sessions`}
-        className="inline-flex min-w-0 items-center gap-s1 font-title text-chrome-md text-text transition-colors hover:text-accent-text"
+        className="inline-flex shrink-0 items-center gap-s1 font-title text-chrome-md text-text transition-colors hover:text-accent-text"
       >
         <IconoFlechaIzquierda className="h-4 w-4 shrink-0 text-muted" />
         <span className="truncate">{nombreDeCampana ?? "Campaña"}</span>
       </Link>
-      <span aria-hidden="true" className="h-4 w-px bg-muted/40" />
+      <span aria-hidden="true" className="h-4 w-px shrink-0 bg-muted/40" />
       <Link
         to="/"
-        className="font-chrome text-chrome-sm text-muted transition-colors hover:text-text"
+        className="shrink-0 whitespace-nowrap font-chrome text-chrome-sm text-muted transition-colors hover:text-text"
       >
         Tus crónicas
       </Link>
 
       {/* El título de la escena, con su lugar en cobre al lado. Sin lugar revelado, no se
-          inventa uno: docs/04-convenciones.md lo prohíbe explícitamente. */}
-      <div className="flex min-w-0 items-baseline gap-s2">
-        <p className="truncate font-title text-chrome-md text-text">
+          inventa uno: docs/04-convenciones.md lo prohíbe explícitamente.
+
+          Fix round 1 (D-CF-148) — **`flex-1 min-w-0` en el envoltorio, `min-w-0` también en el
+          `<p>`.** Es la ÚNICA pieza de la banda que se encoge: todo lo demás es `shrink-0`, así
+          que este `div` es quien absorbe el hueco que sobra o falta. El `<p>` necesita su PROPIO
+          `min-w-0` —no basta con el del padre— porque es un ítem de flex de ESTE `div`
+          (`items-baseline`), y un ítem de flex tiene `min-width: auto` por defecto (el mismo
+          defecto de `min-h-0` que gobierna toda la mesa, en el eje horizontal): sin él, `truncate`
+          nunca se activa y el título simplemente desborda. El `title` nativo del navegador es el
+          reemplazo de lo que se pierde al truncar — pasar el ratón por encima dice el nombre
+          entero sin abrir nada. */}
+      <div className="flex min-w-0 flex-1 items-baseline gap-s2">
+        <p
+          className="min-w-0 truncate font-title text-chrome-md text-text"
+          title={sesion ? sesion.title : "La mesa, en reposo"}
+        >
           {sesion ? sesion.title : "La mesa, en reposo"}
         </p>
         {lugar && (
           <Link
             to={`/campaigns/${campaignId}/entidades/${lugar.id}`}
-            className="shrink-0 font-chrome text-chrome-xs text-copper-text underline-offset-4 hover:underline"
+            // Fix round 1 — **primer sacrificio si no cabe: el lugar se oculta por debajo de
+            // `xl` (1280 px)** y reaparece de ahí para arriba, que es literalmente el ruling.
+            className="hidden shrink-0 whitespace-nowrap font-chrome text-chrome-xs text-copper-text underline-offset-4 hover:underline xl:inline"
           >
             {lugar.nombre}
           </Link>
@@ -155,22 +177,29 @@ export function BandaUnica({
       </div>
 
       {sesion && (
-        <p className="flex min-w-0 items-center gap-s2 font-data text-chrome-xs text-accent-text">
+        <p className="flex shrink-0 items-center gap-s2 whitespace-nowrap font-data text-chrome-xs text-accent-text">
           <IconoEnJuego className="h-2.5 w-2.5 shrink-0" />
           <span className="text-muted">
             {duracionDesde(sesion.startedAt, ahora)} ·{" "}
-            {cuantos === null
-              ? "asistencia sin declarar"
-              : cuantos === 1
-                ? "1 en la mesa"
-                : `${cuantos} en la mesa`}
+            {/* Fix round 1 — **segundo sacrificio si no cabe: la asistencia.** Sobrevive un
+                ancho más que el lugar (se oculta un paso más tarde, en `lg`, no en `xl`) porque
+                es la mitad de este `<p>` que el ruling nombra explícitamente como la segunda en
+                caer — la duración («386h 6m») se queda siempre, es la mitad que de verdad
+                importa para saber si la sesión sigue viva. */}
+            <span className="hidden lg:inline">
+              {cuantos === null
+                ? "asistencia sin declarar"
+                : cuantos === 1
+                  ? "1 en la mesa"
+                  : `${cuantos} en la mesa`}
+            </span>
           </span>
         </p>
       )}
 
       {/* El reloj de la campaña, siempre — también en reposo, que es cuando más se pregunta
           «¿por dónde va el tiempo del mundo?». */}
-      <div className="flex shrink-0 items-center gap-s1 font-data text-chrome-xs text-muted">
+      <div className="flex shrink-0 items-center gap-s1 whitespace-nowrap font-data text-chrome-xs text-muted">
         <Astro className="h-4 w-4 text-copper-text" aria-hidden="true" />
         <span className="text-text">{momento.hora}</span>
         <span>
@@ -184,7 +213,7 @@ export function BandaUnica({
         <div
           role="radiogroup"
           aria-label="Modo de la mesa"
-          className="flex shrink-0 items-center gap-s1 rounded-radius-md border border-muted/30 bg-bg p-s1"
+          className="flex shrink-0 items-center gap-s1 whitespace-nowrap rounded-radius-md border border-muted/30 bg-bg p-s1"
         >
           {(
             [

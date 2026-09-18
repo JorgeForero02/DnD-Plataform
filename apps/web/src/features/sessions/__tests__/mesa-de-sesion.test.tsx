@@ -128,11 +128,11 @@ describe("el elenco: la maqueta trae los datos que se miran treinta veces por se
     // Descriptor traducido del catálogo, nunca la clave: `human`/`rogue` no llegan a la pantalla.
     expect(within(elenco).getAllByText(/Humano · Pícaro · Nivel 5/)).not.toHaveLength(0);
     expect(within(elenco).getByText("Lo lleva Ana")).toBeInTheDocument();
-    // La cifra dice lo mismo que la barra: el color nunca es el único portador.
-    expect(within(elenco).getAllByText("42/58").length).toBeGreaterThan(0);
-    expect(
-      within(elenco).getByRole("img", { name: "Corvin Vhael: 42 de 58 puntos de golpe" }),
-    ).toBeInTheDocument();
+    // La cifra dice lo mismo que la barra: el color nunca es el único portador. Desde D-CF-149
+    // va como en el prototipo («PG · 42 / 58», la fracción a la derecha del rótulo).
+    const pg = within(elenco).getByRole("img", { name: "Corvin Vhael: 42 de 58 puntos de golpe" });
+    expect(pg).toBeInTheDocument();
+    expect(pg.parentElement).toHaveTextContent(/PG\s*42\s*\/\s*58/);
   });
 
   it("las condiciones se leen traducidas, nunca la clave del enumerado", async () => {
@@ -263,7 +263,9 @@ describe("el registro en vivo", () => {
     // `lineaDeLog` con la clase pegada delante — y esa frase se seguía leyendo dos veces.
     // `lineaDeLog` no ha cambiado; lo que cambió es qué parte de su salida pinta el hilo.
     expect(within(lista).getByText("media carta con el sello")).toBeInTheDocument();
-    expect(within(lista).getByText(/^Ana ·/)).toBeInTheDocument();
+    // Quién la puso: desde D-CF-149 la firma («Ana · hora») va en el `title` de la línea
+    // compacta, no como texto debajo — sigue estando, y sigue nombrando a la persona.
+    expect(within(lista).getByTitle(/^Ana ·/)).toBeInTheDocument();
     // El suceso del motor se lee igual, pero no se le inventa una categoría: sin chip.
     expect(within(lista).getByText("Pierde 7 PG (24 → 17)")).toBeInTheDocument();
     expect(selloDeSuceso(anotacion.payload as never)).toBe("DISCOVERY");

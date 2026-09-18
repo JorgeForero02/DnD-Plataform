@@ -15,8 +15,6 @@ import {
 } from "../../character-sheet/hooks";
 import { HASTA_EL_DESCANSO, nombreCondicion } from "../../character-sheet/vocabulario";
 import { describirRestante } from "../../character-sheet/duraciones";
-import { IconoEscudo } from "../../../ui/Iconos";
-import { Button } from "../../../ui/Button";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./accionesDeBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
@@ -203,7 +201,20 @@ export function FichaDeElenco({
   const apuntar = useObjetivoStore((s) => s.apuntar);
   const apuntado = objetivo?.id === personaje.id;
 
+  const voz = vozDePersonaje(personaje);
+  const velocidad = hoja?.effectiveSpeeds?.walk?.total ?? null;
+
   return (
+    // D-CF-149 (Task 5b de 3A.3) — **la tarjeta densa del prototipo** (`.ficha`): nombre con su
+    // voz y el descriptor a la derecha, «PG 13 / 20» con su barra, «CA 12 · Vel. 30», y las
+    // condiciones. El filete izquierdo de 3 px lleva el color del personaje (`border-l-current`
+    // sobre la clase de voz, que aquí es el color del texto de la `<li>`; el cuerpo lo devuelve a
+    // `text-text`). **Ninguna función se va**: los ±5 y «Ayudar» del jugador sobre el suyo, y
+    // «Daño» · «Curar» · «…» del DM, siguen al pie de la tarjeta, ahora como una fila de mandos
+    // pequeños (`MandosDeCombatiente`). El retrato con la inicial se retira de aquí —el HTML no
+    // lo dibuja y la voz ya va en el filete—; `Retrato` sigue exportado para la cabecera de la
+    // hoja. El propio (`destacado`) lleva el borde de cobre atenuado (`.tuya`), el que actúa el
+    // borde de cobre (`.actua`) más su palabra «Su turno», y el apuntado el anillo de peligro.
     <li
       role="button"
       tabIndex={0}
@@ -218,21 +229,11 @@ export function FichaDeElenco({
         });
       }}
       className={[
-        // **Dos desviaciones declaradas de la maqueta, y son la misma decisión.** La maqueta
-        // pone la tarjeta en `bg-surface` sobre el fondo de la página; aquí el elenco vive
-        // DENTRO de `PanelDeMesa`, que ya es `bg-surface`, así que una tarjeta de ese color se
-        // fundiría con su panel y dejaría de ser una tarjeta. Se invierte el par —tarjeta en
-        // `bg-bg` dentro de un panel claro— y por lo mismo el filete se queda opaco en vez de
-        // los `border-accent/60` y `border-muted/20` de la maqueta, que sobre este fondo
-        // apenas se ven. **Está preguntado al autor**; el radio sí es el de la maqueta.
-        "relative cursor-pointer rounded-radius-md bg-bg",
-        destacado ? "border border-accent p-s3" : "border border-muted p-s2",
-        // El anillo del turno. **No es el único portador**: el rótulo «Su turno» de arriba dice
-        // lo mismo con palabras, igual que la tira de iniciativa lleva su «Le toca».
-        turnoActual ? "ring-2 ring-warning" : "",
-        // El objetivo apuntado, con su propio anillo — de acento, para no confundirse con el
-        // aro ámbar del turno (los dos pueden coincidir: apuntas a quien le toca jugar).
-        apuntado ? "ring-2 ring-accent" : "",
+        "relative cursor-pointer rounded-radius-sm border border-l-[3px] border-l-current bg-bg/40 px-s3 py-s2 transition-colors hover:bg-muted/10",
+        voz,
+        turnoActual ? "border-copper" : destacado ? "border-copper/45" : "border-muted/30",
+        // El objetivo apuntado, con su anillo de peligro (`.ficha.objetivo` del prototipo).
+        apuntado ? "ring-1 ring-danger" : "",
         efectos.clase,
         // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.
         actual === 0 ? "fx-tarjeta-caido" : "",
@@ -240,15 +241,9 @@ export function FichaDeElenco({
       onAnimationEnd={efectos.alTerminarAnimacion}
     >
       {efectos.capa}
-      {turnoActual && (
-        <span className="absolute -top-2 left-s3 rounded-radius-sm bg-warning px-1.5 py-px font-chrome text-chrome-xs font-semibold text-bg">
-          Su turno
-        </span>
-      )}
-      <div className="flex items-center gap-s2">
-        <Retrato personaje={personaje} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-title text-chrome-md leading-tight text-text">
+      <div className="text-text">
+        <div className="flex items-baseline justify-between gap-s2">
+          <p className={`shrink-0 truncate font-title text-chrome-base leading-tight ${voz}`}>
             {/* m3 (ola de cierre, 2026-09-14): un PNJ jugable (spec §2, sin `statblockRef`) TAMBIÉN
                 tiene ficha del mundo (E-PM-13) — el mismo enlace que ya pinta `FichaDePnj.tsx`
                 para que un jugador que ve a este personaje tenga por dónde llegar. Sin
@@ -264,102 +259,112 @@ export function FichaDeElenco({
               personaje.name
             )}
           </p>
-          <p className="truncate font-data text-chrome-xs text-muted">
+          <p
+            className="min-w-0 truncate whitespace-nowrap font-chrome text-chrome-xs text-muted"
+            title={[descriptor, `Nivel ${personaje.level}`].filter(Boolean).join(" · ")}
+          >
+            {/* El turno actual **no se distingue solo por el borde**: su palabra va aquí, en
+                cobre, donde el prototipo pone el descriptor. */}
+            {turnoActual && <span className="mr-s1 text-copper-text">Su turno ·</span>}
             {[descriptor, `Nivel ${personaje.level}`].filter(Boolean).join(" · ")}
           </p>
-          {dueno && (
-            <p className="truncate font-chrome text-chrome-xs text-muted">Lo lleva {dueno}</p>
-          )}
         </div>
-        {ca !== null && (
-          <span className="flex shrink-0 items-center gap-1 font-data text-chrome-xs text-muted">
-            <IconoEscudo className="h-3.5 w-3.5" />
-            <span className="sr-only">Clase de armadura </span>
-            {ca}
-          </span>
-        )}
-      </div>
 
-      <BarraDePuntosDeGolpe nombre={personaje.name} actual={actual} maximo={maximo} />
+        <BarraDePuntosDeGolpe nombre={personaje.name} actual={actual} maximo={maximo} />
 
-      {salvaciones && (
-        <p
-          aria-label="Salvaciones contra muerte"
-          className="mt-s1 font-chrome text-chrome-xs text-muted"
-        >
-          <span className="uppercase tracking-wide">Salvaciones</span>{" "}
-          {/* **Ningún valor de enumeración llega a la pantalla**: la forma legible se escribe una
-              vez y se importa. Aquí son tres y viven pegadas a su uso porque no las lee nadie
-              más; el día que las lea otra pantalla, se suben a un vocabulario. */}
-          <strong className="text-text">{palabraDeEstadoDeMuerte(salvaciones.status)}</strong>
-          {" · "}
-          {/* Con palabras además del número: «1 / 2» sin decir cuál es cuál obliga a recordar el
-              orden, y esto se lee de reojo en mitad de un combate. */}
-          <strong className="text-success-text">{salvaciones.successes} logradas</strong>
-          {" · "}
-          <strong className="text-danger-text">{salvaciones.failures} fallidas</strong>
-        </p>
-      )}
-
-      {puedeCambiarPg && maximo !== null && (
-        // Dos golpes, no un formulario. La corrección exacta se hace en la hoja, con su control
-        // de concurrencia; aquí solo está el gesto que se repite treinta veces por sesión.
-        //
-        // **El DM no lleva esto**: lleva el cajón de «Daño», que admite el crítico y **el tipo
-        // de daño**, y que enseña la traza del servidor. Los ±5 se quedan donde la maqueta no pone
-        // mandos —el personaje propio de un jugador—, porque quitarlos sería dejarle sin la
-        // única forma de anotar un golpe sin abrir la hoja entera.
-        <div className="mt-s2 flex items-center gap-s2">
-          {[-5, 5].map((delta) => (
-            <Button
-              key={delta}
-              type="button"
-              variant="ghost"
-              className="px-2 py-0.5 font-data text-chrome-xs"
-              disabled={cambiarPg.isPending}
-              onClick={() => cambiarPg.mutate({ delta })}
-              aria-label={`${delta < 0 ? "Quitar" : "Dar"} ${Math.abs(delta)} puntos de golpe a ${personaje.name}`}
-            >
-              {delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`}
-            </Button>
-          ))}
-          {cambiarPg.isError && (
-            <span role="alert" className="font-chrome text-chrome-xs text-danger-text">
-              {(cambiarPg.error as Error).message}
+        <p className="mt-s1 flex flex-wrap gap-x-s3 font-chrome text-chrome-xs text-muted">
+          {ca !== null && (
+            <span>
+              CA <strong className="font-data font-medium text-text">{ca}</strong>
+              <span className="sr-only"> de clase de armadura</span>
             </span>
           )}
-        </div>
-      )}
+          {velocidad !== null && (
+            <span>
+              Vel. <strong className="font-data font-medium text-text">{velocidad}</strong>
+            </span>
+          )}
+          {dueno && <span className="min-w-0 truncate">Lo lleva {dueno}</span>}
+        </p>
 
-      {/* **Ayudar va en TU tarjeta, no en la del otro** (plan 08, I8): la regla de la mesa es que
-          sobre el personaje de otro jugador no van mandos, y ayudar es una acción tuya — a quién
-          ayudas es su parámetro. Misma condición que los ±5: esto es «lo controlo yo». */}
-      {puedeCambiarPg && <AyudarA campaignId={campaignId} personaje={personaje} />}
+        {salvaciones && (
+          <p
+            aria-label="Salvaciones contra muerte"
+            className="mt-s1 font-chrome text-chrome-xs text-muted"
+          >
+            <span className="uppercase tracking-wide">Salvaciones</span>{" "}
+            {/* **Ningún valor de enumeración llega a la pantalla**: la forma legible se escribe una
+                vez y se importa. Aquí son tres y viven pegadas a su uso porque no las lee nadie
+                más; el día que las lea otra pantalla, se suben a un vocabulario. */}
+            <strong className="text-text">{palabraDeEstadoDeMuerte(salvaciones.status)}</strong>
+            {" · "}
+            {/* Con palabras además del número: «1 / 2» sin decir cuál es cuál obliga a recordar el
+                orden, y esto se lee de reojo en mitad de un combate. */}
+            <strong className="text-success-text">{salvaciones.successes} logradas</strong>
+            {" · "}
+            <strong className="text-danger-text">{salvaciones.failures} fallidas</strong>
+          </p>
+        )}
 
-      <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
+        <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
 
-      {conMandos && (
-        <MandosDeCombatiente
-          campaignId={campaignId}
-          characterId={personaje.id}
-          nombre={personaje.name}
-          enCombate={enCombate}
-          // `conMandos` YA es «esDm» en el único sitio que lo enciende (`ColumnaElenco.tsx`, ver
-          // el comentario de arriba sobre el mando de bando) — así que es el mismo valor, no uno
-          // inventado para esta llamada.
-          soyDm={conMandos}
-          // **El bando, dentro del menú y no como fila aparte** (tarea 8 del pulido): sin
-          // encuentro no hay de qué bando hablar —el bando vive en el `Combatant`, no en el
-          // personaje—, y por eso, además de `conMandos`, hace falta `bando`/`sessionId`/
-          // `encounterId`/`combatanteId`: los cuatro juntos son «este personaje combate ahora
-          // mismo», lo mismo que ya exige `PonerCondicion` con su `enCombate` para contar
-          // asaltos.
-          accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
-          errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
-          accionesDeMesa={accionesDeMesa}
-          errorDeMesa={errorDeMesa}
-        />
-      )}
+        {puedeCambiarPg && maximo !== null && (
+          // Dos golpes, no un formulario. La corrección exacta se hace en la hoja, con su control
+          // de concurrencia; aquí solo está el gesto que se repite treinta veces por sesión.
+          //
+          // **El DM no lleva esto**: lleva el cajón de «Daño», que admite el crítico y **el tipo
+          // de daño**, y que enseña la traza del servidor. Los ±5 se quedan donde la maqueta no pone
+          // mandos —el personaje propio de un jugador—, porque quitarlos sería dejarle sin la
+          // única forma de anotar un golpe sin abrir la hoja entera.
+          <div className="mt-s2 flex items-center gap-s1">
+            {[-5, 5].map((delta) => (
+              <button
+                key={delta}
+                type="button"
+                disabled={cambiarPg.isPending}
+                onClick={() => cambiarPg.mutate({ delta })}
+                aria-label={`${delta < 0 ? "Quitar" : "Dar"} ${Math.abs(delta)} puntos de golpe a ${personaje.name}`}
+                className="rounded-radius-sm border border-muted/40 px-s2 py-px font-data text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text disabled:opacity-50"
+              >
+                {delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`}
+              </button>
+            ))}
+            {cambiarPg.isError && (
+              <span role="alert" className="font-chrome text-chrome-xs text-danger-text">
+                {(cambiarPg.error as Error).message}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* **Ayudar va en TU tarjeta, no en la del otro** (plan 08, I8): la regla de la mesa es que
+            sobre el personaje de otro jugador no van mandos, y ayudar es una acción tuya — a quién
+            ayudas es su parámetro. Misma condición que los ±5: esto es «lo controlo yo». */}
+        {puedeCambiarPg && <AyudarA campaignId={campaignId} personaje={personaje} />}
+
+        {conMandos && (
+          <MandosDeCombatiente
+            campaignId={campaignId}
+            characterId={personaje.id}
+            nombre={personaje.name}
+            enCombate={enCombate}
+            // `conMandos` YA es «esDm» en el único sitio que lo enciende (`ColumnaElenco.tsx`, ver
+            // el comentario de arriba sobre el mando de bando) — así que es el mismo valor, no uno
+            // inventado para esta llamada.
+            soyDm={conMandos}
+            // **El bando, dentro del menú y no como fila aparte** (tarea 8 del pulido): sin
+            // encuentro no hay de qué bando hablar —el bando vive en el `Combatant`, no en el
+            // personaje—, y por eso, además de `conMandos`, hace falta `bando`/`sessionId`/
+            // `encounterId`/`combatanteId`: los cuatro juntos son «este personaje combate ahora
+            // mismo», lo mismo que ya exige `PonerCondicion` con su `enCombate` para contar
+            // asaltos.
+            accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
+            errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
+            accionesDeMesa={accionesDeMesa}
+            errorDeMesa={errorDeMesa}
+          />
+        )}
+      </div>
     </li>
   );
 }
@@ -525,32 +530,34 @@ export function BarraDePuntosDeGolpe({
 }) {
   if (actual === null || maximo === null || maximo <= 0) {
     return (
-      <p className="mt-s2 font-chrome text-chrome-xs text-muted">Sin puntos de golpe en la hoja.</p>
+      <p className="mt-s1 font-chrome text-chrome-xs text-muted">Sin puntos de golpe en la hoja.</p>
     );
   }
   const proporcion = Math.max(0, Math.min(1, actual / maximo));
   // Los tramos de la maqueta (`prototipo/src/features/FichaDeElenco.tsx`, `BarraVida`): 25 % y
-  // 55 %. Un personaje a 0 entra en el primero por definición.
+  // 55 %. Un personaje a 0 entra en el primero por definición. **El sano va en acento, no en la
+  // salvia del HTML**: `voz-salvia` es una voz de personaje, no un estado (`tailwind.config`), y
+  // la casa no tiene token de «éxito» aparte del acento.
   const tono = proporcion <= 0.25 ? "bg-danger" : proporcion <= 0.55 ? "bg-warning" : "bg-accent";
 
-  // La forma de la maqueta: la barra y la fracción **en la misma línea**, no un rótulo «PG»
-  // encima. La cifra es lo que hace que el color no sea el único portador, y va pegada a la
-  // barra para que se lean de un vistazo como una sola cosa.
+  // D-CF-149 — la forma del prototipo (`.ficha .pg` + `.barra`): «PG» a la izquierda, la
+  // fracción a la derecha, y la barra de 4 px debajo a todo lo ancho. La cifra es lo que hace
+  // que el color no sea el único portador.
   return (
-    <div className="mt-s2 flex items-center gap-s2">
+    <div className="mt-s1">
+      <p className="flex items-baseline justify-between font-data text-chrome-xs text-muted">
+        <span>PG</span>
+        <span className="tabular-nums">
+          <strong className="font-medium text-text">{actual}</strong> / {maximo}
+        </span>
+      </p>
       <div
         role="img"
         aria-label={`${nombre}: ${actual} de ${maximo} puntos de golpe`}
-        // `rounded-full` y sin borde, como la maqueta. El canal va en `bg-surface` y no en el
-        // `bg-bg` de la maqueta por lo mismo que la tarjeta: aquí el fondo de la tarjeta ya es
-        // `bg-bg`, y un canal de su mismo color no se vería.
-        className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface"
+        className="mt-px h-1 w-full overflow-hidden rounded-full bg-muted/20"
       >
         <div className={`h-full ${tono}`} style={{ width: `${(proporcion * 100).toFixed(1)}%` }} />
       </div>
-      <span className="shrink-0 font-data text-chrome-xs tabular-nums text-text">
-        {actual}/{maximo}
-      </span>
     </div>
   );
 }

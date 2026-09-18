@@ -3,7 +3,7 @@ import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
 import type { GameEventRow } from "../log-api";
 import { useStampNote } from "../hooks";
 import { ICONO_SELLO, NOMBRE_SELLO, SELLOS_EN_ORDEN } from "../vocabulario";
-import { IconoBajarAlFondo, IconoRegistro } from "../iconos";
+import { IconoBajarAlFondo } from "../iconos";
 import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "../reincorporarse";
 import { PanelDeMesa } from "../PanelDeMesa";
 import { useMembers } from "../../campaigns/members";
@@ -12,7 +12,6 @@ import type { Character } from "../../characters/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import type { ConColor } from "../../../dominio/voces";
 import type { Member } from "../../campaigns/members";
-import { Button } from "../../../ui/Button";
 import { MensajeDelHilo } from "./MensajeDelHilo";
 import { IconoPluma } from "../../../ui/Iconos";
 import { lineaDeLog } from "../linea-de-log";
@@ -135,6 +134,7 @@ export function HiloDeSesion({
   pnjs = [],
   filtro = "TODO",
   onFiltroChange,
+  amplio = false,
 }: {
   campaignId: string;
   eventos: GameEventRow[];
@@ -163,6 +163,12 @@ export function HiloDeSesion({
    * filtrar sin un padre que lleve la cuenta.
    */
   onFiltroChange?: (siguiente: FiltroDeRegistro) => void;
+  /**
+   * D-CF-149 — **modo crónica**: cuando el registro ocupa el centro («Sin tablero»), el
+   * prototipo lo lee más grande (`body[data-modo="cronica"] .linea .txt{font-size:1.0625rem}`)
+   * y con más aire entre líneas. En la lateral de 18 rem se queda en la medida compacta.
+   */
+  amplio?: boolean;
 }) {
   const { data: miembros } = useMembers(campaignId);
   const sellar = useStampNote(campaignId);
@@ -419,10 +425,12 @@ export function HiloDeSesion({
   );
 
   return (
+    // D-CF-149 (Task 5b de 3A.3) — la caja del registro del prototipo: «Registro» en la cabecera
+    // con los filtros a la derecha, el hilo en líneas compactas (`MensajeDelHilo variante="linea"`)
+    // y, al pie, la caja de anotar de una fila con sus seis sellos como iconos pequeños.
     <PanelDeMesa
       etiqueta="Registro de la sesión"
-      titulo="Registro en vivo"
-      icono={<IconoRegistro className="h-4 w-4" />}
+      titulo="Registro"
       accion={filtros}
       cuerpoClassName="flex min-h-0 flex-col"
     >
@@ -445,7 +453,7 @@ export function HiloDeSesion({
           ref={listaRef}
           onScroll={alDesplazar}
           aria-label="Sucesos de la sesión"
-          className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-s5 py-s4"
+          className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-s3 py-s2"
         >
           {enOrden.length === 0 && (
             <li className="font-chrome text-chrome-sm text-muted">
@@ -497,6 +505,8 @@ export function HiloDeSesion({
                     sujetoEnCabecera: sujetoEnCabecera(e),
                     nombres,
                   })}
+                  variante="linea"
+                  amplio={amplio}
                 />
               </Fragment>
             );
@@ -520,22 +530,29 @@ export function HiloDeSesion({
       </div>
 
       {/* El compositor: **fuera del scroll**, siempre a la vista, y con la pluma delante como en
-          la maqueta. Los seis botones son el envío, uno por clase de sello. */}
+          la maqueta. Los seis botones son el envío, uno por clase de sello.
+
+          D-CF-149 (Task 5b de 3A.3) — **en dos filas cortas, como el `.decir` del prototipo**: la
+          caja de una línea con «Solo el DM» al lado, y debajo los seis sellos como cuadrados de
+          1.6 rem con su icono, su palabra leída (`sr-only`) y en `title` — los mismos nombres
+          accesibles («Combate», «PNJ», …) que tenían como botones con texto. */}
       <form
-        className="shrink-0 border-t border-muted px-s5 py-s3"
+        className="shrink-0 border-t border-muted/40 px-s3 py-s2"
         onSubmit={(e) => e.preventDefault()}
       >
-        <div className="flex items-end gap-s2">
-          <IconoPluma className="mb-s2 h-5 w-5 shrink-0 text-copper-text" />
+        <div className="flex items-center gap-s2">
+          <IconoPluma className="h-4 w-4 shrink-0 text-copper-text" />
           <textarea
             aria-label="Qué anotar"
             placeholder="…y en dos palabras, qué pasó"
             rows={1}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            className="scroll-quiet max-h-28 min-h-[2.4rem] min-w-0 flex-1 resize-none rounded-radius-sm border border-muted/30 bg-bg px-s3 py-s2 font-world text-world-base text-text placeholder:text-muted focus:border-accent"
+            className="scroll-quiet max-h-28 min-h-[2rem] min-w-0 flex-1 resize-none rounded-radius-sm border border-muted/40 bg-bg px-s2 py-s1 font-world text-world-sm text-text placeholder:text-muted focus:border-copper"
           />
-          <label className="mb-s2 flex shrink-0 items-center gap-1.5 font-chrome text-chrome-xs text-muted">
+        </div>
+        <div className="mt-s1 flex flex-wrap items-center gap-s1">
+          <label className="mr-auto flex shrink-0 items-center gap-1 whitespace-nowrap font-chrome text-chrome-xs text-muted">
             <input
               type="checkbox"
               checked={soloDm}
@@ -544,22 +561,20 @@ export function HiloDeSesion({
             />
             Solo el DM
           </label>
-        </div>
-        <div className="mt-s2 flex flex-wrap items-center gap-1.5">
           {SELLOS_EN_ORDEN.map((kind) => {
             const Icono = ICONO_SELLO[kind];
             return (
-              <Button
+              <button
                 key={kind}
                 type="button"
-                variant="ghost"
-                className="flex items-center gap-1.5 px-2 py-1 text-chrome-xs"
+                title={NOMBRE_SELLO[kind]}
                 disabled={sellar.isPending || !hayTexto}
                 onClick={() => void poner(kind)}
+                className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-muted/40 text-muted transition-colors hover:border-copper hover:text-copper-text disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Icono className="h-4 w-4" />
-                {NOMBRE_SELLO[kind]}
-              </Button>
+                <Icono className="h-3.5 w-3.5" />
+                <span className="sr-only">{NOMBRE_SELLO[kind]}</span>
+              </button>
             );
           })}
         </div>

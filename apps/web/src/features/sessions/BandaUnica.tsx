@@ -186,7 +186,10 @@ export function BandaUnica({
                 es la mitad de este `<p>` que el ruling nombra explícitamente como la segunda en
                 caer — la duración («386h 6m») se queda siempre, es la mitad que de verdad
                 importa para saber si la sesión sigue viva. */}
-            <span className="hidden lg:inline">
+            {/* D-CF-149 (Task 5b): a 1280 la fila del DM ya no dejaba ancho al título de la
+                escena —el prototipo también lo trunca, pero no a cero—; la asistencia pasa a
+                verse desde `2xl`. Sigue en el DOM (las pruebas la leen por `textContent`). */}
+            <span className="hidden 2xl:inline">
               {cuantos === null
                 ? "asistencia sin declarar"
                 : cuantos === 1
@@ -280,7 +283,7 @@ export function BandaUnica({
               aria-label="Ver el registro como"
               value={comoUsuario}
               onChange={(e) => onComoUsuario(e.target.value)}
-              className={fieldControlClass}
+              className={`${fieldControlClass} w-auto max-w-[9rem] py-px text-chrome-xs`}
             >
               <option value="">yo (DM)</option>
               {(miembros ?? [])

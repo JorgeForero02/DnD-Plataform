@@ -558,3 +558,13 @@ export function IconoBasica({ className }: IconoProps) {
     </Marco>
   );
 }
+
+/** Lápiz: corregir un número a mano (la iniciativa de un turno en la franja, D-CF-149). */
+export function IconoLapiz({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="lapiz">
+      <path d="M4 20l4-1 10-10-3-3L5 16l-1 4z" />
+      <path d="M13 8l3 3" />
+    </Marco>
+  );
+}

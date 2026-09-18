@@ -168,8 +168,9 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
   //     aria-label="Qué se ve"`, tres chips de una palabra) — ver `OPCIONES_DE_FILTRO` en
   //     `HiloDeSesion.tsx`. Esta es la medida que demuestra que el bloque volvió a caber en una
   //     cabecera normal, no en un panel aparte.
+  // D-CF-149: la cabecera se llama «Registro», como en el prototipo (antes «Registro en vivo»).
   const cabeceraDelRegistro = page
-    .getByRole("heading", { name: "Registro en vivo" })
+    .getByRole("heading", { name: "Registro", exact: true })
     .locator("xpath=..");
   const cabeceraBox = await cabeceraDelRegistro.boundingBox();
   expect(cabeceraBox).not.toBeNull();

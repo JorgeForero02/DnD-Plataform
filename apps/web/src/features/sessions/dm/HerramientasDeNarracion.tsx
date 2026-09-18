@@ -81,29 +81,17 @@ export const FRASE_DEL_DM =
 type HerramientaAbierta = "revelar" | "tirada" | "reloj" | "criatura" | "reglas" | "tablas" | "xp";
 
 /**
- * Los cuatro tonos de la maqueta (`copper`, `accent`, `fantasma`, `danger`) sobre el botón de
- * esta casa.
- *
- * `ui/Button` tiene cuatro variantes y **ninguna es de cobre**, así que el mosaico se dibuja aquí
- * con los tokens que ya existen, en vez de añadirle una variante a una primitiva que usa media
- * aplicación y que además es de otro carril. Es maquetación local a esta rejilla y **la capa
- * visual la absorberá** cuando `ui/Button` tenga su variante de cobre.
+ * D-CF-149 (Task 5b de 3A.3) — **un solo tono, el del prototipo** (`.herr-rejilla button`): borde
+ * apagado, icono en cobre, texto pequeño, y el cobre en el borde al pasar el ratón. Hasta aquí
+ * cada botón llevaba uno de los cuatro tonos de la maqueta de Figma (`copper`, `accent`,
+ * `fantasma`, `danger`); el HTML de la mesa los iguala, y la mesa se ve como el HTML.
  */
-const TONOS = {
-  copper: "border-copper text-copper-text hover:border-accent hover:text-accent-text",
-  accent: "border-accent text-accent-text hover:brightness-110",
-  fantasma: "border-muted text-text hover:border-accent hover:text-accent-text",
-  danger: "border-danger text-danger-text hover:brightness-110",
-} as const;
-
 function BotonDeHerramienta({
   icono,
-  tono,
   onClick,
   children,
 }: {
   icono: ReactNode;
-  tono: keyof typeof TONOS;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -111,12 +99,9 @@ function BotonDeHerramienta({
     <button
       type="button"
       onClick={onClick}
-      className={[
-        "flex min-w-0 items-start gap-s1 rounded-radius-sm border bg-bg px-s2 py-s2 text-left font-chrome text-chrome-xs leading-snug transition-colors",
-        TONOS[tono],
-      ].join(" ")}
+      className="flex min-h-[2rem] min-w-0 items-center gap-s1 rounded-radius-sm border border-muted/40 px-s2 py-s1 text-left font-chrome text-chrome-xs leading-tight text-text transition-colors hover:border-copper hover:bg-muted/10"
     >
-      <span className="mt-px shrink-0">{icono}</span>
+      <span className="shrink-0 text-copper-text [&>svg]:h-3.5 [&>svg]:w-3.5">{icono}</span>
       <span className="min-w-0">{children}</span>
     </button>
   );
@@ -155,93 +140,55 @@ export function HerramientasDeNarracion({
   const enModoXp = reglasCompletas(campana?.tableRules).progresion === "XP";
 
   return (
-    // `gap-s4`, que es lo que la §5 de la auditoría fija literalmente para las herramientas del
-    // DM (`flex min-h-0 flex-col gap-s4 overflow-y-auto scroll-quiet`). El scroll y el
-    // `overflow-y-auto` los pone el compositor en su `aside`; aquí va el ritmo vertical.
-    <div className="flex min-h-0 flex-col gap-s4">
-      <h2 className="flex shrink-0 items-center gap-s2 font-title text-chrome-md text-text">
-        Herramientas del DM
-        <span aria-hidden="true" className="h-px flex-1 bg-copper/40" />
-      </h2>
+    // D-CF-149 — la caja de herramientas del prototipo (`.herramientas`): título, la frase
+    // «Lo que la mesa todavía no ve.» en cursiva, y la rejilla de dos columnas. «Consultar el
+    // mundo» entra en la rejilla como octavo botón —el HTML lo pone ahí— en vez de como pie.
+    // El scroll y el `overflow-y-auto` los pone el compositor en su `aside`; aquí va el ritmo.
+    <div className="flex min-h-0 flex-col gap-s2">
+      <h2 className="shrink-0 font-title text-chrome-md text-text">Herramientas del DM</h2>
+      <p className="shrink-0 font-world text-chrome-sm italic text-muted">
+        Lo que la mesa todavía no ve.
+      </p>
 
-      {/* La rejilla de la maqueta, con sus seis en el mismo orden y con sus mismos tonos. */}
+      {/* La rejilla del prototipo, en su mismo orden. */}
       <div className="grid shrink-0 grid-cols-2 gap-s2">
-        <BotonDeHerramienta
-          tono="copper"
-          icono={<IconoMegafono className="h-4 w-4" />}
-          onClick={() => setAbierta("revelar")}
-        >
-          Revelar algo
-        </BotonDeHerramienta>
-        <BotonDeHerramienta
-          tono="accent"
-          icono={<IconoD20 className="text-chrome-base" />}
-          onClick={() => setAbierta("tirada")}
-        >
+        <BotonDeHerramienta icono={<IconoD20 />} onClick={() => setAbierta("tirada")}>
           Pedir tirada
         </BotonDeHerramienta>
-        <BotonDeHerramienta
-          tono="fantasma"
-          icono={<IconoReloj className="h-4 w-4" />}
-          onClick={() => setAbierta("reloj")}
-        >
-          Avanzar el reloj
-        </BotonDeHerramienta>
-        <BotonDeHerramienta
-          tono="danger"
-          icono={<IconoBestiario className="h-4 w-4" />}
-          onClick={() => setAbierta("criatura")}
-        >
+        <BotonDeHerramienta icono={<IconoBestiario />} onClick={() => setAbierta("criatura")}>
           Sacar criatura
         </BotonDeHerramienta>
-        <BotonDeHerramienta
-          tono="fantasma"
-          icono={<IconoRayo className="h-4 w-4" />}
-          onClick={() => setAbierta("reglas")}
-        >
-          Bloques de reglas
+        <BotonDeHerramienta icono={<IconoMegafono />} onClick={() => setAbierta("revelar")}>
+          Revelar algo
         </BotonDeHerramienta>
-        <BotonDeHerramienta
-          tono="fantasma"
-          icono={<IconoTabla className="h-4 w-4" />}
-          onClick={() => setAbierta("tablas")}
-        >
-          Tablas
+        <BotonDeHerramienta icono={<IconoReloj />} onClick={() => setAbierta("reloj")}>
+          Avanzar el reloj
         </BotonDeHerramienta>
         {/* Séptima herramienta, solo en modo XP (E-PE-8): la rejilla de la maqueta es de seis y
-            esta no la sustituye, se suma — con siete, la última fila del `grid-cols-2` se queda
-            con una sola casilla, que es justo lo que pide el brief y no un octavo inventado. */}
+            esta no la sustituye, se suma. */}
         {enModoXp && (
-          <BotonDeHerramienta
-            tono="accent"
-            icono={<IconoAscenso className="h-4 w-4" />}
-            onClick={() => setAbierta("xp")}
-          >
+          <BotonDeHerramienta icono={<IconoAscenso />} onClick={() => setAbierta("xp")}>
             Dar XP
+          </BotonDeHerramienta>
+        )}
+        <BotonDeHerramienta icono={<IconoRayo />} onClick={() => setAbierta("reglas")}>
+          Bloques de reglas
+        </BotonDeHerramienta>
+        <BotonDeHerramienta icono={<IconoTabla />} onClick={() => setAbierta("tablas")}>
+          Tablas
+        </BotonDeHerramienta>
+        {/* **«Consultar el mundo» lo monta el compositor, no esta columna**: `ConsultaDelMundo`
+            va en UN solo sitio —el cajón del rail, con su atajo `M`— y esto es el atajo del
+            prototipo para la mano que ya está aquí. Si el compositor deja de pasarlo, el botón
+            desaparece y no pasa nada más. */}
+        {onConsultarElMundo && (
+          <BotonDeHerramienta icono={<IconoLupa />} onClick={onConsultarElMundo}>
+            Consultar el mundo
           </BotonDeHerramienta>
         )}
       </div>
 
       <p className="shrink-0 font-chrome text-chrome-xs leading-snug text-muted">{FRASE_DEL_DM}</p>
-
-      {/* **«Consultar el mundo» baja de categoría a propósito, y queda declarado.**
-          Hasta hoy era el único control de esta columna, y por eso iba como botón con borde de
-          cobre. Ya no lo es: al lado de las seis herramientas de la maqueta, un séptimo botón del
-          mismo peso competiría con ellas, y además **no está en la maqueta** — su columna del DM
-          no tiene ningún acceso al mundo. Se queda como pie discreto porque el acceso de verdad
-          es el rail, donde vive con su atajo `M`; esto es solo un atajo para la mano que ya está
-          aquí. Si se prefiere el botón de antes, se devuelve cambiando estas clases; si se
-          prefiere que no exista, basta con dejar de pasar `onConsultarElMundo`. */}
-      {onConsultarElMundo && (
-        <button
-          type="button"
-          onClick={onConsultarElMundo}
-          className="flex shrink-0 items-center gap-s2 border-t border-muted pt-s2 text-left font-chrome text-chrome-xs text-muted transition-colors hover:text-accent-text"
-        >
-          <IconoLupa className="h-4 w-4 shrink-0 text-copper-text" />
-          Consultar el mundo
-        </button>
-      )}
 
       <Dialog
         open={abierta === "revelar"}

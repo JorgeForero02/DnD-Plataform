@@ -165,7 +165,7 @@ describe("quién puede tocar el combate", () => {
   it("el jugador no ve pasar turno, ni terminar, ni corregir", () => {
     montarTira(ENCUENTRO, false);
 
-    expect(screen.queryByRole("button", { name: "Pasar turno" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Siguiente turno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Terminar el combate" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Corregir la iniciativa/ }),
@@ -185,7 +185,7 @@ describe("quién puede tocar el combate", () => {
       .mockResolvedValue({ ...ENCUENTRO, roundAdvanced: false });
     montarTira();
 
-    fireEvent.click(screen.getByRole("button", { name: "Pasar turno" }));
+    fireEvent.click(screen.getByRole("button", { name: "Siguiente turno" }));
 
     await waitFor(() => expect(espia).toHaveBeenCalledWith("c1", "s1", "e1"));
   });
@@ -407,8 +407,8 @@ describe("la economía del turno propio llega a la tira, leída del encuentro (c
     montarTira();
 
     const economia = await screen.findByRole("status", { name: "Economía del turno" });
-    expect(within(economia).getByText("acción: disponible")).toBeInTheDocument();
-    expect(within(economia).getByText("acción adicional: disponible")).toBeInTheDocument();
+    expect(within(economia).getByTitle("acción: disponible")).toBeInTheDocument();
+    expect(within(economia).getByTitle("acción adicional: disponible")).toBeInTheDocument();
     // La velocidad tarda un sondeo aparte (`useCharacterSheet`): se espera su texto, no se lee
     // en el primer render.
     await waitFor(() => expect(within(economia).getByText("30/30 pies")).toBeInTheDocument());
@@ -424,8 +424,27 @@ describe("la economía del turno propio llega a la tira, leída del encuentro (c
     montarTira(conAccionGastada);
 
     const economia = await screen.findByRole("status", { name: "Economía del turno" });
-    expect(within(economia).getByText("acción: gastada")).toBeInTheDocument();
-    expect(within(economia).getByText("acción adicional: gastada")).toBeInTheDocument();
+    expect(within(economia).getByTitle("acción: gastada")).toBeInTheDocument();
+    expect(within(economia).getByTitle("acción adicional: gastada")).toBeInTheDocument();
+  });
+
+  // D-CF-149 (Task 5b de 3A.3): la franja del prototipo enseña al DM la economía de QUIEN ACTÚA
+  // («Sylas · acción · adicional · reacción»), que es a quien le corrige a mano. Sin personaje
+  // propio, el DM veía antes una franja sin economía; un jugador sin combatiente sigue sin verla.
+  it("el DM sin personaje propio ve la economía de quien tiene el turno, con su nombre; un jugador ajeno no ve ninguna", async () => {
+    useAuthStore.setState({
+      user: { id: "u-dm-sin-ficha", email: "d@b.c", displayName: "DM" } as never,
+    });
+    const { unmount } = montarTira();
+
+    const economia = await screen.findByRole("status", { name: "Economía del turno" });
+    expect(economia).toHaveTextContent("Thora Piedrahonda");
+    expect(within(economia).getByTitle("acción: disponible")).toBeInTheDocument();
+    unmount();
+
+    useAuthStore.setState({ user: { id: "u-otra", email: "o@b.c", displayName: "Otra" } as never });
+    montarTira(ENCUENTRO, false);
+    expect(screen.queryByRole("status", { name: "Economía del turno" })).not.toBeInTheDocument();
   });
 });
 

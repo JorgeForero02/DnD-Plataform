@@ -30,12 +30,15 @@ export function ColumnaDelRegistro({
   esDm,
   comoUsuario,
   pnjs,
+  amplio = false,
 }: {
   campaignId: string;
   eventos: GameEventRow[];
   esDm: boolean;
   comoUsuario: string;
   pnjs?: NpcEnLaMesa[];
+  /** D-CF-149: el registro en el centro («Sin tablero») se lee más grande, como en el prototipo. */
+  amplio?: boolean;
 }) {
   const [filtro, setFiltro] = useState<FiltroDeRegistro>("TODO");
 
@@ -48,6 +51,7 @@ export function ColumnaDelRegistro({
       pnjs={pnjs}
       filtro={filtro}
       onFiltroChange={setFiltro}
+      amplio={amplio}
     />
   );
 }

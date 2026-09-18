@@ -224,7 +224,7 @@ test("la barra de acciones: apuntar desde el elenco, lanzar contra el chip, la f
   // antes de gastar nada. Con solo dos combatientes, «Pasar turno» alterna entre los dos.
   await expect(async () => {
     const leToca = await barra.getByText("· le toca").isVisible();
-    if (!leToca) await dm.getByRole("button", { name: "Pasar turno" }).click();
+    if (!leToca) await dm.getByRole("button", { name: "Siguiente turno" }).click();
     expect(leToca).toBe(true);
   }).toPass({ timeout: 30_000 });
 
@@ -282,8 +282,8 @@ test("la barra de acciones: apuntar desde el elenco, lanzar contra el chip, la f
   await expect(filaProyectil.getByText("ya gastaste tu acción")).toBeVisible();
 
   // --- El DM pasa turno dos veces: vuelve a ser el de la maga ---
-  await dm.getByRole("button", { name: "Pasar turno" }).click();
-  await dm.getByRole("button", { name: "Pasar turno" }).click();
+  await dm.getByRole("button", { name: "Siguiente turno" }).click();
+  await dm.getByRole("button", { name: "Siguiente turno" }).click();
   await expect(barra.getByText("· le toca")).toBeVisible({ timeout: 15_000 });
 
   // --- «Esquivar, ayudar…» → «Esquivar» → línea en el hilo ---

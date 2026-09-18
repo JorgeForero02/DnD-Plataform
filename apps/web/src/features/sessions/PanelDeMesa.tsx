@@ -25,7 +25,8 @@ export function PanelDeMesa({
   cuerpoClassName = "p-s3",
 }: {
   titulo: string;
-  icono: ReactNode;
+  /** D-CF-149: el prototipo no pone icono en la cabecera del registro; se admite sin él. */
+  icono?: ReactNode;
   accion?: ReactNode;
   etiqueta: string;
   children: ReactNode;
@@ -38,11 +39,11 @@ export function PanelDeMesa({
       aria-label={etiqueta}
       className={`flex min-h-0 min-w-0 flex-col rounded-radius-sm border border-muted bg-surface ${className}`}
     >
-      <div className="flex shrink-0 items-center gap-s2 border-b border-muted px-s3 py-s2">
-        <span className="text-copper-text">{icono}</span>
-        <h2 className="min-w-0 flex-1 truncate font-chrome text-chrome-sm font-semibold text-text">
-          {titulo}
-        </h2>
+      {/* D-CF-149 (Task 5b de 3A.3): la cabecera del prototipo (`.reg-cab`) — el título en la
+          tipografía de títulos, sin versalitas, y lo que la acompañe (los filtros) a la derecha. */}
+      <div className="flex shrink-0 items-center gap-s2 border-b border-muted/40 px-s3 py-s2">
+        {icono && <span className="text-copper-text">{icono}</span>}
+        <h2 className="min-w-0 flex-1 truncate font-title text-chrome-md text-text">{titulo}</h2>
         {accion}
       </div>
       <div className={`min-h-0 min-w-0 flex-1 ${cuerpoClassName}`}>{children}</div>

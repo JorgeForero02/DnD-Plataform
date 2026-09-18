@@ -228,6 +228,24 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         onModo={cambiarModoDeLaMesa}
       />
 
+      {/* **La capa de combate** (2.5.6). No es una pantalla a la que se navega: es una tira que
+          aparece encima del elenco mientras dura el encuentro y se va cuando termina. Solo
+          existe con sesión en curso — un encuentro cuelga de la sesión, no de la campaña.
+          **D-CF-149 (Task 5b de 3A.3): va FUERA del contenedor con relleno**, pegada a la banda y
+          a lo ancho, que es donde el prototipo pone su franja (`.franja`: entre `header.banda`
+          y `main.rejilla`, con su filete inferior y sin caja). */}
+      {sesion && (
+        <div className="shrink-0">
+          <CapaDeCombate
+            campaignId={campaignId}
+            sessionId={sesion.id}
+            personajes={personajes ?? []}
+            pnjs={pnjs ?? []}
+            esDm={esDm}
+          />
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 flex-col gap-s3 p-s3">
         {/* **PROVISIONAL, y a propósito.** «Te han pedido tirar» solo se montaba dentro de la
             pestaña «Dados»: sondeaba cada quince segundos impecablemente y no lo miraba nadie.
@@ -236,21 +254,6 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
         <div className="shrink-0 empty:hidden">
           <TiradasPendientes campaignId={campaignId} />
         </div>
-
-        {/* **La capa de combate** (2.5.6). No es una pantalla a la que se navega: es una tira que
-            aparece encima del elenco mientras dura el encuentro y se va cuando termina. Solo
-            existe con sesión en curso — un encuentro cuelga de la sesión, no de la campaña. */}
-        {sesion && (
-          <div className="shrink-0">
-            <CapaDeCombate
-              campaignId={campaignId}
-              sessionId={sesion.id}
-              personajes={personajes ?? []}
-              pnjs={pnjs ?? []}
-              esDm={esDm}
-            />
-          </div>
-        )}
 
         {enTaller ? (
           <TallerDelDM campaignId={campaignId} />
@@ -315,6 +318,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
                   esDm={esDm}
                   comoUsuario={comoUsuario}
                   pnjs={pnjs ?? []}
+                  amplio
                 />
               )}
               {miPersonaje && (

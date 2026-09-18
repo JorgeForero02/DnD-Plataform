@@ -39,6 +39,21 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
    su propia cuenta, una vez por navegador — el marco lo dice siempre, debajo del mapa. Sin sala
    guardada, o con el modo «Sin tablero» puesto, la mesa es la de siempre: el registro ocupa el
    centro, con sus mismos filtros.
+6. **Dónde está cada cosa en la mesa** (desde el 2026-09-18 se ve como el HTML del prototipo,
+   D-CF-149). De arriba abajo: la **banda** (campaña, escena y lugar, duración, reloj, el
+   conmutador «Con tablero / Sin tablero», los atajos «?» y «Ver como»); la **franja de combate**,
+   una sola fila —«Asalto N», los turnos como chips con el actual en cobre, la economía de quien
+   actúa (acción · adicional · reacción · pies, con «Corregir» para ti), «Terminar el combate» y
+   **«Siguiente turno»**—, o «La mesa no está en combate · Entrar en combate» en reposo; y las
+   tres columnas: el **elenco** a la izquierda («El grupo N» y «En escena N», tarjetas densas con
+   PG, CA y velocidad; **Daño · Curar · …** son los tres cuadrados al pie de cada tarjeta, y
+   pulsar la tarjeta apunta), con el rail Hoja · Bolsa · Mundo · Dados debajo; el **centro** (el
+   marco del tablero con la barra de acciones debajo, o el registro si no hay tablero); y la
+   **lateral** con el **registro** (una línea por suceso: hora, quién y qué; «De dónde sale» al
+   lado de cada tirada; «Aplicar» en la misma línea del daño pendiente; la caja de anotar con
+   «Solo el DM» y los seis sellos como iconos) encima de las **herramientas** en rejilla de dos
+   columnas, con «Consultar el mundo» como octavo botón. Corregir la iniciativa de un turno es el
+   lápiz junto a su número en la franja.
 
 ## Los cinco niveles de visibilidad
 
@@ -191,8 +206,10 @@ merece la pena contar.
     chip. **Objetos** bebe o usa la fila de tu inventario. **Aptitudes** usa la misma puerta que
     tus rasgos y dones.
 - **La economía del turno es estado que se gasta al actuar, no un botón que tú aprietas**
-  (D-CF-145). Sobre la tira de iniciativa ves tres marcas —acción, acción adicional, reacción— y
-  tus pies de movimiento; atacar, lanzar un conjuro o usar una actividad las gasta solas, por la
+  (D-CF-145). En la franja de combate, al lado de los turnos, ves tu nombre y tres marcas
+  —acción, adicional, reacción: punto lleno si está disponible, hueco y tachado si ya se gastó
+  (la palabra la lee el lector de pantalla y la enseña el ratón)— y tus pies de movimiento;
+  atacar, lanzar un conjuro o usar una actividad las gasta solas, por la
   misma puerta que resuelve la acción. **Tú ya no tienes «Usar mi…»**: si haces algo que no pasa
   por ninguna de esas puertas —hablar, usar un objeto de la ficción—, se lo dices al DM, que es
   quien conserva «Corregir» para marcarlo a mano. El campo de pies sigue siendo tuyo: el

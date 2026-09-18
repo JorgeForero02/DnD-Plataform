@@ -94,6 +94,8 @@ export function MensajeDelHilo({
   ligada,
   nuevo,
   linea,
+  variante = "tarjeta",
+  amplio = false,
 }: {
   /** Tarea 7 de la puerta de efectos: quién identifica la tirada ante `BandejaDeDano`. */
   campaignId: string;
@@ -125,10 +127,34 @@ export function MensajeDelHilo({
    * más que para el título de un sello (`tituloDeSello`, que nunca lleva sujeto).
    */
   linea: string;
+  /**
+   * D-CF-149 (Task 5b de 3A.3) — **`"linea"` es la forma del registro de la mesa**: una línea
+   * por suceso, la hora en gris a la izquierda y la frase al lado, como el `.linea` del
+   * prototipo. `"tarjeta"` (por defecto) es la forma con capitular, tirada incrustada grande y
+   * firma debajo, la de leer con calma. Ver `LineaDelHilo` abajo.
+   */
+  variante?: "tarjeta" | "linea";
+  /** Solo con `variante="linea"`: la medida de lectura del modo crónica (ver `HiloDeSesion`). */
+  amplio?: boolean;
 }) {
   const p = evento.payload;
   const tipo = tipoDeMensaje(p);
   const hora = horaDe(evento.createdAt);
+
+  if (variante === "linea") {
+    return (
+      <LineaDelHilo
+        campaignId={campaignId}
+        evento={evento}
+        autor={autor}
+        personaje={personaje}
+        ligada={ligada}
+        nuevo={nuevo}
+        linea={linea}
+        amplio={amplio}
+      />
+    );
+  }
 
   // Lo que envuelve a cualquiera de las cinco formas: `shrink-0` para que la línea no se encoja
   // dentro de la columna con scroll, y `anim-surge` si el suceso acaba de llegar a la mesa.
@@ -245,6 +271,179 @@ export function MensajeDelHilo({
           </p>
         )
       )}
+    </li>
+  );
+}
+
+/**
+ * D-CF-149 (Task 5b de 3A.3) — **la línea del registro de la mesa**, calcada del `.linea` del
+ * prototipo: una rejilla `2.5rem 1fr` con la hora (font-data, gris) y el texto; el nombre de quien
+ * actúa en `font-title` con su voz; la prosa en `font-world` pequeña; lo mecánico (tiradas, PG,
+ * recursos) en `font-chrome` apagado; el sistema más pequeño aún; el sello como corte en cursiva
+ * cobre con filetes a los lados; y lo que solo ve el DM con el filete discontinuo y su «· solo tú».
+ *
+ * **Qué se conserva de la tarjeta, y dónde queda.** La tirada sigue enseñando resultado, veredicto
+ * y «De dónde sale» (`TiradaIncrustada compacta`), en la misma línea. La bandeja de daño conserva
+ * su preview del servidor y su «Aplicar» (`BandejaDeDano compacta`), y los extras de daño su
+ * «Añadir…» (`DanoExtra compacta`). La firma —quién lo escribió— pasa al `title` de la línea (el
+ * ratón lo dice) y la hora a la columna de la izquierda; la insignia de visibilidad se pinta igual
+ * cuando el suceso no es de la mesa entera, salvo «Solo el DM», que se dice como el prototipo.
+ *
+ * Tamaños: el prototipo usa .66rem para la hora y .8rem para lo mecánico; aquí van en el token más
+ * cercano (`text-chrome-xs` = .75rem, `text-chrome-sm` = .8125rem), como manda el brief.
+ */
+function LineaDelHilo({
+  campaignId,
+  evento,
+  autor,
+  personaje,
+  ligada,
+  nuevo,
+  linea,
+  amplio,
+}: {
+  campaignId: string;
+  evento: GameEventRow;
+  autor: string;
+  personaje: ConColor & { name?: string };
+  ligada?: GameEventPayload | null;
+  nuevo: boolean;
+  linea: string;
+  amplio: boolean;
+}) {
+  const p = evento.payload;
+  const tipo = tipoDeMensaje(p);
+  const hora = horaDe(evento.createdAt);
+  const soloDm = evento.visibility === "DM_ONLY";
+  // Las dos medidas del prototipo: compacta en la lateral, de lectura en el centro (crónica).
+  const mundo = amplio ? "text-world-base leading-relaxed" : "text-world-sm leading-snug";
+  const mecanica = amplio ? "text-chrome-base leading-relaxed" : "text-chrome-sm leading-snug";
+  const contenedor = [
+    "shrink-0 grid grid-cols-[2.5rem_minmax(0,1fr)] gap-s2",
+    amplio ? "py-s1" : "py-px",
+    nuevo ? "anim-surge" : "",
+    // `.linea.solodm` del prototipo: filete discontinuo de cobre, ganando el hueco a la izquierda.
+    soloDm ? "-ml-s2 border-l-2 border-dashed border-copper/45 pl-s2" : "",
+  ].join(" ");
+  const firma = `${autor} · ${hora}`;
+  const marcaDeVisibilidad = soloDm ? (
+    <span className="ml-s1 font-chrome text-chrome-xs text-copper-text">· solo tú</span>
+  ) : evento.visibility !== "PLAYERS" ? (
+    <span className="ml-s1 align-middle">
+      <Badge visibility={evento.visibility} />
+    </span>
+  ) : null;
+  const tiempo = (
+    <time className="pt-[3px] font-data text-chrome-xs leading-none text-muted/70">{hora}</time>
+  );
+
+  if (tipo === "sello") {
+    const titulo = tituloDeSello(p);
+    const cuerpo = p.type === "SESSION_NOTE" ? (p.text ?? null) : null;
+    return (
+      <li data-suceso={evento.id} title={firma} className={`${contenedor} my-s1`}>
+        {tiempo}
+        <div className="min-w-0">
+          <p className="flex items-center gap-s2 font-world text-chrome-sm italic text-copper-text">
+            <span aria-hidden="true" className="h-px flex-1 bg-copper/45" />
+            <span className="min-w-0 truncate">{titulo}</span>
+            <span aria-hidden="true" className="h-px flex-1 bg-copper/45" />
+          </p>
+          {cuerpo && (
+            <p className={`font-world text-text ${mundo}`}>
+              {cuerpo}
+              {marcaDeVisibilidad}
+            </p>
+          )}
+          {!cuerpo && marcaDeVisibilidad && <p className="text-right">{marcaDeVisibilidad}</p>}
+        </div>
+      </li>
+    );
+  }
+
+  if (tipo === "narracion") {
+    return (
+      <li data-suceso={evento.id} title={firma} className={contenedor}>
+        {tiempo}
+        <p className={`min-w-0 font-world text-text ${mundo}`}>
+          {linea}
+          {marcaDeVisibilidad}
+        </p>
+      </li>
+    );
+  }
+
+  if (tipo === "sistema") {
+    return (
+      <li data-suceso={evento.id} title={firma} className={contenedor}>
+        {tiempo}
+        <p className="min-w-0 font-chrome text-chrome-xs leading-snug text-muted">
+          {linea}
+          {marcaDeVisibilidad}
+        </p>
+      </li>
+    );
+  }
+
+  const voz = vozDePersonaje(personaje);
+  const nombrePersonaje = personaje.name;
+  // El nombre en su propio nodo, sin el espacio dentro: una prueba mira ese `<span>` exacto.
+  const cabecera = (
+    <>
+      <span className={`font-title text-chrome-sm ${voz}`}>{nombrePersonaje ?? autor}</span>{" "}
+    </>
+  );
+
+  if (tipo === "tirada") {
+    const datos = datosDeTirada(p, ligada);
+    return (
+      <li data-suceso={evento.id} title={firma} className={contenedor}>
+        {tiempo}
+        <div className={`min-w-0 font-chrome text-muted ${mecanica}`}>
+          {/* `<div>`, no `<p>`: el desglose de «De dónde sale» es un `<dl>`, que no puede vivir
+              dentro de un párrafo. */}
+          <div>
+            {cabecera}
+            {linea}
+            {datos && (
+              <>
+                {" "}
+                <TiradaIncrustada t={datos} compacta />
+              </>
+            )}
+            {marcaDeVisibilidad}
+          </div>
+          {p.type === "ABILITY_ROLL" && p.pendingDamage && (
+            <>
+              <DanoExtra
+                campaignId={campaignId}
+                rollEventId={evento.id}
+                pendingDamage={p.pendingDamage}
+                compacta
+              />
+              <BandejaDeDano
+                campaignId={campaignId}
+                rollEventId={evento.id}
+                pendingDamage={p.pendingDamage}
+                compacta
+              />
+            </>
+          )}
+        </div>
+      </li>
+    );
+  }
+
+  // Personaje: la voz de quien actuó. Lo que le pasa a alguien (PG, condiciones, recursos) va en
+  // la voz de «lo mecánico» del prototipo (`.linea.mec`): chrome apagado, con el nombre delante.
+  return (
+    <li data-suceso={evento.id} title={firma} className={contenedor}>
+      {tiempo}
+      <p className={`min-w-0 font-chrome text-muted ${mecanica}`}>
+        {cabecera}
+        <span className="text-text">{linea}</span>
+        {marcaDeVisibilidad}
+      </p>
     </li>
   );
 }

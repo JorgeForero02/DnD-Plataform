@@ -31,9 +31,9 @@ describe("EconomiaDeAccion", () => {
     );
 
     expect(screen.getByRole("status", { name: "Economía del turno" })).toBeInTheDocument();
-    expect(screen.getByText("acción: gastada")).toBeInTheDocument();
-    expect(screen.getByText("acción adicional: disponible")).toBeInTheDocument();
-    expect(screen.getByText("reacción: disponible")).toBeInTheDocument();
+    expect(screen.getByTitle("acción: gastada")).toBeInTheDocument();
+    expect(screen.getByTitle("acción adicional: disponible")).toBeInTheDocument();
+    expect(screen.getByTitle("reacción: disponible")).toBeInTheDocument();
     // Lo que le queda sobre el total, no solo lo que ha gastado: 30 de velocidad, 10 gastados.
     expect(screen.getByText("20/30 pies")).toBeInTheDocument();
 
@@ -53,7 +53,7 @@ describe("EconomiaDeAccion", () => {
     render(<EconomiaDeAccion economia={gastada} velocidad={30} excedido />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(/ya has usado tu acción/i);
-    expect(screen.getByText("acción: gastada de más")).toBeInTheDocument();
+    expect(screen.getByTitle("acción: gastada de más")).toBeInTheDocument();
     // El servidor cuenta y avisa, nunca rechaza (tarea A2): esta pantalla no puede inventarse un
     // rechazo que el servidor no hace, así que ningún botón propio se deshabilita jamás — ni
     // siquiera con todo ya gastado.

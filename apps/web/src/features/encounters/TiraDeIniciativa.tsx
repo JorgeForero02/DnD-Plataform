@@ -19,8 +19,11 @@ import { useRollRequests } from "../roll-requests/hooks";
 import { useCharacterSheet } from "../character-sheet/hooks";
 import { NOMBRE_ESTADO_DE_COMBATE } from "../../dominio/combate";
 import { useAuthStore } from "../../store/auth.store";
+import { vozDePersonaje } from "../../dominio/voces";
+import { useObjetivoStore } from "../sessions/objetivo.store";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
+import { IconoLapiz } from "../../ui/Iconos";
 
 // Tarea 2.5.6 — **el orden de turnos, como una tira sobre el elenco.**
 //
@@ -82,6 +85,9 @@ export function TiraDeIniciativa({
   // casilla de la tira es un turno, y un turno es un grupo—; el menú «…» del elenco sigue
   // revelando uno solo.
   const revelar = useRevealNpcs(campaignId);
+  // D-CF-149 — pulsar un chip apunta (el mismo `objetivo.store` que las tarjetas del elenco).
+  const objetivo = useObjetivoStore((s) => s.objetivo);
+  const apuntar = useObjetivoStore((s) => s.apuntar);
 
   const nombreDe = (characterId: string) =>
     personajes.find((c) => c.id === characterId)?.name ??
@@ -129,105 +135,87 @@ export function TiraDeIniciativa({
   }
 
   return (
+    // D-CF-149 (Task 5b de 3A.3) — **la franja de combate del prototipo: UNA fila.** Hasta aquí
+    // esto era una caja con rótulo («ORDEN DE TURNOS · Asalto 1»), una fila de casillas de 80 px
+    // y, debajo, la economía en su propia caja. El HTML del autor lo pone todo en una fila que va
+    // entre la banda y el `main`, sin caja: «Asalto 2 · [Klarg 18] [Sylas 15] … | Sylas · acción ·
+    // adicional · reacción · 30/30 pies | Terminar el combate · Siguiente turno». Ninguna
+    // función se va: cada turno sigue siendo un `<li aria-current>` con su «Le toca»/«Cayó» (ya
+    // no impresos, leídos —la forma del chip los dice: borde cobre el actual, tachado el caído—),
+    // el DM sigue corrigiendo la iniciativa de cada uno (ahora un lápiz al lado del número, con
+    // el mismo nombre accesible) y revelando al oculto, y pulsar un chip apunta a ese combatiente
+    // —el mismo gesto que la tarjeta del elenco (`objetivo.store`).
     <section
       aria-label="Orden de turnos"
-      className="rounded-radius-md border border-warning/40 bg-surface px-s3 py-s2"
+      // `flex-wrap lg:flex-nowrap`, como la banda: a lo ancho es UNA fila y los chips scrollean
+      // (`.turnos{overflow-x:auto}` del prototipo); en estrecho se parte, que es lo único honesto.
+      className="flex min-h-[2.75rem] flex-wrap items-center gap-x-s3 gap-y-s1 border-b border-muted/40 bg-surface/50 px-s4 py-s2 lg:flex-nowrap"
     >
-      <div className="mb-s2 flex flex-wrap items-center gap-s2">
-        <span className="font-title text-chrome-sm uppercase tracking-widest text-warning-text">
-          Orden de turnos
-        </span>
-        <span className="font-data text-chrome-xs text-muted">Asalto {encuentro.round}</span>
-        <span className="h-px flex-1 bg-warning/30" />
-        {esDm && (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              className="px-2 py-0.5 text-chrome-xs"
-              disabled={pasarTurno.isPending}
-              onClick={() => pasarTurno.mutate(encuentro.id)}
-            >
-              Pasar turno
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="px-2 py-0.5 text-chrome-xs"
-              onClick={() => setTerminando(true)}
-            >
-              Terminar el combate
-            </Button>
-          </>
-        )}
-      </div>
+      <span className="shrink-0 whitespace-nowrap font-data text-chrome-xs text-copper-text">
+        Asalto {encuentro.round}
+      </span>
 
-      {/* **El sistema propone; el DM decide** (ficha P2, 2026-09-07).
-          Doctrina impresa de las Herramientas del DM: «Nada llega a la mesa hasta que lo
-          confirmas». Y el SRD 5.1 lo respalda hasta para el monstruo — «Monsters and Death»:
-          *«Most DMs have a monster die the instant it drops to 0 hit points»*, o sea costumbre del
-          DM, con los villanos como excepción explícita. Un enemigo a 0 puede estar inconsciente,
-          los enemigos huyen, y un combate se acaba parlamentando con el jefe en pie.
-          **No se añade un botón nuevo**: el de «Terminar el combate», que ya estaba, es la
-          confirmación. Dos caminos para el mismo gesto serían dos sitios donde equivocarse.
-          Solo se pinta si el servidor lo propone, y a un jugador nunca se lo propone. */}
-      {encuentro.finalPropuesto && (
-        <p
-          role="status"
-          aria-label="Sin enemigos en pie"
-          className="mb-s2 rounded-radius-sm border border-copper/40 bg-copper/10 px-s3 py-s1 font-chrome text-chrome-xs text-copper-text"
-        >
-          No queda ningún enemigo en pie. <strong>Si el combate ha terminado, ciérralo tú</strong> —
-          esto no lo cierra solo.
-        </p>
-      )}
-
-      <ol className="scroll-quiet flex items-center gap-s1 overflow-x-auto">
+      <ol className="scroll-quiet flex min-w-0 shrink items-center gap-s1 overflow-x-auto py-px">
         {turnos.map(([posicion, grupo]) => {
           const actual = posicion === encuentro.activePosition;
           const nombres = grupo.map((c) => nombreDe(c.characterId)).join(" · ");
           // **`every` y no `some`**: una posición puede llevar un grupo entero —dos goblins que
           // tiraron juntos— y apagar la casilla porque uno cayó diría que cayeron los dos.
           const caido = grupo.every((c) => c.derrotado);
+          const hecho =
+            !actual && encuentro.activePosition !== null && posicion < encuentro.activePosition;
+          const primero = grupo[0].characterId;
+          const quien =
+            personajes.find((c) => c.id === primero) ?? pnjs.find((p) => p.id === primero) ?? null;
+          const voz = quien ? vozDePersonaje(quien) : "text-muted";
+          const apuntado = objetivo?.id === primero;
           return (
             <li
               key={posicion}
-              // **El turno actual no se distingue SOLO por el color.** Lleva su propio rótulo
-              // («Le toca»), porque el color no puede ser el único portador de significado — la
-              // misma regla que obliga a la barra de PG a llevar su cifra al lado.
+              // **El turno actual no se distingue SOLO por el color.** Lleva `aria-current` y su
+              // propio rótulo («Le toca», leído), y el borde de cobre es la forma — la misma regla
+              // que obliga a la barra de PG a llevar su cifra al lado.
               aria-current={actual ? "step" : undefined}
               className={[
-                "flex shrink-0 flex-col items-center rounded-radius-sm border px-s3 py-s1",
-                actual ? "border-warning bg-warning/15" : "border-muted/25",
-                // El gris de quien cayó. **Nunca es el único portador del significado**: debajo va
-                // el rótulo «Cayó», igual que «Le toca» acompaña al color del turno.
-                caido && !actual ? "opacity-50" : "",
+                "flex shrink-0 items-center gap-s1 rounded-full border py-px pl-s2 pr-s1 transition-colors",
+                actual
+                  ? "border-copper bg-copper/15 font-medium"
+                  : "border-transparent hover:bg-muted/10",
+                hecho && !caido ? "opacity-50" : "",
+                // El gris de quien cayó **nunca es el único portador**: va tachado y con su
+                // palabra leída («Cayó»), igual que «Le toca» acompaña al borde del turno.
+                caido ? "opacity-40 line-through" : "",
+                apuntado ? "ring-1 ring-danger" : "",
               ].join(" ")}
             >
-              <span
-                className={[
-                  "font-chrome text-chrome-sm",
-                  actual ? "text-warning-text" : "text-text",
-                ].join(" ")}
+              <button
+                type="button"
+                aria-pressed={apuntado}
+                aria-label={`Apuntar a ${nombres}`}
+                title={apuntado ? `Dejar de apuntar a ${nombres}` : `Apuntar a ${nombres}`}
+                onClick={() => apuntar(primero, nombres)}
+                className="flex items-center gap-s1 whitespace-nowrap"
               >
-                {nombres}
-              </span>
-              <span className="font-data text-chrome-xs tabular-nums text-muted">
-                {grupo[0].initiative}
-              </span>
-              {actual && (
-                <span className="font-chrome text-chrome-xs uppercase tracking-wide text-warning-text">
-                  Le toca
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-[7px] w-[7px] shrink-0 rounded-full bg-current ${voz}`}
+                />
+                <span
+                  className={`font-chrome text-chrome-sm ${actual ? "text-text" : "text-text"}`}
+                >
+                  {nombres}
                 </span>
-              )}
-              {caido && (
-                <span className="font-chrome text-chrome-xs uppercase tracking-wide text-muted">
-                  Cayó
+                <span
+                  className={`font-data text-chrome-xs tabular-nums ${actual ? "text-copper-text" : "text-muted"}`}
+                >
+                  {grupo[0].initiative}
                 </span>
-              )}
+              </button>
+              {actual && <span className="sr-only">Le toca</span>}
+              {caido && <span className="sr-only">Cayó</span>}
               {esDm && ocultosDe(grupo).length > 0 && (
                 // Spec §3.2: un combatiente oculto en el orden se dice y se arregla desde aquí.
-                <span className="flex items-center gap-1 font-chrome text-chrome-xs text-muted">
+                <span className="flex items-center gap-1 whitespace-nowrap font-chrome text-chrome-xs text-muted">
                   oculto ·
                   <button
                     type="button"
@@ -245,9 +233,10 @@ export function TiraDeIniciativa({
                   type="button"
                   onClick={() => setCorrigiendo(grupo[0].id)}
                   aria-label={`Corregir la iniciativa de ${nombres}`}
-                  className="font-chrome text-chrome-xs text-muted underline-offset-2 hover:text-copper-text hover:underline"
+                  title={`Corregir la iniciativa de ${nombres}`}
+                  className="rounded-full p-px text-muted transition-colors hover:text-copper-text"
                 >
-                  Corregir
+                  <IconoLapiz className="h-3 w-3" />
                 </button>
               )}
             </li>
@@ -260,36 +249,77 @@ export function TiraDeIniciativa({
         sessionId={sessionId}
         encuentro={encuentro}
         personajes={personajes}
+        pnjs={pnjs}
         esDm={esDm}
       />
-
-      {/* **Si pasar turno falla, se dice.** No tenerlo fue un hueco real y lo destapó el
-          recorrido de navegador: la petición se caía y la tira se quedaba tan tranquila en el
-          mismo asalto, así que parecía que el botón no hacía nada. Un botón que falla en silencio
-          es peor que uno que no existe. */}
-      {pasarTurno.isError && (
-        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
-          No se ha podido pasar el turno: {(pasarTurno.error as Error).message}
-        </p>
-      )}
-      {terminar.isError && (
-        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
-          No se ha podido terminar el combate: {(terminar.error as Error).message}
-        </p>
-      )}
-      {revelar.isError && (
-        <p role="alert" className="mt-s2 font-chrome text-chrome-xs text-danger-text">
-          No se ha podido revelar: {(revelar.error as Error).message}
-        </p>
-      )}
 
       {/* **El turno de un PNJ escondido llega como `null`, y eso se dice.** El servidor manda
           `activePosition: null` cuando el turno es de alguien que este espectador no puede ver:
           «ahora no te toca a ti» es verdad y no delata a nadie. Sin esta línea la tira se
           quedaría sin ningún turno marcado y parecería rota. */}
       {encuentro.activePosition === null && (
-        <p className="mt-s2 font-chrome text-chrome-xs italic text-muted">
+        <p className="font-chrome text-chrome-xs italic text-muted">
           Le toca a alguien que no ves.
+        </p>
+      )}
+
+      {esDm && (
+        <span className="ml-auto flex shrink-0 items-center gap-s2">
+          {/* **El sistema propone; el DM decide** (ficha P2, 2026-09-07).
+              Doctrina impresa de las Herramientas del DM: «Nada llega a la mesa hasta que lo
+              confirmas». Y el SRD 5.1 lo respalda hasta para el monstruo — «Monsters and Death»:
+              *«Most DMs have a monster die the instant it drops to 0 hit points»*, o sea costumbre
+              del DM, con los villanos como excepción explícita. Un enemigo a 0 puede estar
+              inconsciente, los enemigos huyen, y un combate se acaba parlamentando con el jefe en
+              pie. **No se añade un botón nuevo**: el de «Terminar el combate», que ya estaba, es
+              la confirmación. Solo se pinta si el servidor lo propone, y a un jugador nunca. */}
+          {encuentro.finalPropuesto && (
+            <span
+              role="status"
+              aria-label="Sin enemigos en pie"
+              className="whitespace-nowrap rounded-radius-sm border border-copper/40 bg-copper/10 px-s2 py-px font-chrome text-chrome-xs text-copper-text"
+            >
+              No queda ningún enemigo en pie.{" "}
+              <strong>Si el combate ha terminado, ciérralo tú</strong> — esto no lo cierra solo.
+            </span>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            className="px-2 py-0.5 text-chrome-xs"
+            onClick={() => setTerminando(true)}
+          >
+            Terminar el combate
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            className="px-s3 py-1 text-chrome-sm"
+            disabled={pasarTurno.isPending}
+            onClick={() => pasarTurno.mutate(encuentro.id)}
+          >
+            Siguiente turno
+          </Button>
+        </span>
+      )}
+
+      {/* **Si pasar turno falla, se dice.** No tenerlo fue un hueco real y lo destapó el
+          recorrido de navegador: la petición se caía y la tira se quedaba tan tranquila en el
+          mismo asalto, así que parecía que el botón no hacía nada. Un botón que falla en silencio
+          es peor que uno que no existe. */}
+      {pasarTurno.isError && (
+        <p role="alert" className="basis-full font-chrome text-chrome-xs text-danger-text">
+          No se ha podido pasar el turno: {(pasarTurno.error as Error).message}
+        </p>
+      )}
+      {terminar.isError && (
+        <p role="alert" className="basis-full font-chrome text-chrome-xs text-danger-text">
+          No se ha podido terminar el combate: {(terminar.error as Error).message}
+        </p>
+      )}
+      {revelar.isError && (
+        <p role="alert" className="basis-full font-chrome text-chrome-xs text-danger-text">
+          No se ha podido revelar: {(revelar.error as Error).message}
         </p>
       )}
 
@@ -365,12 +395,14 @@ function MiEconomia({
   sessionId,
   encuentro,
   personajes,
+  pnjs,
   esDm,
 }: {
   campaignId: string;
   sessionId: string;
   encuentro: Encounter;
   personajes: Character[];
+  pnjs: NpcEnLaMesa[];
   /** Solo el DM ve «Corregir» dentro de `EconomiaDeAccion` (D-CF-145). */
   esDm: boolean;
 }) {
@@ -380,37 +412,54 @@ function MiEconomia({
     ? encuentro.combatants.find((c) => c.characterId === miPersonaje.id)
     : undefined;
 
-  const { data: hoja } = useCharacterSheet(campaignId, miPersonaje?.id ?? "");
+  // D-CF-149 (Task 5b de 3A.3) — **el DM sin personaje propio ve la economía de quien actúa.**
+  // El prototipo pinta en la franja «Sylas · acción · adicional · reacción» para el DM: la de
+  // quien tiene el turno, que es a quien el DM le corrige a mano lo que el sistema no vio.
+  // `EncountersService.gastar` ya deja escribir al DM sobre cualquier combatiente (dueño o DM),
+  // así que «Corregir» sobre ese combatiente es una puerta real, no una promesa. Un jugador sin
+  // combatiente propio sigue sin ver nada: la economía de otro no es suya.
+  const activo =
+    esDm && !miCombatiente && encuentro.activePosition !== null
+      ? encuentro.combatants.find((c) => c.position === encuentro.activePosition)
+      : undefined;
+  const combatiente = miCombatiente ?? activo;
+  const personaje = combatiente
+    ? (personajes.find((c) => c.id === combatiente.characterId) ??
+      pnjs.find((p) => p.id === combatiente.characterId))
+    : undefined;
+
+  const { data: hoja } = useCharacterSheet(campaignId, combatiente?.characterId ?? "");
   const gastar = useGastar(campaignId, sessionId);
 
   const [excedido, setExcedido] = useState(false);
 
-  const esMiTurno =
-    miCombatiente !== undefined && encuentro.activePosition === miCombatiente.position;
+  const esMiTurno = combatiente !== undefined && encuentro.activePosition === combatiente.position;
 
   // **Se ajusta DURANTE el render, no en un efecto** — el patrón que React recomienda para
   // «reiniciar el estado cuando algo cambia» (https://react.dev/learn/you-might-not-need-an-effect),
   // y el que exige la regla de lint de este proyecto. Solo queda por reiniciar el aviso de
   // exceso: la economía en sí ya no es estado de este componente.
-  const claveDeTurno = esMiTurno ? `turno-${encuentro.round}` : "no-me-toca";
+  const claveDeTurno = esMiTurno ? `turno-${encuentro.round}-${combatiente.id}` : "no-me-toca";
   const [claveVista, setClaveVista] = useState(claveDeTurno);
   if (claveVista !== claveDeTurno) {
     setClaveVista(claveDeTurno);
     setExcedido(false);
   }
 
-  if (!miCombatiente) return null;
+  if (!combatiente) return null;
 
   return (
     <EconomiaDeAccion
-      economia={miCombatiente}
+      economia={combatiente}
       velocidad={hoja?.effectiveSpeeds?.walk?.total}
       excedido={excedido}
       gastando={gastar.isPending}
       esDm={esDm}
+      nombre={personaje?.name}
+      vozClase={personaje ? vozDePersonaje(personaje) : undefined}
       onGastar={({ coste, cantidad }) => {
         gastar.mutate(
-          { encounterId: encuentro.id, combatantId: miCombatiente.id, coste, cantidad },
+          { encounterId: encuentro.id, combatantId: combatiente.id, coste, cantidad },
           { onSuccess: (data) => setExcedido(data.excedido) },
         );
       }}
@@ -586,7 +635,7 @@ function SalaDeEspera({
   return (
     <section
       aria-label={NOMBRE_ESTADO_DE_COMBATE.PREPARING}
-      className="rounded-radius-md border border-warning/40 bg-surface px-s3 py-s2"
+      className="border-b border-warning/40 bg-surface/50 px-s4 py-s2"
     >
       <div className="mb-s2 flex flex-wrap items-center gap-s2">
         <span className="font-title text-chrome-sm uppercase tracking-widest text-warning-text">

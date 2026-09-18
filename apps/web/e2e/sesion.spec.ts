@@ -294,7 +294,7 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   // Constitución, así que el motor deriva 16 y un modificador de +3 — dado de golpe 10 + 3 = 13.
   // Esta prueba decía 12 porque olvidaba el bono racial; **la hoja tenía razón y la prueba no**,
   // que es justo la clase de fallo que sale al correrla contra la API de verdad.
-  await expect(elenco.getByText("13/13")).toBeVisible({ timeout: 15_000 });
+  await expect(elenco.getByText("13 / 13")).toBeVisible({ timeout: 15_000 });
   await expect(
     elenco.getByRole("img", { name: "Borin Barbaférrea: 13 de 13 puntos de golpe" }),
   ).toBeVisible();
@@ -315,7 +315,7 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   await cajonDeDano.getByRole("button", { name: "Aplicar daño" }).click();
   // El cajón se cierra solo cuando el servidor responde: si sigue abierto, la mutación falló.
   await expect(cajonDeDano).toBeHidden({ timeout: 10_000 });
-  await expect(elenco.getByText("8/13")).toBeVisible({ timeout: 10_000 });
+  await expect(elenco.getByText("8 / 13")).toBeVisible({ timeout: 10_000 });
   await expect(
     elenco.getByRole("img", { name: "Borin Barbaférrea: 8 de 13 puntos de golpe" }),
   ).toBeVisible();
@@ -771,7 +771,9 @@ test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", asy
 
   // El suyo delante con su rótulo; el de otro, en segundo plano.
   await expect(elenco.getByText("Tu personaje")).toBeVisible();
-  await expect(elenco.getByText("El resto del grupo")).toBeVisible();
+  // «En la mesa» es el rótulo del prototipo para el resto del grupo (D-CF-149); se busca el
+  // encabezado, no la región del mismo nombre que envuelve a toda la columna.
+  await expect(elenco.getByRole("heading", { name: "En la mesa" })).toBeVisible();
 
   // **Y la regla que importa**: mandos sobre el suyo, ninguno sobre el de otro. No es que el
   // botón no funcione —el servidor ya lo rechaza con `requireEditable`—: es que enseñar un mando

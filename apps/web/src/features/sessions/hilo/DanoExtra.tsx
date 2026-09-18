@@ -27,10 +27,13 @@ export function DanoExtra({
   campaignId,
   rollEventId,
   pendingDamage,
+  compacta = false,
 }: {
   campaignId: string;
   rollEventId: string;
   pendingDamage: NonNullable<Extract<GameEventPayload, { type: "ABILITY_ROLL" }>["pendingDamage"]>;
+  /** D-CF-149: en la línea del registro de la mesa, los extras van en una fila pequeña. */
+  compacta?: boolean;
 }): JSX.Element | null {
   const preview = useDamagePreview(
     campaignId,
@@ -49,7 +52,13 @@ export function DanoExtra({
   if (extras.length === 0 && (disponibles.length === 0 || aplicado)) return null;
 
   return (
-    <div className="my-s1 flex flex-col gap-s1">
+    <div
+      className={
+        compacta
+          ? "mt-px flex flex-wrap items-center gap-x-s2 gap-y-px"
+          : "my-s1 flex flex-col gap-s1"
+      }
+    >
       {extras.map((extra) => (
         <p key={extra.key} className="font-chrome text-chrome-xs text-muted">
           {`+ ${extra.label} ${extra.amount}`}
@@ -60,6 +69,7 @@ export function DanoExtra({
           <Button
             key={opcion.key}
             variant="secondary"
+            className={compacta ? "px-s2 py-px text-chrome-xs" : undefined}
             disabled={marcar.isPending}
             onClick={() => marcar.mutate({ rollEventId, key: opcion.key })}
           >

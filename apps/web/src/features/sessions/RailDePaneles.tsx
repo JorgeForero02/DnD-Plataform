@@ -60,35 +60,31 @@ function Boton({
    */
   activo?: boolean;
 }) {
+  // D-CF-149 (Task 5b de 3A.3) — el `.rail` del prototipo: una caja con cuatro botones sin
+  // borde propio (icono, rótulo y tecla), que se encienden en cobre al pasar; el puesto (los
+  // dados) lleva el borde de cobre para que se vea que está abierto sin depender del color solo
+  // —`aria-pressed` lo dice también.
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-pressed={activo}
-      // **El motivo va en el título cuando está apagado.** Un control deshabilitado sin
-      // explicación es la peor versión de decir que no: la persona no sabe si le falta un
-      // permiso, un dato o un clic en otro sitio.
       title={disabled ? motivo : etiqueta}
       className={[
-        // `flex-1` y no `w-20`: los cuatro se reparten el ancho del rail, que es el de la
-        // columna del elenco. La maqueta escribe `w-16` fijo, y con cuatro botones y tres huecos
-        // eso da 280 px contra los 272 de la columna — ocho px de desfase que se ven porque las
-        // dos costuras están una encima de otra. Repartiendo, coinciden **a cualquier ancho**.
-        "flex flex-1 flex-col items-center gap-s1 rounded-radius-sm border px-s1 py-s2 transition-colors",
+        "flex min-h-[2.8rem] flex-1 flex-col items-center gap-px rounded-radius-sm border px-s1 py-s1 transition-colors",
         disabled
-          ? "cursor-not-allowed border-muted/30 text-muted/50"
+          ? "cursor-not-allowed border-transparent text-muted/50"
           : activo
-            ? // Encendido: el borde y el texto de acento dicen que ese panel está puesto, y
-              // `aria-pressed` lo dice para quien no ve el color. El color no es el único
-              // portador.
-              "border-accent bg-bg text-accent-text"
-            : "border-muted bg-bg text-muted hover:border-accent hover:text-accent-text",
+            ? "border-copper/45 bg-muted/10 text-copper-text"
+            : "border-transparent text-muted hover:border-copper/45 hover:bg-muted/10 hover:text-copper-text",
       ].join(" ")}
     >
-      <span className="[&>svg]:h-5 [&>svg]:w-5">{icono}</span>
+      <span className="[&>svg]:h-[17px] [&>svg]:w-[17px]">{icono}</span>
       <span className="font-chrome text-chrome-xs leading-none">{etiqueta}</span>
-      <span className="font-data text-chrome-xs text-muted">{tecla}</span>
+      <span className="rounded-radius-sm border border-muted/30 px-1 font-data text-chrome-xs leading-snug text-muted/80">
+        {tecla}
+      </span>
     </button>
   );
 }
@@ -122,7 +118,10 @@ export function RailDePaneles({
     // Se copia la maqueta —sin caja— y **se fija el ancho al de la columna** en vez de dejar los
     // botones a medida fija: la maqueta se queda a 8 px, y forzándolo las dos costuras coinciden
     // aunque cambie el ancho de la ventana, que es lo que se pidió.
-    <nav aria-label="Paneles de la mesa" className="flex w-[17rem] shrink-0 items-stretch gap-s2">
+    <nav
+      aria-label="Paneles de la mesa"
+      className="flex w-[17rem] shrink-0 items-stretch gap-s2 rounded-radius-sm border border-muted bg-surface p-s2"
+    >
       <Boton
         etiqueta="Hoja"
         tecla={TECLAS.hoja}

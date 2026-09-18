@@ -160,7 +160,7 @@ describe("el elenco enseña a los PNJ combatientes (tarea 9b)", () => {
 
     montar([GOBLIN]);
 
-    const elenco = await screen.findByText("PNJ en combate");
+    const elenco = await screen.findByText("En escena");
     expect(elenco).toBeInTheDocument();
     expect(await screen.findByText("Goblin capataz")).toBeInTheDocument();
     // El bando se dice con palabra, no con color (regla vinculante de la interfaz).
@@ -188,7 +188,7 @@ describe("el elenco enseña a los PNJ combatientes (tarea 9b)", () => {
     montar(undefined);
 
     await screen.findByText("Corvin Vhael");
-    expect(screen.queryByText("PNJ en combate")).not.toBeInTheDocument();
+    expect(screen.queryByText("En escena")).not.toBeInTheDocument();
     expect(screen.queryByText("Goblin capataz")).not.toBeInTheDocument();
   });
 
@@ -212,7 +212,7 @@ describe("el elenco enseña a los PNJ combatientes (tarea 9b)", () => {
     montar([GOBLIN]);
 
     await screen.findByText("Corvin Vhael");
-    expect(screen.queryByText("PNJ en combate")).not.toBeInTheDocument();
+    expect(screen.queryByText("En escena")).not.toBeInTheDocument();
     expect(screen.queryByText("Goblin capataz")).not.toBeInTheDocument();
   });
 });

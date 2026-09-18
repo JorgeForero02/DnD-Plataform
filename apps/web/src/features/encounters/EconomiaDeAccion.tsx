@@ -32,6 +32,16 @@ const ETIQUETA_DE_COSTE: Record<Exclude<Coste, "FREE">, string> = {
   MOVEMENT: "movimiento",
 };
 
+/**
+ * D-CF-149 — lo que se VE en la franja, que es una fila y no tiene sitio para «acción adicional»:
+ * el prototipo escribe «adicional». La palabra entera sigue en el `title` y en lo leído.
+ */
+const ROTULO_CORTO: Record<Exclude<Coste, "FREE" | "MOVEMENT">, string> = {
+  ACTION: "acción",
+  BONUS: "adicional",
+  REACTION: "reacción",
+};
+
 /** El orden en que se listan los tres costes booleanos: el mismo para las marcas y la frase. */
 const ORDEN_DE_MARCAS: Array<Exclude<Coste, "FREE" | "MOVEMENT">> = ["ACTION", "BONUS", "REACTION"];
 
@@ -93,6 +103,13 @@ interface EconomiaDeAccionProps {
    * fabricárselos él mismo.
    */
   esDm?: boolean;
+  /**
+   * D-CF-149 (3A.3, Task 5b) — **de quién es esta economía**, delante de las marcas, como en la
+   * franja del prototipo («Sylas · acción · adicional · reacción · 30/30 pies»). Con `vozClase`
+   * (la clase de `vozDePersonaje`) el nombre se pinta con la voz del personaje.
+   */
+  nombre?: string;
+  vozClase?: string;
 }
 
 /**
@@ -145,6 +162,8 @@ export function EconomiaDeAccion({
   onGastar,
   gastando = false,
   esDm = false,
+  nombre,
+  vozClase = "text-text",
 }: EconomiaDeAccionProps) {
   const [pies, setPies] = useState("5");
   const [corrigiendo, setCorrigiendo] = useState(false);
@@ -162,39 +181,59 @@ export function EconomiaDeAccion({
     { coste: "REACTION" as const, gastada: economia.reactionUsed },
   ];
 
+  // D-CF-149 (Task 5b de 3A.3) — **una fila, como la franja del prototipo.** Hasta aquí esto era
+  // una caja aparte con tres marcas y su palabra («acción: disponible»), debajo de la tira de
+  // turnos; el HTML del autor lo pone EN la misma fila que los turnos, separado por un filete, y
+  // cada marca es un punto y su nombre: el punto lleno es «disponible», el hueco y tachado es
+  // «gastada». **La palabra no desaparece: se lee, no se ve** —`sr-only` dentro de la misma
+  // marca, más `title` para el ratón—, porque la regla de la casa es que el color no sea el único
+  // portador, y aquí tampoco lo es: la forma del punto (lleno / hueco con trazo) ya distingue
+  // los dos estados sin color. El texto completo sigue en el DOM de la marca —«acción: gastada»—
+  // para quien lo lea con un lector de pantalla o con una prueba.
   return (
     <div
       role="status"
       aria-label="Economía del turno"
-      className="flex flex-col gap-s2 rounded-radius-sm border border-muted/40 bg-surface px-s3 py-s2"
+      className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-s2 gap-y-s1 border-l border-muted/40 pl-s3"
     >
-      <ul className="flex flex-wrap items-center gap-s3">
+      {nombre && (
+        <span className={`font-title text-chrome-base leading-none ${vozClase}`}>{nombre}</span>
+      )}
+      <span className="flex flex-wrap items-center gap-x-s2 gap-y-s1">
         {marcas.map(({ coste, gastada }) => {
           const deMas = recursos[coste];
+          const estado = `${gastada ? "gastada" : "disponible"}${deMas ? " de más" : ""}`;
           return (
-            <li key={coste} className="flex items-center gap-s1">
-              <span className={deMas ? "text-warning-text" : "text-accent"} aria-hidden="true">
+            <span key={coste} className="flex items-center gap-s1">
+              <span
+                className={deMas ? "text-warning-text" : gastada ? "text-muted" : "text-copper"}
+                aria-hidden="true"
+              >
                 {gastada ? <IconoPuntoTachado /> : <IconoPuntoLleno />}
               </span>
               <span
-                className={`font-chrome text-chrome-sm ${deMas ? "text-warning-text" : "text-text"}`}
+                title={`${ETIQUETA_DE_COSTE[coste]}: ${estado}`}
+                className={`whitespace-nowrap font-chrome text-chrome-sm ${
+                  deMas ? "text-warning-text" : gastada ? "text-muted" : "text-text"
+                }`}
               >
-                {ETIQUETA_DE_COSTE[coste]}: {gastada ? "gastada" : "disponible"}
-                {deMas ? " de más" : ""}
+                {coste === "BONUS" && <span className="sr-only">acción </span>}
+                {ROTULO_CORTO[coste]}
+                <span className="sr-only">: {estado}</span>
               </span>
-            </li>
+            </span>
           );
         })}
 
-        <li className="flex items-center gap-s2">
+        <span className="flex items-center gap-s1">
           <span
-            className={recursos.MOVEMENT ? "text-warning-text" : "text-accent"}
+            className={recursos.MOVEMENT ? "text-warning-text" : "text-muted"}
             aria-hidden="true"
           >
             <IconoMovimiento />
           </span>
           <span
-            className={`font-data text-chrome-sm ${recursos.MOVEMENT ? "text-warning-text" : "text-text"}`}
+            className={`whitespace-nowrap font-data text-chrome-xs ${recursos.MOVEMENT ? "text-warning-text" : "text-muted"}`}
           >
             {restante === undefined
               ? "velocidad desconocida"
@@ -206,24 +245,24 @@ export function EconomiaDeAccion({
             value={pies}
             onChange={(e) => setPies(e.target.value)}
             aria-label="Pies de movimiento a gastar"
-            className="w-16 rounded-radius-sm border border-muted bg-bg px-s1 py-0.5 font-data text-chrome-xs text-text"
+            className="w-11 rounded-radius-sm border border-muted/40 bg-bg px-s1 py-px font-data text-chrome-xs text-text"
           />
           <button
             type="button"
             onClick={() => gastar("MOVEMENT", Number(pies) || 0)}
-            className="rounded-radius-sm border border-accent px-s2 py-0.5 font-chrome text-chrome-xs text-accent-text hover:bg-accent/10"
+            className="rounded-radius-sm border border-muted/40 px-s2 py-px font-chrome text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text"
           >
             Mover
           </button>
-        </li>
-      </ul>
+        </span>
+      </span>
 
       {esDm && (
-        <div className="flex flex-col gap-s1">
+        <>
           <button
             type="button"
             onClick={() => setCorrigiendo((v) => !v)}
-            className="self-start font-chrome text-chrome-xs text-muted underline-offset-2 hover:text-copper-text hover:underline"
+            className="rounded-radius-sm border border-transparent px-s2 py-px font-chrome text-chrome-sm text-muted transition-colors hover:border-muted/40 hover:text-text"
           >
             Corregir
           </button>
@@ -236,12 +275,12 @@ export function EconomiaDeAccion({
             <div
               role="group"
               aria-label="Corregir la economía a mano"
-              className="flex flex-wrap items-center gap-s3"
+              className="flex flex-wrap items-center gap-s2"
             >
               {marcas.map(({ coste, gastada }) => (
                 <label
                   key={coste}
-                  className="flex items-center gap-s1 font-chrome text-chrome-xs text-text"
+                  className="flex items-center gap-s1 whitespace-nowrap font-chrome text-chrome-xs text-text"
                 >
                   <input
                     type="checkbox"
@@ -255,7 +294,7 @@ export function EconomiaDeAccion({
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
 
       {gastando && (
@@ -263,7 +302,7 @@ export function EconomiaDeAccion({
       )}
 
       {excedido && (
-        <p role="alert" className="font-chrome text-chrome-xs text-warning-text">
+        <p role="alert" className="basis-full font-chrome text-chrome-xs text-warning-text">
           {fraseDeExceso(recursos)}
         </p>
       )}

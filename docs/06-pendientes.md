@@ -132,13 +132,8 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 
 ## Dejado por «efectos de mesa» (2026-09-15) — fusionada y desplegada (`334912b`)
 
-### EM-1 · Cubrir los efectos de mesa con pruebas
-
-El autor decidió entregarlos sin pruebas nuevas (D-CF-118). Cuando se vuelvan a tocar, lo mínimo:
-unitarias del detector puro (`apps/web/src/features/sessions/elenco/efectos/detectarEfectos.ts`: daño/cura/temporales/cae/muere/
-en pie/nivel/condición puesta y terminada, y que la primera lectura no dispara nada) y **un e2e
-que mida en navegador que el texto flotante desaparece del DOM** — el fallo exacto del laboratorio
-que jsdom no puede ver.
+**EM-1 cerrada el 2026-09-17 (archivo):** ver
+[`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md).
 
 ### EM-2 · Crítico, bloqueo y esquiva no tienen efecto
 

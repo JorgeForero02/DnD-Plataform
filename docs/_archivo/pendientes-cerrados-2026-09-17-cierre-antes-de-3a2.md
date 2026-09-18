@@ -156,6 +156,24 @@ Diecisiete filas de la revisión final del pulido (2026-09-13), triadas por el p
 | Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 
+### EM-1 · Cubrir los efectos de mesa con pruebas (cerrada en T8)
+
+Cerrada con dos ficheros de prueba, sin tocar `detectarEfectos.ts` (el detector ya cumplía lo
+descrito):
+
+- `apps/web/src/features/sessions/elenco/efectos/__tests__/detectarEfectos.test.ts` — unitarias
+  puras del detector: primera lectura sin efectos, daño (delta negativo, fuerte a partir del 25 %
+  del máximo), cura y en pie, temporales solo al subir, caer a 0 sin morir frente a morir, nivel
+  solo al subir, y condición puesta/terminada (una caducada no cuenta como activa). Las siete
+  pasan contra el código real sin ajustes: `nombreCondicion("poisoned")` ya devuelve «Envenenado»
+  en `character-sheet/vocabulario.ts`.
+- `apps/web/e2e/efectos-de-mesa.spec.ts` — el recorrido que `jsdom` no puede medir: con dos
+  contextos (DM y jugador, arranque copiado de `puerta-de-efectos.spec.ts`), el DM abre la hoja
+  del personaje del jugador y le pone 7 de daño con «Recibo daño» (`PuntosDeGolpe.tsx`); en la
+  tarjeta del elenco («En la mesa») del jugador —que no ha tocado nada— aparece el texto flotante
+  «−7» y, tras los 2,6 s de la animación de `efectos.css`, el nodo `.fx-flotante` se retira del
+  DOM (`onAnimationEnd` en `useEfectosDeFicha.tsx`). Verde a la primera.
+
 ### Higiene del e2e de la hoja — `data-casilla`, `toBe(5)`, comentario «Vel.» (cerradas en T7)
 
 Cerradas con código en la Tarea 7. `Casilla.tsx` lleva ahora `data-casilla="derivada"` en su

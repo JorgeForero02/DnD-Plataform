@@ -263,9 +263,23 @@ test("la barra de acciones: apuntar desde el elenco, lanzar contra el chip, la f
   // arriba (lo que cerró `LanzarConjuro` al lanzar fue SU propio panel de espacio/objetivo, no
   // el `MenuQueSube` que lista las filas), así que la fila se apaga sola en cuanto
   // `useAcciones` invalida y vuelve a pedir `GET …/actions` (`useUsarActividad`, Task 4).
-  const filaProyectil = maga.getByRole("button", { name: "Lanzar", exact: true });
-  await expect(filaProyectil).toHaveAttribute("aria-disabled", "true", { timeout: 15_000 });
-  await expect(maga.getByText("ya gastaste tu acción")).toBeVisible();
+  //
+  // **Fix round 3 — acotada a SU fila, no `getByRole("button", { name: "Lanzar" })` a secas.**
+  // El libro de un mago nivel 3 trae más de un conjuro listado (no solo el preparado), así que
+  // «Lanzar» a secas resuelve a varios botones apagados a la vez — modo estricto de Playwright
+  // se queja. **Y no basta con acotar por `listitem` a secas**: el hilo de la maga (más abajo)
+  // también deja una línea «lanza Proyectil mágico» dentro de su propio `<li>`, así que
+  // `hasText: "Proyectil mágico"` sobre TODA la página encontraría dos — la del menú «Conjuros»
+  // Y la del registro. Se acota primero al panel del grupo (`role="group"`, `aria-label` =
+  // `NOMBRE_GRUPO.CONJUROS`, `BotonDeGrupo`), y dentro de él a la fila.
+  const menuConjuros = maga.getByRole("group", { name: "Conjuros" });
+  const filaProyectil = menuConjuros.getByRole("listitem").filter({ hasText: "Proyectil mágico" });
+  await expect(filaProyectil.getByRole("button", { name: "Lanzar" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+    { timeout: 15_000 },
+  );
+  await expect(filaProyectil.getByText("ya gastaste tu acción")).toBeVisible();
 
   // --- El DM pasa turno dos veces: vuelve a ser el de la maga ---
   await dm.getByRole("button", { name: "Pasar turno" }).click();
@@ -274,7 +288,11 @@ test("la barra de acciones: apuntar desde el elenco, lanzar contra el chip, la f
 
   // --- «Esquivar, ayudar…» → «Esquivar» → línea en el hilo ---
   await barra.getByRole("button", { name: /^Esquivar, ayudar…/ }).click();
-  const filaEsquivar = maga.locator("li", { hasText: "Esquivar" }).first();
+  // Mismo motivo que arriba: se acota primero al panel del grupo («Esquivar, ayudar…», el
+  // `NOMBRE_GRUPO.BASICAS` literal) antes de buscar la fila por su texto — el hilo, más abajo,
+  // va a decir «usa Esquivar» dentro de su propio `<li>`.
+  const menuBasicas = maga.getByRole("group", { name: "Esquivar, ayudar…" });
+  const filaEsquivar = menuBasicas.getByRole("listitem").filter({ hasText: "Esquivar" });
   await filaEsquivar.getByRole("button", { name: "Usar" }).click();
   await expect(hiloMaga.getByText(/usa Esquivar/)).toBeVisible({ timeout: 15_000 });
 });

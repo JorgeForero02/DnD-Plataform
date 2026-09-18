@@ -356,16 +356,27 @@ function ControlDeAtaque({
         Atacar
       </Button>
       {!objetivo && (
+        // **Fix round 3 — `sinRol`, como ya hace `MenuDeAcciones`.** Sin él, este `PanelFlotante`
+        // pintaba SU PROPIO `role="group"`/`aria-label="Objetivo del ataque con X"` en el `div`
+        // del portal, duplicando el mismo `aria-label` sobre el `<ul role="listbox">` de dentro
+        // — dos nodos con el mismo nombre accesible, uno anidado en el otro. Cualquier prueba que
+        // busque `[aria-label^="Objetivo del ataque"]` (`desbordes.spec.ts`, que ya mide la MISMA
+        // lista de `TirarAtaqueBoton`, cuyo `PanelFlotante` exterior lleva una etiqueta DISTINTA
+        // —«Tirada de X»— precisamente para evitar este choque) encontraba dos coincidencias en
+        // vez de una: modo estricto de Playwright se queja de ambigüedad, no de que falte. El
+        // `<ul>` ya es el único nodo accesible que hace falta; con `sinRol` recupera también el
+        // marco visual (borde/fondo/sombra) que el `div` exterior dejaba de pintar.
         <PanelFlotante
           abierto={abierto}
           disparador={disparador}
           onCerrar={() => setAbierto(false)}
           etiqueta={`Objetivo del ataque con ${accion.name}`}
+          sinRol
         >
           <ul
             role="listbox"
             aria-label={`Objetivo del ataque con ${accion.name}`}
-            className="flex flex-col gap-1"
+            className="flex flex-col gap-1 rounded-radius-md border border-accent bg-surface p-s2 text-left shadow-[0_18px_40px_-24px_var(--sheet-shadow)]"
           >
             {combate.combatientes.map((c) => (
               <li key={c.characterId} role="presentation">

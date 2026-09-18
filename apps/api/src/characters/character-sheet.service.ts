@@ -142,10 +142,15 @@ type FilaPersonaje = Character;
  */
 type PendingDamage = {
   targetCharacterId: string;
-  attackResolvedEventId: string;
+  /** Task 4 (3A.2): opcional desde que una actividad sin ataque resuelto (un conjuro que no
+   * acierta contra una CA, solo se lanza) también deja daño pendiente. Ver `reason`. */
+  attackResolvedEventId?: string;
   damageType: DamageType;
   amount: number;
   appliedEventId?: string;
+  /** Task 4 (3A.2): el motivo, puesto por quien pidió la tirada. Sin él, `applyPendingDamage`
+   * lo deriva del `ATTACK_RESOLVED` citado por `attackResolvedEventId` — el camino de siempre. */
+  reason?: string;
 };
 
 /**
@@ -2225,22 +2230,29 @@ export class CharacterSheetService {
       throw new ConflictException("Ese daño ya se aplicó.");
     }
 
-    const resuelto = await this.prisma.gameEvent.findFirst({
-      where: { id: pendingDamage.attackResolvedEventId, campaignId, type: "ATTACK_RESOLVED" },
-      select: { payload: true },
-    });
-    const attackName = (resuelto?.payload as { attackName?: string } | undefined)?.attackName;
-    // `pendingDamage` garantiza que el `ATTACK_RESOLVED` existe (E-PE-5: sin él no se escribe la
-    // clave). Si no aparece, la tirada está rota y la crónica no escribe un «Ataque: ?» para
-    // disimularlo: es el mismo 404 que una tirada sin daño pendiente.
-    if (!attackName) throw new NotFoundException(SIN_DANO_PENDIENTE);
+    // Task 4 (3A.2) — `reason` manda si vino puesto (una actividad sin ataque resuelto detrás:
+    // un conjuro, una aptitud). Sin él, se deriva del `ATTACK_RESOLVED` citado — el camino de
+    // siempre, para las filas de antes de esta tarea y para el daño de un ataque de arma.
+    let reason = pendingDamage.reason;
+    if (!reason) {
+      const resuelto = await this.prisma.gameEvent.findFirst({
+        where: { id: pendingDamage.attackResolvedEventId, campaignId, type: "ATTACK_RESOLVED" },
+        select: { payload: true },
+      });
+      const attackName = (resuelto?.payload as { attackName?: string } | undefined)?.attackName;
+      // `pendingDamage` garantiza que el `ATTACK_RESOLVED` existe (E-PE-5: sin él no se escribe
+      // la clave). Si no aparece, la tirada está rota y la crónica no escribe un «Ataque: ?» para
+      // disimularlo: es el mismo 404 que una tirada sin daño pendiente.
+      if (!attackName) throw new NotFoundException(SIN_DANO_PENDIENTE);
+      reason = `Ataque: ${attackName}`;
+    }
 
     return this.prisma.transaction(async (tx) => {
       const resultado = await this.changeHpFromEffect(tx, actorUserId, campaignId, target.id, {
         delta: -pendingDamage.amount,
         damageType: pendingDamage.damageType,
         rollEventId,
-        reason: `Ataque: ${attackName}`,
+        reason,
       });
       const hpEventId = resultado.hpEventId;
       // **E-PE-4: el candado real.** `jsonb_set` sobre el propio `payload`, con el `WHERE` que
@@ -2779,6 +2791,11 @@ export class CharacterSheetService {
             targetCharacterId: veredicto.subjectId,
             attackResolvedEventId: veredicto.id,
             damageType: dano.type,
+            // Task 4 (3A.2): el mismo motivo que ya lleva `peticion.label` sin el sufijo de
+            // crítico — `applyPendingDamage` lo usa tal cual si viene, sin volver a mirar el
+            // `ATTACK_RESOLVED`. Puesto aquí también (y no solo derivado allí) para que el
+            // camino de un ataque de arma y el de una actividad (Task 4) dejen la misma forma.
+            reason: `Ataque: ${nombreMesa}`,
           }
         : undefined;
 

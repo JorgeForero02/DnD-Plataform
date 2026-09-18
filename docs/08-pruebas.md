@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 61 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 62 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 53 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -360,6 +360,7 @@ en verde.
 | `condiciones-en-las-tiradas` | **Las condiciones llegando a las tiradas** (2.5.5). La hoja publica la sugerencia de modo con su porqué —«desventaja: envenenado»— y **solo donde la regla la pone**: envenenado no toca las salvaciones, apresado penaliza la de Destreza y no la de Fuerza, el agotamiento 3 penaliza las seis. **Una condición de dos asaltos sobrevive al primer avance de seis segundos y se apaga en el segundo**, que es lo que demuestra que el reloj en segundos ya era el mecanismo. **El agotamiento 6 mata con los Puntos de Golpe intactos**, y quitarlo devuelve al personaje —la muerte se deriva, no se guarda—. Y la fuga: la hoja de un PNJ `DM_ONLY` es un 404 entero, así que la sugerencia no puede nombrar su condición. |
 | `game-clock` | El reloj es **una columna que sube de verdad**; solo el DM lo avanza; viajar pide las salvaciones de marcha forzada; **un segundo descanso largo en menos de 24 horas de juego se rechaza con un 409 que dice cuánto falta**; a 0 PG no se descansa largo; un descanso interrumpido no cura. |
 | `libro-de-conjuros` | 3A.2 (Task 3, T10) — **el mago nace con su libro sembrado** al fijar la clase (D-CF-125): `GET` trae `modelo: "LIBRO"` y sus 6 conjuros de nivel 1 ya `EN_EL_LIBRO`, sin que nadie los pida uno a uno. Preparar sube el tope correspondiente; lo que no es de la lista de la clase es **400 con el nombre en español**; un truco se aprende con `CONOCIDO`. El registro trae el `SPELLBOOK_CHANGED`; un jugador ajeno recibe **403** al escribir y **404** al leer un personaje `DM_ONLY`. Un clérigo (`PREPARA_DE_LISTA`) **no siembra nada** y preparar de más **se escribe igual**, con el séptimo suceso marcado `fueraDeRegla: ["SOBRE_EL_TOPE"]` (D-CF-126) — nunca un rechazo. |
+| `lanzar-conjuros` | 3A.2 (Task 4) — **el conjuro entra en `usar()`**: un mago de nivel 3 lanza `magic-missile` PREPARADO contra un goblin y gasta `spell-slot-1` (T18: con `nivelDeEspacio: 2` gasta `spell-slot-2` en su lugar, y `ACTIVITY_USED.nivelDeEspacio` lo dice); el daño **no** se aplica con `changeHpFromEffect` — va a la bandeja del DM (`ABILITY_ROLL.pendingDamage`, D-CF-128), sin `HP_CHANGED` hasta que el DM pulsa `apply-damage` (200; el propio mago, 403). `sleep` (`EN_EL_LIBRO`, sin preparar) se lanza igual, con `fueraDeRegla: ["NO_PREPARADO"]`; `cure-wounds` (no es de la clase) es 400; agotar los espacios de nivel 1 dispara `fueraDeRegla: ["SIN_ESPACIO"]` **sin** un `ACTIVITY_USED` nuevo; `fire-bolt` (truco) no toca ningún recurso. |
 
 ### Dados, reglas y PNJ
 

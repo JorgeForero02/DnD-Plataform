@@ -58,11 +58,17 @@ const pruebaConRecurso: Actividad = {
 
 const catalogoDePrueba: ActivityCatalog = {
   find: (key) =>
-    ({
-      "cura-de-prueba": curaDePrueba,
-      "bola-de-prueba": bolaDePrueba,
-      "prueba-con-recurso": pruebaConRecurso,
-    })[key],
+    (
+      ({
+        "cura-de-prueba": { actividad: curaDePrueba, name: "Cura de prueba", kind: "FEATURE" },
+        "bola-de-prueba": { actividad: bolaDePrueba, name: "Bola de prueba", kind: "FEATURE" },
+        "prueba-con-recurso": {
+          actividad: pruebaConRecurso,
+          name: "Prueba con recurso",
+          kind: "FEATURE",
+        },
+      }) as const
+    )[key],
 };
 
 describe("La puerta de efectos: el daño de una salvación se tira una vez y se aplica al responder (e2e)", () => {

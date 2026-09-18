@@ -1,9 +1,16 @@
-import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
 import type { Character, Prisma } from "@prisma/client";
 import type {
   Actividad,
   AbilityKey,
   PendingSaveEffect,
+  SrdSpell,
   TraceStep,
   UsarActividadInput,
 } from "@dnd/shared";
@@ -13,11 +20,13 @@ import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollRequestsService } from "../roll-requests/roll-requests.service";
 import { EncountersService } from "../encounters/encounters.service";
 import { ConditionsService } from "../character-state/conditions/conditions.service";
+import { SpellbookService } from "../spellbook/spellbook.service";
+import { RollsService } from "../rolls/rolls.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { requireOwnerOrDM, requireVisibleCharacter } from "../common/character-viewer";
 import { loVeLaMesa } from "../common/visibility";
 import { resolverOrigen, tablaDeEscalas, type ContextoDeDerivacion } from "../rules/engine";
-import { findClass, UnknownContentError } from "../rules/catalog";
+import { consumoDeEspacio, dadosEscalados, findClass, UnknownContentError } from "../rules/catalog";
 import { rollExpression, type Roller } from "../dice/dice";
 import { DICE_ROLLER } from "../rolls/rolls.service";
 
@@ -29,13 +38,26 @@ import { DICE_ROLLER } from "../rolls/rolls.service";
 // `A7-report.md` para el porqué de cada decisión que no salía sola del brief.
 
 /**
- * De dónde sale la actividad que se usa. **Todavía no hay catálogo** (eso es A9 y A11): este
- * servicio no lo construye, solo declara la puerta por la que entrará. `@Optional()` en el
- * constructor, igual que `ResourcesService` o `StatblocksService` en `CharacterSheetService`: sin
- * proveedor, cualquier clave es "no existe" — nunca una actividad inventada.
+ * Task 4 (3A.2) — lo que el catálogo devuelve por una clave, ya con lo que `usar()` necesita para
+ * escribir `ACTIVITY_USED` sin volver a mirar de dónde salió la actividad: `name` (el nombre del
+ * conjuro o del rasgo, en español si lo hay) y `kind` (`"SPELL"` o `"FEATURE"`). `spell` solo
+ * viaja con `kind: "SPELL"` — es el conjuro entero, porque `usar()` necesita su `level` para
+ * `consumoDeEspacio`/`dadosEscalados` y no solo su actividad de lanzamiento.
+ */
+export interface ActividadCatalogada {
+  actividad: Actividad;
+  name: string;
+  kind: "SPELL" | "FEATURE";
+  spell?: SrdSpell;
+}
+
+/**
+ * De dónde sale la actividad que se usa. `@Optional()` en el constructor, igual que
+ * `ResourcesService` o `StatblocksService` en `CharacterSheetService`: sin proveedor, cualquier
+ * clave es "no existe" — nunca una actividad inventada.
  */
 export interface ActivityCatalog {
-  find(key: string): Actividad | undefined;
+  find(key: string): ActividadCatalogada | undefined;
 }
 export const ACTIVITY_CATALOG = "ACTIVITY_CATALOG";
 
@@ -60,6 +82,8 @@ export class ActivitiesService {
     private readonly rollRequests: RollRequestsService,
     private readonly encounters: EncountersService,
     private readonly conditions: ConditionsService,
+    private readonly spellbook: SpellbookService,
+    private readonly rolls: RollsService,
     @Optional() @Inject(ACTIVITY_CATALOG) private readonly catalog?: ActivityCatalog,
     // Mismo patrón que `RollsService`, `CharacterSheetService` y `NpcsService`: inyectable solo
     // en pruebas, `undefined` en producción (cae al tirador real de `rollExpression`).
@@ -101,7 +125,13 @@ export class ActivitiesService {
     characterId: string,
     actividadKey: string,
     opciones?: UsarActividadInput,
-  ): Promise<{ aviso?: string; cd?: number; traza?: TraceStep[] }> {
+  ): Promise<{
+    aviso?: string;
+    cd?: number;
+    traza?: TraceStep[];
+    rollEventIds?: string[];
+    fueraDeRegla?: Array<"SIN_ESPACIO" | "NO_PREPARADO">;
+  }> {
     await this.membership.requireMember(campaignId, userId);
 
     // **404 si no se ve, 403 si se ve pero no es tuyo.** `requireVisibleCharacter` ya distingue
@@ -123,9 +153,27 @@ export class ActivitiesService {
       "Solo el dueño del personaje o el DM puede usar su actividad.",
     );
 
-    const actividad = this.catalog?.find(actividadKey);
-    if (!actividad) {
+    const catalogado = this.catalog?.find(actividadKey);
+    if (!catalogado) {
       throw new NotFoundException(`No existe la actividad "${actividadKey}" en el catálogo.`);
+    }
+    const { actividad, kind } = catalogado;
+    const esSpell = kind === "SPELL";
+    const spell = catalogado.spell;
+
+    // Task 4 (3A.2) — el libro de conjuros decide si esto se puede lanzar. `NO_ES_SUYO` (no está
+    // ni preparado ni conocido: no es de la lista de este personaje) es un 400 que rechaza del
+    // todo; `NO_PREPARADO` (está en el libro del mago, pero sin preparar hoy) se lanza igual —
+    // el DM decide qué hacer con la mesa fuera de regla, no el servidor.
+    const fueraDeRegla: Array<"SIN_ESPACIO" | "NO_PREPARADO"> = [];
+    if (esSpell) {
+      const veredicto = await this.spellbook.lanzable(this.prisma, actor.id, spell!.key);
+      if (!veredicto.ok) {
+        if (veredicto.motivo === "NO_ES_SUYO") {
+          throw new BadRequestException(`${catalogado.name} no es de este personaje.`);
+        }
+        fueraDeRegla.push("NO_PREPARADO");
+      }
     }
 
     // Los objetivos se resuelven ANTES de escribir nada: un objetivo inválido no debe dejar el
@@ -142,6 +190,25 @@ export class ActivitiesService {
     const ctx = await this.contextoDeDerivacion(userId, campaignId, actor);
     const traza: TraceStep[] = [];
     let cd: number | undefined;
+    // Task 4 (3A.2) — el daño directo de una actividad (`dados`, signo −1) sobre otro personaje
+    // no se aplica dentro de la transacción: va a la bandeja del DM (`pendingDamage`), y eso lo
+    // escribe `RollsService.roll`, que abre su PROPIA transacción y no puede anidar con la de
+    // `usar()`. Lo que la transacción deja aquí es solo el QUÉ tirar; el CUÁNDO tirar es después.
+    let danoDiferido:
+      | {
+          escalada: ReturnType<typeof dadosEscalados>;
+          bonoValor: number;
+          destinatarios: Character[];
+        }
+      | undefined;
+
+    // Task 4 (3A.2) — para un conjuro, lo que se gasta es el espacio (por su nivel o por el
+    // elegido, T18); para una aptitud, sigue siendo `consumption` tal cual la declara. Se calcula
+    // FUERA de la transacción para que un espacio pedido por debajo del nivel del conjuro
+    // (`consumoDeEspacio` lanza) se rechace sin haber abierto nada.
+    const consumoEfectivo = esSpell
+      ? consumoDeEspacio(spell!, opciones?.nivelDeEspacio)
+      : actividad.consumption;
 
     // **Esta transacción espera un cerrojo a propósito** (`consumir` hace `SELECT … FOR UPDATE`
     // sobre el recurso, ficha P2-6) y **la espera cuenta dentro del tope**. Con el tope por
@@ -151,9 +218,16 @@ export class ActivitiesService {
     // Un tope de 30 s no cambia nada en la mesa y deja de convertir carga en error.
     const resultado = await this.prisma.transaction(
       async (tx) => {
-        const consumo = await this.consumir(tx, actor.id, actividad.consumption);
+        const consumo = await this.consumir(tx, actor.id, consumoEfectivo);
         if (!consumo.ok) {
-          return { aviso: consumo.motivo, sinRecurso: true as const };
+          // Task 4 (3A.2) — «un espacio a 0» sigue sin escribir nada: ni recurso, ni suceso. Para
+          // un conjuro, la respuesta lo cuenta como fuera de regla (`SIN_ESPACIO`) en vez de solo
+          // avisar — es la mesa jugando sin espacios, no un error del cliente.
+          return {
+            aviso: consumo.motivo,
+            sinRecurso: true as const,
+            fueraDeReglaSinRecurso: esSpell ? [...fueraDeRegla, "SIN_ESPACIO" as const] : undefined,
+          };
         }
         for (const paso of consumo.pasos) {
           await this.events.record(
@@ -185,6 +259,29 @@ export class ActivitiesService {
         // fórmula nunca vea un nivel que nadie pagó.
         ctx.nivelDeEspacio = nivelDeEspacioConsumido(consumo.pasos);
 
+        // Task 4 (3A.2) — toda actividad usada deja línea, conjuro o aptitud por igual: sin esto,
+        // solo la Furia (con su `effects`) dejaba rastro de que alguien la usó.
+        await this.events.record(
+          userId,
+          campaignId,
+          {
+            subjectType: "character",
+            subjectId: actor.id,
+            visibility: actor.visibility,
+            payload: {
+              type: "ACTIVITY_USED",
+              actividadKey,
+              name: catalogado.name,
+              kind,
+              ...(esSpell ? { spellLevel: spell!.level } : {}),
+              ...(ctx.nivelDeEspacio !== undefined ? { nivelDeEspacio: ctx.nivelDeEspacio } : {}),
+              ...(objetivos.length > 0 ? { targetCharacterIds: objetivos.map((o) => o.id) } : {}),
+              ...(fueraDeRegla.length > 0 ? { fueraDeRegla } : {}),
+            },
+          },
+          tx,
+        );
+
         switch (actividad.tipo) {
           case "salvacion": {
             const resuelto = resolverOrigen(actividad.salvacion.cd, ctx);
@@ -200,15 +297,16 @@ export class ActivitiesService {
             // entero, mitad (`siSalva: "mitad"`) o nada, según si esa tirada concreta superó la CD.
             let pendingEffect: PendingSaveEffect | undefined;
             if (actividad.dados) {
-              const { total, pasos } = this.tirarDados(actividad.dados, ctx);
+              const nivelBase = esSpell ? spell!.level : 0;
+              const { total, pasos, escalada } = this.tirarDados(actividad.dados, ctx, nivelBase);
               traza.push(...pasos);
               pendingEffect = {
                 amount: total,
-                signo: actividad.dados.signo,
+                signo: escalada.signo,
                 // Solo un daño lleva tipo: una curación por salvación (spec §4.4) no tiene «tipo de
                 // daño» que guardar, y el esquema lo dice — el dato guardado no lo contradice.
-                ...(actividad.dados.signo < 0 && actividad.dados.tipoDeDano
-                  ? { tipoDeDano: actividad.dados.tipoDeDano }
+                ...(escalada.signo < 0 && escalada.tipoDeDano
+                  ? { tipoDeDano: escalada.tipoDeDano }
                   : {}),
                 siSalva: actividad.salvacion.siSalva,
                 actividadKey,
@@ -229,16 +327,45 @@ export class ActivitiesService {
             break;
           }
           case "dados": {
-            const { total, pasos } = this.tirarDados(actividad.dados, ctx);
-            traza.push(...pasos);
-            const delta = actividad.dados.signo * total;
+            // Task 4 (3A.2) — el escalado se resuelve ANTES de tirar (T18, cantrips), y el signo
+            // de la expresión YA escalada es el que decide el camino: daño a otro no se aplica
+            // aquí (D-CF-128), se difiere a la bandeja del DM, fuera de esta transacción.
+            const nivelBase = esSpell ? spell!.level : 0;
+            const escalada = dadosEscalados(actividad.dados, {
+              nivelBase,
+              nivelDeEspacio: ctx.nivelDeEspacio,
+              nivelDePersonaje: ctx.level,
+            });
+            let bonoValor = 0;
+            if (escalada.bonus) {
+              const resuelto = resolverOrigen(escalada.bonus, ctx);
+              bonoValor = resuelto.valor;
+              traza.push(resuelto.paso);
+            }
+            const esDanoAOtro =
+              escalada.signo === -1 && destinatarios.some((d) => d.id !== actor.id);
+            if (esDanoAOtro) {
+              danoDiferido = { escalada, bonoValor, destinatarios: [...destinatarios] };
+              break;
+            }
+            let dadoTotal = 0;
+            if (escalada.n !== undefined && escalada.caras !== undefined) {
+              const tirada = rollExpression(`${escalada.n}d${escalada.caras}`, this.roller);
+              dadoTotal = tirada.total;
+              traza.push({
+                op: "base",
+                amount: dadoTotal,
+                sourceType: "base",
+                sourceKey: "dice",
+                labelKey: "activity.diceRolled",
+              });
+            }
+            const delta = escalada.signo * (dadoTotal + bonoValor);
             for (const destino of destinatarios) {
               await this.characterSheet.changeHpFromEffect(tx, userId, campaignId, destino.id, {
                 delta,
                 reason: `Actividad: ${actividadKey}`,
-                ...(delta < 0 && actividad.dados.tipoDeDano
-                  ? { damageType: actividad.dados.tipoDeDano }
-                  : {}),
+                ...(delta < 0 && escalada.tipoDeDano ? { damageType: escalada.tipoDeDano } : {}),
               });
             }
             break;
@@ -298,7 +425,7 @@ export class ActivitiesService {
     );
 
     if (resultado.sinRecurso) {
-      return { aviso: resultado.aviso };
+      return { aviso: resultado.aviso, fueraDeRegla: resultado.fueraDeReglaSinRecurso };
     }
 
     // **Fuera de la transacción, a propósito.** La economía del turno nunca rechaza
@@ -307,7 +434,54 @@ export class ActivitiesService {
     // error: se calla.
     await this.gastarActivacion(userId, campaignId, actor, actividad);
 
-    return { cd, traza: traza.length > 0 ? traza : undefined };
+    // Task 4 (3A.2), D-CF-128 — el daño diferido se tira AQUÍ, fuera de la transacción de
+    // `usar()`: `RollsService.roll` abre la suya propia y no puede anidar con la de arriba. SRD
+    // 5.1, *Damage Rolls*: «roll the damage once for all of them» — el azar se tira UNA vez
+    // (`rollExpression`, directo, sin pasar por `RollsService`) y cada destinatario recibe su
+    // propia tarjeta de la bandeja del DM con ESE MISMO resultado (`interno.resultadoFijo`): N
+    // tarjetas, un solo azar.
+    let rollEventIds: string[] | undefined;
+    if (danoDiferido) {
+      const { escalada, bonoValor, destinatarios: destinosDelDano } = danoDiferido;
+      const dados =
+        escalada.n !== undefined && escalada.caras !== undefined
+          ? `${escalada.n}d${escalada.caras}`
+          : undefined;
+      const expresionTexto = dados ? conSigno(dados, bonoValor) : `${bonoValor}`;
+      const resultadoDado = rollExpression(expresionTexto, this.roller);
+      const etiqueta = `${esSpell ? "Conjuro" : "Actividad"}: ${catalogado.name}`;
+
+      rollEventIds = [];
+      for (const destino of destinosDelDano) {
+        const respuesta = await this.rolls.roll(
+          userId,
+          campaignId,
+          {
+            expression: expresionTexto,
+            label: `Daño de ${catalogado.name}`,
+            characterId: actor.id,
+            mode: "NORMAL",
+            audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+          },
+          {
+            pendingDamage: {
+              targetCharacterId: destino.id,
+              damageType: escalada.tipoDeDano ?? "FORCE",
+              reason: etiqueta,
+            },
+            resultadoFijo: resultadoDado,
+          },
+        );
+        rollEventIds.push(respuesta.eventId);
+      }
+    }
+
+    return {
+      cd,
+      traza: traza.length > 0 ? traza : undefined,
+      rollEventIds,
+      fueraDeRegla: fueraDeRegla.length > 0 ? fueraDeRegla : undefined,
+    };
   }
 
   /**
@@ -379,15 +553,30 @@ export class ActivitiesService {
     return { ok: true, pasos };
   }
 
-  /** Una expresión de dados, tirada: el total y los pasos de traza que lo explican. */
+  /**
+   * Una expresión de dados, tirada: el total y los pasos de traza que lo explican.
+   *
+   * **Task 4 (3A.2) — escala ANTES de tirar.** `nivelBase` es `spell.level` para un conjuro (T18,
+   * la actividad `dados` de este método) y `0` para una aptitud — sin nivel de espacio en el
+   * contexto (una aptitud nunca gasta uno), el escalado por espacio da siempre 0 tramos, así que
+   * pasar `0` no le inventa ninguna escala que no tuviera. Devuelve también la expresión YA
+   * escalada (`escalada`): quien llama la necesita para su `signo`/`tipoDeDano`, que no cambian al
+   * escalar pero sí viajan siempre desde la MISMA fuente que produjo los dados que se tiraron.
+   */
   private tirarDados(
     expresion: Extract<Actividad, { tipo: "dados" }>["dados"],
     ctx: ContextoDeDerivacion,
-  ): { total: number; pasos: TraceStep[] } {
+    nivelBase: number,
+  ): { total: number; pasos: TraceStep[]; escalada: ReturnType<typeof dadosEscalados> } {
+    const escalada = dadosEscalados(expresion, {
+      nivelBase,
+      nivelDeEspacio: ctx.nivelDeEspacio,
+      nivelDePersonaje: ctx.level,
+    });
     const pasos: TraceStep[] = [];
     let total = 0;
-    if (expresion.n !== undefined && expresion.caras !== undefined) {
-      const tirada = rollExpression(`${expresion.n}d${expresion.caras}`, this.roller);
+    if (escalada.n !== undefined && escalada.caras !== undefined) {
+      const tirada = rollExpression(`${escalada.n}d${escalada.caras}`, this.roller);
       total += tirada.total;
       pasos.push({
         op: "base",
@@ -397,12 +586,12 @@ export class ActivitiesService {
         labelKey: "activity.diceRolled",
       });
     }
-    if (expresion.bonus) {
-      const resuelto = resolverOrigen(expresion.bonus, ctx);
+    if (escalada.bonus) {
+      const resuelto = resolverOrigen(escalada.bonus, ctx);
       total += resuelto.valor;
       pasos.push(resuelto.paso);
     }
-    return { total, pasos };
+    return { total, pasos, escalada };
   }
 
   /**
@@ -443,9 +632,13 @@ export class ActivitiesService {
     }
 
     let cdDeConjuro: number | undefined;
+    let ataqueDeConjuro: number | undefined;
     if (spellcastingAbility) {
       const hoja = await this.characterSheet.getSheet(userId, campaignId, actor.id);
       cdDeConjuro = hoja.sheet?.derived.spellSaveDc?.total;
+      // Task 4 (3A.2) — hermano de `cdDeConjuro`, mismo patrón: `fire-bolt` (`ataque`) necesita
+      // este origen para resolver su bono, y solo un lanzador tiene uno que derivar.
+      ataqueDeConjuro = hoja.sheet?.derived["attack.spell"]?.total;
     }
 
     return {
@@ -453,6 +646,7 @@ export class ActivitiesService {
       level: actor.level,
       spellcastingAbility,
       cdDeConjuro,
+      ataqueDeConjuro,
       // C2 (ola de arreglos de 3A.1): la clase del actor, para `nivelDeClase` — Tomar Aliento
       // curaba `1d10 + 0` sin esto. Sin multiclase; una clase que el catálogo no reconoce deja
       // `classKey` vacío y `nivelDeClase` da 0, igual que antes.
@@ -508,6 +702,17 @@ export class ActivitiesService {
 function destinatariosOrdenados(objetivos: Character[], actor: Character): Character[] {
   const base = objetivos.length > 0 ? objetivos : [actor];
   return [...base].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/**
+ * Task 4 (3A.2) — `"8d6"` + `3` → `"8d6+3"`; `"8d6"` + `-2` → `"8d6-2"`; sin modificador, la
+ * expresión de dados tal cual. Mismo patrón que `conSigno` de `character-sheet.service.ts`
+ * (`rollAttack`), copiado en vez de importado porque esa función no se exporta y no vale la pena
+ * abrir esa puerta por una función de una línea.
+ */
+function conSigno(dados: string, modificador: number): string {
+  if (modificador === 0) return dados;
+  return `${dados}${modificador > 0 ? "+" : "-"}${Math.abs(modificador)}`;
 }
 
 /**

@@ -1,4 +1,14 @@
-import type { Actividad, Activacion, MecanicaDeConjuro, SrdSpell } from "@dnd/shared";
+import { BadRequestException } from "@nestjs/common";
+import type {
+  Actividad,
+  Activacion,
+  Consumo,
+  DamageType,
+  ExpresionDeDados,
+  MecanicaDeConjuro,
+  Origen,
+  SrdSpell,
+} from "@dnd/shared";
 
 // Tarea 3A.2 (Task 3) — el puente entre un conjuro del catálogo (`SrdSpell`, `actividades:
 // Actividad[]`) y una actividad usable (`ActivitiesService.usar`, tarea A7). No añade mecánica
@@ -70,16 +80,89 @@ export function mecanicaDe(spell: SrdSpell): MecanicaDeConjuro {
 }
 
 /**
- * Cuántos objetivos pide la actividad de lanzamiento. `"personal"` (sin objetivo, como `shield`)
- * y la ausencia de `target` cuentan como `"ninguno"`; sin `cantidad` es un solo objetivo; con
- * `cantidad` numérica mayor que 1, o derivada de un `Origen` (`bless`, «+2»: puede crecer de
- * sobra), es `"varios"`.
+ * Cuántos objetivos pide la actividad de lanzamiento — **derivado de su `tipo`, no de
+ * `target`** (ruling del orquestador, 2026-09-18, Task 4). La primera versión leía
+ * `actividad.target`, pero el catálogo que genera Task 1 no trae ese campo en ninguna de sus 425
+ * actividades hoy (medido): con esa lectura, `magic-missile` —que sí reparte varios dardos entre
+ * varios objetivos— daba siempre `"ninguno"`. `tipo` sí distingue los tres casos reales: un
+ * `ataque` apunta a una criatura; una `salvacion` o un `dados` (el daño de `magic-missile`) puede
+ * alcanzar a varios; `utilidad` y `prueba` no piden un objetivo de criatura por su propia
+ * mecánica, y sin actividad de lanzamiento tampoco hay nada que pedir.
  */
 export function objetivosDe(spell: SrdSpell): "ninguno" | "uno" | "varios" {
   const actividad = actividadDeLanzamiento(spell);
-  const objetivo = actividad?.target;
-  if (!objetivo || objetivo.tipo === "personal") return "ninguno";
-  if (objetivo.cantidad === undefined) return "uno";
-  if (typeof objetivo.cantidad === "number") return objetivo.cantidad <= 1 ? "uno" : "varios";
-  return "varios";
+  if (!actividad) return "ninguno";
+  switch (actividad.tipo) {
+    case "ataque":
+      return "uno";
+    case "salvacion":
+    case "dados":
+      return "varios";
+    case "utilidad":
+    case "prueba":
+      return "ninguno";
+  }
+}
+
+/**
+ * Task 4 (3A.2) — qué `CharacterResource` paga lanzar este conjuro. Un truco (nivel 0) no gasta
+ * espacio: el SRD 5.1 no lo pide. Un conjuro de nivel N gasta un espacio de nivel N, o del nivel
+ * ELEGIDO si es mayor — SRD 5.1, *Casting a Spell at a Higher Level*: «When a spellcaster casts a
+ * spell using a slot that is of a higher level than the spell, the spell assumes the higher level
+ * for that casting». Elegir un espacio MENOR que el del conjuro no es una opción de la mesa: es
+ * una petición que no se puede cumplir, y se rechaza en vez de gastar lo que no cubre el conjuro.
+ */
+export function consumoDeEspacio(spell: SrdSpell, nivelDeEspacio?: number): Consumo[] {
+  if (spell.level === 0) return [];
+  if (nivelDeEspacio !== undefined && nivelDeEspacio < spell.level) {
+    throw new BadRequestException(
+      `${spell.nameEs ?? spell.nameEn} es de nivel ${spell.level}: no se puede lanzar con un ` +
+        `espacio de nivel ${nivelDeEspacio}.`,
+    );
+  }
+  return [{ recurso: `spell-slot-${nivelDeEspacio ?? spell.level}`, cantidad: 1 }];
+}
+
+/** A qué nivel de personaje se gana cada tramo de un truco que escala por nivel — SRD 5.1,
+ * *Cantrips*: 5.º, 11.º y 17.º nivel, el mismo umbral para cualquier truco que escale así. */
+const TRAMOS_POR_NIVEL_DE_PERSONAJE = [5, 11, 17] as const;
+
+/**
+ * Task 4 (3A.2) — aplica el `escalado` de una expresión de dados y devuelve una copia YA
+ * resuelta, sin ese campo — lista para tirar. Sin `escalado`, es una copia literal de lo que
+ * hace falta para tirar (`n`/`caras`/`bonus`/`signo`/`tipoDeDano`).
+ *
+ * **Por espacio** (T18, `fireball`): un tramo de `escalado.n`d`escalado.caras` por cada nivel de
+ * espacio por encima de `nivelBase` — a nivel 5 (base 3) son 2 tramos.
+ *
+ * **Por nivel de personaje** (los trucos que suben solos, `fire-bolt`): un tramo por cada umbral
+ * de `TRAMOS_POR_NIVEL_DE_PERSONAJE` que el personaje ya alcanzó — a nivel 11 son 2 tramos (el
+ * 5.º y el 11.º; el 17.º todavía no).
+ *
+ * Una aptitud de clase (`kind: "FEATURE"`) no tiene nivel base de conjuro: quien llama pasa
+ * `nivelBase: 0` y, sin `ctx.nivelDeEspacio` (una aptitud nunca gasta un espacio), el escalado
+ * por espacio da siempre 0 tramos — solo el escalado por nivel de personaje puede aplicarle algo,
+ * si la aptitud lo declara.
+ */
+export function dadosEscalados(
+  expresion: ExpresionDeDados,
+  ctx: { nivelBase: number; nivelDeEspacio?: number; nivelDePersonaje: number },
+): { n?: number; caras?: number; bonus?: Origen; signo: 1 | -1; tipoDeDano?: DamageType } {
+  const base = {
+    n: expresion.n,
+    caras: expresion.caras,
+    bonus: expresion.bonus,
+    signo: expresion.signo,
+    tipoDeDano: expresion.tipoDeDano,
+  };
+  if (!expresion.escalado) return base;
+
+  const tramos =
+    expresion.escalado.por === "espacio"
+      ? Math.max(0, (ctx.nivelDeEspacio ?? ctx.nivelBase) - ctx.nivelBase)
+      : TRAMOS_POR_NIVEL_DE_PERSONAJE.filter((umbral) => ctx.nivelDePersonaje >= umbral).length;
+  if (tramos === 0) return base;
+
+  const extra = expresion.escalado.n * tramos;
+  return { ...base, n: (base.n ?? 0) + extra, caras: base.caras ?? expresion.escalado.caras };
 }

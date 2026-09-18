@@ -328,10 +328,23 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
     pendingDamage: z
       .object({
         targetCharacterId: z.string().min(1),
-        attackResolvedEventId: z.string().min(1),
+        /**
+         * Task 4 (3A.2) — opcional desde que una actividad (conjuro o aptitud) también deja
+         * daño pendiente sin que haya un `ATTACK_RESOLVED` detrás: `magic-missile` no acierta
+         * contra una CA, se lanza y ya. `applyPendingDamage` sigue leyendo el `ATTACK_RESOLVED`
+         * cuando esta clave falta y `reason` tampoco viene (fila vieja, de antes de esta tarea).
+         */
+        attackResolvedEventId: z.string().min(1).optional(),
         damageType: damageTypeSchema,
         amount: z.number().int().min(0),
         appliedEventId: z.string().min(1).optional(),
+        /**
+         * Task 4 (3A.2) — el motivo con el que se aplicará el daño («Conjuro: Proyectil mágico»,
+         * «Ataque: Espada larga»), puesto por quien pide la tirada (`ActivitiesService.usar` o
+         * `CharacterSheetService.rollAttack`). Sin él, `applyPendingDamage` sigue derivándolo del
+         * `ATTACK_RESOLVED` citado — compatibilidad con filas escritas antes de esta tarea.
+         */
+        reason: z.string().min(1).max(200).optional(),
       })
       .optional(),
   }),

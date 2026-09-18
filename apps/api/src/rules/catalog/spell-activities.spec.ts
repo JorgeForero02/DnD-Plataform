@@ -1,6 +1,10 @@
+import { BadRequestException } from "@nestjs/common";
+import type { ExpresionDeDados, SrdSpell } from "@dnd/shared";
 import {
   actividadDeLanzamiento,
   claveDeConjuro,
+  consumoDeEspacio,
+  dadosEscalados,
   mecanicaDe,
   objetivosDe,
   parsearClaveDeActividad,
@@ -70,38 +74,98 @@ describe("mecanicaDe", () => {
 });
 
 describe("objetivosDe", () => {
-  // El catálogo generado no trae `target` en ninguno de sus 425 actividades hoy (medido: 0 de
-  // 425) — es un hueco de la conversión de Task 1, no de esta función. Se comprueba el caso real
-  // (siempre "ninguno" mientras eso sea así) y, aparte, la lógica de las otras dos ramas con un
-  // fixture propio, para no dejar sin cubrir un camino que el catálogo todavía no ejercita.
+  // Task 4 (3A.2) — reescrita: deriva del `tipo` de la actividad de lanzamiento, no de `target`
+  // (que el catálogo generado por Task 1 no trae en ninguna de sus 425 actividades — medido). Los
+  // tres casos reales del SRD, con conjuros de verdad.
   it("magic-weapon (sin actividad) no tiene objetivo que pedir", () => {
     expect(objetivosDe(SRD_SPELL_POR_KEY.get("magic-weapon")!)).toBe("ninguno");
   });
-  it("un conjuro real sin `target` en su actividad de lanzamiento es «ninguno» hoy", () => {
-    expect(objetivosDe(SRD_SPELL_POR_KEY.get("magic-missile")!)).toBe("ninguno");
+  it("magic-missile (dados) alcanza a varios", () => {
+    expect(objetivosDe(SRD_SPELL_POR_KEY.get("magic-missile")!)).toBe("varios");
   });
-  it("con `target.cantidad` ausente es un solo objetivo", () => {
-    const base = SRD_SPELL_POR_KEY.get("magic-missile")!;
-    const spell = {
-      ...base,
-      actividades: [{ ...base.actividades[0], target: { tipo: "criatura" as const } }],
-    };
-    expect(objetivosDe(spell)).toBe("uno");
+  it("fire-bolt (ataque) apunta a uno", () => {
+    expect(objetivosDe(SRD_SPELL_POR_KEY.get("fire-bolt")!)).toBe("uno");
   });
-  it("con `target.cantidad` numérica mayor que 1 son varios", () => {
-    const base = SRD_SPELL_POR_KEY.get("magic-missile")!;
-    const spell = {
-      ...base,
-      actividades: [{ ...base.actividades[0], target: { tipo: "criatura" as const, cantidad: 3 } }],
-    };
-    expect(objetivosDe(spell)).toBe("varios");
+  it("fireball (salvación) alcanza a varios", () => {
+    expect(objetivosDe(SRD_SPELL_POR_KEY.get("fireball")!)).toBe("varios");
   });
-  it('con `target.tipo === "personal"` es «ninguno» aunque traiga cantidad', () => {
-    const base = SRD_SPELL_POR_KEY.get("magic-missile")!;
-    const spell = {
-      ...base,
-      actividades: [{ ...base.actividades[0], target: { tipo: "personal" as const } }],
-    };
-    expect(objetivosDe(spell)).toBe("ninguno");
+  it("hunters-mark (utilidad, la actividad de lanzamiento) no pide objetivo de criatura", () => {
+    expect(objetivosDe(SRD_SPELL_POR_KEY.get("hunters-mark")!)).toBe("ninguno");
+  });
+});
+
+describe("consumoDeEspacio", () => {
+  it("un truco (nivel 0) no consume nada", () => {
+    expect(consumoDeEspacio(SRD_SPELL_POR_KEY.get("fire-bolt")!)).toEqual([]);
+  });
+  it("un conjuro de nivel N sin elegir espacio consume su propio nivel", () => {
+    expect(consumoDeEspacio(SRD_SPELL_POR_KEY.get("magic-missile")!)).toEqual([
+      { recurso: "spell-slot-1", cantidad: 1 },
+    ]);
+  });
+  it("con un espacio de nivel superior, consume el elegido (T18)", () => {
+    expect(consumoDeEspacio(SRD_SPELL_POR_KEY.get("magic-missile")!, 2)).toEqual([
+      { recurso: "spell-slot-2", cantidad: 1 },
+    ]);
+  });
+  it("fireball (nivel 3) con nivelDeEspacio 5 consume spell-slot-5", () => {
+    expect(consumoDeEspacio(SRD_SPELL_POR_KEY.get("fireball")!, 5)).toEqual([
+      { recurso: "spell-slot-5", cantidad: 1 },
+    ]);
+  });
+  it("un espacio MENOR que el nivel del conjuro se rechaza", () => {
+    expect(() => consumoDeEspacio(SRD_SPELL_POR_KEY.get("fireball")!, 2)).toThrow(
+      BadRequestException,
+    );
+  });
+});
+
+/** El `dados` de la actividad de lanzamiento — narrowed a mano, porque `Actividad[]` en el
+ * catálogo generado pierde el tipo concreto del elemento y `dados` solo existe en tres de las
+ * cinco ramas de la unión. */
+function dadosDeLanzamiento(spell: SrdSpell): ExpresionDeDados {
+  const actividad = actividadDeLanzamiento(spell)!;
+  if (actividad.tipo === "ataque" || actividad.tipo === "salvacion" || actividad.tipo === "dados") {
+    if (actividad.dados) return actividad.dados;
+  }
+  throw new Error(`«${spell.key}» no tiene dados en su actividad de lanzamiento.`);
+}
+
+describe("dadosEscalados", () => {
+  it("fireball a nivel de espacio 5 (base 3): +2d6 sobre la base de 8d6", () => {
+    const fireball = SRD_SPELL_POR_KEY.get("fireball")!;
+    expect(
+      dadosEscalados(dadosDeLanzamiento(fireball), {
+        nivelBase: 3,
+        nivelDeEspacio: 5,
+        nivelDePersonaje: 5,
+      }),
+    ).toMatchObject({ n: 10, caras: 6, signo: -1, tipoDeDano: "FIRE" });
+  });
+  it("fireball con el espacio mínimo (sin subir de nivel): sin extra", () => {
+    const fireball = SRD_SPELL_POR_KEY.get("fireball")!;
+    expect(
+      dadosEscalados(dadosDeLanzamiento(fireball), {
+        nivelBase: 3,
+        nivelDeEspacio: 3,
+        nivelDePersonaje: 3,
+      }),
+    ).toMatchObject({ n: 8, caras: 6 });
+  });
+  it("fire-bolt a nivel de personaje 11 (dos tramos: 5.º y 11.º): +2d10 sobre 1d10", () => {
+    const fireBolt = SRD_SPELL_POR_KEY.get("fire-bolt")!;
+    expect(
+      dadosEscalados(dadosDeLanzamiento(fireBolt), { nivelBase: 0, nivelDePersonaje: 11 }),
+    ).toMatchObject({ n: 3, caras: 10 });
+  });
+  it("fire-bolt a nivel de personaje 4 (ningún tramo): sin escalar", () => {
+    const fireBolt = SRD_SPELL_POR_KEY.get("fire-bolt")!;
+    expect(
+      dadosEscalados(dadosDeLanzamiento(fireBolt), { nivelBase: 0, nivelDePersonaje: 4 }),
+    ).toMatchObject({ n: 1, caras: 10 });
+  });
+  it("una expresión sin `escalado` es una copia literal", () => {
+    const dados: ExpresionDeDados = { n: 1, caras: 8, signo: 1 };
+    expect(dadosEscalados(dados, { nivelBase: 0, nivelDePersonaje: 1 })).toEqual(dados);
   });
 });

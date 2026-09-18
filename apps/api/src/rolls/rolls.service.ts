@@ -99,7 +99,14 @@ export class RollsService {
    *   por el nombre que lleva `label` — que cambia si el DM identifica el objeto entre las dos
    *   tiradas. `pendingDamage` (spec §4b.4, E-PE-3): a quién le toca este daño, sin `amount` ni
    *   `appliedEventId` — los pone este servicio, no quien llama, porque son «lo que solo pone el
-   *   servidor» tanto como el resto de este campo.
+   *   servidor» tanto como el resto de este campo. `reason` (Task 4, 3A.2): el motivo con el que
+   *   se aplicará el daño si alguien lo cobra — compatibilidad con filas de antes de esta tarea,
+   *   que solo traían `attackResolvedEventId`. `resultadoFijo` (Task 4, 3A.2, corrección de
+   *   plan): SRD 5.1 *Damage Rolls* — «roll the damage once for all of them». Cuando el daño de
+   *   una actividad alcanza a varios objetivos, el azar se tira UNA vez con `rollExpression` y
+   *   cada tarjeta de la bandeja del DM se escribe con ESE mismo resultado; con este campo
+   *   puesto, `roll()` no vuelve a llamar a `rollExpression`. Nunca viaja en el cuerpo de una
+   *   petición — lo compone `ActivitiesService.usar`, el único llamador que repite un azar.
    */
   async roll(
     userId: string,
@@ -110,9 +117,11 @@ export class RollsService {
       attackRef?: string;
       pendingDamage?: {
         targetCharacterId: string;
-        attackResolvedEventId: string;
+        attackResolvedEventId?: string;
         damageType: DamageType;
+        reason?: string;
       };
+      resultadoFijo?: DiceRollResult;
     },
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
@@ -147,13 +156,19 @@ export class RollsService {
     const modo = inspiracion ? "ADVANTAGE" : input.mode;
 
     let resultado: DiceRollResult;
-    try {
-      resultado = rollExpression(conVentaja(input.expression, modo), this.roller);
-    } catch (error) {
-      // Una expresión inválida es **400 con su motivo**, no un 500 ni un total que miente.
-      if (error instanceof DiceExpressionError)
-        throw new BadRequestException({ code: error.code, message: error.message });
-      throw error;
+    if (interno?.resultadoFijo) {
+      // Task 4 (3A.2): el azar ya se tiró para esta ronda de daño — no se vuelve a tirar. Ver el
+      // comentario de `interno` arriba: «roll the damage once for all of them».
+      resultado = interno.resultadoFijo;
+    } else {
+      try {
+        resultado = rollExpression(conVentaja(input.expression, modo), this.roller);
+      } catch (error) {
+        // Una expresión inválida es **400 con su motivo**, no un 500 ni un total que miente.
+        if (error instanceof DiceExpressionError)
+          throw new BadRequestException({ code: error.code, message: error.message });
+        throw error;
+      }
     }
 
     const rolls = resultado.terms.flatMap((t) => t.rolled);

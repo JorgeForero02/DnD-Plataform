@@ -2181,6 +2181,9 @@ describe("2B/2C — tirar con un arma: la expresión la compone el servidor", ()
             targetCharacterId: "t1",
             attackResolvedEventId: "ar1",
             damageType: "SLASHING",
+            // Task 4 (3A.2): `rollAttack` (DAMAGE) rellena `reason` con el mismo nombre de mesa
+            // que ya llevaba `peticion.label`, sin el sufijo de crítico.
+            reason: "Ataque: Espada larga",
           },
         },
       );
@@ -4343,6 +4346,50 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
     );
     expect(res.appliedEventId).toBe("ev1");
     expect((tx as unknown as { $executeRaw: jest.Mock }).$executeRaw).toHaveBeenCalled();
+  });
+
+  // Task 4 (3A.2) — una actividad (conjuro o aptitud) deja su `pendingDamage` con `reason` ya
+  // puesto y SIN `attackResolvedEventId` (no hay ataque resuelto detrás: `magic-missile` no
+  // acierta contra una CA). `applyPendingDamage` usa ese `reason` tal cual y no vuelve a mirar
+  // el `ATTACK_RESOLVED` — ni siquiera lo pregunta.
+  it("con `reason` puesto (una actividad, sin ATTACK_RESOLVED), lo usa tal cual y no consulta ATTACK_RESOLVED", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership, events } = montar(undefined, statblocks);
+    const target = personaje({
+      id: "wight1",
+      ownerId: "npc-owner",
+      statblockRef: "SRD:wight",
+      currentHp: 45,
+      tempHp: 0,
+    });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma, {
+      reason: "Conjuro: Proyectil mágico",
+      attackResolvedEventId: undefined,
+    });
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    const tx = montarTransaccion(prisma, target);
+    (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+
+    await service.applyPendingDamage("dm1", "c1", "roll1");
+
+    expect(events.record).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          type: "HP_CHANGED",
+          reason: "Conjuro: Proyectil mágico",
+        }),
+      }),
+      tx,
+    );
+    // Ninguna llamada a `gameEvent.findFirst` pidió un `ATTACK_RESOLVED`: con `reason` puesto,
+    // ese camino ni se pregunta.
+    const llamadasAAttackResolved = prisma.gameEvent.findFirst.mock.calls.filter(
+      ([arg]: [{ where: { type?: string } }]) => arg.where.type === "ATTACK_RESOLVED",
+    );
+    expect(llamadasAAttackResolved).toHaveLength(0);
   });
 
   it("si el candado real (el UPDATE con jsonb_set) no marca ninguna fila, es 409", async () => {

@@ -191,6 +191,10 @@ merece la pena contar.
   las renueve.
 - **Subir de nivel.** El servidor te propone el cambio antes de aplicarlo: qué sube y cuánto.
   Puedes tirar los dados de golpe sin que se aplique nada hasta que confirmes.
+- **Tus conjuros.** Si tu clase lanza, tu libro (o tu lista, según cómo prepare la tuya) aparece
+  con lo que puedes elegir. Un mago nace ya con su libro copiado — nadie lo rellena a mano. Elegir
+  y preparar es tuyo; **el tope avisa cuando te pasas, pero no te lo impide**: la mesa manda, y a
+  veces una emergencia justifica preparar de más. Los trucos se conocen, no se preparan cada día.
 
 ## Lo que verás y lo que no
 

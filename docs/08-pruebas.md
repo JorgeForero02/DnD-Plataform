@@ -41,7 +41,7 @@ unitaria. Si una comprobación cabe en una unitaria, va en una unitaria: estas s
 <!-- e2e:inicio -->
 > **Este bloque también lo escribe `pnpm update:estado`, y no se edita a mano.**
 >
-> - **Ficheros de e2e de API:** 60 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
+> - **Ficheros de e2e de API:** 61 (`apps/api/test/*.e2e-spec.ts`), contados del disco.
 > - **Ficheros de e2e de navegador:** 53 (`apps/web/e2e/*.spec.ts`), contados del disco.
 >
 > Cuenta **ficheros**, no pruebas: cuántas ejecuta cada uno solo lo sabe el corredor, y
@@ -359,6 +359,7 @@ en verde.
 | `condiciones-con-duracion` | Una condición se guarda con **la hora en que vence, no con su duración**; mientras vive frena de verdad; al pasar su hora deja de aplicarse **y el jugador ve por qué**; no se vuelve a anunciar. Y **el agotamiento 4 parte los PG máximos, con la curación topando contra ese máximo**. |
 | `condiciones-en-las-tiradas` | **Las condiciones llegando a las tiradas** (2.5.5). La hoja publica la sugerencia de modo con su porqué —«desventaja: envenenado»— y **solo donde la regla la pone**: envenenado no toca las salvaciones, apresado penaliza la de Destreza y no la de Fuerza, el agotamiento 3 penaliza las seis. **Una condición de dos asaltos sobrevive al primer avance de seis segundos y se apaga en el segundo**, que es lo que demuestra que el reloj en segundos ya era el mecanismo. **El agotamiento 6 mata con los Puntos de Golpe intactos**, y quitarlo devuelve al personaje —la muerte se deriva, no se guarda—. Y la fuga: la hoja de un PNJ `DM_ONLY` es un 404 entero, así que la sugerencia no puede nombrar su condición. |
 | `game-clock` | El reloj es **una columna que sube de verdad**; solo el DM lo avanza; viajar pide las salvaciones de marcha forzada; **un segundo descanso largo en menos de 24 horas de juego se rechaza con un 409 que dice cuánto falta**; a 0 PG no se descansa largo; un descanso interrumpido no cura. |
+| `libro-de-conjuros` | 3A.2 (Task 3, T10) — **el mago nace con su libro sembrado** al fijar la clase (D-CF-125): `GET` trae `modelo: "LIBRO"` y sus 6 conjuros de nivel 1 ya `EN_EL_LIBRO`, sin que nadie los pida uno a uno. Preparar sube el tope correspondiente; lo que no es de la lista de la clase es **400 con el nombre en español**; un truco se aprende con `CONOCIDO`. El registro trae el `SPELLBOOK_CHANGED`; un jugador ajeno recibe **403** al escribir y **404** al leer un personaje `DM_ONLY`. Un clérigo (`PREPARA_DE_LISTA`) **no siembra nada** y preparar de más **se escribe igual**, con el séptimo suceso marcado `fueraDeRegla: ["SOBRE_EL_TOPE"]` (D-CF-126) — nunca un rechazo. |
 
 ### Dados, reglas y PNJ
 

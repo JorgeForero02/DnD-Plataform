@@ -86,6 +86,8 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-13-ronda-arreglo-2-tarea-10.md`](./_archivo/historial-2026-09-13-ronda-arreglo-2-tarea-10.md) | **La ronda de arreglo 2 de la tarea 10 del pulido** —el radio de ventaja se queda montado, apagado con su motivo—, movida entera el 2026-09-13 en el mismo corte. Su resumen se queda arriba |
 > | [`_archivo/historial-2026-09-13-revision-final-de-la-rama.md`](./_archivo/historial-2026-09-13-revision-final-de-la-rama.md) | **Revisión final de la rama pulido/antes-del-paso-3**, movida entera el 2026-09-13 al escribir el hito «Pulido antes del paso 3» (Tarea 15): las siete de este corte se movieron para dejar sitio al hito de la tanda entera. Su resumen se queda arriba |
 > | [`_archivo/historial-2026-09-13-pulido-antes-del-paso-3.md`](./_archivo/historial-2026-09-13-pulido-antes-del-paso-3.md) | **El hito «Pulido antes del paso 3»**, movido entero el 2026-09-14 al escribir el hito «La puerta de efectos», con el fichero en 1013 líneas |
+> | [`_archivo/historial-2026-09-14-paso-3-en-a-y-b.md`](./_archivo/historial-2026-09-14-paso-3-en-a-y-b.md) | **«El paso 3 se parte en A y B; puerta de efectos fusionada»**, movida entera el 2026-09-18 al insertar la entrada de la Task 3 de 3A.2 (`SpellbookService`): el fichero quedó en 1012 de 1000. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-14-pnj-del-mundo-y-la-mesa.md`](./_archivo/historial-2026-09-14-pnj-del-mundo-y-la-mesa.md) | **«El PNJ del mundo y la mesa»**, movida entera el 2026-09-18 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su resumen se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
 > la entrada del día. Se archivaron las seis tandas por tarea y se quedaron los tres hitos.
@@ -96,6 +98,43 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > 2026-09-05 que habían salido solo por el tope volvieron aquí**, enteras: las tres columnas, el
 > hilo como conversación, las tres baratas y la Ola 3. Las dos de días anteriores se quedan
 > archivadas, que es para lo que está el archivo.
+
+---
+
+## 3A.2 Task 3 — `SpellbookService`: listar, cambiar estado y sembrar el libro (2026-09-18), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
+
+Qué — el módulo `spellbook` de la API (D-CF-125/126/127): `GET`/`PUT
+campaigns/:id/characters/:id/spellbook` para leer el libro (o la lista) de conjuros de un
+personaje y cambiar el estado de uno; `sembrarLibro` (`spellbook/sembrar.ts`, función libre) que
+llena la lista al fijar la primera clase; el helper puro `rules/catalog/spell-activities.ts`
+(`actividadDeLanzamiento`, `mecanicaDe`, `objetivosDe`, `claveDeConjuro`) que decide con cuál de
+las actividades de un conjuro se lanza. Pasarse de un tope o preparar en combate **se escribe
+igual**, marcado en `fueraDeRegla` del suceso (D-CF-126) — nunca un rechazo.
+
+Por qué — Task 2 dejó el modelo, los esquemas y los dos sucesos nuevos; esta tarea era el servicio
+que los usa de verdad. `sembrarLibro` vive en su propio fichero, no en `spellbook.service.ts` ni
+como método del servicio: evita que `characters` (que la llama desde
+`CharacterSheetService.updateSheet`) tenga que importar `spellbook`, que a su vez importa
+`characters` para `CharacterSheetService.getSheet` — un ciclo de módulos que Nest no resuelve.
+
+Un defecto real que la medición encontró y arregló en el camino: el modificador de lanzamiento
+(`getSheet`, que habla por el pool principal de Prisma) se pedía **dentro** de la transacción de
+`setEstado`, y bajo carga eso interbloqueaba el pool pequeño de pruebas — el `PUT` colgaba ~19 s.
+Se mueve fuera de la transacción (`modificadorDeLanzamiento`, resuelto antes de abrir el `tx`); lo
+que queda dentro es aritmética pura.
+
+Tests — `spell-activities.spec.ts` (16), `spellbook.service.spec.ts` (Prisma simulado, list/
+setEstado/lanzable/sembrarLibro) y `libro-de-conjuros.e2e-spec.ts` contra Postgres real, con dos
+bloques (mago LIBRO sembrado, clérigo PREPARA_DE_LISTA con el tope excedido a propósito). `pnpm
+verify` en verde. El e2e es intermitente por un motivo ajeno al código: `GET`/`PUT …/spellbook`
+devuelve hasta ~460 KB (el catálogo entero de una clase, con su prosa del SRD), y con cuerpos de
+esa talla `supertest`/`superagent@10.3.0` dispara de vez en cuando su «double callback bug»
+conocido y la petición muere con `ECONNRESET` — medido con `http.get` puro contra el mismo
+endpoint: 60-108 ms, nunca falla. Mitigado (no eliminado) con `.timeout()` explícito y
+`listen(0, "127.0.0.1")`; documentado en el propio fichero de la suite.
+
+Revertir — `git revert` de los commits de esta rama; ningún dato de producción depende de ella
+(sin desplegar).
 
 ---
 
@@ -245,47 +284,21 @@ cabecera huérfana del 13-09 en 06. e2e de API 32/32 en los tres ficheros; Playw
 Por qué — el autor dio permiso de fusionar al cerrar; el despliegue sigue siendo suyo.
 Revertir — `git revert -m 1 07c9a9d`. **Producción sigue en `4830b8a`.**
 
-## El PNJ del mundo y la mesa (2026-09-14) — cerrada en rama, fusionada por la tarde (ver arriba)
+## El PNJ del mundo y la mesa (2026-09-14) — archivada
 
-Qué — rama `pnj-del-mundo/antes-del-paso-3` (9 commits sobre `ce0cc36`;
-[plan](./superpowers/plans/2026-09-14-pnj-del-mundo-y-la-mesa.md) de la
-[spec](./superpowers/specs/2026-09-13-pnj-del-mundo-y-la-mesa-design.md)). **`Character.entityId`**
-une el cuerpo en la mesa con su ficha del mundo (solo `NPC` de la campaña, `SetNull`; se redacta a
-`null` para quien no ve la ficha, en las seis lecturas). **Revelar es una sola acción**
-(`POST …/characters/:id/reveal`): instancia, ficha del mundo y plantilla creada suben a `PLAYERS`
-en una transacción, con `NPC_REVEALED`; `hide` baja solo la instancia (`NPC_HIDDEN`, `DM_ONLY`, para
-que el canal en vivo despierte a la mesa); revelar la ficha desde el wiki —a mano o por el motor de
-reglas— sube sus cuerpos vivos. **Sacar del combate** (`DELETE …/combatants/:id`) renumera y, si
-tenía el turno, avanza por el mismo `empezarTurno` que «Pasar turno» (extraído de `advanceTurn`),
-con `COMBATANT_LEFT` sin nombre si la mesa no lo veía. En la mesa: «Revelar a la mesa» / «Ocultar» /
-«Sacar del combate» en el menú «…» del elenco, «oculto · Revelar» en el orden de turnos, criaturas en
-«Revelar algo», el nombre enlaza a la ficha del mundo; se enlaza al bajar una criatura, desde la hoja
-(«Ficha del mundo») y desde la ficha del mundo («A la mesa»); «Plantilla» / «En la mesa» dicen a qué
-afecta cada visibilidad. Proceso: D-CF-65 con el cierre acotado de la spec §5 — sin revisión por
-tarea; **una** revisión Opus de la rama (0 críticos, 4 importantes, 9 menores) y **una** ola que los
-cerró todos; e2e de API `pnj-del-mundo` 17/17; Playwright solo en lo tocado, 26/26, con la prueba
-nueva a dos navegadores en verde a la primera. Decisiones D-CF-72..86 en
-[decisiones.md](./decisiones.md) (D-CF-73 enmendada por la revisión: `SPECIFIC_PLAYERS` también sube).
-Por qué — la primera partida de prueba en producción: el jugador no veía al enemigo en el orden,
-«Revelar algo» revelaba la ficha y no al bicho, y no había forma de sacar a nadie del combate.
-Revertir — no fusionar la rama; las tres migraciones (`20260914100000`, `…100100`, `…100200`) son
-aditivas y llevan su `-- Revertir:`. **Sin fusionar ni desplegar**: los dos gestos son del autor.
+**Movida entera** a [`_archivo/historial-2026-09-14-pnj-del-mundo-y-la-mesa.md`](./_archivo/historial-2026-09-14-pnj-del-mundo-y-la-mesa.md)
+el 2026-09-18, al insertar la entrada de la Task 3 de 3A.2 (`SpellbookService`): el fichero quedó
+en 1005 de 1000 y esta era la entrada completa más antigua. En una línea: `Character.entityId` une
+el cuerpo en la mesa con su ficha del mundo, revelar/ocultar suben o bajan las dos en una acción, y
+sacar a alguien del combate renumera y avanza el turno si hacía falta (D-CF-72..86).
 
-## El paso 3 se parte en A (jugable) y B (completo); puerta de efectos fusionada (2026-09-14)
+## El paso 3 se parte en A (jugable) y B (completo); puerta de efectos fusionada (2026-09-14) — archivada
 
-Qué — `main` recibe la puerta de efectos en `7688b44` (merge `--no-ff` de `4e17a69`; `pnpm verify`
-entero en verde). Y el paso 3 deja de ser un plan de 26 tareas por orden de aparición:
-[Paso 3 en cinco tandas](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md) manda el orden
-—el libro → el mago → la mesa en combate → lo temporal → deuda— y el
-[plan del 8](./superpowers/plans/2026-09-08-paso-3-el-catalogo-y-los-conjuros-del-personaje.md)
-conserva el contenido de cada tarea (D-CF-70). T5/T6/T9 salen por hechas. **Por la tarde, el autor
-lo partió en A y B (D-CF-71)**: A = conjuros y aptitudes por el conversor con texto, usos y solo
-daño/curación, elegir/lanzar/usar (espacio superior, encantar, daño extra al impactar) y la barra
-de acciones — «jugable aunque sea de voz», como Foundry sin módulos; B = el resto tras jugar.
-Por qué — el autor: «hay muchas cosas dispersas; lo único bien cuadrado es el catálogo». El mago
-estaba en cuatro bloques y la mesa en dos, por haber crecido por acumulación.
-Revertir — borrar el índice del 14, la nota de cabecera del plan del 8 y la fila D-CF-70; la fusión
-se deshace con `git revert -m 1 7688b44`.
+**Movida entera** a [`_archivo/historial-2026-09-14-paso-3-en-a-y-b.md`](./_archivo/historial-2026-09-14-paso-3-en-a-y-b.md)
+el 2026-09-18, al insertar la entrada de la Task 3 de 3A.2 (`SpellbookService`): el fichero quedó
+en 1012 de 1000 y esta era la entrada completa más antigua. En una línea: `main` recibe la puerta
+de efectos fusionada (`7688b44`) y el paso 3 se divide en A (jugable: el libro, elegir/lanzar/usar,
+la barra de acciones) y B (el resto), D-CF-70/71.
 
 ## La puerta de efectos (2026-09-13/14) — archivada
 

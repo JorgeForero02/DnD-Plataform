@@ -80,6 +80,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { StatblocksService } from "../statblocks/statblocks.service";
 import { CharactersService } from "./characters.service";
 import { AbilityRollsService } from "./ability-rolls.service";
+import { sembrarLibro } from "../spellbook/sembrar";
 import {
   comprobarPermitido,
   desgloseDeTirada,
@@ -1193,6 +1194,21 @@ export class CharacterSheetService {
         }
       }
       const fila = await tx.character.update({ where: { id: characterId }, data });
+      // D-CF-125 (Task 3 de 3A.2): el mismo gesto de nacer con clase que ya siembra los PG y el
+      // oro de arriba siembra también el libro/lista de conjuros — solo la primera vez que el
+      // personaje tiene clase, la misma condición que abrió `sucesosDeNacimiento`.
+      if (character.classKey === null && typeof data.classKey === "string") {
+        const nivel = (data.level as number | undefined) ?? character.level;
+        await sembrarLibro(
+          tx,
+          this.events,
+          userId,
+          campaignId,
+          { id: characterId, visibility: character.visibility },
+          data.classKey,
+          nivel,
+        );
+      }
       if (intentoAFijar) {
         const marcado = await tx.abilityRollAttempt.updateMany({
           where: { id: intentoAFijar, chosen: false },

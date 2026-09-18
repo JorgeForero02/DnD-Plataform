@@ -30,6 +30,7 @@ export * from "./choices";
 export * from "./spell-slots";
 export * from "./spell-knowledge";
 export * from "./spell-starters";
+export * from "./spell-activities";
 export * from "./resolve";
 export * from "./difficulty";
 

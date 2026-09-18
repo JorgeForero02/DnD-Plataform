@@ -81,6 +81,11 @@ import {
 } from "../rules/catalog";
 import { rollExpression, type DiceRollResult, type Roller } from "../dice/dice";
 import { DICE_ROLLER, RollsService } from "../rolls/rolls.service";
+import {
+  gastarSiEnCombate,
+  TURN_ECONOMY_GATE,
+  type PuertaDeEconomia,
+} from "../encounters/gastar-si-en-combate";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
 import { Prisma } from "@prisma/client";
@@ -460,6 +465,18 @@ export class CharacterSheetService {
      * `hojaDeStatblock` lo comprueba — en vez de derivar una hoja vacía que parecería correcta.
      */
     @Optional() private readonly statblocks?: StatblocksService,
+    /**
+     * Task 4b (3A.3) — `EncountersService.gastar`, sin importar su clase (`EncountersModule` ya
+     * importa `CharactersModule`; lo contrario sería un ciclo que Nest solo resuelve con
+     * `forwardRef`, y este proyecto ya lo descartó — ver `turn-economy-gate.module.ts`).
+     * `resolveAttack` lo usa para que un ataque de arma con objetivo gaste la acción del turno
+     * como cualquier actividad (D-CF-146). **Opcional por el mismo motivo que `resources` y
+     * `statblocks`**: las unitarias de este servicio montan el módulo a mano; en la aplicación
+     * real siempre está, vía el token `@Global()`.
+     */
+    @Optional()
+    @Inject(TURN_ECONOMY_GATE)
+    private readonly turnEconomyGate?: PuertaDeEconomia,
   ) {}
 
   /**
@@ -3545,10 +3562,46 @@ export class CharacterSheetService {
     // **`attackResolvedEventId` NO viaja en la respuesta de este endpoint.** Es infraestructura
     // interna de la Task 5 —lo usa `usar()` para citar el `ATTACK_RESOLVED` desde el daño
     // diferido de un conjuro—; `resolveAttack` nunca lo devolvió y no hay ningún consumidor de
-    // un arma que lo necesite. Un e2e comprueba que la respuesta solo trae `roll`/`verdict`.
-    return resuelto.verdict === undefined
-      ? { roll: resuelto.roll }
-      : { roll: resuelto.roll, verdict: resuelto.verdict };
+    // un arma que lo necesite. Un e2e comprueba que la respuesta solo trae `roll`/`verdict`
+    // (más `excedido`, desde D-CF-146).
+
+    // Task 4b (3A.3, D-CF-146) — **la economía del turno, fuera de la transacción y DESPUÉS de
+    // `ATTACK_RESOLVED`**, igual que `ActivitiesService.gastarActivacion` hace con cualquier otra
+    // actividad. SRD 5.1, "Actions in Combat" → "Attack": *"The most common action to take in
+    // combat is the Attack action..."* — un ataque de arma ES la acción de Atacar, y hasta hoy
+    // `resolveAttack` la resolvía sin gastarla nunca: un guerrero podía "atacar" un número
+    // ilimitado de veces por turno sin que el servidor lo notara. Se gasta pase lo que pase con
+    // `roll.revealed` —una tirada a ciegas sigue siendo la acción de atacar en la ficción de la
+    // mesa, el jugador solo no ve el número—, y solo si el ATACANTE es combatiente de un
+    // encuentro `ACTIVE`: fuera de combate no hay turno que gastar, y `gastarSiEnCombate` ya lo
+    // calla.
+    //
+    // **Ruling — Ataque Adicional (nivel 5) queda como aviso, no como excepción.** El SRD da a
+    // partir de nivel 5 una segunda tirada por la MISMA acción («you can attack twice, instead of
+    // once»): con este cambio, el segundo ataque del turno marcará `excedido: true` aunque sea
+    // una jugada legal. La doctrina del proyecto es "cuenta y avisa, nunca rechaza"
+    // (`EncountersService.gastar`), así que el aviso es honesto —de verdad se gastó una acción
+    // de más si se cuenta ataque por ataque— y ruidoso —no distingue "un guerrero repitiendo su
+    // ataque" de "dos guerreros distintos atacando cada uno una vez". Modelar los ataques por
+    // acción (para que Ataque Adicional no dispare el aviso) es trabajo de 3B/T23, no de este
+    // hueco: lo que faltaba aquí es que la acción se gastara ALGUNA vez, no que se cuente con la
+    // precisión final.
+    const gasto = this.turnEconomyGate
+      ? await gastarSiEnCombate(
+          this.prisma,
+          this.turnEconomyGate,
+          userId,
+          campaignId,
+          characterId,
+          "ACTION",
+        )
+      : undefined;
+
+    const base =
+      resuelto.verdict === undefined
+        ? { roll: resuelto.roll }
+        : { roll: resuelto.roll, verdict: resuelto.verdict };
+    return gasto === undefined ? base : { ...base, excedido: gasto.excedido };
   }
 
   /**

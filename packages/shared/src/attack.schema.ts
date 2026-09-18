@@ -84,9 +84,17 @@ export type ResolveAttackInput = z.infer<typeof resolveAttackSchema>;
  * `BLIND`— no le enseña el total a quien tiró; enseñarle el veredicto igualmente sería la misma
  * fuga por otra puerta, porque «impacta» ya dice más de lo que una tirada a ciegas promete
  * esconder.
+ *
+ * **`excedido` (Task 4b, 3A.3, D-CF-146)** — presente solo cuando quien ataca es combatiente de
+ * un encuentro `ACTIVE`: un ataque de arma con objetivo gasta la acción del turno como cualquier
+ * otra actividad (`EncountersService.gastar`, doctrina "cuenta y avisa, nunca rechaza"), y
+ * `true` dice que ya se había gastado. **`ActivitiesService.usar()` no expone esta misma señal
+ * todavía** —gasta por la misma puerta pero descarta el resultado (`gastarActivacion`, doctrina
+ * de la tarea A2)—; queda pendiente que lo haga, fuera del alcance de esta tarea.
  */
 export const attackResolutionSchema = z.object({
   roll: rollResultSchema,
   verdict: attackVerdictSchema.optional(),
+  excedido: z.boolean().optional(),
 });
 export type AttackResolution = z.infer<typeof attackResolutionSchema>;

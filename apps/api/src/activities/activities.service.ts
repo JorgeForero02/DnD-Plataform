@@ -20,6 +20,7 @@ import { GameEventsService } from "../game-events/game-events.service";
 import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollRequestsService } from "../roll-requests/roll-requests.service";
 import { EncountersService } from "../encounters/encounters.service";
+import { gastarSiEnCombate } from "../encounters/gastar-si-en-combate";
 import { ConditionsService } from "../character-state/conditions/conditions.service";
 import { TemporaryModifiersService } from "../character-state/temporary-modifiers/temporary-modifiers.service";
 import { CONCENTRATION_KEY_PREFIX } from "../character-state/concentration/concentration";
@@ -968,6 +969,12 @@ export class ActivitiesService {
    *
    * Una `activation` por tiempo (minuto/hora, un ritual) no toca la economía del turno: no hay
    * `coste` que gastar, así que esta función no hace nada con ella.
+   *
+   * **Task 4b (3A.3) — extraído a `gastarSiEnCombate`.** `CharacterSheetService.resolveAttack`
+   * necesitaba exactamente esto («¿hay combatiente activo? si lo hay, gastar») para que un
+   * ataque de arma con objetivo también gastara la acción del turno (D-CF-146, el hueco que
+   * medió la Task 4) — sin volver a escribir la misma consulta y la misma llamada a `gastar` una
+   * segunda vez.
    */
   private async gastarActivacion(
     userId: string,
@@ -976,20 +983,13 @@ export class ActivitiesService {
     actividad: Actividad,
   ): Promise<void> {
     if (!("coste" in actividad.activation)) return;
-
-    const combatiente = await this.prisma.combatant.findFirst({
-      where: { characterId: actor.id, encounter: { status: "ACTIVE", session: { campaignId } } },
-      select: { id: true, encounterId: true, encounter: { select: { sessionId: true } } },
-    });
-    if (!combatiente) return;
-
-    await this.encounters.gastar(
+    await gastarSiEnCombate(
+      this.prisma,
+      this.encounters,
       userId,
       campaignId,
-      combatiente.encounter.sessionId,
-      combatiente.encounterId,
-      combatiente.id,
-      { coste: actividad.activation.coste },
+      actor.id,
+      actividad.activation.coste,
     );
   }
 }

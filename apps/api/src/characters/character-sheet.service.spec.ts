@@ -77,7 +77,14 @@ function dadoFijo(valor: number): Roller {
   return () => valor;
 }
 
-function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
+function montar(
+  roller?: Roller,
+  statblocks?: { resolver: jest.Mock },
+  // Task 4b (3A.3) — el mismo patrón que `resources`/`statblocks`: `undefined` por defecto (la
+  // mayoría de las pruebas no atacan en combate), y un doble con `gastar: jest.fn()` cuando el
+  // caso lo pide.
+  turnEconomyGate?: { gastar: jest.Mock },
+) {
   const prisma = {
     character: { findFirst: jest.fn(), update: jest.fn() },
     // M8: la hoja lee los modificadores temporales vivos. Por defecto ninguno, que es el estado de
@@ -174,8 +181,19 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
     roller,
     resources as unknown as ResourcesService,
     statblocks as unknown as StatblocksService,
+    turnEconomyGate,
   );
-  return { service, prisma, membership, events, characters, resources, rolls, abilityRolls };
+  return {
+    service,
+    prisma,
+    membership,
+    events,
+    characters,
+    resources,
+    rolls,
+    abilityRolls,
+    turnEconomyGate,
+  };
 }
 
 /** Simula `prisma.transaction`, con un `tx` que solo sabe bloquear la fila dada y actualizarla. */
@@ -3451,8 +3469,11 @@ describe("2.5.2 — el modificador de iniciativa reutiliza la derivación, no un
 // ============================================================================================
 
 /** Ataca con `long-sword` (bono +4, ver la suite de 2B de arriba) contra `target1` (CA 11). */
-function conAtacanteYObjetivo(rollsRespuesta: Record<string, unknown>) {
-  const montado = montar();
+function conAtacanteYObjetivo(
+  rollsRespuesta: Record<string, unknown>,
+  turnEconomyGate?: { gastar: jest.Mock },
+) {
+  const montado = montar(undefined, undefined, turnEconomyGate);
   const { prisma, characters, rolls } = montado;
 
   const atacante = personaje({ id: "ch1" });
@@ -3564,6 +3585,100 @@ describe("D-OP-11 — a quién se puede apuntar, y el 404 que no delata", () => 
         }),
       }),
     );
+  });
+});
+
+describe("D-CF-146 (Task 4b, 3A.3) — resolveAttack gasta la acción del turno del ATACANTE", () => {
+  // Hueco medido por la Task 4: `ActivitiesService.usar()` gastaba la economía del turno
+  // (`gastarActivacion`), pero `resolveAttack` —un ataque de arma— no. Un guerrero podía
+  // "atacar" toda la partida sin que el servidor marcara nunca su acción como gastada.
+
+  function conCombatienteAtacante(combatiente: { id: string; encounterId: string } | null) {
+    const gate = { gastar: jest.fn().mockResolvedValue({ economia: {}, excedido: false }) };
+    const montado = conAtacanteYObjetivo(
+      {
+        revealed: true,
+        eventId: "ev1",
+        expression: "1d20+4",
+        audience: "PUBLIC",
+        rolls: [10],
+        kept: [10],
+        dropped: [],
+        modifier: 4,
+        total: 14,
+        natural: "NONE",
+        outcome: "NO_DC",
+      },
+      gate,
+    );
+    // `prisma.combatant.findFirst` es la MISMA puerta simulada que ya usa `sePuedeApuntar` sobre
+    // el objetivo — aquí se distingue por `characterId`, igual que hace el servicio de verdad:
+    // el atacante (`ch1`) es quien decide si se gasta la economía, el objetivo (`target1`) sigue
+    // resolviendo si se le puede apuntar.
+    montado.prisma.combatant.findFirst.mockImplementation(
+      ({ where }: { where: { characterId: string } }) =>
+        Promise.resolve(
+          where.characterId === "ch1"
+            ? combatiente && { ...combatiente, encounter: { sessionId: "s1" } }
+            : { id: "comb-target" },
+        ),
+    );
+    return { ...montado, gate };
+  }
+
+  it("en combate: llama a `gastar` UNA vez con ACTION, y devuelve `excedido`", async () => {
+    const { service, gate } = conCombatienteAtacante({ id: "comb1", encounterId: "enc1" });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+      spendInspiration: false,
+    });
+
+    expect(gate.gastar).toHaveBeenCalledTimes(1);
+    expect(gate.gastar).toHaveBeenCalledWith("p1", "c1", "s1", "enc1", "comb1", {
+      coste: "ACTION",
+    });
+    expect(res).toHaveProperty("excedido", false);
+  });
+
+  it("fuera de combate: NO llama a `gastar`, y la respuesta no trae `excedido`", async () => {
+    const { service, gate } = conCombatienteAtacante(null);
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+      spendInspiration: false,
+    });
+
+    expect(gate.gastar).not.toHaveBeenCalled();
+    expect(res).not.toHaveProperty("excedido");
+  });
+
+  it("sin la puerta inyectada (como casi toda esta suite), no revienta y no gasta nada", async () => {
+    // El mismo patrón que `resources`/`statblocks`: `undefined` en la mayoría de las pruebas de
+    // este fichero, y el servicio se calla en vez de fallar.
+    const { service } = conAtacanteYObjetivo({
+      revealed: true,
+      eventId: "ev1",
+      expression: "1d20+4",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 4,
+      total: 14,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    const res = await service.resolveAttack("p1", "c1", "ch1", "SRD:long-sword:MAIN_HAND", {
+      targetCharacterId: "target1",
+      mode: "NORMAL",
+      spendInspiration: false,
+    });
+
+    expect(res).not.toHaveProperty("excedido");
   });
 });
 

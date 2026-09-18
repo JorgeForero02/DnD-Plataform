@@ -31,6 +31,7 @@ import { CatalogModule } from "./rules/catalog.module";
 import { CampaignItemsModule } from "./campaign-items/campaign-items.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { EncountersModule } from "./encounters/encounters.module";
+import { TurnEconomyGateModule } from "./encounters/turn-economy-gate.module";
 import { ActivitiesModule } from "./activities/activities.module";
 import { SpellbookModule } from "./spellbook/spellbook.module";
 import { ActionsModule } from "./actions/actions.module";
@@ -78,6 +79,9 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     CampaignItemsModule,
     InventoryModule,
     EncountersModule,
+    // Task 4b (3A.3) — el `TURN_ECONOMY_GATE` que `CharacterSheetService.resolveAttack` pide con
+    // `@Optional()`. Ver `turn-economy-gate.module.ts` para el porqué del `@Global()`.
+    TurnEconomyGateModule,
     ActivitiesModule,
     SpellbookModule,
     ActionsModule,

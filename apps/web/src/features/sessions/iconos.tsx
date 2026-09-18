@@ -155,6 +155,20 @@ export function IconoLugar({ className }: Props) {
 }
 
 /**
+ * Ayuda: un signo de interrogación, trazado — no el glifo de fuente `?`. Task 3 (3A.3): la banda
+ * única lo usa para abrir el diálogo de atajos de teclado.
+ */
+export function IconoAyuda({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.2 9.3a2.8 2.8 0 1 1 3.9 2.9c-.9.5-1.4 1-1.4 2.1" />
+      <circle cx="12" cy="17.2" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/**
  * Bajar al fondo del hilo: una flecha hacia abajo que topa con una línea.
  *
  * D1 (2026-09-05) — el hilo se lee como un chat, y cuando llega algo nuevo mientras alguien está

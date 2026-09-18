@@ -238,7 +238,7 @@ líneas que solo coloca ranuras**:
 | `sessions/dm/` | La columna de herramientas de narración y la consulta del mundo |
 | `sessions/taller/` | Lo que ocupa la mesa cuando el DM está en reposo. A la izquierda **el mundo como árbol con detalle** (`taller/mundo/`, Task 14 bis, D-CF-64): `arbolDelMundo.ts` es la función pura —cuelga por `ROTULOS_DE_JERARQUIA`, dos padres se ven en los dos, un ciclo se corta—, `DesgloseDelMundo` el `tree` WAI-ARIA, `DetalleDeFicha` la cabecera · vitela · `AnilloDeVecinos` · `EditorDeHilos`, y `ElMundo` las dos mitades. **Sustituye al tablero telaraña** (D4; `TableroTelarana.tsx` y `posiciones.ts` ya no existen). A la derecha las tres solapas: escribir ficha, preparar sesión, lo que sabe la mesa |
 | `sessions/tablero/` | C1 bis (2026-09-12): el tablero PlanarAlly enmarcado en el centro (`MarcoDelTablero`) y el registro en vivo como cajón inferior plegable con contador (`CajonDelRegistro`), cuando la campaña tiene `boardRoomUrl` (D-CF-63) |
-| `apps/web/src/features/sessions/BandaDeMesa.tsx` · `PanelDeMesa.tsx` | La banda superior y la tarjeta común |
+| `apps/web/src/features/sessions/BandaUnica.tsx` · `PanelDeMesa.tsx` | La banda superior (fusiona lo que hasta 3A.3 eran `BandaDeMesa.tsx` y `CabeceraDeEscena.tsx`: volver a la campaña, título y lugar de la escena, duración, el reloj de la campaña, el conmutador de tablero, «Ver como» y el tema) y la tarjeta común |
 
 **La mesa es la única pantalla que NO va dentro de `AppShell`.** `SesionPage` no lo monta a
 propósito: una pantalla en la que se está durante horas no se lee, **se opera**, y las migas de pan

@@ -541,7 +541,9 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
         valor: ratio(sobre(getComputedStyle(tituloBanda).color, fondoBanda), fondoBanda),
         minimo: 4.5,
       });
-      const cifras = banda.querySelector("p") as HTMLElement;
+      // Task 3 (3A.3): la banda única antepone el título (su propio `<p>`) al de duración y
+      // asistencia, así que el segundo `<p>` —no el primero— es el que lleva las cifras.
+      const cifras = banda.querySelectorAll("p")[1] as HTMLElement;
       salida.push({
         que: "mesa: duración y asistencia (cifras)",
         valor: ratio(sobre(getComputedStyle(cifras).color, fondoBanda), fondoBanda),
@@ -628,14 +630,17 @@ test("se llega a la mesa desde la campaña sin sesión abierta, y no es un carte
   await expect(aLaMesa).toContainText("en reposo");
   await aLaMesa.click();
 
-  // La mesa en reposo **es uno de sus tres estados**, no su ausencia: la cabecera de escena está,
-  // con la hora del mundo, y el registro y la consulta siguen ahí.
-  const escena = page.getByRole("region", { name: "La escena" });
-  await expect(escena).toBeVisible();
-  await expect(escena).toContainText("La mesa, en reposo");
+  // La mesa en reposo **es uno de sus tres estados**, no su ausencia: la banda única está, con la
+  // hora del mundo, y el registro y la consulta siguen ahí.
+  // Task 3 (3A.3): `CabeceraDeEscena` (`<section aria-label="La escena">`) se fundió en la banda
+  // única; su eyebrow «Escena actual»/«La mesa, en reposo» se dejó caer (el prototipo no la
+  // trae), pero la frase «La mesa, en reposo» sigue diciéndose: ahora es el TÍTULO de la banda.
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await expect(banda).toBeVisible();
+  await expect(banda).toContainText("La mesa, en reposo");
   // El reloj de campaña, que llevaba semanas sondeando para nadie, por fin se pinta donde se juega.
-  await expect(escena).toContainText("Día 1");
-  await expect(escena).toContainText("00:00");
+  await expect(banda).toContainText("Día 1");
+  await expect(banda).toContainText("00:00");
   // **Y el DM empieza la sesión desde aquí** (B4), que es la otra mitad del mismo defecto: hasta
   // hoy el cartel del reposo te mandaba al taller, o sea que para empezar a jugar había que salir
   // del sitio donde se juega. Sin ninguna sesión planificada no se inventa una — se enlaza.
@@ -676,11 +681,19 @@ test("desde una mesa en reposo, el primer enlace de la banda lleva a la campaña
   );
 });
 
-// Y con sesión en curso la misma cabecera dice de qué sesión se trata y quién está. Es la mitad
-// que convierte una columna de texto en un sitio: *un hilo a secas es un tablón, no un escenario.*
-test("en sesión, la cabecera de escena nombra la sesión y a quien está en la mesa", async ({
-  page,
-}) => {
+// Y con sesión en curso la misma banda dice de qué sesión se trata. Es la mitad que convierte
+// una columna de texto en un sitio: *un hilo a secas es un tablón, no un escenario.*
+//
+// Task 3 (3A.3) — **este caso cambió de fondo, no solo de localizador.** `CabeceraDeEscena`
+// (`<section aria-label="La escena">`) y `BandaDeMesa` (`<header aria-label="Estado de la
+// mesa">`) eran dos superficies apiladas, y lo que esta prueba medía era que NO se solapaban —el
+// defecto de borde partido que la suite unitaria no puede ver. Fundidas en `BandaUnica`, las dos
+// son la MISMA superficie: ya no hay dos cajas que puedan solaparse, así que esa medida quedó sin
+// objeto. Lo que sigue midiendo, y es lo que de verdad depende de maquetación real: que la fila
+// entera —título, lugar, reloj, controles— **no desborda la ventana** al ancho normal, que es
+// justo la clase de defecto que una fila fundida con seis piezas dentro puede introducir y que
+// `jsdom` tampoco puede ver.
+test("en sesión, la banda nombra la sesión y no desborda la ventana", async ({ page }) => {
   await registrarse(page);
   await crearCampanaConSesion(page);
   await page.getByRole("button", { name: "Empezar" }).click();
@@ -688,25 +701,14 @@ test("en sesión, la cabecera de escena nombra la sesión y a quien está en la 
   const barra = page.getByRole("status", { name: "Sesión en curso" });
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
 
-  const escena = page.getByRole("region", { name: "La escena" });
-  await expect(escena).toBeVisible();
-  await expect(escena).toContainText("Escena actual");
-  await expect(escena).toContainText("El puerto en llamas");
-
-  // Y lo que solo se ve maquetado: la cabecera de escena **no se solapa** con la banda de estado
-  // que va justo encima. Las dos son del estrato permanente y viven pegadas; un solape aquí es
-  // exactamente el defecto de borde partido que la suite unitaria entera no puede ver.
   const banda = page.getByRole("banner", { name: "Estado de la mesa" });
-  const cajaBanda = await banda.boundingBox();
-  const cajaEscena = await escena.boundingBox();
-  expect(cajaBanda).not.toBeNull();
-  expect(cajaEscena).not.toBeNull();
-  expect(
-    cajaEscena!.y,
-    `banda=${JSON.stringify(cajaBanda)} escena=${JSON.stringify(cajaEscena)}`,
-  ).toBeGreaterThanOrEqual(cajaBanda!.y + cajaBanda!.height);
-  // Los dos ejes, como manda docs/08-pruebas.md: una cabecera de altura cero pasaría lo de arriba.
-  expect(cajaEscena!.height).toBeGreaterThan(40);
+  await expect(banda).toBeVisible();
+  await expect(banda).toContainText("El puerto en llamas");
+
+  const desborde = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(desborde).toBeLessThanOrEqual(1);
 });
 
 // B1.2 (2026-09-04) — **las dos disposiciones del elenco, y la regla que las separa.**
@@ -918,7 +920,8 @@ test("el DM revela un lugar y la cabecera de escena pasa a decirlo, sin tocar la
     .click();
 
   // Todavía no: la ficha existe, pero no se ha revelado nada.
-  const escena = page.getByRole("region", { name: "La escena" });
+  // Task 3 (3A.3): `CabeceraDeEscena` se fundió en la banda única.
+  const escena = page.getByRole("banner", { name: "Estado de la mesa" });
   await expect(escena).toBeVisible();
   await expect(escena.getByRole("link", { name: "El Puerto Viejo" })).toHaveCount(0);
 

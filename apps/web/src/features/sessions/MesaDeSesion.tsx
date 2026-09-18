@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCurrentSession, useGameLog, useSessions } from "./hooks";
-import { CabeceraDeEscena } from "./CabeceraDeEscena";
 import { DialogoDeInicio } from "./ControlesDeSesion";
-import { BandaDeMesa } from "./BandaDeMesa";
+import { BandaUnica, guardarModoDeLaMesa, leerModoDeLaMesa, type ModoDeLaMesa } from "./BandaUnica";
 import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { ColumnaElenco } from "./elenco/ColumnaElenco";
 import { EfectosDePantalla } from "./elenco/efectos/EfectosDePantalla";
@@ -73,6 +72,17 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   const claseDePantalla = useClaseDePantalla();
   // «Ver como»: el DM elige por los ojos de quién mira. El servidor sigue filtrando por canView.
   const [comoUsuario, setComoUsuario] = useState<string>("");
+  // Task 3 (3A.3) — el modo del centro de la mesa: con tablero o sin él. Se lee de `localStorage`
+  // UNA vez al montar (inicializador perezoso: no hay nada asíncrono que sincronizar) y se
+  // reescribe cada vez que cambia. La Task 5 es quien decide qué pinta el centro con esto; aquí
+  // solo se guarda y se ofrece por `BandaUnica`.
+  const [modoDeLaMesa, setModoDeLaMesa] = useState<ModoDeLaMesa>(() =>
+    leerModoDeLaMesa(campaignId),
+  );
+  function cambiarModoDeLaMesa(siguiente: ModoDeLaMesa) {
+    setModoDeLaMesa(siguiente);
+    guardarModoDeLaMesa(campaignId, siguiente);
+  }
 
   const { data: log } = useGameLog(campaignId, {
     sessionId: sesion?.id,
@@ -162,27 +172,20 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
     // recibe el jugador afectado — al DM no le dispara nada.
     <div className={`flex h-screen flex-col overflow-hidden bg-bg text-text ${claseDePantalla}`}>
       <EfectosDePantalla />
-      <BandaDeMesa
+      <BandaUnica
         campaignId={campaignId}
         nombreDeCampana={campana?.name}
         sesion={sesion ?? null}
         esDm={esDm}
         comoUsuario={comoUsuario}
         onComoUsuario={setComoUsuario}
+        presentes={presentes}
+        hayTablero={Boolean(campana?.boardRoomUrl)}
+        modo={modoDeLaMesa}
+        onModo={cambiarModoDeLaMesa}
       />
 
       <div className="flex min-h-0 flex-1 flex-col gap-s3 p-s3">
-        {/* Permanente y **nunca scrollea**: dónde está la escena, qué hora es en la campaña y
-            quién está. Es lo que convierte una columna de texto en un lugar. */}
-        <div className="shrink-0">
-          <CabeceraDeEscena
-            campaignId={campaignId}
-            tituloDeSesion={sesion?.title ?? null}
-            presentes={presentes}
-            enCurso={Boolean(sesion)}
-          />
-        </div>
-
         {/* **PROVISIONAL, y a propósito.** «Te han pedido tirar» solo se montaba dentro de la
             pestaña «Dados»: sondeaba cada quince segundos impecablemente y no lo miraba nadie.
             El carril de dados lo va a colocar como capa contextual y entonces esta línea sobra.

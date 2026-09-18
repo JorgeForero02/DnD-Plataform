@@ -103,7 +103,10 @@ test("R1 remedida — un `div draggable` trivial DENTRO del cajón nuevo, compar
   //     reposo: lo que se mide es el CONTEXTO del cajón, no su contenido, así que cuál se abra da
   //     igual mientras sea un `Dialog` de verdad.
   await page.getByRole("link", { name: /^Entrar a la mesa/ }).click();
-  await expect(page.getByRole("region", { name: "La escena" })).toBeVisible();
+  // Task 3 (3A.3): la banda única absorbió `CabeceraDeEscena` (`<section aria-label="La
+  // escena">` ya no existe); el `<header aria-label="Estado de la mesa">` es ahora la señal de
+  // «hemos llegado a la mesa».
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible();
   await page
     .getByRole("navigation", { name: "Paneles de la mesa" })
     .getByRole("button", { name: /Mundo/ })

@@ -130,7 +130,8 @@ test("el color de un personaje se elige, se guarda y es el mismo en el elenco y 
   await page.getByRole("button", { name: "Empezar" }).click();
   await page.getByRole("button", { name: "Empezar la sesión" }).click();
   await page.getByRole("link", { name: /^Entrar a la mesa/ }).click();
-  await expect(page.getByRole("region", { name: "La escena" })).toBeVisible();
+  // Task 3 (3A.3): `CabeceraDeEscena` se fundió en la banda única; el `banner` es la señal.
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible();
   const elenco = page.getByRole("region", { name: "En la mesa" });
   await expect(elenco).toBeVisible();
   // La columna del elenco tiene su propio scroll, así que los tres se comprueban por su presencia

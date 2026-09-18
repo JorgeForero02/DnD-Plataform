@@ -284,11 +284,12 @@ test("lanzar desde la pestaña Conjuros: objetivos, espacio superior y avisos, c
   await abrirPestana(cajon, "Conjuros");
 
   const listos = cajon.getByRole("region", { name: "listos para lanzar" });
-  // Fix round 3 de la ola — la fila es un `<details>` (rol `group`) cuyo nombre accesible
-  // concatena el nombre y la meta («Proyectil mágico Nivel 1 · Evocación»): se localiza por ese
-  // rol y el prefijo, no por un texto suelto que dependa de cómo se parta el `<summary>`. Y
-  // 15 s como el resto de esperas de red de este fichero: la lista del mago ronda los 67 KB.
-  await expect(listos.getByRole("group", { name: /^Proyectil mágico/ })).toBeVisible({
+  // Fix round 4 de la ola — el `<span>` del nombre, exacto, igual que `filaDeConjuro` en
+  // `conjuros.spec.ts`. Un `<details>` sin `aria-label` NO tiene nombre accesible (lo que el
+  // snapshot enseña tras los dos puntos es su contenido), así que `getByRole("group", { name })`
+  // no casa nunca — el fix round 3 lo aprendió a la mala. 15 s como el resto de esperas de red de
+  // este fichero: la lista del mago ronda los 67 KB.
+  await expect(listos.getByText("Proyectil mágico", { exact: true })).toBeVisible({
     timeout: 15_000,
   });
 

@@ -194,7 +194,9 @@ test("Conjuros: 6 de 6 en el libro, preparar dos, conocer un truco, y «Fuera de
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(pestana).toBeVisible();
-  await expect(disponibles.getByText("1 de 3 trucos")).toBeVisible();
+  // Fix round 4: el contador vive en la cabecera de «Listos para lanzar», nunca en
+  // «Disponibles» — mismo sitio que ya afirman las líneas 148-168 de más arriba.
+  await expect(listos.getByText("1 de 3 trucos")).toBeVisible();
   // A 390 px SÍ puede envolver — nadie pidió una sola línea en móvil, así que no hay tope aquí.
   await page.screenshot({ path: "e2e-resultados/conjuros-390.png", fullPage: true });
 });

@@ -345,12 +345,33 @@ test("lanzar desde la pestaña Conjuros: objetivos, espacio superior y avisos, c
     const listosOtraVez = cajon.getByRole("region", { name: "listos para lanzar" });
     await listosOtraVez.getByRole("button", { name: "Lanzar Descarga de fuego" }).click();
     await maga.getByRole("option", { name: "Goblin" }).click();
+    // Fix round 4: `getByText(/impacta|falla/)` casa con MÁS de la línea del veredicto («Daño
+    // de Descarga de fuego: 1d10 = 8» no la contiene, pero cada reintento fallido deja su
+    // propia línea «ataca a Goblin…: falla» en el hilo) — `.last()` ya se quedaba con la más
+    // reciente, y sigue siendo la lectura correcta aquí.
     const veredicto = hiloMaga.getByText(/impacta|falla/).last();
     await expect(veredicto).toBeVisible({ timeout: 15_000 });
     impacto = !(await veredicto.textContent())?.includes("falla");
   }
   expect(impacto, "diez intentos con CA 1 y ninguno impactó").toBe(true);
 
-  await expect(hiloMaga.getByText(/Descarga de fuego/)).toBeVisible({ timeout: 15_000 });
-  await expect(hiloMaga.getByText("Daño pendiente").last()).toBeVisible({ timeout: 15_000 });
+  // **Fix round 4 — localizadores exactos, no `/Descarga de fuego/` a secas.** Ese regex
+  // resolvía en modo estricto a SIETE elementos: la línea «lanza Descarga de fuego»
+  // (`ACTIVITY_USED`), la tirada de ataque, la línea «ataca a Goblin con Descarga de fuego:
+  // impacta» (`ATTACK_RESOLVED`, `linea-de-log.ts`), la tarjeta «Daño de Descarga de fuego: 1d10
+  // = 8»… — todas comparten la subcadena. Cada reintento del bucle de arriba deja su propia
+  // línea «lanza…»/«ataca…», así que las dos siguientes usan `.last()` (la del intento que
+  // impactó, el último del bucle) en vez de asumir que solo hay una.
+  await expect(hiloMaga.getByText("lanza Descarga de fuego").last()).toBeVisible({
+    timeout: 15_000,
+  });
+  // El veredicto de ESTE intento ya se sabe «impacta» (o «impacta con un crítico» — las dos
+  // empiezan por «impacta», nunca «falla»: el bucle no habría salido con `impacto: true` si no).
+  await expect(
+    hiloMaga.getByText(/ataca a Goblin con Descarga de fuego: impacta/).last(),
+  ).toBeVisible({ timeout: 15_000 });
+  // Solo un HIT/CRITICAL tira daño (`activities.service.ts`): puede haber más de una tarjeta
+  // «Daño pendiente» si Proyectil mágico dejó la suya sin aplicar en algún punto — no es el caso
+  // aquí (se aplicó más arriba), pero `.first()` es la lectura robusta de todos modos.
+  await expect(hiloMaga.getByText("Daño pendiente").first()).toBeVisible({ timeout: 15_000 });
 });

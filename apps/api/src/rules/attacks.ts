@@ -8,6 +8,7 @@ import {
   type TraceStep,
   type WeaponProperty,
 } from "@dnd/shared";
+import { efectosPropios } from "./items";
 // Carril A5 (fase 2C) — el cuadro de ataques. **Puro**: sin Nest, sin Prisma, sin dados de
 // verdad. Entra qué hay equipado más lo que ya derivó el motor (modificadores y bono de
 // competencia); sale, por cada arma, el bono de ataque **con su traza** y la expresión de daño
@@ -262,11 +263,12 @@ function paso(
  * escriba los suyos.
  *
  * HP-9a — el +N es propiedad mágica y, si el arma requiere sintonización, solo cuenta
- * sintonizada (SRD 5.1 §Attunement). El dado del arma es mundano y no pasa por ese filtro.
+ * sintonizada (SRD 5.1 §Attunement). El dado del arma es mundano y no pasa por ese filtro. **La
+ * puerta es `efectosPropios` (`items.ts`), no una copia del `if`** (ola de arreglos, m-5): es la
+ * misma que usa la CA y la que define el aviso `item_not_attuned`, así que no pueden discrepar.
  */
 function sumaDeEfectoPropio(item: ResolvedItem, kind: "weaponAttack" | "weaponDamage"): number {
-  if (item.requiresAttunement && !item.attuned) return 0;
-  return item.effects.reduce(
+  return efectosPropios(item).reduce(
     (suma, efecto) => (efecto.kind === kind ? suma + efecto.amount : suma),
     0,
   );

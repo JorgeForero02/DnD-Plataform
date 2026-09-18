@@ -214,7 +214,10 @@ export function LibroDeConjuros({
         </div>
         {disponiblesFiltradas.length === 0 ? (
           <p className="font-chrome text-chrome-xs text-muted">
-            Ningún conjuro coincide con la búsqueda.
+            {/* Sin filtro, la culpa no es de una búsqueda que no existe (ola de arreglos, m-6). */}
+            {filtro.texto === "" && filtro.nivel === null && filtro.escuela === null
+              ? "No queda ningún conjuro por elegir."
+              : "Ningún conjuro coincide con la búsqueda."}
           </p>
         ) : (
           <ul>

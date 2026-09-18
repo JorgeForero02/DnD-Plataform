@@ -282,6 +282,21 @@ describe("ActivitiesService", () => {
     description: "Tocas un arma no mágica. Se convierte en un arma mágica con un bonificador.",
   };
 
+  // Ola de arreglos de 3A.2 (I-4a) — `dados` SIN `n`: daño fijo, como `earthquake@4` (50 contundente)
+  // en el catálogo real. `rollExpression` no se llama para un número sin dados.
+  // Nivel 1 y no 8 a propósito: lo que se prueba es «sin dados», no el espacio; el PNJ de esta
+  // mesa solo tiene espacios de nivel 1 sembrados.
+  const terremotoDePrueba = { key: "terremoto", level: 1, nameEs: "Terremoto" } as SrdSpell;
+  const terremotoActividad: Actividad = {
+    tipo: "dados",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "instantanea", concentracion: false },
+    effects: [],
+    description: "Un temblor derrumba lo que haya encima.",
+    dados: { signo: -1, bonus: { tipo: "fijo", valor: 50 }, tipoDeDano: "BLUDGEONING" },
+  };
+
   const noEsSuyoDePrueba = { key: "no-es-suyo", level: 1, nameEs: "No es suyo" } as SrdSpell;
   const noEsSuyoActividad: Actividad = {
     tipo: "utilidad",
@@ -342,6 +357,12 @@ describe("ActivitiesService", () => {
             name: "Arma mágica",
             kind: "SPELL",
             spell: magicWeaponDePrueba,
+          },
+          "spell:terremoto": {
+            actividad: terremotoActividad,
+            name: "Terremoto",
+            kind: "SPELL",
+            spell: terremotoDePrueba,
           },
         }) as const satisfies Record<string, ActividadCatalogada>
       )[key],
@@ -887,7 +908,7 @@ describe("ActivitiesService", () => {
     expect(pg(magaId)).toBe(antes);
     expect(characterSheet.changeHpFromEffect).not.toHaveBeenCalled();
     expect(rolls.roll).toHaveBeenCalledTimes(1);
-    const [, , peticion, interno] = rolls.roll.mock.calls[0];
+    const [, , peticion, interno, txDeLaTirada] = rolls.roll.mock.calls[0];
     expect(peticion.characterId).toBe(pnjId);
     expect(interno.pendingDamage).toMatchObject({
       targetCharacterId: magaId,
@@ -895,6 +916,29 @@ describe("ActivitiesService", () => {
       reason: "Actividad: Dardo de fuego",
     });
     expect(interno.resultadoFijo).toBeDefined();
+    // Ola de arreglos (I-4b): la tarjeta se escribe DENTRO de la transacción de `usar()` — el
+    // mismo cliente que descontó el recurso —, para que un fallo al tirar deshaga el gasto.
+    expect(txDeLaTirada).toBe(ultimoTx);
+    expect(r.rollEventIds).toEqual(["roll-1"]);
+  });
+
+  // Ola de arreglos (I-4a) — `dados` sin `n` (daño fijo, `earthquake@4`): no se llama a
+  // `rollExpression` con un número suelto; la tarjeta lleva `resultadoFijo` con el bono como
+  // total. Antes `expresionTexto = "50"` viajaba a `rollExpression` DESPUÉS de gastar el espacio.
+  it("I-4a: un `dados` sin dados (daño fijo 50) va a la bandeja con resultadoFijo.total = 50, sin tirar nada", async () => {
+    const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:terremoto", {
+      objetivos: [magaId],
+    });
+
+    expect(rolls.roll).toHaveBeenCalledTimes(1);
+    const [, , peticion, interno] = rolls.roll.mock.calls[0];
+    expect(peticion.expression).toBe("50");
+    expect(interno.resultadoFijo).toMatchObject({ total: 50 });
+    expect(interno.resultadoFijo.terms.every((t: { sides: number }) => t.sides === 0)).toBe(true);
+    expect(interno.pendingDamage).toMatchObject({
+      targetCharacterId: magaId,
+      damageType: "BLUDGEONING",
+    });
     expect(r.rollEventIds).toEqual(["roll-1"]);
   });
 
@@ -1095,6 +1139,36 @@ describe("ActivitiesService", () => {
       expect(r.traza).toBeDefined();
     });
 
+    // Ola de arreglos (I-5) — `spell:<key>@N` con N > 0 (una actividad secundaria: el segundo
+    // rayo de `scorching-ray`, el daño de área de `earthquake`) entraba por el camino completo de
+    // lanzar y volvía a gastar un espacio. Hasta 3B se rechaza con 400; la semántica de `@N`
+    // queda como ficha en 06.
+    it("I-5: `spell:<key>@1` es 400 hasta 3B — no gasta ningún espacio ni mira el catálogo", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:magic-missile@1", {
+          objetivos: [magaId],
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: expect.stringContaining("3B"),
+      });
+      expect(recurso(personajeId, "spell-slot-1")?.current).toBe(3);
+      expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    // Ola de arreglos (m-8) — sin FILA de `spell-slot-N` (un mago de nivel 3 pidiendo nivel 5), el
+    // aviso decía «Sin usos de «spell-slot-5»»: una clave interna en pantalla.
+    it("m-8: sin fila de espacio del nivel pedido, el aviso dice «No tiene espacios de nivel 5», no la clave", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-missile", {
+        objetivos: [magaId],
+        nivelDeEspacio: 5,
+      });
+
+      expect(r.fueraDeRegla).toEqual(["SIN_ESPACIO"]);
+      expect(r.aviso).toBe("No tiene espacios de nivel 5.");
+      expect(r.aviso).not.toContain("spell-slot");
+    });
+
     it("un conjuro que `lanzable` dice NO_ES_SUYO es un 400", async () => {
       spellbook.lanzable.mockResolvedValueOnce({ ok: false, motivo: "NO_ES_SUYO" });
 
@@ -1140,6 +1214,8 @@ describe("ActivitiesService", () => {
           label: "Ataque de conjuro: Rayo de fuego",
           attackName: "Rayo de fuego",
         }),
+        // Ola de arreglos (I-4b): el impacto se resuelve DENTRO de la transacción de `usar()`.
+        ultimoTx,
       );
       expect(r.verdict).toBe("HIT");
     });
@@ -1160,7 +1236,12 @@ describe("ActivitiesService", () => {
             reason: "Conjuro: Rayo de fuego",
             attackResolvedEventId: "attack-resolved-1",
           },
+          // I-4a: el daño de un ataque se tira aquí (`rollExpression`, o el bono a secas si no
+          // hay dados) y viaja ya resuelto — la misma forma que el daño diferido de `dados`.
+          resultadoFijo: expect.objectContaining({ total: expect.any(Number) }),
         },
+        // I-4b: la tarjeta del daño, dentro de la transacción de `usar()`.
+        ultimoTx,
       );
       expect(r.rollEventIds).toEqual(["roll-1"]);
     });
@@ -1185,6 +1266,7 @@ describe("ActivitiesService", () => {
             attackResolvedEventId: "attack-resolved-critico",
           }),
         }),
+        expect.anything(),
       );
     });
 

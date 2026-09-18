@@ -392,6 +392,52 @@ describe("SpellbookService", () => {
       expect(suceso.payload.estado).toBe("EN_EL_LIBRO");
     });
 
+    // Ola de arreglos de 3A.2 (m-1) — `cambio` se deriva del par (antes, después), no solo del
+    // estado pedido: `PUT {estado: "EN_EL_LIBRO"}` sobre un conjuro PREPARADO es un descenso
+    // (DESPREPARADO), no un APRENDIDO; y repetir el mismo estado no escribe ningún suceso.
+    it("m-1: mago, PREPARADO → PUT EN_EL_LIBRO es DESPREPARADO (no APRENDIDO)", async () => {
+      const id = "mago6";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "wizard",
+        level: 3,
+      });
+      characterSheet.getSheet.mockResolvedValue({
+        sheet: { derived: { "abilityMod.int": { key: "abilityMod.int", total: 3, steps: [] } } },
+      });
+      spells.set(clave(id, "magic-missile"), "PREPARADO");
+
+      await service.setEstado(dueñoId, campaignId, id, "magic-missile", { estado: "EN_EL_LIBRO" });
+
+      expect(spells.get(clave(id, "magic-missile"))).toBe("EN_EL_LIBRO");
+      const suceso = events.record.mock.calls[0][2];
+      expect(suceso.payload.cambio).toBe("DESPREPARADO");
+    });
+
+    it("m-1: PREPARADO → PREPARADO no cambia nada y no escribe ningún SPELLBOOK_CHANGED", async () => {
+      const id = "mago7";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "wizard",
+        level: 3,
+      });
+      characterSheet.getSheet.mockResolvedValue({
+        sheet: { derived: { "abilityMod.int": { key: "abilityMod.int", total: 3, steps: [] } } },
+      });
+      spells.set(clave(id, "magic-missile"), "PREPARADO");
+
+      await service.setEstado(dueñoId, campaignId, id, "magic-missile", { estado: "PREPARADO" });
+
+      expect(spells.get(clave(id, "magic-missile"))).toBe("PREPARADO");
+      expect(events.record).not.toHaveBeenCalled();
+    });
+
     it("mago: borrar del libro (EN_EL_LIBRO → null) es OLVIDADO", async () => {
       const id = "mago5";
       crearCharacter({

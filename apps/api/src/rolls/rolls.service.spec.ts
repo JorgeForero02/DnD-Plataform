@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import type { RollResult, RollResultRevealed } from "@dnd/shared";
 import { rollExpression, type Roller } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
@@ -216,6 +217,29 @@ describe("lo que se devuelve y lo que se escribe", () => {
       }),
       // La transacción que comparte con la tabla de la casa (2C.6).
       expect.anything(),
+    );
+  });
+
+  // Ola de arreglos de 3A.2 (API I-4b) — `tx` opcional, el patrón aditivo de `changeHpFromEffect`:
+  // con una transacción ajena, `roll` NO abre la suya y escribe el suceso con ESE cliente, para que
+  // `ActivitiesService.usar()` y `addDamageExtra` tiren dentro de la transacción que gastó el
+  // espacio — si el `jsonb_set` de después no marca nada, la tirada se deshace con el gasto.
+  it("con `tx` ajena, no abre transacción propia y escribe el ABILITY_ROLL con ese cliente", async () => {
+    const { service, prisma, events } = montar(dadosFijos(12));
+    const txAjena = { marca: "tx-ajena" };
+    await service.roll(
+      "u1",
+      "c1",
+      { expression: "2d6", label: "Furtivo", audience: "PUBLIC", mode: "NORMAL" as const },
+      {},
+      txAjena as unknown as Prisma.TransactionClient,
+    );
+    expect(prisma.transaction).not.toHaveBeenCalled();
+    expect(events.record).toHaveBeenCalledWith(
+      "u1",
+      "c1",
+      expect.objectContaining({ payload: expect.objectContaining({ type: "ABILITY_ROLL" }) }),
+      txAjena,
     );
   });
 

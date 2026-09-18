@@ -118,6 +118,9 @@ function montar(roller?: Roller, statblocks?: { resolver: jest.Mock }) {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     $queryRaw: jest.fn().mockResolvedValue([{ id: "ch1" }]),
+    // Ola de arreglos de 3A.2 (m-3a): `opcionesDeExtra` mira si queda un `spell-slot-1` antes de
+    // ofrecer Castigo divino. Por defecto queda uno, que es el estado de las pruebas de antes.
+    characterResource: { findUnique: jest.fn().mockResolvedValue({ current: 1, max: 4 }) },
     user: { findUnique: jest.fn() },
     // Tarea 2.5.4: `rollAttack` lee el `natural` de una tirada de ataque real fuera de
     // transacción (`esCriticoDesdeLaTirada`); por defecto no existe, así que el camino sin
@@ -4287,9 +4290,128 @@ describe("damagePreview — la bandeja de daño, antes de pulsar nada (spec §4b
       message: "Esa tirada no tiene daño pendiente.",
     });
   });
+
+  // Ola de arreglos de 3A.2 (web I-3 / API m-2) — `extrasDisponibles` es lo que QUIEN MIRA puede
+  // marcar, y marcar es «dueño del atacante o DM» (`addDamageExtra`). Al dueño del OBJETIVO se le
+  // ofrecía un botón que el servidor iba a rechazar con 403, y de paso leía el rasgo y el tramo
+  // de nivel del atacante (un PNJ pícaro `DM_ONLY`, por ejemplo). Ahora recibe `[]`.
+  describe("extrasDisponibles — solo para quien puede marcarlos (ola de arreglos, I-3/m-2)", () => {
+    /** Un pícaro de nivel 3 (Ataque furtivo 2d6) que tiró contra el fantasma de otro jugador. */
+    function conPicaroAtacando(
+      montado: ReturnType<typeof montarConFantasma>,
+      pendingOverrides: Record<string, unknown> = {},
+    ) {
+      const atacante = personaje({
+        id: "picaro1",
+        ownerId: "jugador-picaro",
+        classKey: "rogue",
+        level: 3,
+      });
+      montado.prisma.character.findFirst.mockImplementation(
+        async ({ where }: { where: { id: string } }) =>
+          where.id === "picaro1" ? atacante : montado.target,
+      );
+      montado.prisma.gameEvent.findFirst.mockResolvedValue({
+        actorUserId: "jugador-picaro",
+        subjectId: "picaro1",
+        subjectType: "character",
+        payload: {
+          pendingDamage: {
+            targetCharacterId: "fantasma1",
+            attackResolvedEventId: "ar1",
+            damageType: "PIERCING",
+            amount: 4,
+            ...pendingOverrides,
+          },
+        },
+      });
+      return atacante;
+    }
+
+    it("el dueño del atacante ve «Ataque furtivo (2d6)» disponible (vista reducida)", async () => {
+      const montado = montarConFantasma();
+      conPicaroAtacando(montado);
+      montado.membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+      const preview = await montado.service.damagePreview("jugador-picaro", "c1", "roll1");
+
+      expect(preview.extrasDisponibles).toEqual([
+        { key: "sneak-attack", label: "Ataque furtivo (2d6)" },
+      ]);
+      expect(preview).not.toHaveProperty("target");
+    });
+
+    it("el DM también los ve, con la vista completa", async () => {
+      const montado = montarConFantasma();
+      conPicaroAtacando(montado);
+      montado.membership.getMembership.mockResolvedValue({ role: "DM" });
+
+      const preview = await montado.service.damagePreview("dm1", "c1", "roll1");
+
+      expect(preview.extrasDisponibles).toEqual([
+        { key: "sneak-attack", label: "Ataque furtivo (2d6)" },
+      ]);
+      expect(preview.target).toEqual({ id: "fantasma1", name: "Fantasma" });
+    });
+
+    it("el dueño del OBJETIVO recibe extrasDisponibles: [] — no puede marcarlos, y no lee el rasgo del atacante", async () => {
+      const montado = montarConFantasma();
+      conPicaroAtacando(montado);
+      montado.membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+      // `otro` es el `ownerId` del fantasma (`montarConFantasma`).
+      const preview = await montado.service.damagePreview("otro", "c1", "roll1");
+
+      expect(preview.target).toEqual({ id: "fantasma1", name: "Fantasma" });
+      expect(preview.extrasDisponibles).toEqual([]);
+      expect(JSON.stringify(preview)).not.toMatch(/furtivo/i);
+    });
+
+    // API m-3 (b) — SRD 5.1, *Sneak Attack*: «if you hit a creature with a finesse or a ranged
+    // weapon»; *Divine Smite*: «when you hit a creature with a melee weapon attack». El daño de un
+    // conjuro (`reason` puesto por `usar()`) no es un ataque con arma: nada que ofrecer.
+    it("sobre el daño de un conjuro (reason puesto) no se ofrece ningún extra (m-3b)", async () => {
+      const montado = montarConFantasma();
+      conPicaroAtacando(montado, {
+        reason: "Conjuro: Rayo de fuego",
+        attackResolvedEventId: "ar1",
+      });
+      montado.membership.getMembership.mockResolvedValue({ role: "DM" });
+
+      const preview = await montado.service.damagePreview("dm1", "c1", "roll1");
+
+      expect(preview.extrasDisponibles).toEqual([]);
+    });
+
+    // API m-3 (a) — «nunca un botón que el servidor rechace» (Global Constraints): Castigo divino
+    // gasta `spell-slot-1` al marcarse (D-CF-129), así que sin ese espacio no se ofrece.
+    it("Castigo divino solo se ofrece si al paladín le queda un espacio de nivel 1 (m-3a)", async () => {
+      const montado = montarConFantasma();
+      const atacante = conPicaroAtacando(montado);
+      atacante.classKey = "paladin";
+      montado.membership.getMembership.mockResolvedValue({ role: "DM" });
+
+      montado.prisma.characterResource.findUnique.mockResolvedValue({ current: 0, max: 4 });
+      const sinEspacios = await montado.service.damagePreview("dm1", "c1", "roll1");
+      expect(sinEspacios.extrasDisponibles).toEqual([]);
+
+      montado.prisma.characterResource.findUnique.mockResolvedValue({ current: 1, max: 4 });
+      const conEspacios = await montado.service.damagePreview("dm1", "c1", "roll1");
+      expect(conEspacios.extrasDisponibles).toEqual([
+        { key: "divine-smite", label: "Castigo divino (2d8)" },
+      ]);
+    });
+  });
 });
 
 describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6)", () => {
+  const PENDIENTE_BASE = {
+    targetCharacterId: "wight1",
+    attackResolvedEventId: "ar1",
+    damageType: "NECROTIC",
+    amount: 25,
+  };
+
   function conPendingDamage(
     prisma: { gameEvent: { findFirst: jest.Mock } },
     overrides: Record<string, unknown> = {},
@@ -4300,18 +4422,33 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
           ? { payload: { attackName: "Mordisco" } }
           : {
               actorUserId: "p1",
-              payload: {
-                pendingDamage: {
-                  targetCharacterId: "wight1",
-                  attackResolvedEventId: "ar1",
-                  damageType: "NECROTIC",
-                  amount: 25,
-                  ...overrides,
-                },
-              },
+              payload: { pendingDamage: { ...PENDIENTE_BASE, ...overrides } },
             },
       ),
     );
+  }
+
+  /**
+   * Ola de arreglos de 3A.2 (I-2) — la transacción de `applyPendingDamage` lee la fila de la
+   * tirada BLOQUEADA (`SELECT payload … FROM "GameEvent" … FOR UPDATE`) y calcula el total con lo
+   * que hay ahí, no con la lectura barata de antes. El `tx` de `montarTransaccion` responde al
+   * `FOR UPDATE` sobre `Character`; aquí se le enseña a distinguir el de `GameEvent` por el SQL,
+   * y a devolver `bajoCandado` — por defecto lo mismo que leyó la lectura barata, y distinto en
+   * las pruebas de carrera.
+   */
+  function conCandadoDeTirada(
+    tx: { $queryRaw: jest.Mock },
+    target: Character,
+    bajoCandado: Record<string, unknown> | null = PENDIENTE_BASE,
+  ) {
+    tx.$queryRaw.mockImplementation(async (sql: TemplateStringsArray) =>
+      sql.join("").includes('"GameEvent"')
+        ? bajoCandado
+          ? [{ payload: { pendingDamage: bajoCandado } }]
+          : []
+        : [target],
+    );
+    (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
   }
 
   it("aplica el daño (reducido por resistencia) con changeHpFromEffect, y marca la tirada con el id del HP_CHANGED", async () => {
@@ -4328,7 +4465,7 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
     conPendingDamage(prisma);
     membership.getMembership.mockResolvedValue({ role: "DM" });
     const tx = montarTransaccion(prisma, target);
-    (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+    conCandadoDeTirada(tx, target);
 
     const res = await service.applyPendingDamage("dm1", "c1", "roll1");
 
@@ -4369,7 +4506,11 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
     });
     membership.getMembership.mockResolvedValue({ role: "DM" });
     const tx = montarTransaccion(prisma, target);
-    (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+    conCandadoDeTirada(tx, target, {
+      ...PENDIENTE_BASE,
+      reason: "Conjuro: Proyectil mágico",
+      attackResolvedEventId: undefined,
+    });
 
     await service.applyPendingDamage("dm1", "c1", "roll1");
 
@@ -4406,10 +4547,71 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
     conPendingDamage(prisma);
     membership.getMembership.mockResolvedValue({ role: "DM" });
     const tx = montarTransaccion(prisma, target);
+    conCandadoDeTirada(tx, target);
     (tx as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(0);
 
     await expect(service.applyPendingDamage("dm1", "c1", "roll1")).rejects.toBeInstanceOf(
       ConflictException,
+    );
+  });
+
+  // Ola de arreglos de 3A.2 (I-2) — la carrera «aplicar ↔ marcar un extra». La lectura barata
+  // vio 0 extras; entre ella y el candado, el pícaro marcó su Furtivo. Con la fila bloqueada, el
+  // extra o entra en la suma (este caso) o su `jsonb_set` espera al commit y ve `appliedEventId`
+  // puesto (409 para él) — nunca queda escrito en la tarjeta sin llegar a los PG.
+  it("I-2: lee `extras` bajo candado — un extra marcado tras la lectura barata SÍ entra en la suma", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership, events } = montar(undefined, statblocks);
+    const target = personaje({
+      id: "wight1",
+      ownerId: "npc-owner",
+      statblockRef: "SRD:wight",
+      currentHp: 45,
+      tempHp: 0,
+    });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma); // lectura barata: sin extras
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    const tx = montarTransaccion(prisma, target);
+    conCandadoDeTirada(tx, target, {
+      ...PENDIENTE_BASE,
+      extras: [
+        { key: "sneak-attack", label: "Ataque furtivo (2d6)", amount: 7, rollEventId: "r-extra" },
+      ],
+    });
+
+    await service.applyPendingDamage("dm1", "c1", "roll1");
+
+    // 25 + 7 = 32 de necrótico con resistencia → 16.
+    expect(tx.character.update.mock.calls.at(-1)![0].data.currentHp).toBe(45 - 16);
+    expect(events.record).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({ type: "HP_CHANGED", delta: -16 }),
+      }),
+      tx,
+    );
+  });
+
+  it("I-2: si bajo candado ya está aplicado, 409 sin escribir ningún HP_CHANGED", async () => {
+    const statblocks = statblocksDelCatalogo("SRD:wight");
+    const { service, prisma, membership, events } = montar(undefined, statblocks);
+    const target = personaje({ id: "wight1", ownerId: "npc-owner", statblockRef: "SRD:wight" });
+    prisma.character.findFirst.mockResolvedValue(target);
+    conPendingDamage(prisma); // la lectura barata todavía lo veía sin aplicar
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    const tx = montarTransaccion(prisma, target);
+    conCandadoDeTirada(tx, target, { ...PENDIENTE_BASE, appliedEventId: "hp-de-otro" });
+
+    await expect(service.applyPendingDamage("dm1", "c1", "roll1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(events.record).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ payload: expect.objectContaining({ type: "HP_CHANGED" }) }),
+      expect.anything(),
     );
   });
 
@@ -4466,6 +4668,24 @@ describe("addDamageExtra — el extra que el jugador marca sobre su daño pendie
     });
   }
 
+  /**
+   * El `tx` de la ÚNICA transacción de `addDamageExtra` (I-3): bloquea el `CharacterResource`
+   * del espacio, lo descuenta y escribe el candado del `jsonb_set`. Devuelve el propio doble para
+   * que la prueba compruebe que `rolls.roll` tiró con ESE mismo cliente.
+   */
+  function txDeCastigo(
+    prisma: { transaction: jest.Mock },
+    espacio: { id: string; label: string; current: number; max: number | null },
+  ) {
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([espacio]),
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      characterResource: { update: jest.fn().mockResolvedValue({}) },
+    };
+    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(tx));
+    return tx;
+  }
+
   it("un pícaro nivel 3 marca Ataque furtivo: 2d6, sin gastar ningún recurso", async () => {
     const { service, prisma, membership, rolls } = montar();
     const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
@@ -4482,6 +4702,7 @@ describe("addDamageExtra — el extra que el jugador marca sobre su daño pendie
       "c1",
       expect.objectContaining({ expression: "2d6", characterId: "atacante1" }),
       {},
+      expect.anything(),
     );
     expect(res).toEqual({
       key: "sneak-attack",
@@ -4507,6 +4728,7 @@ describe("addDamageExtra — el extra que el jugador marca sobre su daño pendie
       "c1",
       expect.objectContaining({ expression: "3d6" }),
       {},
+      expect.anything(),
     );
   });
 
@@ -4519,32 +4741,105 @@ describe("addDamageExtra — el extra que el jugador marca sobre su daño pendie
     (prisma as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
     rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 12 });
     const espacio = { id: "res1", label: "Espacio de nivel 2", current: 2, max: 3 };
-    let txCapturado: { characterResource: { update: jest.Mock } } | undefined;
-    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
-      const tx = {
-        $queryRaw: jest.fn().mockResolvedValue([espacio]),
-        characterResource: { update: jest.fn().mockResolvedValue({}) },
-      };
-      txCapturado = tx;
-      return fn(tx);
-    });
+    const tx = txDeCastigo(prisma, espacio);
 
     const res = await service.addDamageExtra("p1", "c1", "roll1", {
       key: "divine-smite",
       nivelDeEspacio: 2,
     });
 
+    // I-3: el gasto, la tirada del extra y el `jsonb_set` van en UNA transacción — `roll` recibe
+    // el MISMO `tx` que descontó el espacio, y el candado se escribe con él.
     expect(rolls.roll).toHaveBeenCalledWith(
       "p1",
       "c1",
       expect.objectContaining({ expression: "3d8" }),
       {},
+      tx,
     );
-    expect(txCapturado?.characterResource.update).toHaveBeenCalledWith({
+    expect(tx.characterResource.update).toHaveBeenCalledWith({
       where: { id: "res1" },
       data: { current: 1 },
     });
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.transaction).toHaveBeenCalledTimes(1);
     expect(res.label).toBe("Castigo divino (3d8)");
+  });
+
+  // I-1 — SRD 5.1, *Divine Smite*: «2d8 for a 1st-level spell slot, plus 1d8 for each spell
+  // level higher than 1st, to a maximum of 5d8». Nivel 4 → 5d8; nivel 5 → sigue en 5d8. La
+  // primera versión hacía `1 + min(n, 5)` y daba 6d8 con un espacio de nivel 5.
+  it.each([
+    [4, "5d8"],
+    [5, "5d8"],
+  ])(
+    "I-1: Castigo divino con un espacio de nivel %i tira %s (tope de 5d8)",
+    async (nivel, dados) => {
+      const { service, prisma, membership, rolls } = montar();
+      const atacante = personaje({
+        id: "atacante1",
+        ownerId: "p1",
+        classKey: "paladin",
+        level: 17,
+      });
+      prisma.character.findFirst.mockResolvedValue(atacante);
+      conPendingDamage(prisma);
+      membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+      rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 20 });
+      txDeCastigo(prisma, { id: "resN", label: `Espacio de nivel ${nivel}`, current: 1, max: 1 });
+
+      const res = await service.addDamageExtra("p1", "c1", "roll1", {
+        key: "divine-smite",
+        nivelDeEspacio: nivel,
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        "p1",
+        "c1",
+        expect.objectContaining({ expression: dados }),
+        {},
+        expect.anything(),
+      );
+      expect(res.label).toBe(`Castigo divino (${dados})`);
+    },
+  );
+
+  // I-3 — si el candado (`jsonb_set … WHERE appliedEventId IS NULL AND NOT (extras @> …)`) no
+  // marca ninguna fila, el 409 se lanza DENTRO de la transacción: el espacio descontado y la
+  // tirada del extra se deshacen con ella. Antes el espacio se gastaba en una transacción propia
+  // y se perdía.
+  it("I-3: si el jsonb_set no marca nada, 409 desde DENTRO de la transacción (el espacio vuelve)", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "paladin", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 9 });
+    const tx = txDeCastigo(prisma, { id: "res1", label: "Espacio de nivel 1", current: 1, max: 2 });
+    tx.$executeRaw.mockResolvedValue(0);
+    let deshecha = false;
+    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      try {
+        return await fn(tx);
+      } catch (error) {
+        deshecha = true;
+        throw error;
+      }
+    });
+
+    await expect(
+      service.addDamageExtra("p1", "c1", "roll1", { key: "divine-smite", nivelDeEspacio: 1 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(deshecha).toBe(true);
+    // Se llegó a descontar y a tirar — y las dos cosas viajan en la transacción que se deshace.
+    expect(tx.characterResource.update).toHaveBeenCalled();
+    expect(rolls.roll).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      {},
+      tx,
+    );
   });
 
   it("marcar dos veces la MISMA clave: la segunda es 409", async () => {
@@ -4630,19 +4925,27 @@ describe("addDamageExtra — el extra que el jugador marca sobre su daño pendie
     prisma.character.findFirst.mockResolvedValue(atacante);
     conPendingDamage(prisma);
     membership.getMembership.mockResolvedValue({ role: "PLAYER" });
-    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
-      const tx = {
-        $queryRaw: jest
-          .fn()
-          .mockResolvedValue([{ id: "res1", label: "Espacio de nivel 2", current: 0, max: 3 }]),
-        characterResource: { update: jest.fn() },
-      };
-      return fn(tx);
-    });
+    txDeCastigo(prisma, { id: "res1", label: "Espacio de nivel 2", current: 0, max: 3 });
 
     await expect(
       service.addDamageExtra("p1", "c1", "roll1", { key: "divine-smite", nivelDeEspacio: 2 }),
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(rolls.roll).not.toHaveBeenCalled();
+  });
+
+  // m-3 (b) — los dos extras son de un ataque CON ARMA (SRD 5.1: *Sneak Attack* «with a finesse
+  // or a ranged weapon», *Divine Smite* «with a melee weapon attack»). El daño de un conjuro
+  // (`reason` puesto por `usar()`) los rechaza con 400, igual que `damagePreview` no los ofrece.
+  it("m-3b: sobre el daño de un conjuro, 400 — «solo sobre un ataque con arma»", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma, { reason: "Conjuro: Rayo de fuego" });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.addDamageExtra("p1", "c1", "roll1", { key: "sneak-attack" }),
+    ).rejects.toMatchObject({ status: 400 });
     expect(rolls.roll).not.toHaveBeenCalled();
   });
 });

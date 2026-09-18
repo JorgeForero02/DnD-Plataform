@@ -64,8 +64,9 @@ describe("Conjuros", () => {
       },
     );
     // Antes de que resuelva la consulta del libro, `real` es `undefined` y se pinta `s.slots`
-    // (el máximo que ya traía la hoja) — nunca un hueco en blanco.
-    expect(await screen.findByText(/Nivel 1: (4|\d+ \/ \d+)/)).toBeInTheDocument();
+    // (el máximo que ya traía la hoja) COMO TOPE («— / 4», ola de arreglos m-5: un 4 a secas se
+    // leía como «quedan 4») — nunca un hueco en blanco.
+    expect(await screen.findByText(/Nivel 1: (— \/ 4|\d+ \/ \d+)/)).toBeInTheDocument();
   });
 
   // Fix round 1 (revisión de Tarea 6, se conserva) — un lanzador SOLO racial (alto elfo guerrero)

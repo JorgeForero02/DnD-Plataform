@@ -421,4 +421,77 @@ describe("El daño extra al impactar — Ataque furtivo y Castigo divino en la b
       .send({ key: "sneak-attack" });
     expect(r.status).toBe(403);
   });
+
+  // --- Ola de arreglos (I-2/I-3): aplicar y marcar a la vez ----------------------------------
+  //
+  // La carrera de verdad, contra Postgres: el DM pulsa «Aplicar» y el paladín marca «Castigo
+  // divino» en el mismo instante. Las dos peticiones pueden salir 2xx (si el extra llegó antes,
+  // `applyPendingDamage` lo lee bajo candado y lo suma) — lo INVARIANTE es lo que se comprueba:
+  // si el extra respondió 2xx, el `HP_CHANGED` de esta tirada incluye su cantidad; si respondió
+  // 409, no gastó el espacio (la transacción entera se deshizo). Nunca «marcado en la tarjeta y
+  // sin llegar a los PG», ni «espacio gastado sin extra».
+  it("I-2/I-3: apply-damage y damage-extra en Promise.all — o el extra entra en la suma, o no gasta el espacio", async () => {
+    const s = app.getHttpServer();
+    const goblin = await goblinFacil();
+    const danoRollEventId = await atacarHastaImpactar(
+      tokenPaladin,
+      paladinId,
+      "long-sword",
+      "Espada larga",
+      goblin,
+    );
+    const previewDM = await request(s)
+      .get(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-preview`)
+      .set("Authorization", auth(tokenDM));
+    const base = previewDM.body.amount as number;
+    const espacioAntes = await prisma.characterResource.findFirst({
+      where: { characterId: paladinId, key: "spell-slot-1" },
+    });
+    expect(espacioAntes!.current).toBeGreaterThan(0);
+    const tiradasDeCastigo = () =>
+      prisma.gameEvent.count({
+        where: {
+          campaignId,
+          subjectId: paladinId,
+          type: "ABILITY_ROLL",
+          payload: { path: ["reason"], equals: "Castigo divino (2d8)" },
+        },
+      });
+    const castigosAntes = await tiradasDeCastigo();
+
+    const [aplicar, marcar] = await Promise.all([
+      request(s)
+        .post(`/campaigns/${campaignId}/rolls/${danoRollEventId}/apply-damage`)
+        .set("Authorization", auth(tokenDM)),
+      request(s)
+        .post(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-extra`)
+        .set("Authorization", auth(tokenPaladin))
+        .send({ key: "divine-smite" }),
+    ]);
+
+    // Aplicar siempre gana: o no había extra todavía, o lo lee bajo candado y lo suma.
+    expect(aplicar.status).toBe(201);
+    expect([201, 409]).toContain(marcar.status);
+
+    const hpChanged = (
+      await prisma.gameEvent.findMany({
+        where: { campaignId, subjectId: goblin, type: "HP_CHANGED" },
+      })
+    ).filter((e) => (e.payload as { rollEventId?: string }).rollEventId === danoRollEventId);
+    expect(hpChanged).toHaveLength(1);
+    const delta = (hpChanged[0].payload as { delta: number }).delta;
+
+    const espacioDespues = await prisma.characterResource.findFirst({
+      where: { characterId: paladinId, key: "spell-slot-1" },
+    });
+    if (marcar.status === 201) {
+      expect(delta).toBe(-(base + (marcar.body.amount as number)));
+      expect(espacioDespues!.current).toBe(espacioAntes!.current - 1);
+    } else {
+      expect(delta).toBe(-base);
+      expect(espacioDespues!.current).toBe(espacioAntes!.current);
+      // Y la tirada del extra se deshizo con la transacción: ninguna ABILITY_ROLL nueva.
+      expect(await tiradasDeCastigo()).toBe(castigosAntes);
+    }
+  });
 });

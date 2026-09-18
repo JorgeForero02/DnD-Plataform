@@ -14,6 +14,11 @@ import { useAddDamageExtra, useDamagePreview } from "../hooks";
 // que haya en cualquiera de las dos formas: los ya marcados (línea «+ Ataque furtivo 7») y los
 // que todavía se pueden marcar, con el dado ya resuelto en el texto del botón.
 //
+// **Quién puede marcar lo decide el servidor, no esta pantalla** (ola de arreglos, web I-3):
+// `extrasDisponibles` llega vacío para el dueño del OBJETIVO —que no puede marcar (403)— y solo
+// trae opciones para el dueño del atacante y el DM. Así no hay que saber aquí quién mira: un
+// botón que se pinta es un botón que el servidor va a aceptar.
+//
 // **Un botón por extra disponible, no una casilla.** El brief habla de «marcar» una casilla,
 // pero una casilla sugiere un estado que se puede desmarcar — y este gesto no se puede deshacer
 // (tira dados y, para Castigo divino, gasta un espacio de verdad). El mismo patrón que

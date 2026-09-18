@@ -1444,9 +1444,12 @@ conjuro aparece como mucho una vez por personaje.
 `raceKey` de `Character` (2A) y `InventoryItem.ref` de 2B, y por el mismo motivo: el catálogo del
 SRD 5.1 (319 conjuros, tarea 3A.1) vive **en código**
 (`apps/api/src/rules/catalog/generado/spells-srd.json`), no en una tabla, así que no hay fila a
-la que apuntar con una clave foránea real. Guarda el `key` interno del catálogo (`"fireball"`,
-sin el prefijo `SRD:`); el servidor antepone `SRD:` solo al exponerla, igual que
-`InventoryItem.ref`.
+la que apuntar con una clave foránea real. Guarda **y expone** el `key` interno del catálogo (`"fireball"`,
+sin ningún prefijo): `GET .../spellbook` devuelve `key: "magic-missile"` y `PUT
+.../spellbook/magic-missile` lo recibe igual. El prefijo `spell:` lo lleva solo la clave de
+ACTIVIDAD (`claveDeConjuro`, `rules/catalog/spell-activities.ts`: `usar("spell:magic-missile")`,
+`ACTIVITY_USED.actividadKey`) — no es parte de la clave del conjuro, y `SRD:` no aparece en ningún
+sitio (a diferencia de `InventoryItem.ref`).
 
 **Cuelga de `Character` en cascada** (`onDelete: Cascade`): borrar un personaje se lleva su libro
 de conjuros, igual que sus `CharacterResource` y `CharacterCondition` (comprobado por conteo de

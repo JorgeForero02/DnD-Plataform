@@ -44,7 +44,9 @@ export function Conjuros({ data, campaignId, characterId, puedeEditar }: PropsDe
                   key={s.spellLevel}
                   className="rounded-radius-sm border border-muted px-s2 py-1 font-data text-chrome-sm text-text"
                 >
-                  Nivel {s.spellLevel}: {real ? `${real.actual} / ${real.max}` : s.slots}
+                  {/* Sin fila de recurso (un PATCH directo que no re-sembró) se enseña el TOPE
+                      del catálogo como tope, no como si fuera «quedan» (ola de arreglos, m-5). */}
+                  Nivel {s.spellLevel}: {real ? `${real.actual} / ${real.max}` : `— / ${s.slots}`}
                 </li>
               );
             })}

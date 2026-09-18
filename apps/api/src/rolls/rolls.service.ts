@@ -18,6 +18,7 @@ import {
   type RollResult,
   type Visibility,
 } from "@dnd/shared";
+import type { Prisma } from "@prisma/client";
 import {
   DiceExpressionError,
   rollExpression,
@@ -107,6 +108,14 @@ export class RollsService {
    *   cada tarjeta de la bandeja del DM se escribe con ESE mismo resultado; con este campo
    *   puesto, `roll()` no vuelve a llamar a `rollExpression`. Nunca viaja en el cuerpo de una
    *   petición — lo compone `ActivitiesService.usar`, el único llamador que repite un azar.
+   * @param tx Ola de arreglos de 3A.2 (I-4b) — **la transacción de quien llama, si ya tiene una
+   *   abierta**: el patrón aditivo de `changeHpFromEffect`/`ConditionsService.apply`. Con ella,
+   *   esta función NO abre la suya (dos transacciones de Prisma no anidan: la segunda sale por
+   *   otra conexión y no ve lo que la primera todavía no ha confirmado) y escribe la tirada, el
+   *   gasto de inspiración y la tabla de la casa con ESE cliente. Es lo que permite que
+   *   `ActivitiesService.usar()` escriba las tarjetas de daño DENTRO de la transacción que gastó
+   *   el espacio —si tirar revienta, el espacio vuelve— y que `addDamageExtra` deshaga la tirada
+   *   del extra cuando su `jsonb_set` no marca nada. Sin `tx`, todo sigue como siempre.
    */
   async roll(
     userId: string,
@@ -123,6 +132,7 @@ export class RollsService {
       };
       resultadoFijo?: DiceRollResult;
     },
+    tx?: Prisma.TransactionClient,
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
 
@@ -194,7 +204,7 @@ export class RollsService {
     //
     // `prisma.transaction` es además lo que hace que los sucesos se emitan **tras el commit**
     // (ficha M2B-3): el motor de reglas ve la tirada y su tabla ya escritas, nunca a medias.
-    const { evento, deLaCasa, tabla } = await this.prisma.transaction(async (tx) => {
+    const escribir = async (tx: Prisma.TransactionClient) => {
       const evento = await this.events.record(
         userId,
         campaignId,
@@ -277,7 +287,11 @@ export class RollsService {
         : undefined;
 
       return { evento, deLaCasa, tabla };
-    });
+    };
+    // I-4b: con transacción ajena se escribe con ella; sin ella, la de siempre (y su buzón).
+    const { evento, deLaCasa, tabla } = tx
+      ? await escribir(tx)
+      : await this.prisma.transaction(escribir);
 
     // **Y el texto de esa tabla no vuelve a quien no puede ver la tabla.**
     //

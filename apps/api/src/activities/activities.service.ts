@@ -37,8 +37,9 @@ import {
   segundosDeDuracion,
   UnknownContentError,
 } from "../rules/catalog";
-import { rollExpression, type Roller } from "../dice/dice";
+import { rollExpression, type DiceRollResult, type Roller } from "../dice/dice";
 import { DICE_ROLLER } from "../rolls/rolls.service";
+import { parsearClaveDeActividad } from "../rules/catalog/spell-activities";
 
 // Tarea A7 (paso 2) — pegamento, no mecánica. `usar()` conecta la actividad con las puertas que
 // el proyecto ya tiene construidas y probadas: `CharacterResource` para los usos,
@@ -167,6 +168,21 @@ export class ActivitiesService {
       "Solo el dueño del personaje o el DM puede usar su actividad.",
     );
 
+    // Ola de arreglos de 3A.2 (I-5) — `spell:<key>@N` con N > 0 es una actividad SECUNDARIA del
+    // conjuro (el segundo rayo de `scorching-ray`, el derrumbe de `earthquake`), y hoy entraría por
+    // el camino completo de lanzar: volvería a gastar un espacio, exigiría `lanzable` y escribiría
+    // otro `ACTIVITY_USED` con `spellLevel`. Además `@0` y «sin sufijo» son la MISMA clave
+    // (`claveDeConjuro`), así que la actividad real en la posición 0 del catálogo es inalcanzable
+    // cuando no es la de lanzar (`hunters-mark`). Hasta que 3B decida qué significa `@N` —índice
+    // de catálogo, o índice entre las que no son la de lanzar—, se rechaza con 400: es más honesto
+    // que gastar un espacio por una actividad gratuita. La web solo manda `spell:<key>`.
+    const claveParseada = parsearClaveDeActividad(actividadKey);
+    if (claveParseada.tipo === "spell" && claveParseada.indice > 0) {
+      throw new BadRequestException(
+        "Las actividades secundarias de un conjuro (spell:<clave>@N) llegan en 3B.",
+      );
+    }
+
     const catalogado = this.catalog?.find(actividadKey);
     if (!catalogado) {
       throw new NotFoundException(`No existe la actividad "${actividadKey}" en el catálogo.`);
@@ -275,9 +291,13 @@ export class ActivitiesService {
     const traza: TraceStep[] = [];
     let cd: number | undefined;
     // Task 4 (3A.2) — el daño directo de una actividad (`dados`, signo −1) sobre otro personaje
-    // no se aplica dentro de la transacción: va a la bandeja del DM (`pendingDamage`), y eso lo
-    // escribe `RollsService.roll`, que abre su PROPIA transacción y no puede anidar con la de
-    // `usar()`. Lo que la transacción deja aquí es solo el QUÉ tirar; el CUÁNDO tirar es después.
+    // no se aplica a sus PG: va a la bandeja del DM (`pendingDamage`, D-CF-128). El `switch` deja
+    // aquí el QUÉ tirar; se tira al final de la transacción, cuando ya se sabe que el consumo y
+    // el resto del efecto han pasado. **Ola de arreglos (I-4b): dentro de la MISMA transacción.**
+    // Hasta esta ola se tiraba DESPUÉS, porque `RollsService.roll` abría la suya propia; ahora
+    // acepta este `tx`, y con eso un fallo al tirar (una expresión rara, la base caída) deshace el
+    // espacio, el `RESOURCE_SPENT` y el `ACTIVITY_USED` en vez de dejar un 500 con el espacio
+    // perdido y un reintento que gasta otro.
     let danoDiferido:
       | {
           escalada: ReturnType<typeof dadosEscalados>;
@@ -287,12 +307,10 @@ export class ActivitiesService {
       | undefined;
 
     // Task 5 (3A.2) — el caso `ataque` (T19). `bonoDeAtaque` es lo único que hace falta para
-    // llamar a `resolverAtaqueContraCa` DESPUÉS de la transacción (esa función tira con
-    // `RollsService.roll`, que abre su propia transacción y no puede anidar con la de aquí,
-    // exactamente el mismo motivo que ya obliga a diferir `danoDiferido`). `danoDeAtaque` es el
-    // daño de la actividad YA escalado —igual que en el caso `dados`—, listo para tirarse solo si
-    // el veredicto resulta `HIT`/`CRITICAL`: el crítico dobla los DADOS (nunca el bono, nunca las
-    // caras), y eso solo se sabe una vez que hay veredicto.
+    // llamar a `resolverAtaqueContraCa` (que también acepta el `tx` desde I-4b). `danoDeAtaque`
+    // es el daño de la actividad YA escalado —igual que en el caso `dados`—, listo para tirarse
+    // solo si el veredicto resulta `HIT`/`CRITICAL`: el crítico dobla los DADOS (nunca el bono,
+    // nunca las caras), y eso solo se sabe una vez que hay veredicto.
     let bonoDeAtaque: number | undefined;
     let danoDeAtaque:
       { escalada: ReturnType<typeof dadosEscalados>; bonoValor: number } | undefined;
@@ -440,6 +458,7 @@ export class ActivitiesService {
             const esDanoAOtro =
               escalada.signo === -1 && destinatarios.some((d) => d.id !== actor.id);
             if (esDanoAOtro) {
+              // Se tira al final de esta misma transacción (ver `danoDiferido` arriba).
               danoDiferido = { escalada, bonoValor, destinatarios: [...destinatarios] };
               break;
             }
@@ -472,9 +491,8 @@ export class ActivitiesService {
             // este caso la comparte en vez de reinventar la comparación. Aquí, dentro de la
             // transacción, solo se resuelve lo que YA se resolvía —el bono y su traza— más el daño
             // ya escalado (si la actividad lo trae): ninguna de las dos cosas toca la base de
-            // datos. La tirada de ataque de verdad, y el daño si impacta, viajan fuera (después de
-            // `gastarActivacion`), por el mismo motivo que `danoDiferido`: `resolverAtaqueContraCa`
-            // llama a `RollsService.roll`, que abre su propia transacción.
+            // datos. La tirada de ataque de verdad, y el daño si impacta, van al final de esta
+            // misma transacción (I-4b), junto al daño diferido de `dados`.
             const resuelto = resolverOrigen(actividad.ataque.bono, ctx);
             traza.push(resuelto.paso);
             bonoDeAtaque = resuelto.valor;
@@ -583,7 +601,119 @@ export class ActivitiesService {
           }
         }
 
-        return { aviso: undefined, sinRecurso: false as const };
+        // Task 4 (3A.2), D-CF-128 — el daño diferido se tira AQUÍ, al final de la transacción
+        // (I-4b: antes iba fuera, ver `danoDiferido`). SRD 5.1, *Damage Rolls*: «roll the damage
+        // once for all of them» — el azar se tira UNA vez (`tiradaDeDano`, sin pasar por
+        // `RollsService`) y cada destinatario recibe su propia tarjeta de la bandeja del DM con
+        // ESE MISMO resultado (`interno.resultadoFijo`): N tarjetas, un solo azar.
+        let rollEventIds: string[] | undefined;
+        if (danoDiferido) {
+          const { escalada, bonoValor, destinatarios: destinosDelDano } = danoDiferido;
+          const { expresionTexto, resultado: resultadoDado } = this.tiradaDeDano(
+            escalada.n,
+            escalada.caras,
+            bonoValor,
+          );
+          const etiqueta = `${esSpell ? "Conjuro" : "Actividad"}: ${catalogado.name}`;
+
+          rollEventIds = [];
+          for (const destino of destinosDelDano) {
+            const respuesta = await this.rolls.roll(
+              userId,
+              campaignId,
+              {
+                expression: expresionTexto,
+                label: `Daño de ${catalogado.name}`,
+                characterId: actor.id,
+                mode: "NORMAL",
+                audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+              },
+              {
+                pendingDamage: {
+                  targetCharacterId: destino.id,
+                  damageType: escalada.tipoDeDano ?? "FORCE",
+                  reason: etiqueta,
+                },
+                resultadoFijo: resultadoDado,
+              },
+              tx,
+            );
+            rollEventIds.push(respuesta.eventId);
+          }
+        }
+
+        // Task 5 (3A.2, T19) — el ataque de conjuro contra la CA, también dentro de la
+        // transacción desde I-4b (`resolverAtaqueContraCa` acepta el `tx` y lo propaga a su
+        // tirada, a la ayuda consumida y al `ATTACK_RESOLVED`). Solo se resuelve con exactamente
+        // un objetivo (`bonoDeAtaque` solo se pone en el caso `ataque`, y la validación de arriba
+        // ya garantiza que `objetivos.length` es 0 o 1 para ese tipo) — «sin objetivo, solo traza
+        // del bono» sigue siendo el comportamiento de siempre.
+        let verdict: AttackVerdict | undefined;
+        if (bonoDeAtaque !== undefined && objetivos.length === 1) {
+          const target = objetivos[0];
+          const resuelto = await this.characterSheet.resolverAtaqueContraCa(
+            userId,
+            campaignId,
+            actor,
+            target,
+            {
+              bono: bonoDeAtaque,
+              label: `Ataque de conjuro: ${catalogado.name}`,
+              mode: "NORMAL",
+              attackName: catalogado.name,
+            },
+            tx,
+          );
+          verdict = resuelto.verdict;
+
+          // SRD 5.1, *Attack Rolls*: «Some spells require the caster to make an attack roll to
+          // determine whether the spell effect hits the intended target [...] A hit or a miss is
+          // determined by the same method as an ordinary attack.» Solo un HIT/CRITICAL cobra
+          // daño; un MISS —o una tirada a ciegas, sin veredicto— no tira nada.
+          if ((resuelto.verdict === "HIT" || resuelto.verdict === "CRITICAL") && danoDeAtaque) {
+            const { escalada, bonoValor } = danoDeAtaque;
+            // **El crítico dobla los DADOS, nunca el bono ni las caras** (SRD 5.1; mismo criterio
+            // que `duplicarDados` en `character-sheet.service.ts`, rama DAMAGE de `rollAttack`):
+            // `1d10` crítico es `2d10`, no `2d10+bono·2` ni `1d20`.
+            const n =
+              escalada.n !== undefined
+                ? resuelto.verdict === "CRITICAL"
+                  ? escalada.n * 2
+                  : escalada.n
+                : undefined;
+            const { expresionTexto, resultado: resultadoDado } = this.tiradaDeDano(
+              n,
+              escalada.caras,
+              bonoValor,
+            );
+            const etiqueta = `${esSpell ? "Conjuro" : "Actividad"}: ${catalogado.name}`;
+
+            const respuestaDano = await this.rolls.roll(
+              userId,
+              campaignId,
+              {
+                expression: expresionTexto,
+                label: `Daño de ${catalogado.name}`,
+                characterId: actor.id,
+                mode: "NORMAL",
+                audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+              },
+              {
+                pendingDamage: {
+                  targetCharacterId: target.id,
+                  damageType: escalada.tipoDeDano ?? "FORCE",
+                  reason: etiqueta,
+                  attackResolvedEventId: resuelto.attackResolvedEventId,
+                },
+                resultadoFijo: resultadoDado,
+              },
+              tx,
+            );
+            rollEventIds = [...(rollEventIds ?? []), respuestaDano.eventId];
+          }
+        }
+
+        return { aviso: undefined, sinRecurso: false as const, rollEventIds, verdict };
       },
       { maxWait: 10_000, timeout: 30_000 },
     );
@@ -595,122 +725,57 @@ export class ActivitiesService {
     // **Fuera de la transacción, a propósito.** La economía del turno nunca rechaza
     // (`EncountersService.gastar`, doctrina de la tarea A2) y abre su propia transacción — no
     // puede anidar con la de arriba. Fuera de combate no hay combatiente que marcar y no es un
-    // error: se calla.
+    // error: se calla. Desde I-4b va DESPUÉS de las tiradas (que ahora viven en la transacción):
+    // el orden no cambia nada de lo que se escribe, y así una tirada que revienta no deja la
+    // acción gastada.
     await this.gastarActivacion(userId, campaignId, actor, actividad);
-
-    // Task 4 (3A.2), D-CF-128 — el daño diferido se tira AQUÍ, fuera de la transacción de
-    // `usar()`: `RollsService.roll` abre la suya propia y no puede anidar con la de arriba. SRD
-    // 5.1, *Damage Rolls*: «roll the damage once for all of them» — el azar se tira UNA vez
-    // (`rollExpression`, directo, sin pasar por `RollsService`) y cada destinatario recibe su
-    // propia tarjeta de la bandeja del DM con ESE MISMO resultado (`interno.resultadoFijo`): N
-    // tarjetas, un solo azar.
-    let rollEventIds: string[] | undefined;
-    if (danoDiferido) {
-      const { escalada, bonoValor, destinatarios: destinosDelDano } = danoDiferido;
-      const dados =
-        escalada.n !== undefined && escalada.caras !== undefined
-          ? `${escalada.n}d${escalada.caras}`
-          : undefined;
-      const expresionTexto = dados ? conSigno(dados, bonoValor) : `${bonoValor}`;
-      const resultadoDado = rollExpression(expresionTexto, this.roller);
-      const etiqueta = `${esSpell ? "Conjuro" : "Actividad"}: ${catalogado.name}`;
-
-      rollEventIds = [];
-      for (const destino of destinosDelDano) {
-        const respuesta = await this.rolls.roll(
-          userId,
-          campaignId,
-          {
-            expression: expresionTexto,
-            label: `Daño de ${catalogado.name}`,
-            characterId: actor.id,
-            mode: "NORMAL",
-            audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
-          },
-          {
-            pendingDamage: {
-              targetCharacterId: destino.id,
-              damageType: escalada.tipoDeDano ?? "FORCE",
-              reason: etiqueta,
-            },
-            resultadoFijo: resultadoDado,
-          },
-        );
-        rollEventIds.push(respuesta.eventId);
-      }
-    }
-
-    // Task 5 (3A.2, T19) — el ataque de conjuro contra la CA, fuera de la transacción por el
-    // mismo motivo que `danoDiferido`: `resolverAtaqueContraCa` tira con `RollsService.roll`.
-    // Solo se resuelve con exactamente un objetivo (`bonoDeAtaque` solo se pone en el caso
-    // `ataque`, y la validación de arriba ya garantiza que `objetivos.length` es 0 o 1 para ese
-    // tipo) — «sin objetivo, solo traza del bono» sigue siendo el comportamiento de siempre.
-    let verdict: AttackVerdict | undefined;
-    if (bonoDeAtaque !== undefined && objetivos.length === 1) {
-      const target = objetivos[0];
-      const resuelto = await this.characterSheet.resolverAtaqueContraCa(
-        userId,
-        campaignId,
-        actor,
-        target,
-        {
-          bono: bonoDeAtaque,
-          label: `Ataque de conjuro: ${catalogado.name}`,
-          mode: "NORMAL",
-          attackName: catalogado.name,
-        },
-      );
-      verdict = resuelto.verdict;
-
-      // SRD 5.1, *Attack Rolls*: «Some spells require the caster to make an attack roll to
-      // determine whether the spell effect hits the intended target [...] A hit or a miss is
-      // determined by the same method as an ordinary attack.» Solo un HIT/CRITICAL cobra daño;
-      // un MISS —o una tirada a ciegas, sin veredicto— no tira nada.
-      if ((resuelto.verdict === "HIT" || resuelto.verdict === "CRITICAL") && danoDeAtaque) {
-        const { escalada, bonoValor } = danoDeAtaque;
-        // **El crítico dobla los DADOS, nunca el bono ni las caras** (SRD 5.1; mismo criterio que
-        // `duplicarDados` en `character-sheet.service.ts`, rama DAMAGE de `rollAttack`): `1d10`
-        // crítico es `2d10`, no `2d10+bono·2` ni `1d20`.
-        const n =
-          escalada.n !== undefined
-            ? resuelto.verdict === "CRITICAL"
-              ? escalada.n * 2
-              : escalada.n
-            : undefined;
-        const dados =
-          n !== undefined && escalada.caras !== undefined ? `${n}d${escalada.caras}` : undefined;
-        const expresionTexto = dados ? conSigno(dados, bonoValor) : `${bonoValor}`;
-        const etiqueta = `${esSpell ? "Conjuro" : "Actividad"}: ${catalogado.name}`;
-
-        const respuestaDano = await this.rolls.roll(
-          userId,
-          campaignId,
-          {
-            expression: expresionTexto,
-            label: `Daño de ${catalogado.name}`,
-            characterId: actor.id,
-            mode: "NORMAL",
-            audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
-          },
-          {
-            pendingDamage: {
-              targetCharacterId: target.id,
-              damageType: escalada.tipoDeDano ?? "FORCE",
-              reason: etiqueta,
-              attackResolvedEventId: resuelto.attackResolvedEventId,
-            },
-          },
-        );
-        rollEventIds = [...(rollEventIds ?? []), respuestaDano.eventId];
-      }
-    }
 
     return {
       cd,
       traza: traza.length > 0 ? traza : undefined,
-      rollEventIds,
+      rollEventIds: resultado.rollEventIds,
       fueraDeRegla: fueraDeRegla.length > 0 ? fueraDeRegla : undefined,
-      verdict,
+      verdict: resultado.verdict,
+    };
+  }
+
+  /**
+   * Ola de arreglos de 3A.2 (I-4a) — la expresión y el resultado del daño de una actividad, para
+   * la tarjeta de la bandeja del DM. **Sin dados no se llama a `rollExpression`**: el catálogo
+   * trae `dados` con solo un bono (`earthquake@4`, daño fijo 50; `heal@0`), y un número suelto no
+   * es una tirada — con un bono negativo, además, `rollExpression("-2")` lanza. Se construye el
+   * `DiceRollResult` a mano: un término constante (`sides: 0`, la misma forma que `evaluarTermino`
+   * da a un modificador), total = bono. Con dados, la tirada de siempre (`this.roller`).
+   */
+  private tiradaDeDano(
+    n: number | undefined,
+    caras: number | undefined,
+    bonoValor: number,
+  ): { expresionTexto: string; resultado: DiceRollResult } {
+    const dados = n !== undefined && caras !== undefined ? `${n}d${caras}` : undefined;
+    if (dados) {
+      const expresionTexto = conSigno(dados, bonoValor);
+      return { expresionTexto, resultado: rollExpression(expresionTexto, this.roller) };
+    }
+    const expresionTexto = `${bonoValor}`;
+    return {
+      expresionTexto,
+      resultado: {
+        expression: expresionTexto,
+        terms: [
+          {
+            source: `${Math.abs(bonoValor)}`,
+            sign: bonoValor < 0 ? -1 : 1,
+            sides: 0,
+            rolled: [],
+            kept: [Math.abs(bonoValor)],
+            dropped: [],
+            value: Math.abs(bonoValor),
+            dice: [],
+          },
+        ],
+        total: bonoValor,
+      },
     };
   }
 
@@ -755,9 +820,17 @@ export class ActivitiesService {
       // que comparar: preguntarle si «le quedan usos» es la pregunta equivocada. Antes se
       // comparaba igual, así que «sin tope» se gastaba de un contador finito y se acababa.
       if (!recurso || (recurso.max !== null && recurso.current < item.cantidad)) {
+        // Ola de arreglos (m-8) — sin FILA (un mago de nivel 3 pidiendo un espacio de nivel 5),
+        // `item.recurso` es una clave interna («spell-slot-5») y el aviso llega a pantalla: para
+        // un espacio de conjuro se dice el nivel; para cualquier otro recurso sin fila, su clave
+        // sigue siendo lo único que hay (y no debería pasar: la siembra crea la fila con el rasgo).
+        const nivelDeEspacio = /^spell-slot-(\d+)$/.exec(item.recurso)?.[1];
         return {
           ok: false,
-          motivo: `Sin usos de «${recurso?.label ?? item.recurso}» que gastar.`,
+          motivo:
+            !recurso && nivelDeEspacio
+              ? `No tiene espacios de nivel ${nivelDeEspacio}.`
+              : `Sin usos de «${recurso?.label ?? item.recurso}» que gastar.`,
         };
       }
       filas.push(recurso);

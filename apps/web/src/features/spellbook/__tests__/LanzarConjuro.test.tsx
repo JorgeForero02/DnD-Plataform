@@ -11,6 +11,7 @@ import * as charactersApi from "../../characters/api";
 import * as bestiarioApi from "../../bestiario/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import * as inventoryApi from "../../inventory/api";
+import { inventoryKey } from "../../inventory/hooks";
 import type { InventoryRow } from "../../inventory/api";
 
 // Tarea 7 de 3A.2 («elegir, lanzar y usar») — el botón «Lanzar» de la pestaña Conjuros. Reusa el
@@ -70,6 +71,46 @@ const PROYECTIL: SpellbookEntry = {
   mecanica: "dados",
   objetivos: "varios",
   escalaPorEspacio: true,
+  encanta: false,
+};
+
+// Ola de arreglos de 3A.2 (web I-2) — «Curar heridas»: `dados` de curación, `objetivos: "uno"`.
+// En combate tiene que ofrecer «Tú mismo»: es el uso más frecuente de la mecánica.
+const CURAR: SpellbookEntry = {
+  key: "cure-wounds",
+  nameEs: "Curar heridas",
+  nameEn: "Cure Wounds",
+  level: 1,
+  school: "evo",
+  castingTime: { coste: "ACTION" },
+  range: { unidad: "toque" },
+  concentration: false,
+  ritual: false,
+  estado: "PREPARADO",
+  lanzable: true,
+  mecanica: "dados",
+  objetivos: "uno",
+  escalaPorEspacio: true,
+  encanta: false,
+};
+
+// «Rayo de fuego»: `ataque` contra UN objetivo. Atacarse a uno mismo es un 400 del servidor
+// (`usar()`, caso `ataque`), así que aquí «Tú mismo» NO se ofrece — ni en combate ni fuera.
+const RAYO_DE_FUEGO: SpellbookEntry = {
+  key: "fire-bolt",
+  nameEs: "Rayo de fuego",
+  nameEn: "Fire Bolt",
+  level: 0,
+  school: "evo",
+  castingTime: { coste: "ACTION" },
+  range: { unidad: "pies", distanciaFt: 120 },
+  concentration: false,
+  ritual: false,
+  estado: "CONOCIDO",
+  lanzable: true,
+  mecanica: "ataque",
+  objetivos: "uno",
+  escalaPorEspacio: false,
   encanta: false,
 };
 
@@ -227,6 +268,70 @@ describe("LanzarConjuro — el selector de espacio, sin lista de objetivos de po
     );
   });
 
+  // Ola de arreglos (web I-1) — el nivel por defecto se derivaba UNA vez (`useState(() => …)`) y
+  // se quedaba rancio: agotado el último espacio de nivel 1 (la fila no se desmonta), el grupo
+  // pintaba un solo radio sin marcar y «Lanzar» mandaba `nivelDeEspacio: 1` → SIN_ESPACIO. Ahora
+  // el nivel efectivo se deriva en cada render: el propio si le quedan usos, y si no, el primero
+  // que sí tenga; y el propio agotado se pinta marcado como no disponible («no quedan»), la regla
+  // del «valor guardado que un selector no ofrece» de 04-convenciones.
+  it("I-1: sin espacios del nivel propio, «Lanzar» manda el primer nivel con usos sin tocar ningún radio", async () => {
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar(ESCUDO, [
+      { nivel: 1, actual: 0, max: 4 },
+      { nivel: 2, actual: 1, max: 2 },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Escudo" }));
+    expect(await screen.findByText("¿Con qué espacio?")).toBeInTheDocument();
+    // El propio, agotado: se ve, marcado como agotado, y no se puede elegir.
+    const propio = screen.getByRole("radio", { name: /^Nivel 1 .*no quedan/ });
+    expect(propio).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /^Nivel 2/ })).toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar" }));
+
+    await waitFor(() =>
+      expect(usar).toHaveBeenCalledWith("c1", "p-maga", "spell:shield", { nivelDeEspacio: 2 }),
+    );
+  });
+
+  it("I-1: si el nivel elegido se agota tras lanzar (mismo montaje), el siguiente lanzamiento usa el que queda", async () => {
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const conEspacios = (espacios: SpellbookResponse["espacios"]) => (
+      <QueryClientProvider client={qc}>
+        <LanzarConjuro campaignId="c1" characterId="p-maga" entrada={ESCUDO} espacios={espacios} />
+      </QueryClientProvider>
+    );
+    const vista = render(
+      conEspacios([
+        { nivel: 1, actual: 1, max: 4 },
+        { nivel: 2, actual: 1, max: 2 },
+      ]),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Escudo" }));
+    expect(await screen.findByRole("radio", { name: /^Nivel 1/ })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar" }));
+    await waitFor(() =>
+      expect(usar).toHaveBeenLastCalledWith("c1", "p-maga", "spell:shield", { nivelDeEspacio: 1 }),
+    );
+
+    // El servidor gastó el último de nivel 1: la misma fila recibe los espacios nuevos.
+    vista.rerender(
+      conEspacios([
+        { nivel: 1, actual: 0, max: 4 },
+        { nivel: 2, actual: 1, max: 2 },
+      ]),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Escudo" }));
+    expect(await screen.findByRole("radio", { name: /^Nivel 2/ })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar" }));
+    await waitFor(() =>
+      expect(usar).toHaveBeenLastCalledWith("c1", "p-maga", "spell:shield", { nivelDeEspacio: 2 }),
+    );
+  });
+
   it("sin ningún espacio por encima del propio, no aparece el grupo de radios", async () => {
     vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
     montar(ESCUDO, [{ nivel: 1, actual: 3, max: 4 }]);
@@ -307,13 +412,43 @@ describe("LanzarConjuro — objetivos «varios», en combate", () => {
     );
   });
 
-  it("«Lanzar sobre N» está apagado sin ningún objetivo marcado", async () => {
+  it("«Lanzar sobre N» está apagado sin ningún objetivo marcado, y dice por qué (m-2)", async () => {
     vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
     montar(PROYECTIL, [{ nivel: 1, actual: 3, max: 4 }]);
 
     fireEvent.click(screen.getByRole("button", { name: "Lanzar Proyectil mágico" }));
     const enviar = await screen.findByRole("button", { name: "Lanzar sobre 0" });
     expect(enviar).toHaveAttribute("aria-disabled", "true");
+    // D-CF-121: apagado con motivo, no escondido ni mudo.
+    expect(enviar).toHaveAttribute("title", "Marca al menos un objetivo");
+  });
+
+  // Ola de arreglos (web I-2) — `useCombatientesDelEncuentro` excluye al propio personaje porque
+  // nació para ataques; para cualquier otra mecánica el servidor acepta al propio actor
+  // (D-CF-128: la curación y el daño a uno mismo siguen directos). Una clériga tiene que poder
+  // lanzarse «Curar heridas» en pleno combate — el caso más frecuente de la mecánica.
+  it("I-2: en combate, una entrada `dados` (Curar heridas) ofrece «Tú mismo» además de los combatientes", async () => {
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar(CURAR, [{ nivel: 1, actual: 3, max: 4 }]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Curar heridas" }));
+    expect(await screen.findByRole("option", { name: "Goblin" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Tú mismo" }));
+
+    await waitFor(() =>
+      expect(usar).toHaveBeenCalledWith("c1", "p-maga", "spell:cure-wounds", {
+        objetivos: ["p-maga"],
+      }),
+    );
+  });
+
+  it("I-2: en combate, un `ataque` (Rayo de fuego) NO ofrece «Tú mismo» — el servidor lo rechaza", async () => {
+    vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar(RAYO_DE_FUEGO, SIN_ESPACIOS);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Rayo de fuego" }));
+    expect(await screen.findByRole("option", { name: "Goblin" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Tú mismo" })).not.toBeInTheDocument();
   });
 });
 
@@ -329,6 +464,25 @@ describe("LanzarConjuro — el servidor avisa sin bloquear", () => {
 
     const aviso = await screen.findByRole("alert");
     expect(aviso).toHaveTextContent("Sin espacios de nivel 0 — no se lanzó.");
+  });
+
+  // Ola de arreglos (m-1) — con SIN_ESPACIO el servidor manda también `aviso` («Sin usos de
+  // «Espacios (nivel 1)»…»), y la pantalla lo pintaba debajo de su propia frase: dos veces lo
+  // mismo. Se omite el `aviso` cuando `sinEspacio` ya lo dice.
+  it("m-1: con SIN_ESPACIO, el `aviso` del servidor no se repite debajo", async () => {
+    vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({
+      fueraDeRegla: ["SIN_ESPACIO"],
+      aviso: "Sin usos de «Espacios (nivel 1)» que gastar.",
+    });
+    montar(TRUCO);
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Luz" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Sin espacios de nivel 0 — no se lanzó.",
+    );
+    expect(
+      screen.queryByText("Sin usos de «Espacios (nivel 1)» que gastar."),
+    ).not.toBeInTheDocument();
   });
 
   it("un aviso del servidor se enseña en línea, sin bloquear el botón", async () => {
@@ -374,6 +528,39 @@ describe("LanzarConjuro — encantar (T15, 3A.2): el objetivo es un arma del inv
       expect(usar).toHaveBeenCalledWith("c1", "p-maga", "spell:magic-weapon", {
         itemId: "long-sword",
       }),
+    );
+  });
+
+  // Ola de arreglos (m-4) — tras encantar, el chip «+1 · Arma mágica» de la pestaña Objetos
+  // tardaba hasta 60 s (el sondeo de red de seguridad) en aparecer: la mutación no invalidaba
+  // el inventario. Solo cuando se mandó `itemId`.
+  it("m-4: tras encantar, se invalida el inventario del personaje", async () => {
+    vi.spyOn(inventoryApi, "fetchInventory").mockResolvedValue({
+      items: [filaDeArma("long-sword", "Espada larga")],
+      purse: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+      totalWeightOz: 0,
+      carryCapacityOz: null,
+      encumbrance: null,
+    });
+    vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidar = vi.spyOn(qc, "invalidateQueries");
+    render(
+      <QueryClientProvider client={qc}>
+        <LanzarConjuro
+          campaignId="c1"
+          characterId="p-maga"
+          entrada={ARMA_MAGICA}
+          espacios={SIN_ESPACIOS}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Arma mágica" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Espada larga" }));
+
+    await waitFor(() =>
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: inventoryKey("c1", "p-maga") }),
     );
   });
 

@@ -158,20 +158,26 @@ export class SpellbookService {
       const estadoAntes = filaAntes?.estado ?? null;
 
       let estadoFinal: CharacterSpellState | null;
-      let cambio: "PREPARADO" | "DESPREPARADO" | "APRENDIDO" | "OLVIDADO";
       if (input.estado === null) {
-        if (modelo === "LIBRO" && estadoAntes === "PREPARADO") {
-          // Dejar de preparar en el mago no borra la copia del libro: solo baja un peldaño.
-          estadoFinal = "EN_EL_LIBRO";
-          cambio = "DESPREPARADO";
-        } else {
-          estadoFinal = null;
-          cambio = estadoAntes === "PREPARADO" ? "DESPREPARADO" : "OLVIDADO";
-        }
+        // Dejar de preparar en el mago no borra la copia del libro: solo baja un peldaño.
+        estadoFinal = modelo === "LIBRO" && estadoAntes === "PREPARADO" ? "EN_EL_LIBRO" : null;
       } else {
         estadoFinal = input.estado;
-        cambio = estadoFinal === "PREPARADO" ? "PREPARADO" : "APRENDIDO";
       }
+
+      // Ola de arreglos de 3A.2 (m-1) — **`cambio` se deriva del par (antes, después)**, no del
+      // estado pedido: `PUT {estado: "EN_EL_LIBRO"}` sobre un conjuro PREPARADO (el mago que deja
+      // de prepararlo por la puerta explícita) era «APRENDIDO». Y **repetir el mismo estado no
+      // escribe nada**: el hilo no gana con un `SPELLBOOK_CHANGED` idéntico al anterior.
+      if (estadoFinal === estadoAntes) return;
+      const cambio: "PREPARADO" | "DESPREPARADO" | "APRENDIDO" | "OLVIDADO" =
+        estadoFinal === "PREPARADO"
+          ? "PREPARADO"
+          : estadoAntes === "PREPARADO"
+            ? "DESPREPARADO"
+            : estadoFinal === null
+              ? "OLVIDADO"
+              : "APRENDIDO";
 
       if (estadoFinal === null) {
         await tx.characterSpell.deleteMany({

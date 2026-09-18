@@ -1426,15 +1426,20 @@ export class CharacterSheetService {
     return { id: fila.id, note: fila.note };
   }
 
-  /** Retira la marca y lo cuenta, para que el ayudado vea POR QUÉ dejó de tenerla. */
+  /**
+   * Retira la marca y lo cuenta, para que el ayudado vea POR QUÉ dejó de tenerla. Ola de arreglos
+   * de 3A.2 (I-4b): con `tx` ajena (el caso `ataque` de `usar()`), escribe con ella en vez de
+   * abrir la suya — el patrón aditivo de `RollsService.roll`.
+   */
   private async consumirAyuda(
     userId: string,
     campaignId: string,
     characterId: string,
     visibility: Visibility,
     ayuda: { id: string },
+    txAjena?: Prisma.TransactionClient,
   ): Promise<void> {
-    await this.prisma.transaction(async (tx) => {
+    const retirar = async (tx: Prisma.TransactionClient) => {
       await tx.characterCondition.delete({ where: { id: ayuda.id } });
       await this.events.record(
         userId,
@@ -1451,7 +1456,9 @@ export class CharacterSheetService {
         },
         tx,
       );
-    });
+    };
+    if (txAjena) await retirar(txAjena);
+    else await this.prisma.transaction(retirar);
   }
 
   /**
@@ -2263,11 +2270,13 @@ export class CharacterSheetService {
    * Task 8 (3A.2) — SRD 5.1, *Divine Smite*: «2d8 for a 1st-level spell slot, plus 1d8 for each
    * spell level higher than 1st, to a maximum of 5d8» (la cita completa va en el commit).
    * `nivelDeEspacio` por defecto 1: la web de esta tarea no ofrece selector de nivel (Ruling en
-   * el informe). El tope de 5d8 lo impone `min(nivelDeEspacio, 5)` — un espacio de nivel 9 no
-   * existe, pero el esquema de entrada ya topa en 5.
+   * el informe). **El tope va sobre el TOTAL de dados, no sobre el nivel** (ola de arreglos,
+   * I-1): `1 + min(n, 5)` daba 6d8 con un espacio de nivel 5, contra la cita de arriba. Nivel 4 y
+   * nivel 5 dan los mismos 5d8 — el esquema de entrada topa el nivel en 5, así que el `min` solo
+   * actúa en ese último escalón.
    */
   private dadosDeCastigoDivino(nivelDeEspacio: number): number {
-    return 1 + Math.min(nivelDeEspacio, 5);
+    return Math.min(1 + nivelDeEspacio, 5);
   }
 
   /**
@@ -2278,11 +2287,22 @@ export class CharacterSheetService {
    *
    * **Nunca lanza.** Una hoja que no se puede derivar (personaje a medio crear) simplemente no
    * ofrece nada que marcar — no es el error de quien mira el preview.
+   *
+   * **Ola de arreglos (m-3) — solo lo que el servidor va a aceptar** («nunca un botón que el
+   * servidor rechace», Global Constraints): (a) Castigo divino gasta `spell-slot-1` al marcarse
+   * (D-CF-129, el nivel que manda la web), así que sin ese espacio no se ofrece; (b) los dos
+   * extras son de un ataque CON ARMA —SRD 5.1, *Sneak Attack*: «if you hit a creature with a
+   * finesse or a ranged weapon»; *Divine Smite*: «when you hit a creature with a melee weapon
+   * attack»—, y el daño de un conjuro o de una aptitud (`esAtaqueConArma` falso) no ofrece
+   * ninguno. Lo que SÍ sigue en manos del DM (D-CF-129): ventaja, aliado adyacente, arma
+   * sutil o a distancia — el servidor cuenta y avisa, no arbitra.
    */
   private async opcionesDeExtra(
     attacker: FilaPersonaje,
     yaMarcados: ReadonlySet<DamageExtraKey>,
+    esAtaqueConArma: boolean,
   ): Promise<DamageExtraOption[]> {
+    if (!esAtaqueConArma) return [];
     let sheet;
     try {
       sheet = await this.hojaDelServidor(attacker);
@@ -2299,10 +2319,42 @@ export class CharacterSheetService {
         if (!n) continue;
         opciones.push({ key, label: `${config.nombre} (${n}d6)` });
       } else {
+        if (!(await this.quedaEspacioDeNivel1(attacker.id))) continue;
         opciones.push({ key, label: `${config.nombre} (${this.dadosDeCastigoDivino(1)}d8)` });
       }
     }
     return opciones;
+  }
+
+  /**
+   * m-3 (a) — ¿le queda al paladín el espacio que Castigo divino va a gastar? Mira SOLO el de
+   * nivel 1, que es el que manda la web (sin selector de nivel, Task 8): ofrecerlo por un espacio
+   * de nivel 2 que la petición no va a pedir sería el mismo botón rechazado por otra puerta.
+   * `max === null` es «sin tope» (mismo criterio que `ActivitiesService.consumir`).
+   */
+  private async quedaEspacioDeNivel1(characterId: string): Promise<boolean> {
+    // La clave del RECURSO (`CharacterResource`, la misma forma que `consumoDeEspacio`), no de
+    // una condición: se compone aparte para que `claves-que-el-motor-lee.spec.ts` —que barre
+    // este fichero buscando consultas por clave de CONDICIÓN escritas como texto— no la tome
+    // por una clave de condición sin reservar.
+    const recurso = `spell-slot-${1}`;
+    const fila = await this.prisma.characterResource.findUnique({
+      where: { characterId_key: { characterId, key: recurso } },
+      select: { current: true, max: true },
+    });
+    return fila !== null && (fila.max === null || fila.current > 0);
+  }
+
+  /**
+   * Ola de arreglos (m-3b) — un `pendingDamage` de un ataque CON ARMA es el que escribe
+   * `rollAttack` (DAMAGE): `reason: "Ataque: <arma>"` (Task 4 lo puso ahí «para que el camino de
+   * un ataque de arma y el de una actividad dejen la misma forma»), o **sin `reason`** en las
+   * filas de antes de esa tarea, que solo traían `attackResolvedEventId`. El daño de un conjuro o
+   * de una aptitud lleva `"Conjuro: …"`/`"Actividad: …"` (`usar()`), también cuando es un ataque
+   * de conjuro con su `ATTACK_RESOLVED` (`fire-bolt`): un rayo de fuego no es un arma.
+   */
+  private esAtaqueConArma(pendingDamage: PendingDamage): boolean {
+    return pendingDamage.reason === undefined || pendingDamage.reason.startsWith("Ataque: ");
   }
 
   /**
@@ -2381,7 +2433,16 @@ export class CharacterSheetService {
 
     const marcados = new Set((pendingDamage.extras ?? []).map((e) => e.key));
     const extras: DamageExtra[] = pendingDamage.extras ?? [];
-    const extrasDisponibles = attacker ? await this.opcionesDeExtra(attacker, marcados) : [];
+    // Ola de arreglos (web I-3 / API m-2) — `extrasDisponibles` es «lo que QUIEN MIRA puede
+    // marcar», y marcar es dueño del atacante o DM (`addDamageExtra`). Al dueño del objetivo se
+    // le ofrecía un botón que acababa en 403 —el defecto exacto que 04 cita del prototipo— y de
+    // paso leía el rasgo y el tramo de nivel del atacante (un PNJ pícaro `DM_ONLY`). Recibe `[]`;
+    // los `extras` YA marcados sí los ve, porque entran en la suma que va a aplicar.
+    const puedeMarcar = isDM || esDueñoDelAtacante;
+    const extrasDisponibles =
+      attacker && puedeMarcar
+        ? await this.opcionesDeExtra(attacker, marcados, this.esAtaqueConArma(pendingDamage))
+        : [];
 
     if (!isDM && !esDueñoDelObjetivo) {
       // Solo dueño del atacante: la vista reducida, sin `resulting` ni nombre del objetivo.
@@ -2465,6 +2526,11 @@ export class CharacterSheetService {
     if ((pendingDamage.extras ?? []).some((e) => e.key === claveExtra)) {
       throw new ConflictException(`«${config.nombre}» ya se marcó en esta tirada.`);
     }
+    // m-3 (b) — la misma regla con la que `opcionesDeExtra` deja de ofrecerlos: solo sobre el
+    // daño de un ataque con arma (ver `esAtaqueConArma`).
+    if (!this.esAtaqueConArma(pendingDamage)) {
+      throw new BadRequestException(`${config.nombre} solo se suma al daño de un ataque con arma.`);
+    }
 
     let sheet;
     try {
@@ -2490,117 +2556,131 @@ export class CharacterSheetService {
     }
     const etiqueta = `${config.nombre} (${expresion})`;
 
-    // **El espacio se gasta ANTES de tirar** (D-CF-129): si no queda, es 409 y no se tira nada —
-    // gastar lo que no hay es 409 (E-08-3), el mismo criterio que `ActivitiesService.consumir`.
-    if (claveExtra === "divine-smite") {
-      const nivelDeEspacio = input.nivelDeEspacio ?? 1;
-      await this.gastarEspacioDeCastigoDivino(campaignId, attacker, nivelDeEspacio, etiqueta);
-    }
+    // **Ola de arreglos (I-3) — UNA transacción para las tres cosas: gastar el espacio, tirar el
+    // extra y anexarlo a la tarjeta.** La primera versión las hacía en tres pasos sueltos (una
+    // transacción para el espacio, la de `RollsService.roll`, y el `jsonb_set` fuera de ambas):
+    // si el candado del final no marcaba nada, el paladín perdía el espacio y la tirada quedaba
+    // huérfana. Ahora `roll` recibe este `tx` (I-4b, patrón aditivo) y el 409 del candado se lanza
+    // DENTRO: Postgres deshace el descuento, el `RESOURCE_SPENT` y el `ABILITY_ROLL` del extra.
+    //
+    // **Orden de candados** (para no cruzarse con `applyPendingDamage`, que bloquea la fila de
+    // la tirada y después la del objetivo): aquí se toma primero el `CharacterResource` del
+    // atacante y al final la fila de la tirada (el `UPDATE`); ninguna de las dos transacciones
+    // pide en orden inverso lo que la otra ya tiene.
+    return this.prisma.transaction(async (tx) => {
+      // **El espacio se gasta ANTES de tirar** (D-CF-129): si no queda, es 409 y no se tira nada
+      // — gastar lo que no hay es 409 (E-08-3), el mismo criterio que `ActivitiesService.consumir`.
+      if (claveExtra === "divine-smite") {
+        const nivelDeEspacio = input.nivelDeEspacio ?? 1;
+        await this.gastarEspacioDeCastigoDivino(tx, campaignId, attacker, nivelDeEspacio, etiqueta);
+      }
 
-    // Fuera de cualquier transacción propia, a propósito: `RollsService.roll` abre la suya y no
-    // puede anidar con la de arriba (mismo motivo que el daño diferido de `usar()`, Task 4). Sin
-    // `pendingDamage`: este extra no se aplica por sí solo, cuelga del daño principal.
-    const respuesta = await this.rolls.roll(
-      userId,
-      campaignId,
-      {
-        expression: expresion,
+      // Sin `pendingDamage`: este extra no se aplica por sí solo, cuelga del daño principal.
+      const respuesta = await this.rolls.roll(
+        userId,
+        campaignId,
+        {
+          expression: expresion,
+          label: etiqueta,
+          characterId: attacker.id,
+          mode: "NORMAL",
+          audience: loVeLaMesa(attacker.visibility) ? "PUBLIC" : "DM_PRIVATE",
+        },
+        {},
+        tx,
+      );
+      if (!respuesta.revealed) {
+        // No debería pasar: quien marca es dueño o DM, así que `puedeVerse` siempre deja pasar
+        // su propia tirada. Si algún día no fuera así, mentir con un 0 sería peor que fallar aquí.
+        throw new BadRequestException("La tirada del extra no se pudo leer.");
+      }
+      const amount = respuesta.total;
+      const nuevoExtra: DamageExtra = {
+        key: input.key,
         label: etiqueta,
-        characterId: attacker.id,
-        mode: "NORMAL",
-        audience: loVeLaMesa(attacker.visibility) ? "PUBLIC" : "DM_PRIVATE",
-      },
-      {},
-    );
-    if (!respuesta.revealed) {
-      // No debería pasar: quien marca es dueño o DM, así que `puedeVerse` siempre deja pasar su
-      // propia tirada. Si algún día no fuera así, mentir con un 0 sería peor que fallar aquí.
-      throw new BadRequestException("La tirada del extra no se pudo leer.");
-    }
-    const amount = respuesta.total;
-    const nuevoExtra: DamageExtra = {
-      key: input.key,
-      label: etiqueta,
-      amount,
-      rollEventId: respuesta.eventId,
-    };
+        amount,
+        rollEventId: respuesta.eventId,
+      };
 
-    // **E-PE-4, generalizado a un array.** El `WHERE` es el candado real: `appliedEventId` sigue
-    // sin poner Y esta clave todavía no está en `extras` — así dos clics concurrentes en la
-    // MISMA clave no se pisan (uno gana, el otro ve 0 filas), y dos extras de claves DISTINTAS
-    // (Furtivo del ladrón, Castigo del paladín ajeno — no pasa con un solo atacante, pero el
-    // `||` es correcto igualmente) se anexan sin perder al otro, sin necesitar releer primero.
-    const marcado = await this.prisma.$executeRaw`
-      UPDATE "GameEvent"
-      SET payload = jsonb_set(
-        payload,
-        '{pendingDamage,extras}',
-        COALESCE(payload->'pendingDamage'->'extras', '[]'::jsonb) || ${JSON.stringify([nuevoExtra])}::jsonb
-      )
-      WHERE id = ${rollEventId}
-        AND payload->'pendingDamage'->>'appliedEventId' IS NULL
-        AND NOT (COALESCE(payload->'pendingDamage'->'extras', '[]'::jsonb) @> ${JSON.stringify([{ key: input.key }])}::jsonb)
-    `;
-    if (marcado === 0) {
-      // La tirada de dados y, para Castigo divino, el espacio gastado, ya ocurrieron — perderlos
-      // en esta carrera rarísima (dos clics en la MISMA clave, casi al mismo milisegundo) es el
-      // mismo coste que ya acepta `applyPendingDamage` cuando pierde su propia carrera: la
-      // petición que pierde no vuelve a tirar nada, solo ve el 409.
-      throw new ConflictException(`«${config.nombre}» ya se marcó en esta tirada, o ya se aplicó.`);
-    }
+      // **E-PE-4, generalizado a un array.** El `WHERE` es el candado real: `appliedEventId`
+      // sigue sin poner Y esta clave todavía no está en `extras` — así dos clics concurrentes en
+      // la MISMA clave no se pisan (uno gana, el otro ve 0 filas), y dos extras de claves
+      // DISTINTAS se anexan sin perder al otro, sin necesitar releer primero. Y como
+      // `applyPendingDamage` bloquea esta fila (`FOR UPDATE`) antes de sumar, este `UPDATE`
+      // espera a su commit y entonces ve `appliedEventId` puesto: el extra o entra en la suma o
+      // recibe su 409 — nunca queda escrito sin llegar a los PG (I-2).
+      const marcado = await tx.$executeRaw`
+        UPDATE "GameEvent"
+        SET payload = jsonb_set(
+          payload,
+          '{pendingDamage,extras}',
+          COALESCE(payload->'pendingDamage'->'extras', '[]'::jsonb) || ${JSON.stringify([nuevoExtra])}::jsonb
+        )
+        WHERE id = ${rollEventId}
+          AND payload->'pendingDamage'->>'appliedEventId' IS NULL
+          AND NOT (COALESCE(payload->'pendingDamage'->'extras', '[]'::jsonb) @> ${JSON.stringify([{ key: input.key }])}::jsonb)
+      `;
+      if (marcado === 0) {
+        // Lanzar aquí DENTRO es lo que devuelve el espacio y borra la tirada del extra: la
+        // transacción entera se deshace con el 409.
+        throw new ConflictException(
+          `«${config.nombre}» ya se marcó en esta tirada, o ese daño ya se aplicó.`,
+        );
+      }
 
-    return nuevoExtra;
+      return nuevoExtra;
+    });
   }
 
   /**
    * Task 8 (3A.2) — gasta un `spell-slot-N` del atacante, con el mismo candado que
-   * `ActivitiesService.consumir` (`SELECT … FOR UPDATE` sobre `CharacterResource`, en su propia
-   * transacción): dos «Castigo divino» a la vez sobre el mismo paladín no leen el mismo `current`
-   * ni descuentan dos veces el mismo espacio.
+   * `ActivitiesService.consumir` (`SELECT … FOR UPDATE` sobre `CharacterResource`): dos «Castigo
+   * divino» a la vez sobre el mismo paladín no leen el mismo `current` ni descuentan dos veces el
+   * mismo espacio. **Ola de arreglos (I-3): ya no abre transacción propia** — escribe con la de
+   * `addDamageExtra`, para que un candado que no marca nada devuelva el espacio.
    */
   private async gastarEspacioDeCastigoDivino(
+    tx: Prisma.TransactionClient,
     campaignId: string,
     attacker: FilaPersonaje,
     nivelDeEspacio: number,
     etiqueta: string,
   ): Promise<void> {
     const recurso = `spell-slot-${nivelDeEspacio}`;
-    await this.prisma.transaction(async (tx) => {
-      const filas = await tx.$queryRaw<
-        { id: string; label: string; current: number; max: number | null }[]
-      >`SELECT id, label, current, max FROM "CharacterResource" WHERE "characterId" = ${attacker.id} AND key = ${recurso} FOR UPDATE`;
-      const fila = filas[0];
-      if (!fila || (fila.max !== null && fila.current < 1)) {
-        throw new ConflictException(
-          `Sin espacios de nivel ${nivelDeEspacio} que gastar para «${etiqueta}».`,
-        );
-      }
-      // Igual que `ActivitiesService.consumir`: `max === null` es «sin tope», y no se descuenta.
-      if (fila.max !== null) {
-        await tx.characterResource.update({
-          where: { id: fila.id },
-          data: { current: fila.current - 1 },
-        });
-        await this.events.record(
-          attacker.ownerId,
-          campaignId,
-          {
-            subjectType: "character",
-            subjectId: attacker.id,
-            visibility: attacker.visibility,
-            payload: {
-              type: "RESOURCE_SPENT",
-              key: recurso,
-              label: fila.label,
-              amount: 1,
-              remaining: fila.current - 1,
-              reason: etiqueta,
-            },
+    const filas = await tx.$queryRaw<
+      { id: string; label: string; current: number; max: number | null }[]
+    >`SELECT id, label, current, max FROM "CharacterResource" WHERE "characterId" = ${attacker.id} AND key = ${recurso} FOR UPDATE`;
+    const fila = filas[0];
+    if (!fila || (fila.max !== null && fila.current < 1)) {
+      throw new ConflictException(
+        `Sin espacios de nivel ${nivelDeEspacio} que gastar para «${etiqueta}».`,
+      );
+    }
+    // Igual que `ActivitiesService.consumir`: `max === null` es «sin tope», y no se descuenta.
+    if (fila.max !== null) {
+      await tx.characterResource.update({
+        where: { id: fila.id },
+        data: { current: fila.current - 1 },
+      });
+      await this.events.record(
+        attacker.ownerId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: attacker.id,
+          visibility: attacker.visibility,
+          payload: {
+            type: "RESOURCE_SPENT",
+            key: recurso,
+            label: fila.label,
+            amount: 1,
+            remaining: fila.current - 1,
+            reason: etiqueta,
           },
-          tx,
-        );
-      }
-    });
+        },
+        tx,
+      );
+    }
   }
 
   /**
@@ -2652,16 +2732,33 @@ export class CharacterSheetService {
       reason = `Ataque: ${attackName}`;
     }
 
-    // Task 8 (3A.2) — el daño extra marcado (Ataque furtivo, Castigo divino) se suma al aplicar,
-    // con el MISMO `damageType` que el daño principal: el servidor no distingue el tipo de cada
-    // extra (D-CF-129 — la simplificación declarada en el mismo sitio que «no sabe ventaja ni
-    // adyacencia»).
-    const totalExtras = (pendingDamage.extras ?? []).reduce((suma, e) => suma + e.amount, 0);
-
     return this.prisma.transaction(async (tx) => {
+      // **Ola de arreglos (I-2) — la tirada se lee BLOQUEADA antes de sumar nada.** La lectura
+      // barata de arriba decidió el 403/404 y el `reason`; lo que se APLICA sale de la fila con
+      // `FOR UPDATE`: entre una y otra, el pícaro pudo marcar su Furtivo (`addDamageExtra`), y
+      // sin el candado ese extra quedaba escrito en la tarjeta sin llegar nunca a los PG — la
+      // misma familia de carrera que E-PE-4 cerró para el doble clic, con otro actor legítimo.
+      // Con la fila bloqueada, el `UPDATE` de `addDamageExtra` espera a este commit y entonces
+      // ve `appliedEventId` puesto (su 409 devuelve el espacio); y un extra que llegó antes
+      // está aquí y entra en la suma. **Orden de candados**: primero la tirada, después el
+      // objetivo (`changeHpEnTransaccion` bloquea `Character`) — `addDamageExtra` toma el
+      // recurso del atacante y luego la tirada, nunca al revés.
+      const bloqueadas = await tx.$queryRaw<
+        { payload: { pendingDamage?: PendingDamage } | null }[]
+      >`SELECT payload FROM "GameEvent" WHERE id = ${rollEventId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+      const vigente = bloqueadas[0]?.payload?.pendingDamage;
+      if (!vigente) throw new NotFoundException(SIN_DANO_PENDIENTE);
+      if (vigente.appliedEventId) throw new ConflictException("Ese daño ya se aplicó.");
+
+      // Task 8 (3A.2) — el daño extra marcado (Ataque furtivo, Castigo divino) se suma al
+      // aplicar, con el MISMO `damageType` que el daño principal: el servidor no distingue el
+      // tipo de cada extra (D-CF-129 — la simplificación declarada en el mismo sitio que «no
+      // sabe ventaja ni adyacencia»).
+      const totalExtras = (vigente.extras ?? []).reduce((suma, e) => suma + e.amount, 0);
+
       const resultado = await this.changeHpFromEffect(tx, actorUserId, campaignId, target.id, {
-        delta: -(pendingDamage.amount + totalExtras),
-        damageType: pendingDamage.damageType,
+        delta: -(vigente.amount + totalExtras),
+        damageType: vigente.damageType,
         rollEventId,
         reason,
       });
@@ -3469,6 +3566,12 @@ export class CharacterSheetService {
    * el porqué de cada pieza: D-OP-11 (a quién se puede apuntar), D-OP-13 (el estado del objetivo
    * cambia el modo), la ayuda del atacante, la audiencia por defecto de DOS niveles, y por qué el
    * 20/1 natural manda sobre la CA.
+   *
+   * **`tx` (ola de arreglos de 3A.2, I-4b)**: la transacción de quien llama, si ya tiene una. Se
+   * propaga a `rolls.roll`, a `consumirAyuda` y a `events.record`, para que el caso `ataque` de
+   * `usar()` resuelva el impacto DENTRO de la transacción que gastó el espacio: si algo de esto
+   * revienta, el espacio vuelve en lugar de quedar gastado con un 500. `resolveAttack` (un arma)
+   * sigue sin pasarla, como siempre.
    */
   async resolverAtaqueContraCa(
     userId: string,
@@ -3484,6 +3587,7 @@ export class CharacterSheetService {
       attackRef?: string;
       attackName: string;
     },
+    tx?: Prisma.TransactionClient,
   ): Promise<{ roll: RollResult; verdict?: AttackVerdict; attackResolvedEventId?: string }> {
     // La CA se calcula ANTES de tirar: si el objetivo no se puede resolver (un PNJ cuyo
     // statblock se borró, por ejemplo), es un 400 honesto y no una tirada que luego no se puede
@@ -3530,27 +3634,27 @@ export class CharacterSheetService {
     // se arregla en los dos sitios.
     const audienciaPorDefecto = loVeLaMesa(atacante.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
-    const roll = await this.rolls.roll(
-      userId,
-      campaignId,
-      {
-        expression: conSigno("1d20", input.bono),
-        label: input.label,
-        characterId: atacante.id,
-        mode: modo,
-        spendInspiration: input.spendInspiration,
-        audience: input.audience ?? audienciaPorDefecto,
-      },
-      // Fix round 1 (M6), fix round 2 (R3) — `roll.eventId` puede ser citado más tarde por
-      // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila (cuando
-      // hay una, es decir, un arma) para que el crítico se pueda casar sin depender del nombre ni
-      // del visor. Un ataque de conjuro no tiene fila de inventario que citar: sin `attackRef`,
-      // el cuarto argumento no se pasa — mismo criterio que ya usa `rollAttack` (DAMAGE) para no
-      // meterle una forma nueva a la llamada cuando no hay nada que decir.
-      input.attackRef ? { attackRef: input.attackRef } : undefined,
-    );
+    const peticion = {
+      expression: conSigno("1d20", input.bono),
+      label: input.label,
+      characterId: atacante.id,
+      mode: modo,
+      spendInspiration: input.spendInspiration,
+      audience: input.audience ?? audienciaPorDefecto,
+    };
+    // Fix round 1 (M6), fix round 2 (R3) — `roll.eventId` puede ser citado más tarde por
+    // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila (cuando
+    // hay una, es decir, un arma) para que el crítico se pueda casar sin depender del nombre ni
+    // del visor. Un ataque de conjuro no tiene fila de inventario que citar: sin `attackRef`,
+    // el cuarto argumento no se pasa — mismo criterio que ya usa `rollAttack` (DAMAGE) para no
+    // meterle una forma nueva a la llamada cuando no hay nada que decir. Y el quinto (`tx`,
+    // I-4b) tampoco se pasa cuando no hay transacción ajena, por el mismo criterio.
+    const interno = input.attackRef ? { attackRef: input.attackRef } : undefined;
+    const roll = tx
+      ? await this.rolls.roll(userId, campaignId, peticion, interno, tx)
+      : await this.rolls.roll(userId, campaignId, peticion, interno);
     if (ayuda) {
-      await this.consumirAyuda(userId, campaignId, atacante.id, atacante.visibility, ayuda);
+      await this.consumirAyuda(userId, campaignId, atacante.id, atacante.visibility, ayuda, tx);
     }
 
     // Tirada a ciegas: quien la pidió no ve el total, así que tampoco ve el veredicto — decirle
@@ -3586,18 +3690,23 @@ export class CharacterSheetService {
     // Y tiene un segundo efecto que importa: **deja rastro de contra quién se tiró**. Sin él,
     // alguien podía acotar la CA de un objetivo a base de ataques sin que quedara constancia de
     // nada (ver la ficha del oráculo en `docs/06-pendientes.md`).
-    const evento = await this.events.record(userId, campaignId, {
-      subjectType: "character",
-      subjectId: target.id,
-      visibility: target.visibility,
-      payload: {
-        type: "ATTACK_RESOLVED",
-        attackerId: atacante.id,
-        attackName: input.attackName,
-        verdict,
-        rollEventId: roll.eventId,
+    const evento = await this.events.record(
+      userId,
+      campaignId,
+      {
+        subjectType: "character",
+        subjectId: target.id,
+        visibility: target.visibility,
+        payload: {
+          type: "ATTACK_RESOLVED",
+          attackerId: atacante.id,
+          attackName: input.attackName,
+          verdict,
+          rollEventId: roll.eventId,
+        },
       },
-    });
+      tx,
+    );
 
     return { roll, verdict, attackResolvedEventId: evento.id };
   }

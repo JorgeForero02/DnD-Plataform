@@ -6,9 +6,10 @@ import { NOMBRE_VEREDICTO } from "../character-sheet/vocabulario";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
 import { useCombatientesDelEncuentro, useUsarActividad } from "../character-sheet/hooks";
-import { useInventory } from "../inventory/hooks";
+import { inventoryKey, useInventory } from "../inventory/hooks";
 import { spellbookKey } from "./hooks";
 import { Button } from "../../ui/Button";
+import { GrupoDeRadios } from "../../ui/GrupoDeRadios";
 import { PanelFlotante } from "../../ui/PanelFlotante";
 
 // Tarea 7 de 3A.2 («elegir, lanzar y usar») — el botón «Lanzar» de la pestaña Conjuros. Ocupa el
@@ -30,6 +31,14 @@ import { PanelFlotante } from "../../ui/PanelFlotante";
 // aquí sí hace falta poder lanzar «Escudo» sobre un aliado en plena conversación, así que fuera de
 // combate la lista sale de `useCharacters` + `useNpcs` (los PNJ que este jugador ve — el servidor
 // ya filtra por `canView`), más uno mismo (Ruling, ver el informe).
+//
+// **Y «Tú mismo» también en combate, salvo para un `ataque`** (ola de arreglos, web I-2).
+// `useCombatientesDelEncuentro` excluye al propio personaje porque nació para los ataques con
+// arma, donde el servidor rechaza atacarse con un 400; para `dados`, `salvacion` y `utilidad` el
+// servidor acepta al propio actor (D-CF-128: la curación y el daño a uno mismo siguen directos),
+// y una clériga lanzándose «Curar heridas» en pleno combate es el uso más frecuente de la
+// mecánica. Un `ataque` sigue sin ofrecerlo, dentro y fuera de combate: sería el botón que el
+// servidor rechaza.
 
 export interface AudienciaDeLanzamiento {
   id: string;
@@ -99,19 +108,59 @@ export function LanzarConjuro({
   // condición de visibilidad, solo como condición de texto.
   const mostrarSelectorDeEspacio =
     entrada.level >= 1 && espacios.some((e) => e.nivel > entrada.level && e.actual > 0);
-  const [nivelDeEspacio, setNivelDeEspacio] = useState<number>(
-    () => nivelesDisponibles.find((n) => n.nivel === entrada.level)?.nivel ?? entrada.level,
-  );
+  // **El nivel efectivo se deriva en cada render, no se guarda una vez** (ola de arreglos, web
+  // I-1). `nivelDeEspacio` solo recuerda lo que el jugador ELIGIÓ; si ese nivel ya no tiene usos
+  // (gastó el último, o nunca los tuvo), manda el propio del conjuro si le quedan y, si no, el
+  // primero por encima que sí tenga. Sin esto, con la fila sin desmontar (`key={entrada.key}`),
+  // agotar el nivel 1 dejaba un radio sin marcar y «Lanzar» mandaba `nivelDeEspacio: 1` →
+  // SIN_ESPACIO. Es el patrón «derivar durante el render» de React (nada de `useEffect`), el
+  // mismo que `TiraDeIniciativa` usa para reiniciar su aviso.
+  const [nivelDeEspacio, setNivelDeEspacio] = useState<number | null>(null);
+  const nivelEfectivo =
+    nivelDeEspacio !== null && nivelesDisponibles.some((n) => n.nivel === nivelDeEspacio)
+      ? nivelDeEspacio
+      : (nivelesDisponibles.find((n) => n.nivel === entrada.level)?.nivel ??
+        nivelesDisponibles[0]?.nivel ??
+        entrada.level);
+  // El propio agotado se ENSEÑA, marcado como agotado y no elegible («un valor guardado que un
+  // selector no ofrece se muestra marcado y no seleccionable», 04-convenciones): así se lee por
+  // qué la opción marcada es otra.
+  const propioAgotado = espacios.find((e) => e.nivel === entrada.level && e.actual === 0);
+  const opcionesDeEspacio = Object.fromEntries([
+    ...(propioAgotado
+      ? [
+          [
+            String(propioAgotado.nivel),
+            {
+              etiqueta: NOMBRE_NIVEL_CONJURO(propioAgotado.nivel),
+              frase: "no quedan",
+              deshabilitada: true,
+            },
+          ],
+        ]
+      : []),
+    ...nivelesDisponibles.map((n) => [
+      String(n.nivel),
+      {
+        etiqueta: NOMBRE_NIVEL_CONJURO(n.nivel),
+        frase: fraseDeEspacio(entrada, n.nivel, n.actual),
+      },
+    ]),
+  ]) as Record<string, { etiqueta: string; frase: string; deshabilitada?: boolean }>;
 
   const necesitaObjetivo = entrada.objetivos !== "ninguno";
   // T15 (3A.2) — un encantamiento siempre necesita el panel: hay que elegir el arma, aunque no
   // haya selector de espacio (`entrada.objetivos` es "ninguno" para el `utilidad` sintético).
   const necesitaPanel = necesitaObjetivo || mostrarSelectorDeEspacio || entrada.encanta;
 
+  const puedeApuntarseASiMismo = entrada.mecanica !== "ataque";
+  const unoMismo: AudienciaDeLanzamiento[] = puedeApuntarseASiMismo
+    ? [{ id: characterId, nombre: "Tú mismo" }]
+    : [];
   const objetivosDisponibles: AudienciaDeLanzamiento[] = combate.enCombate
-    ? combate.combatientes.map((c) => ({ id: c.characterId, nombre: c.nombre }))
+    ? [...unoMismo, ...combate.combatientes.map((c) => ({ id: c.characterId, nombre: c.nombre }))]
     : [
-        { id: characterId, nombre: "Tú mismo" },
+        ...unoMismo,
         ...(personajesQ.data ?? [])
           .filter((p) => p.id !== characterId)
           .map((p) => ({ id: p.id, nombre: p.name })),
@@ -130,7 +179,7 @@ export function LanzarConjuro({
         input: {
           ...(objetivos && objetivos.length > 0 ? { objetivos } : {}),
           ...(itemId ? { itemId } : {}),
-          ...(mostrarSelectorDeEspacio ? { nivelDeEspacio } : {}),
+          ...(mostrarSelectorDeEspacio ? { nivelDeEspacio: nivelEfectivo } : {}),
         },
       },
       {
@@ -139,9 +188,15 @@ export function LanzarConjuro({
         // `SEMBRADO`/preparado no se toca, pero `espacios` sí, y la tarjeta «Espacios de
         // conjuro» lee de ahí) y siempre deja una línea en el hilo — ninguna de las dos
         // consultas la pide `useUsarActividad`, que no sabe que esta actividad es un conjuro.
+        // Y un encantamiento (`itemId`) cambia el INVENTARIO: sin invalidarlo, el chip «+1 ·
+        // Arma mágica» de la pestaña Objetos tardaba hasta 60 s en aparecer (ola de arreglos,
+        // m-4).
         onSuccess: () => {
           void qc.invalidateQueries({ queryKey: spellbookKey(campaignId, characterId) });
           void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
+          if (itemId) {
+            void qc.invalidateQueries({ queryKey: inventoryKey(campaignId, characterId) });
+          }
         },
       },
     );
@@ -198,42 +253,17 @@ export function LanzarConjuro({
               {entrada.nameEs}
             </p>
 
+            {/* Ola de arreglos (web I-4): `ui/GrupoDeRadios`, no una cuarta copia del mismo DOM
+                — PE-1 lo subió a `ui/` para acabar con tres. */}
             {mostrarSelectorDeEspacio && (
-              <fieldset className="mb-s3 rounded-radius-sm border border-muted p-s3">
-                <legend className="px-1 font-chrome text-chrome-sm text-text">
-                  ¿Con qué espacio?
-                </legend>
-                <div className="space-y-1">
-                  {nivelesDisponibles.map((n) => {
-                    const elegido = nivelDeEspacio === n.nivel;
-                    return (
-                      <label
-                        key={n.nivel}
-                        className={[
-                          "flex cursor-pointer items-baseline gap-s2 rounded-radius-sm border px-s2 py-1.5",
-                          elegido
-                            ? "border-accent bg-[color:var(--accent-tint)]"
-                            : "border-transparent hover:bg-bg",
-                        ].join(" ")}
-                      >
-                        <input
-                          type="radio"
-                          name={`nivel-de-espacio-${entrada.key}`}
-                          checked={elegido}
-                          onChange={() => setNivelDeEspacio(n.nivel)}
-                          className="accent-[var(--accent)]"
-                        />
-                        <span className="font-chrome text-chrome-sm text-text">
-                          {NOMBRE_NIVEL_CONJURO(n.nivel)}
-                        </span>
-                        <span className="font-chrome text-chrome-xs text-muted">
-                          {fraseDeEspacio(entrada, n.nivel, n.actual)}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
+              <GrupoDeRadios
+                legend="¿Con qué espacio?"
+                name={`nivel-de-espacio-${entrada.key}`}
+                opciones={opcionesDeEspacio}
+                valor={String(nivelEfectivo)}
+                onChange={(v) => setNivelDeEspacio(Number(v))}
+                className="mb-s3 rounded-radius-sm border border-muted p-s3"
+              />
             )}
 
             {/* T15 (3A.2) — encantar: el objetivo es un ARMA, no una criatura. Un solo clic
@@ -314,6 +344,8 @@ export function LanzarConjuro({
                     type="button"
                     variant="primary"
                     disabled={objetivosVarios.size === 0 || usar.isPending}
+                    // D-CF-121: apagado con motivo (ola de arreglos, m-2).
+                    title={objetivosVarios.size === 0 ? "Marca al menos un objetivo" : undefined}
                     onClick={() => lanzar([...objetivosVarios])}
                   >
                     Lanzar sobre {objetivosVarios.size}
@@ -354,7 +386,9 @@ export function LanzarConjuro({
           Se lanza igual, sin tenerlo preparado.
         </p>
       )}
-      {usar.isSuccess && usar.data.aviso && (
+      {/* Con SIN_ESPACIO el servidor manda también su `aviso` («Sin usos de …»): la frase de
+          arriba ya lo dice, así que no se repite (ola de arreglos, m-1). */}
+      {usar.isSuccess && !sinEspacio && usar.data.aviso && (
         <p className="font-chrome text-chrome-xs text-warning-text">{usar.data.aviso}</p>
       )}
       {usar.isSuccess && usar.data.verdict && (

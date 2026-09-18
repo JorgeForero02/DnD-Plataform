@@ -46,8 +46,12 @@ export function efectosActivos(item: ResolvedItem): ItemEffect[] {
   return [...efectosPropios(item), ...efectosTemporales(item)];
 }
 
-/** Los `effects` del propio objeto, ya filtrados por sintonización — la puerta original de HP-9a. */
-function efectosPropios(item: ResolvedItem): ItemEffect[] {
+/**
+ * Los `effects` del propio objeto, ya filtrados por sintonización — la puerta original de HP-9a.
+ * Exportada desde la ola de arreglos de 3A.2 (m-5): `attacks.ts` reimplementaba este `if` en
+ * `sumaDeEfectoPropio`, y HP-9a existe justo para que el filtro y el aviso no puedan discrepar.
+ */
+export function efectosPropios(item: ResolvedItem): ItemEffect[] {
   if (item.requiresAttunement && !item.attuned) return [];
   return item.effects;
 }
@@ -60,7 +64,7 @@ function efectosPropios(item: ResolvedItem): ItemEffect[] {
  * `attuned`), y `item.temporales` ya llega aquí filtrado a los vivos
  * (`character-sheet.service.ts`, `temporalesPorObjeto`).
  */
-function efectosTemporales(item: ResolvedItem): ItemEffect[] {
+export function efectosTemporales(item: ResolvedItem): ItemEffect[] {
   if (!item.temporales) return [];
   return item.temporales.map((t) => ({ kind: t.effect, amount: t.amount }));
 }

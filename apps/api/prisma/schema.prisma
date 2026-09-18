@@ -818,8 +818,20 @@ model TemporaryModifier {
   grantedById    String
   createdAt      DateTime  @default(now())
   character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// T15 (3A.2) — **solo cuando `target` empieza por `item.`** (`item.weaponAttack`,
+  /// `item.weaponDamage`): a QUE FILA del inventario apunta el modificador. *Arma mágica* sube el
+  /// ataque y el daño de UN arma concreta, no del personaje entero — `characterId` sigue siendo
+  /// quien lleva la ficha (el dueño del arma, no necesariamente quien lanzó el conjuro), y esta
+  /// columna desambigua CUAL de sus filas de inventario recibe el bono.
+  ///
+  /// `Cascade`: si la fila del inventario desaparece (se tira, se vende, se borra), el
+  /// encantamiento sobre ella deja de significar algo — no queda un modificador huérfano
+  /// apuntando a una fila que ya no existe.
+  inventoryItemId String?
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@index([characterId])
+  @@index([inventoryItemId])
 }
 
 // Condiciones (2A.12). **Clave libre**, no un enum cerrado: las quince del SRD tienen efecto
@@ -1263,6 +1275,10 @@ model InventoryItem {
   /// vaciar en silencio la mochila de tres personajes. El servicio lo traduce a un 409 que dice
   /// quien lo tiene.
   campaignItem CampaignItem? @relation(fields: [campaignItemId], references: [id], onDelete: Restrict)
+  /// T15 (3A.2) — los `TemporaryModifier` que apuntan a esta fila (`item.weaponAttack`,
+  /// `item.weaponDamage`). El lado inverso de la relación, sin acción propia: quien borra es
+  /// `TemporaryModifier.inventoryItemId` (`onDelete: Cascade`, declarado ahí).
+  temporaryModifiers TemporaryModifier[]
 
   @@index([characterId])
   @@index([campaignItemId])

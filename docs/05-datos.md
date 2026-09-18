@@ -1485,3 +1485,32 @@ Sus frases del hilo viven en `apps/web/src/features/sessions/linea-de-log.ts`; l
 clasifican como «personaje» en `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts`, el mismo
 cubo que `RESOURCE_SPENT` — le pasan a alguien de la mesa, no son el mundo hablando ni andamiaje
 del sistema.
+
+## `TemporaryModifier.inventoryItemId` — el encantamiento vive sobre una fila, no sobre el personaje (T15, 3A.2, migración `20260918143214_temporary_modifier_item`)
+
+**Columna nueva, nullable, con su índice y su clave foránea** hacia `InventoryItem` (`onDelete:
+Cascade`). Las once filas de `TEMPORARY_MODIFIER_TARGETS` que ya existían (las seis
+características, la CA, las cinco velocidades) apuntan al personaje entero, y para ellas
+`inventoryItemId` se queda en `null` — nada cambia. *Arma mágica* (SRD 5.1: «that weapon becomes
+a magic weapon with a +1 bonus to attack rolls and damage rolls») necesita decir **sobre qué
+arma**, y un personaje puede llevar más de una: `characterId` sigue diciendo de quién es la fila
+del inventario (normalmente el aliado al que se le encanta el arma, no quien lanza el conjuro),
+`inventoryItemId` dice cuál.
+
+Dos targets nuevos en `TEMPORARY_MODIFIER_TARGETS` (`@dnd/shared`): `item.weaponAttack` y
+`item.weaponDamage` — el mismo vocabulario que ya usa un objeto mágico permanente
+(`ItemEffect.kind`, ficha HP-9a), aplicado a un efecto que vence. `grantTemporaryModifierSchema`
+exige `inventoryItemId` cuando, y solo cuando, `target` empieza por `item.` (`esTargetDeObjeto`).
+
+**`Cascade` y no `SetNull`.** Si la fila del inventario desaparece —se tira, se vende, el DM la
+borra— el encantamiento sobre ella deja de significar algo: no hay «arma mágica sin arma». Un
+`inventoryItemId` huérfano sería un dato que nadie puede leer sin mentir sobre a qué apunta.
+
+**Se lee igual que los de personaje: por vencimiento contra el reloj, nunca se borra solo**
+(D-2C-2). Lo que cambia es DÓNDE se lee: `character-sheet.service.ts`
+(`temporalesPorObjeto`) agrupa los vivos por `inventoryItemId` y los adjunta a cada
+`ResolvedItem.temporales` — así `rules/items.ts` (`efectosActivos`) los suma exactamente como
+suma un `ItemEffect` del objeto, y `rules/attacks.ts` les da su propio paso de traza
+(`temporary:<reason>`, para no confundirlos con el `+N` permanente del objeto).
+
+**Revertir**: `ALTER TABLE "TemporaryModifier" DROP CONSTRAINT "TemporaryModifier_inventoryItemId_fkey"; DROP INDEX "TemporaryModifier_inventoryItemId_idx"; ALTER TABLE "TemporaryModifier" DROP COLUMN "inventoryItemId";` — ninguna fila existente antes de esta migración la usa, así que no hay dato que perder al quitarla.

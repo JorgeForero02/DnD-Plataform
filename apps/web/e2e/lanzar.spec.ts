@@ -155,6 +155,24 @@ async function montarMaga(dm: Page, jugadora: Page, campaignId: string, nombre: 
  * El goblin, instanciado y revelado por la API (mismo endpoint que la pantalla del bestiario
  * llama) — la CA anulada a 1 se hace por la interfaz, exactamente como `puerta-de-efectos.spec.ts`
  * (§4 bis): la prueba mide el lanzamiento, no la probabilidad de impactar.
+ *
+ * **Fix round 1: también se le anulan los PG máximos, y se cura hasta ahí.** Los 7 PG medios del
+ * goblin no sobreviven al Proyectil mágico (3 dardos de 1d4+1, ~10,5 de media) que este mismo
+ * fichero le tira antes del segundo lanzamiento — y el propio recorrido pide aplicar ESE daño
+ * («el DM aplica y los PG bajan») antes de lanzar Descarga de fuego. Overriding solo
+ * `maxHp` no basta (`changeHpEnTransaccion` fija el candado en `character.currentHp`, que sigue
+ * en 7; el override solo sube el TECHO): hace falta además un `changeHp` (delta positivo, la
+ * misma ruta que usa «Recibo daño»/«Curar») que se aplica DESPUÉS de la anulación y clampa contra
+ * el `maxHp` ya anulado — mismo criterio que ya deja escrito `character-sheet.service.ts` sobre
+ * por qué una anulación de `maxHp` tiene que gobernar también la curación.
+ *
+ * **Fix round 1, segundo motivo del mismo cambio**: `empezarSesion` esperaba la pestaña
+ * «Sesiones» de la página de la CAMPAÑA, pero esta función dejaba al DM en la página del
+ * PERSONAJE Goblin (`/personajes/:goblinId`, pestaña «Estado») — esa página tiene sus propias
+ * pestañas (Números/Objetos/Ataques/…) y ninguna «Sesiones». Por eso el test se quedaba
+ * esperando 240 s un tab que nunca iba a aparecer ahí. `montarGoblin` ahora deja al DM otra vez
+ * en `/campaigns/:id` antes de devolver el control — mismo patrón que
+ * `puerta-de-efectos.spec.ts:318` hace justo después de la misma anulación.
  */
 async function montarGoblin(dm: Page, campaignId: string) {
   const headersDm = await comoLaSesion(dm);
@@ -180,6 +198,20 @@ async function montarGoblin(dm: Page, campaignId: string) {
   await anulaciones.getByLabel("Nuevo valor").fill("1");
   await anulaciones.getByRole("button", { name: "Anular" }).click();
   await expect(anulaciones.getByText(/Clase de armadura: fijada a 1/)).toBeVisible();
+
+  await anulaciones.getByLabel("Valor a anular").selectOption({ label: "Puntos de golpe máximos" });
+  await anulaciones.getByLabel("Nuevo valor").fill("60");
+  await anulaciones.getByRole("button", { name: "Anular" }).click();
+  await expect(anulaciones.getByText(/Puntos de golpe máximos: fijada a 60/)).toBeVisible();
+
+  const curado = await dm.request.post(`/api/campaigns/${campaignId}/characters/${goblinId}/hp`, {
+    headers: headersDm,
+    data: { delta: 9999, reason: "Fix round 1: aguanta los dos hechizos" },
+  });
+  expect(curado.ok()).toBe(true);
+
+  await dm.goto(`/campaigns/${campaignId}`);
+  await expect(dm.getByRole("heading", { name: "La torre bajo asedio" })).toBeVisible();
 
   return goblinId;
 }

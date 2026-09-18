@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 // Tarea 6 de 3A.2 («elegir, lanzar y usar») — la pestaña «Conjuros», medida en un navegador de
 // verdad: el mago nace con su libro sembrado (Task 3, D-CF-125), el contador de la cabecera lo
@@ -26,6 +26,25 @@ function nuevaCuenta() {
     password: "password123",
     displayName: `Conjuros ${marca}`,
   };
+}
+
+/**
+ * Fix round 1 (2026-09-18) — la fila de UN conjuro por su nombre exacto, no por `hasText`
+ * (substring). `disponibles.locator("li", { hasText: "Escudo" })` también casaba con «Escudo de
+ * fuego» (nivel 4, sí está en la lista del mago aunque nadie la haya preparado: `spellbook.
+ * service.ts` lista la clase ENTERA, sin tope de nivel) y, peor aún, «Bola de fuego» con «Bola de
+ * fuego de explosión retardada» — las dos SIN «Preparar» (ninguna está en el libro), así que ahí
+ * el `getByRole("button", …)` encadenado no distinguía por estado y el localizador quedaba
+ * ambiguo de verdad (el orquestador lo cazó en el navegador; `hasText` nunca lo habría sido en
+ * jsdom porque ninguna otra prueba busca un conjuro con nombre compuesto). El nombre vive en un
+ * único `<span>` sin decorar dentro del `<summary>` (`FilaDeConjuro.tsx`), así que filtrar por
+ * ESE texto exacto (`exact: true`) resuelve la fila sin ambigüedad pase lo que pase con el resto
+ * del catálogo.
+ */
+function filaDeConjuro(region: Locator, nombre: string): Locator {
+  return region
+    .getByRole("listitem")
+    .filter({ has: region.page().getByText(nombre, { exact: true }) });
 }
 
 async function registrarse(page: Page) {
@@ -129,38 +148,36 @@ test("Conjuros: 6 de 6 en el libro, preparar dos, conocer un truco, y «Fuera de
   await expect(listos.getByText("6 de 10 en el libro")).toBeVisible();
 
   // Preparar «Proyectil mágico» y «Escudo» desde «Disponibles» — las dos van al mago sembrado.
-  await disponibles
-    .locator("li", { hasText: "Proyectil mágico" })
+  await filaDeConjuro(disponibles, "Proyectil mágico")
     .getByRole("button", { name: "Preparar" })
     .click();
   await expect(listos.getByText("1 de 6 preparados")).toBeVisible();
-  await disponibles
-    .locator("li", { hasText: "Escudo" })
-    .getByRole("button", { name: "Preparar" })
-    .click();
+  await filaDeConjuro(disponibles, "Escudo").getByRole("button", { name: "Preparar" }).click();
   await expect(listos.getByText("2 de 6 preparados")).toBeVisible();
 
   // Y ahora se leen en «Listos para lanzar» — la lista SÍ las cambia de zona.
   await expect(listos.getByText("Proyectil mágico")).toBeVisible();
   await expect(listos.getByText("Escudo")).toBeVisible();
-  await expect(disponibles.locator("li", { hasText: "Proyectil mágico" })).toHaveCount(0);
+  await expect(filaDeConjuro(disponibles, "Proyectil mágico")).toHaveCount(0);
 
   // Conocer el truco «Descarga de fuego»: sube el contador de trucos, no el de preparados.
-  await disponibles
-    .locator("li", { hasText: "Descarga de fuego" })
+  await filaDeConjuro(disponibles, "Descarga de fuego")
     .getByRole("button", { name: "Conocer" })
     .click();
   await expect(listos.getByText("1 de 3 trucos")).toBeVisible();
   await expect(listos.getByText("Descarga de fuego")).toBeVisible();
 
   // Buscar «bola»: «Bola de fuego» es de la clase pero no está en el libro — una sola fila,
-  // marcada «Fuera del libro», nunca desaparecida.
+  // marcada «Fuera del libro», nunca desaparecida. El buscador filtra por nombre EXACTO en el
+  // servidor (`normalizarTexto(e.nameEs).includes(texto)`), así que «bola» también deja pasar
+  // «Bola de fuego de explosión retardada» — por eso la comprobación de más abajo pasa de «una
+  // fila» a «dos filas, la nuestra entre ellas» (fix round 1).
   await disponibles.getByLabel("Buscar conjuro").fill("bola");
-  const filaBola = disponibles.locator("li", { hasText: "Bola de fuego" });
+  const filaBola = filaDeConjuro(disponibles, "Bola de fuego");
   await expect(filaBola).toBeVisible();
   await expect(filaBola.getByText("Fuera del libro")).toBeVisible();
   await expect(filaBola.getByRole("button", { name: "Añadir al libro" })).toBeVisible();
-  await expect(disponibles.locator("li")).toHaveCount(1);
+  await expect(disponibles.getByRole("listitem")).toHaveCount(2);
 
   // **Arreglo previo a la Task 7 (paso 0b), medido en el navegador, no en `jsdom`.** A 1280 px
   // la fila de «Bola de fuego» (nombre + nivel·escuela + «Fuera del libro» + «Añadir al libro»)

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { DerivedValue, RollMode, RollResult, SuggestedRollMode } from "@dnd/shared";
 import { modoSugerido } from "../rolls/sugerencia";
-import { DadoDibujado } from "../rolls/DadoDibujado";
+import { IconoD20 } from "../../ui/Iconos";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { PanelDeTirada } from "../rolls/PanelDeTirada";
 import { useCreateRoll } from "./hooks";
@@ -130,7 +130,7 @@ export function TirarBoton({
         title={`Tirar ${etiqueta} (${expresion})`}
         className="rounded-radius-sm p-0.5 text-chrome-sm text-accent-text hover:bg-[color:var(--accent-tint)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
       >
-        <DadoDibujado />
+        <IconoD20 />
       </button>
       {abierto && (
         <PanelDeTirada

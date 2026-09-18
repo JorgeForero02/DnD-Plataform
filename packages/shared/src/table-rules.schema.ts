@@ -104,7 +104,14 @@ export const abilityRollAttemptSchema = z.object({
   values: z.array(z.number().int()).length(6),
   chosen: z.boolean(),
   attempt: z.number().int().min(1),
-  of: z.number().int().min(1),
+  /**
+   * De cuántos intentos permitía la regla **cuando la lista se pide**. Opcional (M-5, 2026-09-17):
+   * si el DM cambió después la regla a MATRIZ o PUNTOS, los intentos ya tirados siguen existiendo
+   * y no hay ningún «de N» honesto que ponerles — antes se mandaba `0`, que este mismo esquema
+   * prohíbe con `min(1)`. Sin migración a propósito: el número solo importa mientras se tira, y
+   * entonces la regla es DADOS y el campo viaja.
+   */
+  of: z.number().int().min(1).optional(),
   createdAt: z.string(),
   rolls: z
     .array(

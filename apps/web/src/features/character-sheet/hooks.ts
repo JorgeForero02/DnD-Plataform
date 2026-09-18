@@ -121,16 +121,11 @@ export function useUpdateSheet(campaignId: string, characterId: string) {
       characterSheetApi.updateSheet(campaignId, characterId, input),
     onSuccess: (data) => {
       qc.setQueryData(sheetKey(campaignId, characterId), data);
-      // **Y la lista de personajes, que también enseña el nivel.** Antes solo se refrescaba la
-      // hoja: con el editor en un diálogo daba igual, porque al cerrarlo se volvía a la lista y
-      // se recargaba. Al editar en el sitio no se cierra nada, así que el nivel del subtítulo y
-      // el de la fila se quedaban viejos delante de quien los acababa de cambiar. Lo cazó el
-      // recorrido de navegador; ninguna unitaria lo veía.
+      // **Y la lista de personajes, que también enseña el nivel** — y, por prefijo, todo lo que
+      // cuelga de este personaje: la hoja, los recursos y los intentos de dados
+      // (`abilityRollsKey` empieza por esta misma clave), así que `AsignarCaracteristicas` deja
+      // de enseñar «Quedarme con este» sin una invalidación aparte (M-6, 2026-09-17).
       void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "characters"] });
-      // Reglas de la mesa (Task 6) — fijar las seis con `attemptId` marca ese intento como
-      // `chosen` en el servidor; sin esta invalidación, `AsignarCaracteristicas` seguía
-      // enseñando el botón «Quedarme con este» hasta el siguiente sondeo.
-      void qc.invalidateQueries({ queryKey: abilityRollsKey(campaignId, characterId) });
     },
   });
 }

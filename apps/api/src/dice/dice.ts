@@ -105,6 +105,18 @@ export interface DiceTermResult {
   dropped: number[];
   /** Lo que aporta al total, **sin signo**. El signo va aparte para poder pintarlo. */
   value: number;
+  /**
+   * Cada dado físico, en el orden de `rolled`, con su cara y si cuenta (C5). Vacío en una
+   * constante — una constante no es un dado.
+   *
+   * **Por qué existe si ya están `rolled`/`kept`/`dropped`**: esos tres son multiconjuntos de
+   * *valores*, y con dos dados iguales un valor no dice cuál de los dos cayó fuera — es la
+   * ambigüedad de la ficha «Dados» del 2026-09-13. Aquí lo decide quien tiene la posición: el
+   * bucle de tirada sabe qué físico es el `primero` descartado por relanzar y cuál el `segundo`
+   * que lo sustituye, y el `kh`/`kl` decide sobre índices de `enJuego`, no sobre valores. `dice`
+   * es esa decisión ya resuelta por posición, lista para pintar sin volver a adivinar.
+   */
+  dice: DieRolled[];
 }
 
 export interface DiceRollResult {
@@ -185,7 +197,16 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
         `Como mucho ${DICE_LIMITS.maxConstant} de modificador; llegó ${valor}.`,
       );
     }
-    return { source, sign, sides: 0, rolled: [], kept: [valor], dropped: [], value: valor };
+    return {
+      source,
+      sign,
+      sides: 0,
+      rolled: [],
+      kept: [valor],
+      dropped: [],
+      value: valor,
+      dice: [],
+    };
   }
 
   const dados = TERMINO_DADOS.exec(source);
@@ -225,6 +246,11 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   const rolled: number[] = [];
   const enJuego: number[] = [];
   const relanzados: number[] = [];
+  // Posición en `rolled` de cada físico que sigue en juego (por índice de `enJuego`), y si ese
+  // físico cuenta hasta ahora — el `primero` descartado por relanzar ya nace en `false`; el
+  // `kh`/`kl`, más abajo, puede bajar a `false` los de `enJuego` que no ganan el corte.
+  const posEnRolled: number[] = [];
+  const keptPorPosicion: boolean[] = [];
 
   const relanzar =
     relanzarCrudo === undefined
@@ -240,12 +266,17 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
       // and must use the new roll»— y la suerte del mediano. Ninguna regla del SRD relanza en
       // cascada, así que la recursión de Foundry (`rr`) no entra: sería una sintaxis que ninguna
       // regla de este juego usa, y un bucle que habría que acotar.
+      keptPorPosicion.push(false);
       const segundo = roller(caras);
       rolled.push(segundo);
+      keptPorPosicion.push(true);
       relanzados.push(primero);
       enJuego.push(segundo);
+      posEnRolled.push(rolled.length - 1);
     } else {
+      keptPorPosicion.push(true);
       enJuego.push(primero);
+      posEnRolled.push(rolled.length - 1);
     }
   }
 
@@ -258,6 +289,7 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
       kept: [...enJuego],
       dropped: [...relanzados],
       value: suma(enJuego),
+      dice: rolled.map((value, indice) => ({ sides: caras, value, kept: keptPorPosicion[indice] })),
     };
   }
 
@@ -278,6 +310,8 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   // **Y se decide sobre lo que quedó en juego, no sobre `rolled`**: en `4d6r1kh3` el uno que se
   // relanzó ya no compite por quedarse. Ordenar `rolled` dejaría que un dado relanzado «ganara»
   // con su valor viejo, que es el fallo silencioso de combinar los dos modificadores.
+  // **Empate**: `Array.prototype.sort` es estable (ES2019), así que dos dados iguales quedan en el
+  // orden en que cayeron y se conserva el primero. No cambia la suma; fija cuál se pinta tachado.
   const porValor = enJuego.map((valor, indice) => ({ valor, indice }));
   porValor.sort((a, b) => (modo === "kh" ? b.valor - a.valor : a.valor - b.valor));
   const indicesConservados = new Set(porValor.slice(0, conservar).map((d) => d.indice));
@@ -285,11 +319,27 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   const kept: number[] = [];
   const dropped: number[] = [...relanzados];
   enJuego.forEach((valor, indice) => {
-    if (indicesConservados.has(indice)) kept.push(valor);
-    else dropped.push(valor);
+    if (indicesConservados.has(indice)) {
+      kept.push(valor);
+    } else {
+      dropped.push(valor);
+      // El `kh`/`kl` decide sobre índices de `enJuego`, no sobre `rolled` — `posEnRolled`
+      // traduce de uno a otro para que el físico que pierde el corte se marque `kept: false`
+      // sin volver a comparar valores.
+      keptPorPosicion[posEnRolled[indice]] = false;
+    }
   });
 
-  return { source, sign, sides: caras, rolled, kept, dropped, value: suma(kept) };
+  return {
+    source,
+    sign,
+    sides: caras,
+    rolled,
+    kept,
+    dropped,
+    value: suma(kept),
+    dice: rolled.map((value, indice) => ({ sides: caras, value, kept: keptPorPosicion[indice] })),
+  };
 }
 
 /**
@@ -343,19 +393,20 @@ export interface DieRolled {
 }
 
 /**
- * Los dados de todos los términos, en orden, con sus caras. `dropped` se consume como
- * multiconjunto —igual que `dadosDeLaTirada` en la web— para que `[4, 4]` con un descartado
- * tache uno y no los dos. Las constantes no son dados.
+ * Los dados de todos los términos, en orden, con sus caras y si cuentan.
+ *
+ * **Ronda de arreglo, 2026-09-17**: hasta aquí esto reconstruía «kept» emparejando `dropped`
+ * contra `rolled` por *valor*, como multiconjunto. Con dos dados iguales eso es ambiguo — no
+ * hay forma de saber, solo por valor, cuál de los dos físicos era el que cayó fuera — y el primer
+ * intento de arreglarlo (emparejar desde el final) arreglaba el empate de `kh`/`kl` pero rompía
+ * `1d20r1`: ahí el primero en `rolled` es el descartado por relanzar y el segundo el que cuenta,
+ * justo el orden contrario al que pide el empate. Un emparejado por valor no puede acertar los
+ * dos casos a la vez porque `dropped` no lleva posición.
+ *
+ * La solución es no reconstruir nada: `evaluarTermino` ya sabe, dado por dado, cuál físico
+ * cuenta —tanto el que pierde por relanzar como el que pierde por `kh`/`kl`— y lo deja en
+ * `t.dice`, por posición. Aquí solo se concatena.
  */
 export function dadosTirados(terms: DiceTermResult[]): DieRolled[] {
-  return terms.flatMap((t) => {
-    if (t.sides === 0) return [];
-    const pendientes = [...t.dropped];
-    return t.rolled.map((value) => {
-      const i = pendientes.indexOf(value);
-      if (i === -1) return { sides: t.sides, value, kept: true };
-      pendientes.splice(i, 1);
-      return { sides: t.sides, value, kept: false };
-    });
-  });
+  return terms.flatMap((t) => t.dice);
 }

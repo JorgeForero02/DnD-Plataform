@@ -40,7 +40,7 @@ describe("PanelDeDadosDeLaMesa — el radio de ventaja no se desmonta al escribi
 
     // Sigue montado — apagado, con su motivo — y el botón sigue ahí: nada desaparece del cajón.
     expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
   });

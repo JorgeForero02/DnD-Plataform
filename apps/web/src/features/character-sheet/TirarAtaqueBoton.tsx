@@ -8,7 +8,7 @@ import {
 } from "@dnd/shared";
 import type { AttackDto } from "./api";
 import { useCombatientesDelEncuentro, useResolveAttack, useRollAttack } from "./hooks";
-import { DadoDibujado } from "../rolls/DadoDibujado";
+import { IconoD20 } from "../../ui/Iconos";
 import { SelectorDeVentaja } from "../rolls/SelectorDeVentaja";
 import { SelectorDeAudiencia } from "../rolls/SelectorDeAudiencia";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
@@ -257,7 +257,7 @@ export function TirarAtaqueBoton({
         title={`Tirar con ${ataque.name}`}
         className="rounded-radius-sm p-0.5 text-chrome-sm text-accent-text hover:bg-[color:var(--accent-tint)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
       >
-        <DadoDibujado />
+        <IconoD20 />
       </button>
 
       <PanelFlotante

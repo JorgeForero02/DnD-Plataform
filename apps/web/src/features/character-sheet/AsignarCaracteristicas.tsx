@@ -3,7 +3,6 @@ import type { AbilitiesRule, AbilityKey, AbilityRollAttemptDto } from "@dnd/shar
 import { COSTE_POR_PUNTUACION, MATRIZ_ESTANDAR, ORDEN_DE_CARACTERISTICAS } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
-import type { DesgloseDeTirada } from "../rolls/ResultadoDeTirada";
 import { useAbilityRolls, useRollAbilities, useUpdateSheet } from "./hooks";
 import { NOMBRE_CARACTERISTICA } from "./vocabulario";
 
@@ -506,13 +505,14 @@ function IntentoDeDados({
   return (
     <div className="flex flex-col gap-s2 border-t border-muted pt-s2">
       <p className="font-chrome text-chrome-sm text-text">
-        Intento {intento.attempt} de {intento.of}
+        Intento {intento.attempt}
+        {intento.of !== undefined ? ` de ${intento.of}` : ""}
       </p>
       <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
         {intento.rolls.map((r, i) => (
           <ResultadoDeTirada
             key={i}
-            resultado={r as DesgloseDeTirada}
+            resultado={r}
             etiqueta={
               asignacionLibre
                 ? `Valor ${i + 1}`

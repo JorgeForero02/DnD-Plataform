@@ -56,6 +56,7 @@ export const character: CharacterRow = {
   subraceKey: null,
   classKey: "wizard",
   subclassKey: null,
+  entityId: null,
   choices: { "half-elf-skills": ["stealth", "perception"] },
   currentHp: 15,
   tempHp: 0,

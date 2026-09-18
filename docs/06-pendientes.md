@@ -22,10 +22,25 @@ diez con un barrido o una cita de línea dentro— en
 y los **39 bloques de la poda del 2026-09-10** —falsas, tachadas y decididas— en
 [`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md),
 y **el anexo #16 de la bandeja compacta**, cerrado por la Task 10 del pulido, en
-[`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md).
+[`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md),
+y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
+[`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
+
+## Menores dejados por la revisión final de `cierre/antes-de-3a2` (revisión final 2026-09-18)
+
+La ola de arreglos tras `review-final.md` cerró los tres importantes y cuatro menores baratos con
+ruling del controlador; estos cuatro se quedan como ficha, tal como dice el veredicto de la
+revisión («el resto son menores que pueden quedarse como ficha»).
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Catálogo | `Collection.tsx` pasa `role="toolbar"` con `ariaLabel`, pero no implementa la navegación por flechas ni el tabstop único del patrón *Toolbar* de WAI-ARIA APG — cada `FilterChip` sigue siendo su propio tabstop. `role="group"` describiría lo que hay sin prometer lo que falta (revisión final 2026-09-18, menor) | `apps/web/src/ui/Collection.tsx:80` |
+| Mundo (árbol) | Las raíces plegadas/desplegadas de `DesgloseDelMundo` se calculan una sola vez, en el `useState` inicial (al montar); una raíz que nace vacía y recibe su primera ficha después se queda plegada con el contador en 1 hasta que alguien la pulsa a mano (revisión final 2026-09-18, menor) | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx:497-500` |
+| Dados | `id="ventaja-motivo"` está escrito literal en `BandejaDeDados`; hoy no colisiona porque el componente se monta una sola vez por pantalla, pero un `useId` lo haría robusto a un segundo montaje futuro (revisión final 2026-09-18, menor) | `apps/web/src/features/rolls/BandejaDeDados.tsx:289` |
+| API / reglas de la mesa | El e2e de concurrencia de `ability-rolls` (`reglas-de-la-mesa.e2e-spec.ts`) prueba el RESULTADO (`[201, 409]` de dos `POST` en `Promise.all`), no el cerrojo: si alguien quitara el `FOR UPDATE`, las dos transacciones podrían serializarse por azar y el test seguiría en verde — falso negativo probabilístico, nunca falso positivo. Decidido en el plan tal cual; se anota para que nadie lo lea como prueba determinista del candado (revisión final 2026-09-18, menor) | `apps/api/test/reglas-de-la-mesa.e2e-spec.ts:307-319` |
 
 > **Cómo se nombra una ficha, y por qué algunas llevan sufijo.** Este documento fue creciendo
 > por tandas, y cada tanda repartió identificadores de una letra y un número (`S7`, `U6`, `A1`)
@@ -130,13 +145,8 @@ dentro. Las dos las cazó una auditoría, no una revisión.
 
 ## Dejado por «efectos de mesa» (2026-09-15) — fusionada y desplegada (`334912b`)
 
-### EM-1 · Cubrir los efectos de mesa con pruebas
-
-El autor decidió entregarlos sin pruebas nuevas (D-CF-118). Cuando se vuelvan a tocar, lo mínimo:
-unitarias del detector puro (`apps/web/src/features/sessions/elenco/efectos/detectarEfectos.ts`: daño/cura/temporales/cae/muere/
-en pie/nivel/condición puesta y terminada, y que la primera lectura no dispara nada) y **un e2e
-que mida en navegador que el texto flotante desaparece del DOM** — el fallo exacto del laboratorio
-que jsdom no puede ver.
+**EM-1 cerrada el 2026-09-17 (archivo):** ver
+[`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md).
 
 ### EM-2 · Crítico, bloqueo y esquiva no tienen efecto
 
@@ -293,22 +303,9 @@ servidor, medido allí y no de memoria.
 Rama `reglas-de-la-mesa/antes-del-paso-3`; revisión Opus de la rama entera en
 `.superpowers/sdd/2026-09-13-reglas-de-la-mesa/final-review.md` (0 críticos, 4 importantes —los
 cuatro cerrados en dos olas—, 14 menores). RM-1 (¿pierde el dueño el nivel a mano?) **la decidió el autor el mismo día**: el
-nivel es del DM (D-CF-66, hecha en la ola 3). Lo que queda:
+nivel es del DM (D-CF-66, hecha en la ola 3).
 
-### RM-2 · Menores aplazados de la revisión final (con su línea en `final-review.md`)
-
-| | Qué | Coste |
-|---|---|---|
-| M-4 | `AbilityRollsService.list` moldea el `payload` releído a mano; pasar la respuesta por `abilityRollAttemptSchema.parse` | 20 min |
-| M-5 | `of = 0` cuando la regla no es `DADOS` viola `abilityRollAttemptSchema.of.min(1)`; hacer `of` opcional o `Math.max(1, …)` | 10 min |
-| M-6 | La invalidación de `abilityRollsKey` en `useUpdateSheet` es redundante (prefijo ya invalidado) — quitar o corregir el comentario | 5 min |
-| M-7 | `as CreateCharacterInput` en `CharacterEditor`: exportar `z.input<typeof createCharacterSchema>` en shared y usarlo | 10 min |
-| M-8 | `r as DesgloseDeTirada` en `AsignarCaracteristicas`: probar sin moldear; si no compila, `dc?` en el DTO | 10 min |
-| M-9 | `Number("")` = 0 en los campos numéricos de `ReglasDeLaMesa` se manda y vuelve un 400 técnico de Zod; comprobar rango en `onGuardar` y escribir la frase en español | 20 min |
-| M-12 | `CARACTERISTICAS` en `IdentidadEditable.tsx` duplica `ORDEN_DE_CARACTERISTICAS` de shared | 5 min |
-| M-14 | `borrador` de `ReglasDeLaMesa` se siembra una vez por campaña; re-sembrar cuando cambie la campaña y no haya edición en curso | 15 min |
-| — | Sin e2e de concurrencia real para los cerrojos `FOR UPDATE` (M-1/M-2): las unitarias prueban el orden de las sentencias, no el bloqueo de Postgres. Un e2e con dos `POST …/ability-rolls` en `Promise.all` y `intentos: 1` → exactamente un 201 y un 409 | 30 min |
-| — | `attemptId` bajo `MATRIZ`/`PUNTOS` se acepta y marca un intento caduco; rechazarlo con 400 cuando la regla no es `DADOS` | 10 min |
+RM-2 cerrada el 2026-09-17, en el archivo.
 
 ## Cierre de la tanda del pulido antes del paso 3 (2026-09-13, Tarea 15)
 
@@ -358,43 +355,12 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 
 | Área | Qué | Dónde |
 |---|---|---|
-| Hoja / Casilla | Comentario «ancho mínimo» caducado (la anchura ya es fija) | `apps/web/e2e/hoja.spec.ts:92` |
-| Hoja / Casilla | El rótulo «Vel.» se repite en varios test como literal, sin motivo en el fichero de por qué es ese y no «Vel. (pies)» | `hoja.spec.ts:72,87`; `Cabecera.test.tsx:73,96` |
-| Hoja / Casilla | Aserción `>= 4` en vez de `toBe(5)` para el número de casillas | `hoja.spec.ts:160` |
-| Hoja / Casilla | Selector de Playwright `[class*='w-[6rem]']` es frágil a un cambio de clase; un `data-casilla` sería estable | `hoja.spec.ts` |
-| Hoja | `Dialog` fija `--tira-fija-bg=surface` también sobre pergamino, sin que nada lo consuma hoy | `apps/web/src/ui/Dialog.tsx` |
-| Hoja | `Field.reservaEspacio` reserva el alto con el `line-height` por defecto del navegador, no un valor explícito — depende del *preflight* de Tailwind | `apps/web/src/ui/Field.tsx` |
-| Hoja | `campaignId` se parsea dos veces en la misma pantalla | `apps/web/src/pages/CampaignDetailPage.tsx` (leer antes de tocar) |
-| Hoja | `HojaCalculada.test` fija la variable `--banda-fija-alto` con una regex de «0px» que no prueba que el `ResizeObserver` esté enlazado de verdad | `apps/web/src/features/character-sheet/__tests__/HojaCalculada.test.tsx` |
 | Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
-| Ajustes del personaje | El tamaño del texto de error difiere entre el bloque archivado (`sm`) y el pie (`xs`) | `apps/web/src/features/characters/AjustesDePersonaje.tsx` |
-| Ajustes del personaje | `PanelDeDados.test.tsx` no fija las clases de la rejilla del reloj, así que un cambio de rejilla no lo detecta | `apps/web/src/features/rolls/__tests__/PanelDeDados.test.tsx` |
-| Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
-| Mesa / tablero | **Revisión final, #7**: dos implementaciones del mismo *chevron* — `Punta.tsx` (privado del árbol) e `IconoFlechaIzquierda` rotada en el cajón del registro, que además queda invertido al plegarse hacia abajo. Un `IconoPunta` único en `ui/Iconos.tsx` cierra las dos | `apps/web/src/features/sessions/taller/mundo/Punta.tsx`; `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx:78-82` |
-| Mesa / tablero | Plegar el cajón antes de que cargue el registro deja el contador de líneas nuevas en 0 | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
-| Elenco / menú | Sin `preventDefault` en Tab dentro del menú de acciones; Espacio activa por `keydown` y por `click` a la vez (doble disparo posible) | `apps/web/src/ui/MenuDeAcciones.tsx` |
-| Elenco / menú | `FichaDeElenco.test.tsx` perdió su `queryByRole` de «enemigo» al reescribir el test de la fila | `apps/web/src/features/sessions/elenco/__tests__/FichaDeElenco.test.tsx` |
-| Elenco / menú | `hoja.spec.ts` y `sesion.spec.ts` usan timeouts desiguales para el mismo tipo de espera | `apps/web/e2e/hoja.spec.ts`, `apps/web/e2e/sesion.spec.ts` |
-| Dados | Con dos dados de igual valor, el evaluador puede resolver «cuál se descarta» por posición en vez de por una regla explícita — ambigüedad, no bug observado | `apps/api/src/rules-engine/` (leer antes de tocar el evaluador) |
-| Dados | `100d6r1` supera `rolls.max(100)` — preexistente a esta rama, no la introdujo, pero sigue sin fila propia | `apps/api/src/rules-engine/` (leer antes de tocar el evaluador) |
-| Dados | `SelectorDeVentaja` usa `disabled` nativo: los radios apagados no son alcanzables por teclado, y la línea de motivo no está enlazada por `aria-describedby` — candidato ya señalado por la propia revisión de la Tarea 10 | `apps/web/src/features/rolls/BandejaDeDados.tsx` |
-| Dados | El `<details>`/`<summary>` de «Modo avanzado» muestra el error de la expresión aunque esté plegado | `apps/web/src/features/rolls/PanelDeDados.tsx` |
-| Dados | **Revisión final, #6**: `resumenAudienciaYCd` es una tercera traducción de `RollAudience` fuera de `apps/web/src/features/rolls/vocabulario.ts` — mover como campo `resumen` del vocabulario en vez de reescribirla en el componente | `apps/web/src/features/rolls/panel/PanelDeDadosDeLaMesa.tsx:85-98` |
-| Dados | **Revisión final, #8**: `DadoDibujado.tsx` e `IconoD20` son dos envoltorios idénticos de `IconoDado caras={20}` — unificar en uno | `apps/web/src/features/rolls/DadoDibujado.tsx`; `apps/web/src/ui/Iconos.tsx` (líneas de `IconoD20`) |
-| Dados | **Revisión final, #10**: `conDadoAnadido` (`apps/web/src/features/rolls/expresion.ts`) no tiene ningún consumidor en `src/` — retirarla cuando se confirme que el modo avanzado no la echa de menos | `apps/web/src/features/rolls/expresion.ts` |
-| Hilo | **Revisión final, #5**: la frase con sujeto resuelto (`HP_CHANGED` con `ctx.sujeto`) pierde el `(from → to)` que sí lleva la frase sin sujeto — considerar «Sylas pierde 7 PG (20 → 13) ← Klarg» | `apps/web/src/features/sessions/linea-de-log.ts:196-201` |
-| Elenco / menú | **Revisión final, #11**: `apps/web/src/features/sessions/elenco/CorregirBando.tsx` ya no tiene componente de fila (se borró en la Tarea 8) y solo exporta `useAccionesDeBando` — renombrar el fichero a `accionesDeBando.ts` la próxima vez que se toque | `apps/web/src/features/sessions/elenco/CorregirBando.tsx` |
-| Bestiario | `DarTemporales`: `preguntando` no se resetea si la petición falla, así que un reintento tras error puede arrancar con el diálogo ya abierto | `apps/web/src/features/bestiario/DarTemporales.tsx` |
-| Catálogo de objetos | Los `FilterChip` de tipo y origen no llevan `aria-pressed` | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
-| Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
-| Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
-| Mundo (árbol) | **Revisión final, #9**: `normalizar()` (pliega tildes para comparar) está copiada una sexta vez entre `DesgloseDelMundo.tsx` y `EditorDeHilos.tsx` — extraer a una lib compartida | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx:42`; `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx:50` |
-| Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
-| Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
-| Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
-| Mundo (árbol) | Borrar un hilo no invalida la consulta del otro extremo del enlace, así que su ficha puede quedar con el hilo fantasma hasta recargar | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
-| Mundo (árbol) | Las raíces sin hijos se abren desplegadas por defecto en vez de plegadas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
-| Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+| Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar. P-1: pendiente de decidir por el autor (2026-09-17) | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
+| Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
+| Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
+| Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
+| Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 
 **Descartado como ruido, con motivo** (no entra como ficha): la cita de Epip «resolver functions»
 en la nota de diseño y el hilo de Steam sin etiquetar como fuente débil (Tarea 0) — son citas de
@@ -409,23 +375,6 @@ en la red, y forzar la prop sería refactor sin beneficio medible; `DieRolled` d
 poder deshabilitarse— **ya está cerrado**: la ola de arreglo final (`0a8689e`) los dejó siempre
 habilitados con error en línea, la misma regla que el resto de botones de esta tanda; no abre
 ficha.
-
-### Regla candidata: `timeout` explícito en cada Bash de los agentes
-
-**De la tabla de observabilidad de esta tanda** (`.superpowers/sdd/2026-09-12-pulido-antes-del-paso-3/progress.md`,
-lectura 3): el harness manda al fondo cualquier `Bash` de más de 120 segundos si el agente no pasa
-`timeout: 600000` como **parámetro de la herramienta** — no es desobediencia del agente, es un
-límite del arnés que ningún brief mencionaba hasta que costó **~40 minutos** repartidos en
-esperas ciegas a lo largo de la tanda (Tareas 1, 4, 8 y 9). Ya se añadió la regla a
-`04-convenciones.md` § *Trabajo con varios agentes a la vez* en este mismo commit; esta ficha
-queda como recordatorio de que **la regla nueva no se ha probado en una tanda completa todavía** —
-cierra sola cuando la siguiente tanda (reglas de la mesa) no repita el patrón.
-
-**Medido en «reglas de la mesa» (2026-09-13):** seis implementadores y dos revisores llevaron la
-frase en el brief; **uno repitió el patrón** (Tarea 6: lanzó el `git commit` en segundo plano y se
-quedó esperando; ~5 min, informe pedido a posteriori). De ~40 min a ~5: la regla funciona pero no
-cierra sola. **Siguiente ajuste al brief**: la frase «INCLUIDO `git commit`» en mayúsculas al
-principio, no al final; se comprueba en la puerta de efectos.
 
 > ## Decidido el 2026-09-10 y todavía abierto — el trabajo que queda, con su decisión tomada
 >
@@ -1180,11 +1129,3 @@ comparta posición (varios goblins idénticos, por ejemplo): el siguiente clic r
 hasta que el grupo entero deja de tener «oculto». Revelar el grupo con un solo botón —seis goblins
 con un solo clic— es una decisión de interfaz que la spec de PNJ del mundo y la mesa (§3.2) dejaba
 sin cerrar.
-
-### Sin ficha propia · `CharacterRow` no declara `entityId` (2026-09-14)
-
-**Abierto, menor, encontrado en la Task 4.** `CharacterRow` (`apps/web/src/features/character-sheet/api.ts`)
-no declara `entityId` en su tipo, aunque el servidor ya lo manda desde `GET
-.../characters/:id/sheet` (redactado por `entityIdsVisibleFor`, como el resto de lecturas). No
-rompe nada hoy —nada de la hoja lee ese campo—, pero una pantalla de la hoja que quisiera enlazar
-«Ficha del mundo» desde ahí tendría que ensanchar el tipo primero.

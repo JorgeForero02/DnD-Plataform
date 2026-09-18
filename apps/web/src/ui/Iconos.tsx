@@ -239,6 +239,9 @@ export function IconoCorazon({ className }: IconoProps) {
  * `04-convenciones.md`, Task 0). Pasa a delegar: el rail de sesiones y «pedir tirada» siguen
  * importando `IconoD20` sin cambiar una línea, y ahora comparten trazo con el resto de la
  * familia de seis.
+ *
+ * Antes existía `DadoDibujado`, envoltorio idéntico (Tarea F3/7); se fundió aquí el 2026-09-17
+ * (#8).
  */
 export function IconoD20({ className }: IconoProps) {
   return <IconoDado caras={20} className={className} />;
@@ -320,6 +323,25 @@ export function IconoFlechaDerecha({ className }: IconoProps) {
   return (
     <Marco className={className} data-icono="flecha-derecha">
       <path d="M5 12h14M13 6l6 6-6 6" />
+    </Marco>
+  );
+}
+
+/**
+ * La punta que dice «esto se abre / se cierra». Una silueta para un significado (#7, 2026-09-17):
+ * antes había dos — `Punta.tsx` en el árbol del mundo y `IconoFlechaIzquierda` rotada en el cajón
+ * del registro. `hacia` es a dónde apunta; quien la usa dice qué significa cada dirección.
+ */
+export function IconoPunta({
+  hacia,
+  className,
+}: IconoProps & { hacia: "arriba" | "abajo" | "derecha" | "izquierda" }) {
+  const giro = { derecha: "", abajo: "rotate-90", izquierda: "rotate-180", arriba: "-rotate-90" }[
+    hacia
+  ];
+  return (
+    <Marco className={["transition-transform", giro, className ?? ""].join(" ")} data-icono="punta">
+      <path d="M9 5.25 15.75 12 9 18.75" />
     </Marco>
   );
 }

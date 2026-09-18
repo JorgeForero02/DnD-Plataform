@@ -1,5 +1,6 @@
 import type { ItemKind, ItemLocation } from "@dnd/shared";
 import type { InventoryRow } from "./api";
+import { normalizarTexto } from "../../lib/texto";
 
 // Tarea 9 (spec 2026-09-11, «la hoja a página completa») — los cuatro filtros de la pestaña
 // Objetos (spec §6): dónde está, qué es, si está sintonizado y un texto libre sobre el nombre.
@@ -21,17 +22,6 @@ export const SIN_FILTRO: FiltroDeObjetos = {
   sintonizados: false,
   texto: "",
 };
-
-/** «Poción» y «pocion» son la misma búsqueda: se quitan las marcas diacríticas y las mayúsculas. */
-export function normalizarTexto(texto: string): string {
-  // El rango de marcas diacríticas se escribe escapado: los dos caracteres combinantes en crudo
-  // eran invisibles en el editor y un formateador los podía «arreglar».
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 /**
  * Recorta la lista según el filtro, conservando el orden.

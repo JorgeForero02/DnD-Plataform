@@ -24,4 +24,13 @@ describe("CajonDelRegistro", () => {
     fireEvent.click(boton);
     expect(screen.getByText("hilo")).toBeVisible();
   });
+
+  it("plegar antes de que cargue el registro: las líneas que llegan después cuentan como nuevas", () => {
+    const { rerender } = render(<CajonDelRegistro eventos={[]}>hilo</CajonDelRegistro>);
+    fireEvent.click(screen.getByRole("button", { name: "Plegar el registro" }));
+    rerender(<CajonDelRegistro eventos={[{ id: "e2" }, { id: "e1" }]}>hilo</CajonDelRegistro>);
+    expect(
+      screen.getByRole("button", { name: "Desplegar el registro, 2 líneas nuevas" }),
+    ).toBeInTheDocument();
+  });
 });

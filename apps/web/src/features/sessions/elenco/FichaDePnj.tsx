@@ -7,7 +7,7 @@ import { IconoEscudo } from "../../../ui/Iconos";
 import { NOMBRE_BANDO } from "../../../dominio/combate";
 import { Retrato, BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
-import { useAccionesDeBando } from "./CorregirBando";
+import { useAccionesDeBando } from "./accionesDeBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
 import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
 
@@ -50,7 +50,7 @@ import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
  * enemigo, y el enemigo casi siempre es un PNJ: sin este mando, el DM podía convertir a un
  * personaje de jugador en enemigo pero no podía tocar el bando del goblin — la funcionalidad
  * nacía coja. **Desde la tarea 8 del pulido**, sus ítems viven en el menú «…» del mando
- * (`useAccionesDeBando`, `CorregirBando.tsx`) y no en una fila propia — mismo `useSetSide`, no
+ * (`useAccionesDeBando`, `accionesDeBando.ts`) y no en una fila propia — mismo `useSetSide`, no
  * una segunda implementación (ver I-3 de esta misma ronda para la razón original de compartir).
  */
 export function FichaDePnj({

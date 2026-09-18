@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   abilitiesRuleSchema,
   oroInicialSchema,
@@ -27,6 +27,22 @@ import { Button } from "../../ui/Button";
 import { Field, fieldControlClass } from "../../ui/Field";
 import { GrupoDeRadios } from "../../ui/GrupoDeRadios";
 
+/** Rangos del esquema (`tableRulesSchema`), dichos en español ANTES de mandar: `Number("")` es 0 y
+ * volvía como un 400 técnico de Zod. Si el esquema cambia, cambia aquí — y el 400 sigue detrás. */
+function motivoDeRango(b: TableRules): string | null {
+  if (b.abilities.metodo === "PUNTOS" && (b.abilities.puntos < 15 || b.abilities.puntos > 40))
+    return "Los puntos a repartir van de 15 a 40.";
+  if (b.abilities.metodo === "DADOS" && (b.abilities.intentos < 1 || b.abilities.intentos > 10))
+    return "Los intentos van de 1 a 10.";
+  if (b.nivelInicial < 1 || b.nivelInicial > 20) return "El nivel inicial va de 1 a 20.";
+  if (
+    b.oroInicial.modo === "ORO_FIJO" &&
+    (b.oroInicial.cantidadPo < 0 || b.oroInicial.cantidadPo > 100000)
+  )
+    return "El oro fijo va de 0 a 100 000 po.";
+  return null;
+}
+
 /**
  * Task 5 (spec 2026-09-12, D-CF-53) — el bloque «Reglas de la mesa» en los ajustes de campaña.
  * Guarda entero, con `PATCH /campaigns/:id { tableRules }` (mismo endpoint que
@@ -51,22 +67,43 @@ export function ReglasDeLaMesa({
   const [borrador, setBorrador] = useState<TableRules>(reglas);
   const [error, setError] = useState<string | null>(null);
 
-  // Re-sembrar si la campaña cambia de id — mismo patrón `seededId` que `CampaignSettings`: una
-  // vez sembrado, un refetch con la misma campaña no pisa lo que el DM está editando.
-  const seededId = useRef<string | null>(campaignId);
-  useEffect(() => {
-    if (seededId.current !== campaignId) {
-      setBorrador(reglas);
-      seededId.current = campaignId;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId]);
+  // Re-sembrar cuando cambien las reglas de fuera (otra campaña, o el servidor devolvió las
+  // normalizadas tras guardar) **y no haya edición en curso**. `sucio` se enciende al primer cambio
+  // del DM y se apaga al guardar con éxito: un refetch nunca pisa lo que está tecleando (M-14).
+  // Patrón «ajustar el estado durante el render» de la documentación de React (mismo patrón que
+  // `revelado` en `DesgloseDelMundo.tsx`), no un efecto: `react-hooks/set-state-in-effect` prohíbe
+  // llamar a `setState` sin condición externa dentro de un efecto, con razón (un render de más).
+  // Revisión final (menor #5, 2026-09-18): comparar `reglas` por IDENTIDAD no basta — el padre
+  // (`CampaignSettings`) construye el objeto con `tableRulesSchema.parse(...)` en cada render
+  // suyo, así que cambia de identidad aunque el valor sea el mismo. Con `sucio` recién apagado
+  // (justo tras guardar) un render de más del padre en esa ventana volvía a sembrar el borrador
+  // con las reglas VIEJAS de la caché (la mutación solo invalida, no `setQueryData`) hasta que
+  // llegaba el refetch. Comparar por valor evita la re-siembra fantasma.
+  const [sucio, setSucio] = useState(false);
+  const claveDeReglas = JSON.stringify(reglas);
+  const [ultimaClave, setUltimaClave] = useState(claveDeReglas);
+  if (claveDeReglas !== ultimaClave) {
+    setUltimaClave(claveDeReglas);
+    if (!sucio) setBorrador(reglas);
+  }
+  const editar = (siguiente: TableRules) => {
+    setSucio(true);
+    setBorrador(siguiente);
+  };
 
   const onGuardar = () => {
     setError(null);
+    const motivo = motivoDeRango(borrador);
+    if (motivo) {
+      setError(motivo);
+      return;
+    }
     // **Mutación obligatoria (T5, step 4)**: mandar `reglas` (la prop de entrada) en vez de
     // `borrador` aquí rompe la prueba de Guardar — se probó a propósito y se restauró.
-    update.mutate({ tableRules: borrador }, { onError: (e) => setError((e as Error).message) });
+    update.mutate(
+      { tableRules: borrador },
+      { onSuccess: () => setSucio(false), onError: (e) => setError((e as Error).message) },
+    );
   };
 
   const caminos: OpcionDeCatalogo[] = (catalogo?.classes ?? []).flatMap((c) =>
@@ -87,7 +124,7 @@ export function ReglasDeLaMesa({
         valor={borrador.abilities.metodo}
         disabled={disabled}
         onChange={(metodo) =>
-          setBorrador({
+          editar({
             ...borrador,
             abilities: abilitiesRuleSchema.parse({ metodo }) as AbilitiesRule,
           })
@@ -103,7 +140,7 @@ export function ReglasDeLaMesa({
             disabled={disabled}
             className={fieldControlClass}
             onChange={(e) =>
-              setBorrador({
+              editar({
                 ...borrador,
                 abilities: { metodo: "PUNTOS", puntos: Number(e.target.value) },
               })
@@ -119,7 +156,7 @@ export function ReglasDeLaMesa({
               disabled={disabled}
               className={fieldControlClass}
               onChange={(e) =>
-                setBorrador({
+                editar({
                   ...borrador,
                   abilities: {
                     ...(borrador.abilities as Extract<AbilitiesRule, { metodo: "DADOS" }>),
@@ -138,7 +175,7 @@ export function ReglasDeLaMesa({
               disabled={disabled}
               className={fieldControlClass}
               onChange={(e) =>
-                setBorrador({
+                editar({
                   ...borrador,
                   abilities: {
                     ...(borrador.abilities as Extract<AbilitiesRule, { metodo: "DADOS" }>),
@@ -155,7 +192,7 @@ export function ReglasDeLaMesa({
               disabled={disabled}
               className="accent-[var(--accent)]"
               onChange={(e) =>
-                setBorrador({
+                editar({
                   ...borrador,
                   abilities: {
                     ...(borrador.abilities as Extract<AbilitiesRule, { metodo: "DADOS" }>),
@@ -177,7 +214,7 @@ export function ReglasDeLaMesa({
           value={borrador.nivelInicial}
           disabled={disabled}
           className={fieldControlClass}
-          onChange={(e) => setBorrador({ ...borrador, nivelInicial: Number(e.target.value) })}
+          onChange={(e) => editar({ ...borrador, nivelInicial: Number(e.target.value) })}
         />
       </Field>
 
@@ -188,9 +225,7 @@ export function ReglasDeLaMesa({
         opciones={NOMBRE_PG}
         valor={borrador.pgNivelesSiguientes}
         disabled={disabled}
-        onChange={(pg) =>
-          setBorrador({ ...borrador, pgNivelesSiguientes: pg as PgNivelesSiguientes })
-        }
+        onChange={(pg) => editar({ ...borrador, pgNivelesSiguientes: pg as PgNivelesSiguientes })}
       />
 
       <ListaDePermitidos
@@ -198,9 +233,7 @@ export function ReglasDeLaMesa({
         opciones={opcionesDeRaza(catalogo)}
         valor={borrador.permitidos.razas}
         disabled={disabled}
-        onChange={(razas) =>
-          setBorrador({ ...borrador, permitidos: { ...borrador.permitidos, razas } })
-        }
+        onChange={(razas) => editar({ ...borrador, permitidos: { ...borrador.permitidos, razas } })}
       />
       <ListaDePermitidos
         legend="Clases permitidas"
@@ -208,7 +241,7 @@ export function ReglasDeLaMesa({
         valor={borrador.permitidos.clases}
         disabled={disabled}
         onChange={(clases) =>
-          setBorrador({ ...borrador, permitidos: { ...borrador.permitidos, clases } })
+          editar({ ...borrador, permitidos: { ...borrador.permitidos, clases } })
         }
       />
       <ListaDePermitidos
@@ -217,7 +250,7 @@ export function ReglasDeLaMesa({
         valor={borrador.permitidos.subclases}
         disabled={disabled}
         onChange={(subclases) =>
-          setBorrador({ ...borrador, permitidos: { ...borrador.permitidos, subclases } })
+          editar({ ...borrador, permitidos: { ...borrador.permitidos, subclases } })
         }
       />
 
@@ -229,7 +262,7 @@ export function ReglasDeLaMesa({
         valor={borrador.oroInicial.modo}
         disabled={disabled}
         onChange={(modo) =>
-          setBorrador({
+          editar({
             ...borrador,
             oroInicial:
               modo === "ORO_FIJO"
@@ -252,7 +285,7 @@ export function ReglasDeLaMesa({
             disabled={disabled}
             className={fieldControlClass}
             onChange={(e) =>
-              setBorrador({
+              editar({
                 ...borrador,
                 oroInicial: { modo: "ORO_FIJO", cantidadPo: Number(e.target.value) },
               })
@@ -268,9 +301,7 @@ export function ReglasDeLaMesa({
         opciones={NOMBRE_PROGRESION}
         valor={borrador.progresion}
         disabled={disabled}
-        onChange={(progresion) =>
-          setBorrador({ ...borrador, progresion: progresion as Progresion })
-        }
+        onChange={(progresion) => editar({ ...borrador, progresion: progresion as Progresion })}
         // El aviso de arriba («valen para los que se creen a partir de ahora») no alcanza a esta
         // regla, y se dice aquí, debajo de ella, en vez de dejar que se lea lo contrario.
         nota={AVISO_PROGRESION_INMEDIATA}

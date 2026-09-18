@@ -2,8 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
 import { ApiError } from "../../../lib/api";
 import { Button, Field, fieldControlClass } from "../../../ui";
-import { IconoCerrar } from "../../../ui/Iconos";
-import { DadoDibujado } from "../DadoDibujado";
+import { IconoCerrar, IconoD20 } from "../../../ui/Iconos";
 import { ResultadoDeTirada } from "../ResultadoDeTirada";
 import { TiradaACiegas } from "../TiradaACiegas";
 import { SelectorDeAudiencia } from "../SelectorDeAudiencia";
@@ -13,6 +12,7 @@ import { GastarInspiracion } from "./GastarInspiracion";
 import { useCreateRoll } from "../hooks";
 import { useGuiaDeCd } from "../../roll-requests/hooks";
 import { nombreDeCd } from "../../roll-requests/vocabulario";
+import { audienciaDeTirada } from "../vocabulario";
 import { DadoTridimensional } from "./DadoTridimensional";
 
 // **El panel de dados, anclado abajo. No se abre: aparece porque hay que tirar.**
@@ -75,23 +75,10 @@ function mensajeDeError(error: unknown): string {
   return "No se pudo tirar.";
 }
 
-/**
- * Task 10 — lo que dice el `summary` del `<details>` «Audiencia y CD» cuando está plegado:
- * «Para la mesa entera · sin CD». Plegar no esconde la decisión — se lee sin abrir.
- *
- * **No reutiliza la `etiqueta` de `AUDIENCIAS_DE_TIRADA`** («Pública», «Privada del DM», «A
- * ciegas»): esas son el nombre del radio: cortas, y pensadas para ir junto a su frase. Aquí hace
- * falta la frase entera para que el resumen tenga sentido solo, sin nada al lado.
- */
+// El resumen vive en `vocabulario.ts` (#6).
 function resumenAudienciaYCd(audiencia: RollAudience, cd: string): string {
-  const audienciaTexto =
-    audiencia === "PUBLIC"
-      ? "Para la mesa entera"
-      : audiencia === "DM_PRIVATE"
-        ? "Privada del DM"
-        : "A ciegas";
   const cdTexto = cd.trim() === "" ? "sin CD" : `CD ${cd.trim()}`;
-  return `${audienciaTexto} · ${cdTexto}`;
+  return `${audienciaDeTirada(audiencia).resumen} · ${cdTexto}`;
 }
 
 /** Quien pide menos movimiento no recibe ninguno: tampoco la espera de 1,1 s. */
@@ -375,7 +362,7 @@ export function PanelDeDadosDeLaMesa({
             <div className="flex items-center gap-s2">
               {/* **Solo `isPending` lo apaga**; con la bandeja vacía es `alTirar` quien explica. */}
               <Button type="button" variant="primary" onClick={alTirar} disabled={tirar.isPending}>
-                <DadoDibujado />
+                <IconoD20 />
                 {tirar.isPending ? "Tirando…" : "Tirar"}
               </Button>
             </div>

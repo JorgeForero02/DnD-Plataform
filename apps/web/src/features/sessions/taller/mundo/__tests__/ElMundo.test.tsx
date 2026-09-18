@@ -184,15 +184,20 @@ describe("ElMundo", () => {
     vi.spyOn(linksApi, "fetchCampaignLinks").mockResolvedValue([hilo(corvin, torre, "vive en")]);
     montar();
     const arbol = await screen.findByRole("tree", { name: "El mundo" });
+    // Mundo · menor (2026-09-17): una raíz sin hijos nace PLEGADA, así que hay que abrirla para
+    // leer la nota — antes se abría de golpe con las demás y esto se comprobaba sin pulsar nada.
     const pnjs = within(arbol).getByRole("treeitem", { name: "PNJ" });
+    expect(pnjs).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(pnjs);
     expect(pnjs).toHaveTextContent("1");
     expect(pnjs).toHaveTextContent("Todas cuelgan de otra ficha.");
     expect(pnjs).not.toHaveTextContent("Ninguna todavía.");
     // La nota no es un elemento del árbol: solo la raíz cuenta como treeitem ahí dentro.
     expect(within(pnjs).queryAllByRole("treeitem")).toHaveLength(0);
-    expect(within(arbol).getByRole("treeitem", { name: "Misiones" })).toHaveTextContent(
-      "Ninguna todavía.",
-    );
+    const misiones = within(arbol).getByRole("treeitem", { name: "Misiones" });
+    expect(misiones).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(misiones);
+    expect(misiones).toHaveTextContent("Ninguna todavía.");
     // Las raíces también declaran `aria-selected`, como pide el patrón `tree`.
     expect(pnjs).toHaveAttribute("aria-selected", "false");
   });

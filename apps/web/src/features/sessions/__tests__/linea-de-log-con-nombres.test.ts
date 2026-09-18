@@ -71,7 +71,7 @@ describe("el hilo, con nombres", () => {
         },
         { sujeto: "Sylas", nombres },
       ),
-    ).toBe("Sylas pierde 7 PG (cortante) ← Klarg");
+    ).toBe("Sylas pierde 7 PG (cortante) (20 → 13) ← Klarg");
   });
 
   it("con rollEventId, el origen sale del ataque que la tirada resolvió", () => {
@@ -80,7 +80,7 @@ describe("el hilo, con nombres", () => {
         { type: "HP_CHANGED", delta: -7, from: 20, to: 13, rollEventId: "roll-1" },
         { sujeto: "Sylas", nombres },
       ),
-    ).toBe("Sylas pierde 7 PG ← ataque de Klarg");
+    ).toBe("Sylas pierde 7 PG (20 → 13) ← ataque de Klarg");
   });
 
   it("el ataque nombra atacante y objetivo", () => {
@@ -122,7 +122,7 @@ describe("el hilo, con nombres", () => {
   it("recuperar PG con ctx dice «recupera», no «pierde»", () => {
     expect(
       lineaDeLog({ type: "HP_CHANGED", delta: 5, from: 10, to: 15 }, { sujeto: "Sylas", nombres }),
-    ).toBe("Sylas recupera 5 PG");
+    ).toBe("Sylas recupera 5 PG (10 → 15)");
   });
 
   describe("de dónde viene, con las dos citas y sus caídas", () => {
@@ -139,7 +139,7 @@ describe("el hilo, con nombres", () => {
           },
           { sujeto: "Sylas", nombres },
         ),
-      ).toBe("Sylas pierde 7 PG ← Klarg");
+      ).toBe("Sylas pierde 7 PG (20 → 13) ← Klarg");
     });
 
     it("sourceCharacterId no visible: cae al atacante de la tirada citada", () => {
@@ -155,7 +155,7 @@ describe("el hilo, con nombres", () => {
           },
           { sujeto: "Sylas", nombres },
         ),
-      ).toBe("Sylas pierde 7 PG ← ataque de Klarg");
+      ).toBe("Sylas pierde 7 PG (20 → 13) ← ataque de Klarg");
     });
 
     it("se citó un origen y ninguno de los dos se puede nombrar: «Alguien», no silencio", () => {
@@ -164,7 +164,7 @@ describe("el hilo, con nombres", () => {
           { type: "HP_CHANGED", delta: -7, from: 20, to: 13, sourceCharacterId: "oculto" },
           { sujeto: "Sylas", nombres },
         ),
-      ).toBe("Sylas pierde 7 PG ← Alguien");
+      ).toBe("Sylas pierde 7 PG (20 → 13) ← Alguien");
     });
 
     // Revisión final de la rama (2026-09-13). `rollEventId` cita CUALQUIER tirada, no solo un
@@ -178,7 +178,7 @@ describe("el hilo, con nombres", () => {
           { type: "HP_CHANGED", delta: -7, from: 20, to: 13, rollEventId: "roll-caida" },
           { sujeto: "Sylas", nombres },
         ),
-      ).toBe("Sylas pierde 7 PG");
+      ).toBe("Sylas pierde 7 PG (20 → 13)");
     });
   });
 
@@ -196,7 +196,7 @@ describe("el hilo, con nombres", () => {
           },
           { sujeto: "Sylas", sujetoEnCabecera: true, nombres },
         ),
-      ).toBe("pierde 7 PG (cortante) ← Klarg");
+      ).toBe("pierde 7 PG (cortante) (20 → 13) ← Klarg");
     });
 
     it("ATTACK_RESOLVED omite al atacante y conserva a quién ataca", () => {

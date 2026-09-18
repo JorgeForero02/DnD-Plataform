@@ -47,7 +47,7 @@ import { Curar, PonerDano } from "./PonerDano";
  * —hasta siete controles en la versión vieja, que se salía de la tarjeta— se pliegan en
  * `ui/MenuDeAcciones.tsx`. El icono del bando no es un mando más de esta ficha: sus ítems
  * (`AccionDeMenu[]`) llegan ya construidos por prop, desde `useAccionesDeBando`
- * (`CorregirBando.tsx`), porque solo `FichaDeElenco`/`FichaDePnj` saben si hay encuentro y bando
+ * (`accionesDeBando.ts`), porque solo `FichaDeElenco`/`FichaDePnj` saben si hay encuentro y bando
  * que corregir.
  */
 export function MandosDeCombatiente({

@@ -324,8 +324,9 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   // existe. `−5` no es un control de la interfaz, es un suceso de la partida.
   //
   // Tarea 11 del pulido (C4, #15): el hilo ya sabe QUIÉN lo recibió, y lo dice — «Borin
-  // Barbaférrea pierde 5 PG», sin el `(13 → 8)` que solo se ve cuando el sujeto no se puede
-  // nombrar (ese caso lo cubre `linea-de-log-sin-claves.test.ts`, que sigue en verde sin `ctx`).
+  // Barbaférrea pierde 5 PG (13 → 8)». La aserción de abajo solo comprueba el prefijo (subcadena),
+  // así que no depende de si el `(from → to)` va o no — lo hay con y sin sujeto resuelto (ese
+  // último caso lo cubre `linea-de-log-sin-claves.test.ts`, que sigue en verde sin `ctx`).
   await expect(
     page
       .getByRole("list", { name: "Sucesos de la sesión" })

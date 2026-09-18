@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { FilterChip } from "../../../../ui/Collection";
-import { IconoLupa } from "../../../../ui/Iconos";
+import { IconoLupa, IconoPunta } from "../../../../ui/Iconos";
 import { IconoDeTipo } from "../../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../../entities/resumen";
 import type { ArbolDelMundo, NodoDelMundo, RaizDeTipo } from "./arbolDelMundo";
-import { Punta } from "./Punta";
+import { normalizarTexto as normalizar } from "../../../../lib/texto";
 
 // **El desglose del mundo** (Task 14 bis, D-CF-64): un `tree` WAI-ARIA. **El fichero se llama
 // `DesgloseDelMundo` y no `ArbolDelMundo`** porque `./ArbolDelMundo` y `./arbolDelMundo` (el módulo
@@ -37,14 +37,6 @@ interface Fila {
   nombre: string;
   tieneHijos: boolean;
   expandido: boolean;
-}
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 }
 
 /** Recorta el árbol a lo que encaja con la búsqueda, dejando el camino hasta cada acierto. */
@@ -93,10 +85,12 @@ export function DesgloseDelMundo({
 }) {
   const [busqueda, setBusqueda] = useState("");
   const [soloSinHilos, setSoloSinHilos] = useState(false);
-  // Las raíces de tipo empiezan desplegadas: un desglose que hay que abrir siete veces antes de
-  // ver una ficha no es un desglose.
+  // Las raíces de tipo CON hijos empiezan desplegadas: un desglose que hay que abrir siete veces
+  // antes de ver una ficha no es un desglose. Una raíz sin ninguna ficha (o con todas colgando de
+  // otro tipo) nace plegada — abrirla solo enseña la nota «Ninguna todavía»/«Todas cuelgan de otra
+  // ficha», que ya se lee sin desplegar en el contador de la cabecera (Mundo · menor, 2026-09-17).
   const [abiertos, setAbiertos] = useState<Set<string>>(
-    () => new Set(arbol.raices.map((r) => r.type)),
+    () => new Set(arbol.raices.filter((r) => r.hijos.length > 0).map((r) => r.type)),
   );
   const [foco, setFoco] = useState<string | null>(null);
   const refs = useRef(new Map<string, HTMLLIElement>());
@@ -295,7 +289,7 @@ export function DesgloseDelMundo({
               }}
               className="flex shrink-0 items-center rounded-radius-sm text-muted hover:text-text"
             >
-              <Punta abierta={fila.expandido} />
+              <IconoPunta hacia={fila.expandido ? "abajo" : "derecha"} />
             </button>
           ) : (
             <span aria-hidden="true" className="inline-block w-[1em] shrink-0" />
@@ -383,7 +377,7 @@ export function DesgloseDelMundo({
               >
                 <div className="flex items-center gap-s2 rounded-radius-sm px-s2 py-1 [li:focus-visible>&]:outline [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-accent">
                   <span className="text-muted">
-                    <Punta abierta={fila.expandido} />
+                    <IconoPunta hacia={fila.expandido ? "abajo" : "derecha"} />
                   </span>
                   <span className="font-chrome text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
                     {r.etiqueta}

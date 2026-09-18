@@ -935,6 +935,17 @@ export class CharacterSheetService {
       const seisEnviadas = ORDEN_DE_CARACTERISTICAS.filter(
         (k) => input.abilities![k] !== undefined,
       );
+      // RM-2 (2026-09-17): un `attemptId` solo significa algo con dados. Con MATRIZ, PUNTOS o
+      // LIBRE seguía llegando a `requireAttempt` y marcaba `chosen` un intento de una regla
+      // anterior — una fila caduca que después bloqueaba al dueño («Las características se
+      // fijaron con dados») en una mesa que ya no tira. Ola de arreglos final (menor #6): esta
+      // puerta vivía DENTRO del `if (metodo !== "LIBRE")` de abajo, así que LIBRE + `attemptId`
+      // se colaba sin el 400 que el plan pedía para «cualquier método que no sea DADOS».
+      if (regla.abilities.metodo !== "DADOS" && input.attemptId) {
+        throw new BadRequestException(
+          "Con esta regla las características no se tiran con dados: manda las seis sin attemptId.",
+        );
+      }
       if (regla.abilities.metodo !== "LIBRE") {
         // Reglas de la mesa (E-RM-13, ronda 1 de arreglos): con dados y un intento ya elegido,
         // las seis están fijadas — y `OVERRIDABLE_KEYS` **no tiene `ability.*`**, así que

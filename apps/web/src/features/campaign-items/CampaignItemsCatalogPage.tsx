@@ -147,40 +147,48 @@ export function CampaignItemsCatalogPage({ campaignId }: { campaignId: string })
         />
       </label>
 
-      <Toolbar
-        filters={
-          <>
-            <FilterChip active={tipo === "todos"} onClick={() => setTipo("todos")}>
-              Todos
-            </FilterChip>
-            {TIPOS_DE_OBJETO.map((k) => (
-              <FilterChip
-                key={k}
-                active={tipo === k}
-                onClick={() => setTipo(k)}
-                icon={<IconoDeObjeto kind={k} />}
-              >
-                {NOMBRE_TIPO[k]}
+      {/* Revisión final del pulido (2026-09-13) — **dos `Toolbar` apiladas sin separación
+          visual entre tipo y origen.** El `gap-s2` del contenedor las separa, y cada una lleva su
+          propio `aria-label` para que no se anuncien igual. Se mide en el navegador
+          (`docs/04-convenciones.md`: jsdom no maqueta). */}
+      <div className="flex flex-col gap-s2">
+        <Toolbar
+          ariaLabel="Filtrar por tipo"
+          filters={
+            <>
+              <FilterChip active={tipo === "todos"} onClick={() => setTipo("todos")}>
+                Todos
               </FilterChip>
-            ))}
-          </>
-        }
-      />
-      <Toolbar
-        filters={
-          <>
-            <FilterChip active={origen === "todos"} onClick={() => setOrigen("todos")}>
-              De todas partes
-            </FilterChip>
-            <FilterChip active={origen === "SRD"} onClick={() => setOrigen("SRD")}>
-              Del catálogo
-            </FilterChip>
-            <FilterChip active={origen === "CAMPAIGN"} onClick={() => setOrigen("CAMPAIGN")}>
-              De la campaña
-            </FilterChip>
-          </>
-        }
-      />
+              {TIPOS_DE_OBJETO.map((k) => (
+                <FilterChip
+                  key={k}
+                  active={tipo === k}
+                  onClick={() => setTipo(k)}
+                  icon={<IconoDeObjeto kind={k} />}
+                >
+                  {NOMBRE_TIPO[k]}
+                </FilterChip>
+              ))}
+            </>
+          }
+        />
+        <Toolbar
+          ariaLabel="Filtrar por origen"
+          filters={
+            <>
+              <FilterChip active={origen === "todos"} onClick={() => setOrigen("todos")}>
+                De todas partes
+              </FilterChip>
+              <FilterChip active={origen === "SRD"} onClick={() => setOrigen("SRD")}>
+                Del catálogo
+              </FilterChip>
+              <FilterChip active={origen === "CAMPAIGN"} onClick={() => setOrigen("CAMPAIGN")}>
+                De la campaña
+              </FilterChip>
+            </>
+          }
+        />
+      </div>
 
       {filas.length === 0 && (busqueda.trim() || hayFiltrosActivos) ? (
         <EmptyState

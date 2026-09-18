@@ -385,6 +385,8 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 > `apps/web/capturas-salida/`, que git ignora; para refrescar el juego de referencia del
 > repositorio hay que pedirlo: `SALIDA_CAPTURAS=capturas`.
 >
+> **Y desde el 2026-09-18 la mesa tiene el suyo propio**: [`prototipo/mesa/2026-09-18-prototipo-mesa.html`](../prototipo/mesa/2026-09-18-prototipo-mesa.html), dibujado por el autor; qué cambia frente a la mesa de hoy y qué no decide, en [su spec](./superpowers/specs/2026-09-18-prototipo-de-la-mesa.md). Para la mesa manda este; para el resto de pantallas, el de Figma.
+>
 > **Y lo que el prototipo NO decide**, porque ya se comprobó copiándolo y salió mal: su
 > conmutador DM/Jugador cambia lo que se pinta donde aquí `canView` decide lo que se **envía**;
 > su aviso de DM es falso tres veces; ofrece a un jugador un botón que el servidor rechaza; y se
@@ -412,9 +414,11 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   módulo grande dibuja los suyos** cuando solo los usa él (`features/rules/iconos.tsx`,
   `features/sessions/iconos.tsx`, `features/level-up/IconoAscenso.tsx`). Lo que la regla exige es
   que sean **dibujados**, no que vivan en un único fichero; enumerar tres sitios cuando había
-  siete fue una lista que caducó. **Tarea 7 (C3 #12, #22, 2026-09-12):** `features/rolls/DadoDibujado.tsx`
+  siete fue una lista que caducó. **Tarea 7 (C3 #12, #22, 2026-09-12):** `features/rolls/DadoDibujado.tsx` <!-- docs-lint-ignore: ruta histórica, el fichero se fundió en IconoD20 el 2026-09-17 -->
   pasó de dibujar su propio icosaedro a delegar en `IconoDado caras={20}` de `ui/Iconos.tsx` — el
-  dado dejó de ser un dibujo aparte para ser uno de los seis. Y **todo botón primario de página y
+  dado dejó de ser un dibujo aparte para ser uno de los seis. **Se fundió del todo en `IconoD20`
+  (`apps/web/src/ui/Iconos.tsx`) el 2026-09-17 (#8, tanda «cierre antes de 3A.2»)**: el envoltorio
+  ya no existe como fichero aparte. Y **todo botón primario de página y
   toda entrada de navegación llevan icono**; lo comprueba `ui/__tests__/botones-con-icono.test.tsx`,
   el barrido que encontró «+ Crear objeto» (un `+` de fuente, la misma infracción que esta regla
   ya prohibía para los glifos sueltos) y «Escribir una criatura» sin ninguno. Un icono que vive

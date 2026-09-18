@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { CreateCharacterInput, Visibility } from "@dnd/shared";
+import type { CreateCharacterFormInput, Visibility } from "@dnd/shared";
 import { useCreateCharacter, charactersKey } from "./hooks";
 import { CHARACTER_VISIBILITIES } from "./niveles";
 import { Button } from "../../ui/Button";
@@ -105,14 +105,13 @@ export function CharacterEditor({
     // here belonged to edit mode, and edit mode is gone.
     // D-CF-65: `level` ya no se manda. El esquema le pone `default(1)` y el servidor lo ignora
     // (E-RM-1) — el nivel de nacimiento lo decide `nivelInicial` de las reglas de la mesa, no
-    // quien crea la fila. El `as CreateCharacterInput` es solo el hueco del tipo: `z.infer`
-    // describe la SALIDA del `parse` (con el default ya puesto), no lo que hace falta mandar en
-    // la petición, y este esquema no exporta el tipo de entrada por separado.
-    const payload = {
+    // quien crea la fila. `CreateCharacterFormInput` es el tipo de ENTRADA del esquema, con
+    // `level` opcional (M-7).
+    const payload: CreateCharacterFormInput = {
       name,
       visibility,
       ...(trimmedBio ? { bio: trimmedBio } : {}),
-    } as CreateCharacterInput;
+    };
     let created;
     try {
       created = await create.mutateAsync(payload);

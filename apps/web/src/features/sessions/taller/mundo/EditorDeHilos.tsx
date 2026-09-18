@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "../../../../ui/Button";
-import { IconoMas, IconoPluma, IconoQuitar } from "../../../../ui/Iconos";
+import { IconoMas, IconoPluma, IconoPunta, IconoQuitar } from "../../../../ui/Iconos";
 import { ApiError } from "../../../../lib/api";
 import { IconoDeTipo } from "../../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../../entities/resumen";
@@ -9,7 +9,7 @@ import type { Entity } from "../../../entities/api";
 import { useCreateLink, useDeleteLink } from "../../../links/hooks";
 import { relacionesSugeridas } from "../../../links/relaciones";
 import type { Vecino } from "./arbolDelMundo";
-import { Punta } from "./Punta";
+import { normalizarTexto as normalizar } from "../../../../lib/texto";
 
 // **El editor de hilos** (Task 14 bis, D-CF-64): la lista de hilos de la ficha abierta —una fila
 // por hilo: ficha · rótulo · cambiar · quitar, con iconos dibujados— y el gesto de añadir uno
@@ -47,14 +47,6 @@ function mensajeDeError(error: unknown): string {
   return "Algo ha ido mal. Vuelve a intentarlo.";
 }
 
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 /**
  * Un desplegable con buscador: un botón que dice lo elegido, y al abrirlo un campo de búsqueda
  * sobre la lista. Con `permiteLibre`, lo escrito que no encaja con ninguna opción se ofrece como
@@ -69,6 +61,7 @@ function DesplegableConBuscador({
   onElegir,
   permiteLibre = false,
   vacio,
+  maxLongitudLibre,
 }: {
   etiqueta: string;
   etiquetaDeBusqueda: string;
@@ -79,6 +72,13 @@ function DesplegableConBuscador({
   permiteLibre?: boolean;
   /** Qué decir cuando no hay ninguna opción que ofrecer (antes de escribir nada). */
   vacio: string;
+  /**
+   * Revisión final del pulido (2026-09-13) — **el servidor corta el rótulo libre a esta
+   * longitud** (`CreateEntityLinkInput.label`, `@dnd/shared`); el cliente no lo dejaba ver hasta
+   * que el `POST` volvía. Con esto puesto, ni se deja teclear de más ni el corte pasa en
+   * silencio: al llegar se explica por qué.
+   */
+  maxLongitudLibre?: number;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState("");
@@ -119,7 +119,7 @@ function DesplegableConBuscador({
           {valor ?? placeholder}
         </span>
         <span className="text-muted">
-          <Punta abierta={abierto} />
+          <IconoPunta hacia={abierto ? "abajo" : "derecha"} />
         </span>
       </button>
       {abierto && (
@@ -137,10 +137,22 @@ function DesplegableConBuscador({
             autoFocus
             aria-label={etiquetaDeBusqueda}
             value={texto}
-            onChange={(e) => setTexto(e.target.value)}
+            onChange={(e) => {
+              const siguiente =
+                maxLongitudLibre !== undefined
+                  ? e.target.value.slice(0, maxLongitudLibre)
+                  : e.target.value;
+              setTexto(siguiente);
+            }}
+            maxLength={maxLongitudLibre}
             placeholder={etiquetaDeBusqueda}
             className="mb-s2 w-full rounded-radius-sm border border-muted bg-bg px-2 py-1 font-chrome text-chrome-sm text-text outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           />
+          {maxLongitudLibre !== undefined && texto.length >= maxLongitudLibre && (
+            <p className="mb-s2 px-1 font-chrome text-chrome-xs text-muted">
+              Como mucho {maxLongitudLibre} caracteres; el servidor corta ahí.
+            </p>
+          )}
           {filtradas.length === 0 && !ofreceLibre ? (
             <p className="px-1 font-chrome text-chrome-xs text-muted">
               {libre ? `Nada encaja con «${libre}».` : vacio}
@@ -269,7 +281,8 @@ export function EditorDeHilos({
     try {
       await crear.mutateAsync({ toId: destino.id, label });
       creado = true;
-      if (modo.tipo === "cambiar") await quitar.mutateAsync(modo.vecino.hiloId);
+      if (modo.tipo === "cambiar")
+        await quitar.mutateAsync({ id: modo.vecino.hiloId, otherEntityId: modo.vecino.id });
       cerrar();
     } catch (err) {
       const mensaje = mensajeDeError(err);
@@ -284,7 +297,10 @@ export function EditorDeHilos({
 
   const quitarHilo = (vecino: Vecino) => {
     setError(null);
-    quitar.mutate(vecino.hiloId, { onError: (err) => setError(mensajeDeError(err)) });
+    quitar.mutate(
+      { id: vecino.hiloId, otherEntityId: vecino.id },
+      { onError: (err) => setError(mensajeDeError(err)) },
+    );
   };
 
   return (
@@ -388,6 +404,7 @@ export function EditorDeHilos({
             valor={rotulo}
             opciones={sugeridas}
             permiteLibre
+            maxLongitudLibre={80}
             vacio="No hay sugerencias para este par: escribe la frase."
             onElegir={(o) => setRotulo(o.texto)}
           />

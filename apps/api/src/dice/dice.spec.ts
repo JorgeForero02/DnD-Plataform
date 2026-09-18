@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { MAX_DADOS_POR_TIRADA, dieRolledSchema, gameEventPayloadSchema } from "@dnd/shared";
 import {
   rollExpression,
   dadosTirados,
@@ -300,6 +302,75 @@ describe("el término constante tiene tope (ficha P2)", () => {
     } catch (e) {
       expect((e as DiceExpressionError).code).toBe("CONSTANTE_DEMASIADO_GRANDE");
     }
+  });
+});
+
+describe("contrato de `dice` (2026-09-17)", () => {
+  it("el tope del esquema cubre el peor caso del evaluador: términos × dados × relanzar una vez", () => {
+    expect(DICE_LIMITS.maxTerms * DICE_LIMITS.maxDicePerTerm * 2).toBeLessThanOrEqual(
+      MAX_DADOS_POR_TIRADA,
+    );
+  });
+
+  it("100d6r1 con todo unos produce 200 dados y el esquema los acepta", () => {
+    // Peor caso real: CADA tirada original y su relanzamiento salen 1, así los 100 dados
+    // relanzan y `rolled` guarda las dos caras de cada uno (200 llamadas al tirador). Un guion
+    // que solo cubra las primeras 100 llamadas deja a la mitad de los dados sin relanzar (su
+    // primera tirada ya cae después del corte) y nunca llega a 200: no es el peor caso.
+    const roller: Roller = () => 1;
+    const r = rollExpression("100d6r1", roller);
+    const dice = dadosTirados(r.terms);
+    expect(dice).toHaveLength(200);
+    expect(() => z.array(dieRolledSchema).max(MAX_DADOS_POR_TIRADA).parse(dice)).not.toThrow();
+
+    // El contrato completo del evento tampoco miente: `rolls`/`kept`/`dropped` comparten el
+    // mismo tope que `dice` (revisión final, #4) — 200 valores en cada uno debe pasar el
+    // esquema del payload `ABILITY_ROLL`, no solo el de `dieRolledSchema` suelto.
+    const doscientos = Array.from({ length: 200 }, () => 1);
+    expect(() =>
+      gameEventPayloadSchema.parse({
+        type: "ABILITY_ROLL",
+        expression: "100d6r1",
+        rolls: doscientos,
+        kept: doscientos,
+        dropped: [],
+        dice,
+        modifier: 0,
+        total: r.total,
+      }),
+    ).not.toThrow();
+  });
+
+  it("empate en kh: se conserva el primero en caer (sort estable), siempre el mismo", () => {
+    const r = rollExpression("2d20kh1", () => 15);
+    const dice = dadosTirados(r.terms);
+    expect(dice.map((d) => d.kept)).toEqual([true, false]);
+  });
+
+  it("relanzar: el físico descartado es el PRIMERO en caer, no el que empareje por valor", () => {
+    // `1d20r1` con el tirador sacando siempre 1: el primero se relanza (cae fuera) y el segundo,
+    // aunque tenga el mismo valor, es el que cuenta. Por valor son indistinguibles — por posición
+    // no: el evaluador ya sabe cuál es cuál, y `dadosTirados` solo debe repetirlo.
+    const r = rollExpression("1d20r1", () => 1);
+    const dice = dadosTirados(r.terms);
+    expect(dice).toEqual([
+      { sides: 20, value: 1, kept: false },
+      { sides: 20, value: 1, kept: true },
+    ]);
+  });
+
+  it("relanzar + kh combinados: cada físico se marca por su propia razón para caer", () => {
+    // `4d6r1kh3`: el primer dado sale 1, relanza y vuelve a salir 1 (se queda, aunque sea peor);
+    // los otros tres salen 6, 5, 4. `enJuego` queda [1, 6, 5, 4] y kh3 descarta el más bajo, que
+    // es ese mismo 1 relanzado — cae por relanzar Y por kh3, pero solo se cuenta una vez tachado.
+    const r = rollExpression("4d6r1kh3", tirador([1, 1, 6, 5, 4]));
+    const [t] = r.terms;
+    expect(t.rolled).toEqual([1, 1, 6, 5, 4]);
+    // La suma y el desglose por valor no cambian con este arreglo: sigue siendo el mismo cálculo.
+    expect(t.kept).toEqual([6, 5, 4]);
+    expect(t.dropped).toEqual([1, 1]);
+    const dice = dadosTirados(r.terms);
+    expect(dice.map((d) => d.kept)).toEqual([false, false, true, true, true]);
   });
 });
 

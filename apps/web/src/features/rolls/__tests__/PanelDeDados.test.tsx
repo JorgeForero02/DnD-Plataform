@@ -216,7 +216,7 @@ describe("PanelDeDados — tirar", () => {
     // dentro de `BandejaDeDados.tsx`), condicionado antes a `ofreceVentaja &&`. Ahora se queda,
     // apagado y con su motivo — ni el radiogroup ni el botón «Tirar» salen del documento.
     expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Normal" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
   });

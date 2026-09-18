@@ -157,6 +157,26 @@ describe("dar PG temporales a un PNJ", () => {
     expect(fijar).not.toHaveBeenCalled();
   });
 
+  // Ficha de la revisión final (2026-09-13): **`preguntando` no se reseteaba si la petición
+  // fallaba** — solo `onSuccess` lo cerraba. Con `onSettled`, tanto el éxito como el fallo cierran
+  // la pregunta: el siguiente «Dárselos» vuelve a preguntar en vez de arrancar con el diálogo ya
+  // abierto de una petición vieja.
+  it("si la petición falla, la pregunta se cierra y el error se lee; el siguiente «Dárselos» vuelve a preguntar", async () => {
+    vi.spyOn(api, "fetchSheet").mockResolvedValue(hoja(5));
+    const fijar = vi.spyOn(api, "setHp").mockRejectedValueOnce(new Error("Sin permiso"));
+    montar();
+
+    const darselos = await screen.findByRole("button", { name: "Dárselos" });
+    await waitFor(() => expect(darselos).not.toHaveAttribute("aria-disabled"));
+    fireEvent.change(screen.getByLabelText("PG temporales"), { target: { value: "8" } });
+    fireEvent.click(darselos);
+    fireEvent.click(await screen.findByRole("button", { name: /Quedarse con los 8 nuevos/ }));
+
+    expect(await screen.findByText("Sin permiso")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(fijar).toHaveBeenCalledTimes(1);
+  });
+
   it("«Dárselos» con el campo vacío: sigue habilitado, dice «Escribe cuántos» y no manda nada", async () => {
     vi.spyOn(api, "fetchSheet").mockResolvedValue(hoja(0));
     const fijar = vi.spyOn(api, "setHp");

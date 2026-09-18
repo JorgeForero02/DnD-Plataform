@@ -87,6 +87,8 @@ describe("Cabecera — lo que cambia el turno, siempre a la vista", () => {
   it("reúne los cinco números, las condiciones como chips y el aviso de elección pendiente", async () => {
     renderCabecera({ disposicion: "pagina" });
     const resumen = await screen.findByRole("region", { name: "resumen de combate" });
+    // «Vel.» y no «Vel. (pies)»: la unidad baja a la tercera línea de la casilla — motivo en
+    // Cabecera.tsx (ronda 2026-09-12).
     for (const etiqueta of ["CA", "Inic.", "Vel.", "PG", "Comp."]) {
       expect(within(resumen).getByText(etiqueta)).toBeInTheDocument();
     }

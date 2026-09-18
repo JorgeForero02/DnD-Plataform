@@ -14,6 +14,7 @@ import { Actividades } from "../Actividades";
 
 const FURIA: CharacterSheetActivity = {
   tipo: "utilidad",
+  name: "Furia",
   activation: { coste: "BONUS" },
   consumption: [{ recurso: "rage", cantidad: 1 }],
   duration: { valor: 1, unidad: "minuto", concentracion: false },

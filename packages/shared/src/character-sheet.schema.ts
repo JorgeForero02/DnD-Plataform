@@ -306,4 +306,13 @@ export interface ResolvedActivityUses {
 export type CharacterSheetActivity = Actividad & {
   key: string;
   usos?: ResolvedActivityUses;
+  /**
+   * Tarea 7 de 3A.2 («elegir, lanzar y usar») — el nombre del rasgo que concede esta actividad
+   * («Furia»), ya en español y nunca la clave del catálogo («rage»). Hasta esta tarea
+   * `Actividades.tsx` traducía la clave a mano con su propia tabla (`NOMBRE_ACTIVIDAD`), y una
+   * segunda tabla de nombres es justo la clase de vocabulario duplicado que este proyecto evita
+   * en todas partes: el nombre YA vive en `ClassFeature.name` (`resolve.ts`, `concederActividadDe`)
+   * y esto es solo copiarlo a la actividad que ese mismo rasgo concede.
+   */
+  name: string;
 };

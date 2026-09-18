@@ -2,6 +2,7 @@ import type {
   AbilityKey,
   AbilityRollAttemptDto,
   AttackResolution,
+  AttackVerdict,
   ChangeHpInput,
   CharacterSheetActivity,
   CreateRollInput,
@@ -100,6 +101,12 @@ export interface ResolvedFeatureDto {
   labelKey: string;
   /** Ya en español — lo pone el catálogo (`FeatureGrant.name`), no se traduce aquí. */
   name: string;
+  /**
+   * Tarea 7 de 3A.2 — la prosa del SRD 5.1, si el catálogo la trae (`ResolvedFeature.textEs`,
+   * `apps/api/src/rules/catalog/resolve.ts`). `null` = se buscó y no hay; `undefined` = un rasgo
+   * de raza, que no pasa por el enriquecimiento y nunca declara este campo.
+   */
+  textEs?: string | null;
 }
 
 export interface SpellSlotDto {
@@ -730,6 +737,16 @@ export interface UsarActividadResultado {
   aviso?: string;
   cd?: number;
   traza?: TraceStep[];
+  /**
+   * Tarea 7 de 3A.2 — lo que devuelve `usar()` cuando la actividad es un conjuro con ataque o con
+   * daño directo (`ActivitiesService`, Task 4/5). `rollEventIds` son los sucesos de las tiradas
+   * (el ataque y, si impacta, el daño); `fueraDeRegla` avisa de una infracción sin bloquear
+   * (`SIN_ESPACIO` significa que NO se lanzó — el servidor no gastó nada); `verdict` solo viene
+   * con un conjuro de ataque contra un objetivo.
+   */
+  rollEventIds?: string[];
+  fueraDeRegla?: Array<"SIN_ESPACIO" | "NO_PREPARADO">;
+  verdict?: AttackVerdict;
 }
 
 export function usarActividad(

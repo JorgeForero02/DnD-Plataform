@@ -11,6 +11,7 @@ import { EmptyState, FilterChip } from "../../ui/Collection";
 import { fieldControlClass } from "../../ui/Field";
 import { normalizarTexto } from "../../lib/texto";
 import { FilaDeConjuro } from "./FilaDeConjuro";
+import { LanzarConjuro } from "./LanzarConjuro";
 import { useSetSpellState, useSpellbook } from "./hooks";
 
 // Tarea 6 de 3A.2 («elegir, lanzar y usar») — la pestaña «Conjuros»: elegir. Dos zonas (spec §5):
@@ -152,8 +153,19 @@ export function LibroDeConjuros({
                         }
                       : undefined
                   }
-                  // Hueco de la Task 7: el botón «Lanzar» se añade aquí. Vacío hasta entonces.
-                  accionPrincipal={undefined}
+                  // Task 7: el botón «Lanzar», gated por el mismo `puedeEditar` que la acción de
+                  // preparar — dueño o DM, igual que el resto de controles que escriben sobre
+                  // este personaje.
+                  accionPrincipal={
+                    puedeEditar ? (
+                      <LanzarConjuro
+                        campaignId={campaignId}
+                        characterId={characterId}
+                        entrada={entrada}
+                        espacios={data.espacios}
+                      />
+                    ) : undefined
+                  }
                 />
               );
             })}

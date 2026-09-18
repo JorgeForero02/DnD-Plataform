@@ -466,6 +466,7 @@ describe("Actividades llega a la hoja de verdad (importante I1)", () => {
       activities: [
         {
           tipo: "utilidad",
+          name: "Furia",
           activation: { coste: "BONUS" },
           consumption: [{ recurso: "rage", cantidad: 1 }],
           duration: { valor: 1, unidad: "minuto", concentracion: false },

@@ -85,6 +85,14 @@ export interface ResolvedFeature {
   sourceKey: string;
   labelKey: string;
   name: string;
+  /**
+   * Tarea 7 de 3A.2 — la prosa del SRD 5.1 de este rasgo, si `enriquecerClases` (`./generado`,
+   * T3) la encontró. `null` es el mismo vocabulario que ya usa `ClassFeature.textEs`: «se buscó y
+   * no hay» (el conversor no encontró traducción, o este rasgo es de los que solo llevan nombre y
+   * nivel a mano — ver la cabecera de `ClassFeature`). `undefined` no se usa aquí a propósito:
+   * `RasgosYAptitudes` (web) necesita distinguir «sin texto» de «este campo no se ha mirado».
+   */
+  textEs?: string | null;
 }
 
 export interface ResolvedBuild {
@@ -436,6 +444,10 @@ export function resolveBuild(
     activities.push({
       ...actividad,
       key: feature.key,
+      // Tarea 7 — el nombre viaja SIEMPRE del rasgo que concede, nunca de `actividad` (que no lo
+      // trae: `Actividad`, en `activity.schema.ts`, no declara `name`, es la unión sobre `tipo`).
+      // Va después del spread para que nada dentro de `actividad` pueda pisarlo.
+      name: feature.name,
       usos: usos
         ? {
             max: sinTope ? null : resolverOrigen(usos.max, ctxDeConcesiones).valor,
@@ -454,6 +466,7 @@ export function resolveBuild(
         sourceKey: characterClass.key,
         labelKey: `class.${characterClass.key}.${feature.key}`,
         name: feature.name,
+        textEs: feature.textEs ?? null,
       });
       concederActividadDe(feature);
     }
@@ -483,6 +496,7 @@ export function resolveBuild(
           sourceKey: subclass.key,
           labelKey: `subclass.${subclass.key}.${feature.key}`,
           name: feature.name,
+          textEs: feature.textEs ?? null,
         });
         // Mismo mecanismo que arriba, y de propósito: una concesión de subclase solo puede
         // llegar hasta aquí si `subclass` ya es la elegida — el filtro de A8, no uno nuevo.

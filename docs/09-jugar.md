@@ -112,10 +112,6 @@ No son sorpresas y no van a aparecer solas a mitad de partida; cada uno tiene su
   el nivel 6** (`muertoPorAgotamiento`) y en los niveles 1 y 3 **sugiere desventaja** en pruebas,
   ataques y salvaciones (`suggested-roll-mode.ts`); lo que sigue arbitrándose es aplicar esa
   desventaja cuando el jugador no acepta la sugerencia.
-- **Los conjuros y las aptitudes con nombre.** Existen los espacios de conjuro y el nombre de cada
-  aptitud de clase, y **no existe ni un hechizo**: un mago ve sus casillas vacías y un bárbaro de
-  nivel 5 pega igual que un guerrero. Es el **paso 3** —el catálogo—, no la fase 3. Mientras tanto
-  se juegan de palabra.
 - **Un jugador no puede curar a otro ni pedirle una salvación** (ficha `P2-4`). Está decidido cómo
   se arregla y aún no está construido: hoy lo hace el DM.
 - **El daño de una actividad de salvación no se aplica al responderla** (ficha `P2-5`). El servidor
@@ -202,6 +198,21 @@ merece la pena contar.
   **el tope avisa cuando te pasas, pero no te lo impide** —ningún botón se apaga por eso—: la mesa
   manda, y a veces una emergencia justifica preparar de más. Los trucos se conocen, no se preparan
   cada día.
+- **Lanzar.** Cada conjuro «Listo para lanzar» tiene su botón «Lanzar». Si no necesita objetivo
+  y no puede pagarse con un espacio superior, se lanza al pulsarlo y ya está. Si pide uno o
+  varios objetivos, se abre una lista de a quién apuntar —en combate, primero el bando contrario;
+  fuera de combate, tú mismo y quien más se sienta a la mesa—; con «un objetivo» elegirlo ya
+  lanza, con «varios» los marcas y pulsas «Lanzar sobre N». Si el conjuro puede pagarse con un
+  espacio de más nivel del que le toca, aparece «¿Con qué espacio?» con una opción por nivel que
+  te queda —por defecto, el suyo propio—. Lo que responde el servidor se ve ahí mismo: un aviso
+  si algo se sale de regla (lanzarlo sin tenerlo preparado, por ejemplo, se avisa y se lanza
+  igual), o «sin espacios — no se lanzó» si de verdad no había con qué pagarlo, y esta vez sí para
+  el lanzamiento. Con ataque o daño, la línea queda en el registro de la sesión igual que
+  cualquier otra tirada, y si impacta, el daño espera al DM en su bandeja como el de cualquier
+  arma.
+- **Rasgos y aptitudes.** Los que el catálogo trae con la prosa del SRD se abren con un clic, como
+  un conjuro; los que solo tienen nombre y nivel se quedan en una línea — no hay un triángulo que
+  desplegar si no hay nada que leer.
 
 ## Lo que verás y lo que no
 

@@ -235,9 +235,15 @@ test("la barra de acciones: apuntar desde el elenco, lanzar contra el chip, la f
   // --- Abre «Conjuros», «Lanzar» Proyectil mágico ---
   await barra.getByRole("button", { name: /^Conjuros/ }).click();
   await maga.getByRole("button", { name: "Lanzar Proyectil mágico" }).click();
-  // Con el chip puesto, el panel ya no pregunta a quién: un único botón confirma sobre el
-  // objetivo apuntado — el resto (nivel de espacio) sigue con su valor por defecto.
-  await maga.getByRole("button", { name: "Lanzar sobre Goblin" }).click();
+  // **Fix round 1 — «Lanzar sobre 1», no «Lanzar sobre Goblin».** «Proyectil mágico» tiene
+  // `objetivos: "varios"` (reparte sus dardos), no «uno»: el chip pre-marca la casilla de
+  // «Goblin» (`objetivoInicial`, valor inicial de `objetivosVarios` en `LanzarConjuro.tsx`), pero
+  // el botón de confirmar sigue siendo el de siempre — cuenta objetivos marcados, no los nombra
+  // («Lanzar sobre N»). El objetivo-por-nombre solo existe para `objetivos: "uno"`, que no es
+  // este conjuro. Se comprueba primero que la casilla ya llegó marcada (el chip hizo su trabajo
+  // sin que la maga tuviera que tocarla) y luego se confirma.
+  await expect(maga.getByRole("checkbox", { name: "Goblin" })).toBeChecked();
+  await maga.getByRole("button", { name: "Lanzar sobre 1" }).click();
 
   // --- En el hilo de la maga: «lanza Proyectil mágico», y una tarjeta pendiente en el DM ---
   const hiloMaga = maga.getByRole("list", { name: "Sucesos de la sesión" });

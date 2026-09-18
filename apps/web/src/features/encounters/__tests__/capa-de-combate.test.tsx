@@ -406,15 +406,15 @@ describe("la economía del turno propio llega a la tira, leída del encuentro (c
   it("con mi combatiente en su turno y todo en reposo, la tira dice «disponible» en los tres costes", async () => {
     montarTira();
 
-    const economia = await screen.findByRole("region", { name: "Lo que te queda del turno" });
-    expect(within(economia).getByText("Acción: disponible")).toBeInTheDocument();
-    expect(within(economia).getByText("Acción adicional: disponible")).toBeInTheDocument();
+    const economia = await screen.findByRole("status", { name: "Economía del turno" });
+    expect(within(economia).getByText("acción: disponible")).toBeInTheDocument();
+    expect(within(economia).getByText("acción adicional: disponible")).toBeInTheDocument();
     // La velocidad tarda un sondeo aparte (`useCharacterSheet`): se espera su texto, no se lee
     // en el primer render.
-    await waitFor(() => expect(within(economia).getByText("30 pies")).toBeInTheDocument());
+    await waitFor(() => expect(within(economia).getByText("30/30 pies")).toBeInTheDocument());
   });
 
-  it("**la fuente es el combatiente, no un estado del cliente**: si `get()` dice gastado, la tira dice «usada»", async () => {
+  it("**la fuente es el combatiente, no un estado del cliente**: si `get()` dice gastado, la tira dice «gastada»", async () => {
     const conAccionGastada: Encounter = {
       ...ENCUENTRO,
       combatants: ENCUENTRO.combatants.map((c) =>
@@ -423,9 +423,9 @@ describe("la economía del turno propio llega a la tira, leída del encuentro (c
     };
     montarTira(conAccionGastada);
 
-    const economia = await screen.findByRole("region", { name: "Lo que te queda del turno" });
-    expect(within(economia).getByText("Acción: usada")).toBeInTheDocument();
-    expect(within(economia).getByText("Acción adicional: usada")).toBeInTheDocument();
+    const economia = await screen.findByRole("status", { name: "Economía del turno" });
+    expect(within(economia).getByText("acción: gastada")).toBeInTheDocument();
+    expect(within(economia).getByText("acción adicional: gastada")).toBeInTheDocument();
   });
 });
 

@@ -159,9 +159,9 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   });
 
   // --- La economía del turno, sobre la tira: todo disponible antes de usar la Furia ---
-  const economia = page.getByRole("region", { name: "Lo que te queda del turno" });
+  const economia = page.getByRole("status", { name: "Economía del turno" });
   await expect(economia).toBeVisible({ timeout: 10_000 });
-  await expect(economia.getByText("Acción adicional: disponible")).toBeVisible();
+  await expect(economia.getByText("acción adicional: disponible")).toBeVisible();
 
   // --- Abrir la hoja DESDE LA MESA, y pulsar Furia ---
   await page.getByRole("button", { name: /^Hoja/ }).click();
@@ -199,7 +199,7 @@ test("un bárbaro pulsa Furia en su hoja: se le gasta la acción adicional y un 
   // --- Cerrar la hoja: la economía del turno, en la mesa, refleja el gasto ---
   await page.keyboard.press("Escape");
   await expect(cajonDeLaHoja).toBeHidden();
-  await expect(economia.getByText("Acción adicional: usada")).toBeVisible({ timeout: 10_000 });
+  await expect(economia.getByText("acción adicional: gastada")).toBeVisible({ timeout: 10_000 });
 
   // --- El daño del hacha, con la Furia activa: se tira de verdad y queda escrito en el registro ---
   await page.getByRole("button", { name: /^Hoja/ }).click();

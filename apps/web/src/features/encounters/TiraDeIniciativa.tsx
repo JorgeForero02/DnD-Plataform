@@ -260,6 +260,7 @@ export function TiraDeIniciativa({
         sessionId={sessionId}
         encuentro={encuentro}
         personajes={personajes}
+        esDm={esDm}
       />
 
       {/* **Si pasar turno falla, se dice.** No tenerlo fue un hueco real y lo destapó el
@@ -364,11 +365,14 @@ function MiEconomia({
   sessionId,
   encuentro,
   personajes,
+  esDm,
 }: {
   campaignId: string;
   sessionId: string;
   encuentro: Encounter;
   personajes: Character[];
+  /** Solo el DM ve «Corregir» dentro de `EconomiaDeAccion` (D-CF-145). */
+  esDm: boolean;
 }) {
   const miId = useAuthStore((s) => s.user?.id);
   const miPersonaje = personajes.find((c) => c.ownerId === miId);
@@ -403,6 +407,7 @@ function MiEconomia({
       velocidad={hoja?.effectiveSpeeds?.walk?.total}
       excedido={excedido}
       gastando={gastar.isPending}
+      esDm={esDm}
       onGastar={({ coste, cantidad }) => {
         gastar.mutate(
           { encounterId: encuentro.id, combatantId: miCombatiente.id, coste, cantidad },

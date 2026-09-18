@@ -167,6 +167,13 @@ merece la pena contar.
 - **Ayudar cuesta tu acción del turno.** Es la regla del manual —Ayudar es una acción— y desde el
   2026-09-07 la mesa la cobra: se descuenta y se anuncia. **Fuera de combate no cuesta nada**,
   porque sin turnos no hay economía que gastar.
+- **La economía del turno es estado que se gasta al actuar, no un botón que tú aprietas**
+  (D-CF-145). Sobre la tira de iniciativa ves tres marcas —acción, acción adicional, reacción— y
+  tus pies de movimiento; atacar, lanzar un conjuro o usar una actividad las gasta solas, por la
+  misma puerta que resuelve la acción. **Tú ya no tienes «Usar mi…»**: si haces algo que no pasa
+  por ninguna de esas puertas —hablar, usar un objeto de la ficción—, se lo dices al DM, que es
+  quien conserva «Corregir» para marcarlo a mano. El campo de pies sigue siendo tuyo: el
+  movimiento no tiene puerta propia que lo gaste.
 - **Un modificador temporal lo pone el DM**, no tú. Ves los tuyos activos y puedes quitártelos.
   Lo que sí haces solo: **beberte una poción de tu inventario aplica sus efectos** sin pedirle
   nada a nadie.

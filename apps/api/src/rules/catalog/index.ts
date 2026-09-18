@@ -28,6 +28,8 @@ export * from "./gear";
 export * from "./items-srd";
 export * from "./choices";
 export * from "./spell-slots";
+export * from "./spell-knowledge";
+export * from "./spell-starters";
 export * from "./resolve";
 export * from "./difficulty";
 

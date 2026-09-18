@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CloseSessionInput, StampSessionNoteInput, StartSessionInput } from "@dnd/shared";
+import type {
+  CloseSessionInput,
+  DamageExtraKey,
+  StampSessionNoteInput,
+  StartSessionInput,
+} from "@dnd/shared";
 import { fetchSessions, createSession, updateSession, deleteSession } from "./api";
 // Espacio de nombres para que los espías de vitest intercepten las llamadas internas
 // (misma trampa documentada en docs/04-convenciones.md).
@@ -189,6 +194,22 @@ export function useApplyDamage(campaignId: string) {
     onSuccess: (_data, v) => {
       void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
       void qc.invalidateQueries({ queryKey: sheetKey(campaignId, v.targetCharacterId) });
+      void qc.invalidateQueries({ queryKey: damagePreviewKey(campaignId, v.rollEventId) });
+    },
+  });
+}
+
+/**
+ * Task 8 (3A.2) — marcar la casilla de un extra. Al conseguirlo invalida el preview: es la
+ * única fuente de `extrasDisponibles`/`extras`, y sin invalidarlo la casilla recién marcada
+ * seguiría ofreciéndose (mismo motivo que `useApplyDamage` invalida el suyo).
+ */
+export function useAddDamageExtra(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { rollEventId: string; key: DamageExtraKey }) =>
+      sessionsApi.addDamageExtra(campaignId, v.rollEventId, { key: v.key }),
+    onSuccess: (_data, v) => {
       void qc.invalidateQueries({ queryKey: damagePreviewKey(campaignId, v.rollEventId) });
     },
   });

@@ -5,6 +5,7 @@ import { costeSchema } from "./action-economy.schema";
 import { dieRolledSchema } from "./roll.schema";
 import { MAX_DADOS_POR_TIRADA } from "./dice-limits";
 import { characterSpellStateSchema } from "./spellbook.schema";
+import { damageExtraSchema } from "./damage-extra.schema";
 
 // Tarea 2A.5 — el log de partida.
 //
@@ -345,6 +346,15 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
          * `ATTACK_RESOLVED` citado — compatibilidad con filas escritas antes de esta tarea.
          */
         reason: z.string().min(1).max(200).optional(),
+        /**
+         * Task 8 (3A.2) — el daño extra al impactar que el jugador marcó sobre ESTA tirada
+         * (Ataque furtivo, Castigo divino): cada uno con su propio dado ya tirado
+         * (`damageExtraSchema`), colgando aquí para que `applyPendingDamage` los sume al
+         * aplicar. Máximo 10 — no hay ninguna regla del SRD que dé más de un extra de daño por
+         * ataque hoy, y es el mismo tope defensivo que ya usa `MAX_DADOS_POR_TIRADA` en otros
+         * arrays de esta tirada.
+         */
+        extras: z.array(damageExtraSchema).max(10).optional(),
       })
       .optional(),
   }),

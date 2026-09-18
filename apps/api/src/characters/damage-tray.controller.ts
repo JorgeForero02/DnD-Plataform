@@ -1,5 +1,7 @@
-import { Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { addDamageExtraSchema, type AddDamageExtraInput } from "@dnd/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { CharacterSheetService } from "./character-sheet.service";
 
 // Tarea 3 de la puerta de efectos (spec §4 bis §4b.4-§4b.7, E-PE-2). **La bandeja de daño**: el
@@ -33,5 +35,20 @@ export class DamageTrayController {
     @Param("rollEventId") rollEventId: string,
   ) {
     return this.sheets.applyPendingDamage(req.user.id, campaignId, rollEventId);
+  }
+
+  /**
+   * Task 8 (3A.2) — marcar Ataque furtivo o Castigo divino sobre esta tirada de daño pendiente.
+   * Con cuerpo, a diferencia de las dos de arriba: la clave del extra (y, para Castigo divino,
+   * el nivel de espacio) no viaja en la URL.
+   */
+  @Post("damage-extra")
+  addDamageExtra(
+    @Req() req: { user: { id: string } },
+    @Param("campaignId") campaignId: string,
+    @Param("rollEventId") rollEventId: string,
+    @Body(new ZodValidationPipe(addDamageExtraSchema)) body: AddDamageExtraInput,
+  ) {
+    return this.sheets.addDamageExtra(req.user.id, campaignId, rollEventId, body);
   }
 }

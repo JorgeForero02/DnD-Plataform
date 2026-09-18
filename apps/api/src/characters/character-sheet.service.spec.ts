@@ -4240,8 +4240,8 @@ describe("damagePreview — la bandeja de daño, antes de pulsar nada (spec §4b
 
     const preview = await service.damagePreview("dm1", "c1", "roll1");
 
-    expect(preview.resulting.taken).toBe(0);
-    expect(preview.resulting.modifier).toBe("immune");
+    expect(preview.resulting!.taken).toBe(0);
+    expect(preview.resulting!.modifier).toBe("immune");
   });
 
   it("sin modificadores para ese tipo de daño, el modificador es null", async () => {
@@ -4251,8 +4251,8 @@ describe("damagePreview — la bandeja de daño, antes de pulsar nada (spec §4b
 
     const preview = await service.damagePreview("dm1", "c1", "roll1");
 
-    expect(preview.resulting.modifier).toBeNull();
-    expect(preview.resulting.taken).toBe(11);
+    expect(preview.resulting!.modifier).toBeNull();
+    expect(preview.resulting!.taken).toBe(11);
   });
 
   it("un espectador que no es dueño ni DM del objetivo recibe 404, nunca 403 (spec §4b.5)", async () => {
@@ -4438,6 +4438,212 @@ describe("applyPendingDamage — el aplicar de un clic, idempotente (spec §4b.6
     await expect(service.applyPendingDamage("p1", "c1", "roll1")).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+});
+
+// Task 8 (3A.2) — el daño extra al impactar: Ataque furtivo (pícaro) y Castigo divino (paladín).
+// El jugador lo marca sobre SU tirada de daño pendiente; el DM lo confirma al aplicar la
+// bandeja (D-CF-129).
+describe("addDamageExtra — el extra que el jugador marca sobre su daño pendiente (Task 8, 3A.2)", () => {
+  /** El `ABILITY_ROLL` con `pendingDamage` cuyo sujeto es el propio atacante. */
+  function conPendingDamage(
+    prisma: { gameEvent: { findFirst: jest.Mock } },
+    overrides: Record<string, unknown> = {},
+  ) {
+    prisma.gameEvent.findFirst.mockResolvedValue({
+      actorUserId: "p1",
+      subjectId: "atacante1",
+      subjectType: "character",
+      payload: {
+        pendingDamage: {
+          targetCharacterId: "goblin1",
+          attackResolvedEventId: "ar1",
+          damageType: "SLASHING",
+          amount: 7,
+          ...overrides,
+        },
+      },
+    });
+  }
+
+  it("un pícaro nivel 3 marca Ataque furtivo: 2d6, sin gastar ningún recurso", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    (prisma as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+    rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 7 });
+
+    const res = await service.addDamageExtra("p1", "c1", "roll1", { key: "sneak-attack" });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "2d6", characterId: "atacante1" }),
+      {},
+    );
+    expect(res).toEqual({
+      key: "sneak-attack",
+      label: "Ataque furtivo (2d6)",
+      amount: 7,
+      rollEventId: "roll-extra",
+    });
+  });
+
+  it("un pícaro nivel 5 marca Ataque furtivo: 3d6 (tabla de escala del SRD)", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 5 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    (prisma as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+    rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 10 });
+
+    await service.addDamageExtra("p1", "c1", "roll1", { key: "sneak-attack" });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "3d6" }),
+      {},
+    );
+  });
+
+  it("un paladín con nivelDeEspacio:2 marca Castigo divino: 3d8 y consume spell-slot-2", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "paladin", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    (prisma as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+    rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 12 });
+    const espacio = { id: "res1", label: "Espacio de nivel 2", current: 2, max: 3 };
+    let txCapturado: { characterResource: { update: jest.Mock } } | undefined;
+    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        $queryRaw: jest.fn().mockResolvedValue([espacio]),
+        characterResource: { update: jest.fn().mockResolvedValue({}) },
+      };
+      txCapturado = tx;
+      return fn(tx);
+    });
+
+    const res = await service.addDamageExtra("p1", "c1", "roll1", {
+      key: "divine-smite",
+      nivelDeEspacio: 2,
+    });
+
+    expect(rolls.roll).toHaveBeenCalledWith(
+      "p1",
+      "c1",
+      expect.objectContaining({ expression: "3d8" }),
+      {},
+    );
+    expect(txCapturado?.characterResource.update).toHaveBeenCalledWith({
+      where: { id: "res1" },
+      data: { current: 1 },
+    });
+    expect(res.label).toBe("Castigo divino (3d8)");
+  });
+
+  it("marcar dos veces la MISMA clave: la segunda es 409", async () => {
+    const { service, prisma, membership } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma, {
+      extras: [
+        { key: "sneak-attack", label: "Ataque furtivo (2d6)", amount: 7, rollEventId: "r0" },
+      ],
+    });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.addDamageExtra("p1", "c1", "roll1", { key: "sneak-attack" }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("sobre una tirada ya aplicada, 409 — no llega a tirar ni a gastar nada", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma, { appliedEventId: "hp1" });
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.addDamageExtra("p1", "c1", "roll1", { key: "sneak-attack" }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(rolls.roll).not.toHaveBeenCalled();
+  });
+
+  it("quien no es dueño del atacante ni DM: 403", async () => {
+    const { service, prisma, membership } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.addDamageExtra("otro-jugador", "c1", "roll1", { key: "sneak-attack" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("el DM también puede marcarlo, en nombre de quien tiró", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "rogue", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "DM" });
+    (prisma as unknown as { $executeRaw: jest.Mock }).$executeRaw = jest.fn().mockResolvedValue(1);
+    rolls.roll.mockResolvedValue({ revealed: true, eventId: "roll-extra", total: 7 });
+
+    await expect(
+      service.addDamageExtra("dm1", "c1", "roll1", { key: "sneak-attack" }),
+    ).resolves.toMatchObject({ key: "sneak-attack" });
+  });
+
+  it("un guerrero (sin el rasgo) recibe 400 con su nombre", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({
+      id: "atacante1",
+      ownerId: "p1",
+      classKey: "fighter",
+      level: 3,
+      name: "Thorin",
+    });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+
+    await expect(
+      service.addDamageExtra("p1", "c1", "roll1", { key: "sneak-attack" }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "Thorin no tiene Ataque furtivo.",
+    });
+    expect(rolls.roll).not.toHaveBeenCalled();
+  });
+
+  it("un paladín sin espacios de ese nivel: 409, sin llegar a tirar el extra", async () => {
+    const { service, prisma, membership, rolls } = montar();
+    const atacante = personaje({ id: "atacante1", ownerId: "p1", classKey: "paladin", level: 3 });
+    prisma.character.findFirst.mockResolvedValue(atacante);
+    conPendingDamage(prisma);
+    membership.getMembership.mockResolvedValue({ role: "PLAYER" });
+    prisma.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        $queryRaw: jest
+          .fn()
+          .mockResolvedValue([{ id: "res1", label: "Espacio de nivel 2", current: 0, max: 3 }]),
+        characterResource: { update: jest.fn() },
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      service.addDamageExtra("p1", "c1", "roll1", { key: "divine-smite", nivelDeEspacio: 2 }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(rolls.roll).not.toHaveBeenCalled();
   });
 });
 

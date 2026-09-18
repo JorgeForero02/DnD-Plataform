@@ -170,6 +170,27 @@ describe("LanzarConjuro — el selector de espacio, sin lista de objetivos de po
     fireEvent.click(screen.getByRole("button", { name: "Lanzar Escudo" }));
     expect(screen.queryByText("¿Con qué espacio?")).not.toBeInTheDocument();
   });
+
+  // Fix round 3 — el conversor del catálogo no captura «un dardo más por nivel» de Proyectil
+  // mágico, así que su `escalaPorEspacio` real es `false` aunque el SRD sí escale. El selector
+  // tiene que aparecer IGUAL (hay un espacio de nivel 2 con usos) — la condición de visibilidad
+  // nunca fue `escalaPorEspacio`, solo la frase de cada opción cambia con él, y sin escalado las
+  // dos opciones (la propia incluida) dicen lo mismo: «igual que a nivel N».
+  it("sin escalaPorEspacio pero con espacios de nivel 2, el grupo aparece igual y las dos opciones dicen «igual que a nivel 1»", async () => {
+    vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar({ ...PROYECTIL, escalaPorEspacio: false }, [
+      { nivel: 1, actual: 2, max: 4 },
+      { nivel: 2, actual: 2, max: 2 },
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Proyectil mágico" }));
+    expect(
+      await screen.findByRole("radio", { name: "Nivel 1 igual que a nivel 1 (quedan 2)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Nivel 2 igual que a nivel 1 (quedan 2)" }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("LanzarConjuro — objetivos «varios», en combate", () => {

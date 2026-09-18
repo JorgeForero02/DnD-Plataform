@@ -35,10 +35,20 @@ export interface AudienciaDeLanzamiento {
   nombre: string;
 }
 
+/**
+ * Fix round 3 — **sin `escalaPorEspacio`, TODAS las opciones dicen «igual que a nivel N»,
+ * incluida la propia.** La primera versión saltaba esa frase para `nivel === entrada.level`
+ * («quedan X» a secas) razonando que un conjuro «igual a sí mismo» no dice nada — pero eso
+ * confundía «esta opción no cambia nada» (cierto para CUALQUIER nivel de un conjuro que no
+ * escala, el propio incluido) con «esta opción es el valor por defecto». El orquestador pidió el
+ * texto uniforme; con él, la fila entera de opciones se lee de corrido sin tener que adivinar por
+ * qué la primera calla lo que las demás sí dicen.
+ */
 function fraseDeEspacio(entrada: SpellbookEntry, nivel: number, actual: number): string {
-  if (nivel === entrada.level) return `quedan ${actual}`;
-  if (!entrada.escalaPorEspacio) return `igual que a nivel ${entrada.level} (quedan ${actual})`;
-  return `escala con el espacio (quedan ${actual})`;
+  const cantidad = `(quedan ${actual})`;
+  if (!entrada.escalaPorEspacio) return `igual que a nivel ${entrada.level} ${cantidad}`;
+  if (nivel === entrada.level) return cantidad;
+  return `escala con el espacio ${cantidad}`;
 }
 
 export function LanzarConjuro({
@@ -70,6 +80,13 @@ export function LanzarConjuro({
   const nivelesDisponibles = espacios
     .filter((e) => e.nivel >= entrada.level && e.actual > 0)
     .sort((a, b) => a.nivel - b.nivel);
+  // **El selector aparece por haber un espacio superior con usos, nunca por `escalaPorEspacio`.**
+  // Elegir un espacio mayor sin escalado sigue siendo legal y a veces necesario (sin espacios de
+  // nivel 1, se lanza con uno de nivel 2) — `escalaPorEspacio` solo decide QUÉ DICE cada opción
+  // (`fraseDeEspacio`), nunca si el grupo se pinta. Fix round 3, D-CF (Proyectil mágico): el
+  // conversor del catálogo no captura «un dardo más por nivel», así que `escalaPorEspacio` es
+  // `false` para un conjuro que en el SRD sí escala — un motivo más para no usarlo aquí como
+  // condición de visibilidad, solo como condición de texto.
   const mostrarSelectorDeEspacio =
     entrada.level >= 1 && espacios.some((e) => e.nivel > entrada.level && e.actual > 0);
   const [nivelDeEspacio, setNivelDeEspacio] = useState<number>(

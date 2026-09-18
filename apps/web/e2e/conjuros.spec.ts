@@ -181,11 +181,14 @@ test("Conjuros: 6 de 6 en el libro, preparar dos, conocer un truco, y «Fuera de
 
   // **Arreglo previo a la Task 7 (paso 0b), medido en el navegador, no en `jsdom`.** A 1280 px
   // la fila de «Bola de fuego» (nombre + nivel·escuela + «Fuera del libro» + «Añadir al libro»)
-  // tiene que caber en una sola línea (`FilaDeConjuro.tsx`, regla vinculante de interfaz): la
-  // altura de una fila de una sola línea con este tipo de letra ronda los 24-32 px, así que 48 px
-  // deja margen sin dejar pasar la regresión de dos líneas que sí medía el doble.
+  // tiene que caber en una sola línea (`FilaDeConjuro.tsx`, regla vinculante de interfaz).
+  // **Umbral 56, no 48 (fix round 3).** El primer tope (48) se puso a ojo; medido de verdad, una
+  // fila de una sola línea con sus chips y el `py-s2` de la propia `<li>` ronda los **50 px**
+  // (el orquestador la vio a 50,5 tras el arreglo del fix round 2), y una fila envuelta a dos
+  // líneas (la regresión que esto vigila) ronda los **78 px** — casi el doble. 56 deja margen
+  // sobre el caso de una línea sin dejar pasar la de dos.
   const cajaBola = await filaBola.boundingBox();
-  expect(cajaBola?.height ?? Infinity).toBeLessThanOrEqual(48);
+  expect(cajaBola?.height ?? Infinity).toBeLessThanOrEqual(56);
 
   await page.screenshot({ path: "e2e-resultados/conjuros-1280.png", fullPage: true });
 

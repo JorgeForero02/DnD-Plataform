@@ -113,6 +113,26 @@ async function montarMaga(dm: Page, jugadora: Page, campaignId: string, nombre: 
   await expect(jugadora.getByRole("heading", { name: nombre })).toBeVisible();
   const characterId = jugadora.url().split("/personajes/")[1].split(/[/?]/)[0];
 
+  // **Fix round 3: el nivel se fija ANTES que la clase.** `sembrarRecursos` (espacios de
+  // conjuro, dados de golpe) se llama al final de `PATCH .../sheet` con el nivel del personaje
+  // EN ESE MOMENTO (`character-sheet.service.ts`) — si la clase se fija primero (nivel 1) y el
+  // nivel sube después con un `PATCH characters/:id` suelto, ese segundo `PATCH` no vuelve a
+  // sembrar nada (solo lo hacen `PATCH .../sheet` y «Subir de nivel»), y el personaje se queda
+  // con los espacios de un mago de nivel 1 —dos de nivel 1, ninguno de nivel 2— aunque su hoja
+  // diga nivel 3. El orquestador lo cazó en una captura: «Espacios de conjuro: Nivel 1: 2/2 ·
+  // Nivel 2: 2» (el «2» de nivel 2 sin «/2» detrás es `sheet.spellSlots` cayendo a `s.slots`, el
+  // tope del catálogo, porque no hay fila `CharacterResource` real que leer —
+  // `pestanas/Conjuros.tsx`). Fijando el nivel primero, `sembrarLibro`/`sembrarRecursos` ven
+  // nivel 3 desde el principio. **Nota para el cierre**: esto es un fallo real del producto
+  // (`PATCH characters/:id` del DM no re-siembra recursos), anotado en el informe de esta tarea
+  // para que pase a `docs/06-pendientes.md` — no se arregla en esta ficha.
+  const headersDm = await comoLaSesion(dm);
+  const subida = await dm.request.patch(`/api/campaigns/${campaignId}/characters/${characterId}`, {
+    headers: headersDm,
+    data: { level: 3 },
+  });
+  expect(subida.ok()).toBe(true);
+
   const headersJugadora = await comoLaSesion(jugadora);
   const hoja = await jugadora.request.patch(
     `/api/campaigns/${campaignId}/characters/${characterId}/sheet`,
@@ -127,13 +147,6 @@ async function montarMaga(dm: Page, jugadora: Page, campaignId: string, nombre: 
     },
   );
   expect(hoja.ok()).toBe(true);
-
-  const headersDm = await comoLaSesion(dm);
-  const subida = await dm.request.patch(`/api/campaigns/${campaignId}/characters/${characterId}`, {
-    headers: headersDm,
-    data: { level: 3 },
-  });
-  expect(subida.ok()).toBe(true);
 
   const preparar = await jugadora.request.put(
     `/api/campaigns/${campaignId}/characters/${characterId}/spellbook/magic-missile`,

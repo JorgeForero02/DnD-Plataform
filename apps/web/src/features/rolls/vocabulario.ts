@@ -102,6 +102,8 @@ export interface AudienciaDeTirada {
   etiqueta: string;
   /** La frase que explica **quién ve el resultado**, que es la única diferencia entre las tres. */
   frase: string;
+  /** La frase corta que resume la elección cuando el panel está plegado: se lee sola, sin el radio. */
+  resumen: string;
 }
 
 export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
@@ -109,11 +111,13 @@ export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
     audiencia: "PUBLIC",
     etiqueta: "Pública",
     frase: "La mesa entera ve el resultado.",
+    resumen: "Para la mesa entera",
   },
   {
     audiencia: "DM_PRIVATE",
     etiqueta: "Privada del DM",
     frase: "La ves tú y el DM; el resto de la mesa, no.",
+    resumen: "Privada del DM",
   },
   {
     audiencia: "BLIND",
@@ -121,8 +125,16 @@ export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
     // tampoco ve su propio resultado, y esa es la mitad que el proyecto tardó una fase en tener.
     etiqueta: "A ciegas",
     frase: "Solo el DM ve el resultado; tú no.",
+    resumen: "A ciegas",
   },
 ];
+
+/** Busca la audiencia por su clave, igual forma que `modoDeTirada` (línea 37). */
+export function audienciaDeTirada(a: RollAudience): AudienciaDeTirada {
+  const encontrada = AUDIENCIAS_DE_TIRADA.find((x) => x.audiencia === a);
+  if (!encontrada) throw new Error(`Audiencia de tirada desconocida: ${a}`);
+  return encontrada;
+}
 
 /**
  * Los siete dados que se tiran en la mesa, para los atajos.

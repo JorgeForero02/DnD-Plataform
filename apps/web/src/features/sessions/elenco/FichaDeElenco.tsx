@@ -16,7 +16,7 @@ import { describirRestante } from "../../character-sheet/duraciones";
 import { IconoEscudo } from "../../../ui/Iconos";
 import { Button } from "../../../ui/Button";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
-import { useAccionesDeBando } from "./CorregirBando";
+import { useAccionesDeBando } from "./accionesDeBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
 import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
 
@@ -62,7 +62,7 @@ import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
  * un color aparte.
  *
  * **Desde la tarea 8 del pulido (C2: #1), el bando ya no es una fila propia**: sus tres ítems
- * (`useAccionesDeBando`, `CorregirBando.tsx`) se añaden al final del menú «…» de
+ * (`useAccionesDeBando`, `accionesDeBando.ts`) se añaden al final del menú «…» de
  * `MandosDeCombatiente`, junto a «Condición», «Dar…» y «Su hoja» — la fila de mandos llegó a
  * tener siete controles y se salía de la tarjeta (anexo #1). Sigue siendo «elegir entre los tres
  * bandos, y visibles dentro del menú» —nada se esconde en un desplegable—, solo cambió el sitio

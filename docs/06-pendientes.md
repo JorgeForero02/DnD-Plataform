@@ -313,7 +313,7 @@ nivel es del DM (D-CF-66, hecha en la ola 3). Lo que queda:
 | — | `attemptId` bajo `MATRIZ`/`PUNTOS` se acepta y marca un intento caduco; rechazarlo con 400 cuando la regla no es `DADOS` | 10 min |
 
 M-4, M-5, `attemptId` y concurrencia: cerradas en T1 de la tanda «cierre antes de 3A.2» (rama
-`cierre/antes-de-3a2`).
+`cierre/antes-de-3a2`). M-6, M-7, M-8, M-12: cerradas en T3 (rama `cierre/antes-de-3a2`).
 
 ## Cierre de la tanda del pulido antes del paso 3 (2026-09-13, Tarea 15)
 
@@ -382,16 +382,11 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 | Elenco / menú | `hoja.spec.ts` y `sesion.spec.ts` usan timeouts desiguales para el mismo tipo de espera | `apps/web/e2e/hoja.spec.ts`, `apps/web/e2e/sesion.spec.ts` |
 | Dados | `SelectorDeVentaja` usa `disabled` nativo: los radios apagados no son alcanzables por teclado, y la línea de motivo no está enlazada por `aria-describedby` — candidato ya señalado por la propia revisión de la Tarea 10 | `apps/web/src/features/rolls/BandejaDeDados.tsx` |
 | Dados | El `<details>`/`<summary>` de «Modo avanzado» muestra el error de la expresión aunque esté plegado | `apps/web/src/features/rolls/PanelDeDados.tsx` |
-| Dados | **Revisión final, #6**: `resumenAudienciaYCd` es una tercera traducción de `RollAudience` fuera de `apps/web/src/features/rolls/vocabulario.ts` — mover como campo `resumen` del vocabulario en vez de reescribirla en el componente | `apps/web/src/features/rolls/panel/PanelDeDadosDeLaMesa.tsx:85-98` |
-| Dados | **Revisión final, #8**: `DadoDibujado.tsx` e `IconoD20` son dos envoltorios idénticos de `IconoDado caras={20}` — unificar en uno | `apps/web/src/features/rolls/DadoDibujado.tsx`; `apps/web/src/ui/Iconos.tsx` (líneas de `IconoD20`) |
-| Dados | **Revisión final, #10**: `conDadoAnadido` (`apps/web/src/features/rolls/expresion.ts`) no tiene ningún consumidor en `src/` — retirarla cuando se confirme que el modo avanzado no la echa de menos | `apps/web/src/features/rolls/expresion.ts` |
 | Hilo | **Revisión final, #5**: la frase con sujeto resuelto (`HP_CHANGED` con `ctx.sujeto`) pierde el `(from → to)` que sí lleva la frase sin sujeto — considerar «Sylas pierde 7 PG (20 → 13) ← Klarg» | `apps/web/src/features/sessions/linea-de-log.ts:196-201` |
-| Elenco / menú | **Revisión final, #11**: `apps/web/src/features/sessions/elenco/CorregirBando.tsx` ya no tiene componente de fila (se borró en la Tarea 8) y solo exporta `useAccionesDeBando` — renombrar el fichero a `accionesDeBando.ts` la próxima vez que se toque | `apps/web/src/features/sessions/elenco/CorregirBando.tsx` |
 | Bestiario | `DarTemporales`: `preguntando` no se resetea si la petición falla, así que un reintento tras error puede arrancar con el diálogo ya abierto | `apps/web/src/features/bestiario/DarTemporales.tsx` |
 | Catálogo de objetos | Los `FilterChip` de tipo y origen no llevan `aria-pressed` | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
-| Mundo (árbol) | **Revisión final, #9**: `normalizar()` (pliega tildes para comparar) está copiada una sexta vez entre `DesgloseDelMundo.tsx` y `EditorDeHilos.tsx` — extraer a una lib compartida | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx:42`; `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx:50` |
 | Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
 | Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
 | Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
@@ -1183,11 +1178,3 @@ comparta posición (varios goblins idénticos, por ejemplo): el siguiente clic r
 hasta que el grupo entero deja de tener «oculto». Revelar el grupo con un solo botón —seis goblins
 con un solo clic— es una decisión de interfaz que la spec de PNJ del mundo y la mesa (§3.2) dejaba
 sin cerrar.
-
-### Sin ficha propia · `CharacterRow` no declara `entityId` (2026-09-14)
-
-**Abierto, menor, encontrado en la Task 4.** `CharacterRow` (`apps/web/src/features/character-sheet/api.ts`)
-no declara `entityId` en su tipo, aunque el servidor ya lo manda desde `GET
-.../characters/:id/sheet` (redactado por `entityIdsVisibleFor`, como el resto de lecturas). No
-rompe nada hoy —nada de la hoja lee ese campo—, pero una pantalla de la hoja que quisiera enlazar
-«Ficha del mundo» desde ahí tendría que ensanchar el tipo primero.

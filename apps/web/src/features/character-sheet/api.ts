@@ -53,6 +53,12 @@ export interface CharacterRow {
   classKey: string | null;
   /** Encargo A8 (2026-09-07). `null` = todavía no ha elegido camino. */
   subclassKey: string | null;
+  /**
+   * La ficha del mundo de este personaje, si la tiene y quien lee puede verla (`entityIdsVisibleFor`
+   * la redacta en el servidor). `null` = sin ficha o sin permiso de verla. Declarado el 2026-09-17:
+   * el servidor ya lo mandaba y nadie lo leía.
+   */
+  entityId: string | null;
   choices: Record<string, string[]> | null;
   currentHp: number | null;
   tempHp: number;

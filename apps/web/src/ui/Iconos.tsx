@@ -239,6 +239,9 @@ export function IconoCorazon({ className }: IconoProps) {
  * `04-convenciones.md`, Task 0). Pasa a delegar: el rail de sesiones y «pedir tirada» siguen
  * importando `IconoD20` sin cambiar una línea, y ahora comparten trazo con el resto de la
  * familia de seis.
+ *
+ * Antes existía `DadoDibujado`, envoltorio idéntico (Tarea F3/7); se fundió aquí el 2026-09-17
+ * (#8).
  */
 export function IconoD20({ className }: IconoProps) {
   return <IconoDado caras={20} className={className} />;

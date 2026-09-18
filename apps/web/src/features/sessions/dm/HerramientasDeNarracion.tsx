@@ -2,8 +2,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Dialog } from "../../../ui/Dialog";
 import { IconoLupa } from "../../../ui/Iconos";
-import { IconoMegafono, IconoRayo, IconoReloj } from "../../../ui/Iconos";
-import { DadoDibujado } from "../../rolls/DadoDibujado";
+import { IconoD20, IconoMegafono, IconoRayo, IconoReloj } from "../../../ui/Iconos";
 import { IconoBestiario } from "../../bestiario/iconos";
 import { IconoTabla } from "../../dm-tables/iconos";
 import { RevelarAlgo } from "./RevelarAlgo";
@@ -176,7 +175,7 @@ export function HerramientasDeNarracion({
         </BotonDeHerramienta>
         <BotonDeHerramienta
           tono="accent"
-          icono={<DadoDibujado className="text-chrome-base" />}
+          icono={<IconoD20 className="text-chrome-base" />}
           onClick={() => setAbierta("tirada")}
         >
           Pedir tirada

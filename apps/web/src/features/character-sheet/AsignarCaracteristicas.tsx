@@ -3,7 +3,6 @@ import type { AbilitiesRule, AbilityKey, AbilityRollAttemptDto } from "@dnd/shar
 import { COSTE_POR_PUNTUACION, MATRIZ_ESTANDAR, ORDEN_DE_CARACTERISTICAS } from "@dnd/shared";
 import { Button } from "../../ui/Button";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
-import type { DesgloseDeTirada } from "../rolls/ResultadoDeTirada";
 import { useAbilityRolls, useRollAbilities, useUpdateSheet } from "./hooks";
 import { NOMBRE_CARACTERISTICA } from "./vocabulario";
 
@@ -513,7 +512,7 @@ function IntentoDeDados({
         {intento.rolls.map((r, i) => (
           <ResultadoDeTirada
             key={i}
-            resultado={r as DesgloseDeTirada}
+            resultado={r}
             etiqueta={
               asignacionLibre
                 ? `Valor ${i + 1}`

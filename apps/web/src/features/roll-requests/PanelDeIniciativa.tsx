@@ -1,7 +1,6 @@
 import { useId } from "react";
 import { Button, Panel } from "../../ui";
-import { IconoEspada } from "../../ui/Iconos";
-import { DadoDibujado } from "../rolls/DadoDibujado";
+import { IconoD20, IconoEspada } from "../../ui/Iconos";
 import { modoDeTirada } from "../rolls/vocabulario";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import type { RollRequestRow } from "./api";
@@ -144,7 +143,7 @@ export function PanelDeIniciativa({
             disabled={tirando}
             aria-describedby={motivoApagado}
           >
-            <DadoDibujado />
+            <IconoD20 />
             Tirar iniciativa
           </Button>
           {tirando && (

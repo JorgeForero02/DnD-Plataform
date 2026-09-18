@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { EffectApplied, EffectWarning, RollAudience, RollResult } from "@dnd/shared";
 import { Button, Panel } from "../../ui";
 import { ApiError } from "../../lib/api";
-import { DadoDibujado } from "../rolls/DadoDibujado";
 import { ResultadoDeTirada } from "../rolls/ResultadoDeTirada";
 import { TiradaACiegas } from "../rolls/TiradaACiegas";
 import { AUDIENCIAS_DE_TIRADA, modoDeTirada } from "../rolls/vocabulario";
@@ -12,7 +11,7 @@ import { useAnswerRollRequest, useRollRequests } from "./hooks";
 import { GastarInspiracion } from "../rolls/panel/GastarInspiracion";
 import { nombreDeClave } from "./vocabulario";
 import { PanelDeIniciativa } from "./PanelDeIniciativa";
-import { IconoCerrar } from "../../ui/Iconos";
+import { IconoCerrar, IconoD20 } from "../../ui/Iconos";
 import { useCurrentSession } from "../sessions/hooks";
 import { useCurrentEncounter } from "../encounters/hooks";
 
@@ -315,7 +314,7 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
                         onClick={() => alTirar(peticion)}
                         aria-label={`Tirar: ${peticion.label}`}
                       >
-                        <DadoDibujado />
+                        <IconoD20 />
                         Tirar
                       </Button>
                     </div>

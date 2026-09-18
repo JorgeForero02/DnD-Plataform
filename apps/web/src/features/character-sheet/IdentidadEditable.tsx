@@ -1,4 +1,4 @@
-import type { AbilityKey } from "@dnd/shared";
+import { ORDEN_DE_CARACTERISTICAS } from "@dnd/shared";
 import { NumeroEditable, RadiosEditables, SelectorEditable } from "./EdicionEnSitio";
 import { useCatalog, useUpdateSheet } from "./hooks";
 import type { CharacterRow } from "./api";
@@ -29,8 +29,6 @@ import { CAJA_DE_HOJA, PROSA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 // Aquí la puntuación (lo decidido) y el modificador (lo derivado) están pegados, y **solo la
 // puntuación tiene afordancia de edición**. La ausencia de subrayado en el modificador significa
 // «esto lo calculo yo, edita su causa» — la afordancia como información de dominio.
-
-const CARACTERISTICAS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 
 /**
  * **La ficha: raza, subraza, clase y nivel.** Vive en su propia tarjeta desde la adopción de la
@@ -245,7 +243,7 @@ export function Caracteristicas({
 
   return (
     <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
-      {CARACTERISTICAS.map((ability) => {
+      {ORDEN_DE_CARACTERISTICAS.map((ability) => {
         const modificador = sheet?.derived[`abilityMod.${ability}`] ?? null;
         const puntuacionDerivada = sheet?.derived[`ability.${ability}`] ?? null;
         const ajustes = puntuacionDerivada ? resumenDeAjustes(puntuacionDerivada) : "";

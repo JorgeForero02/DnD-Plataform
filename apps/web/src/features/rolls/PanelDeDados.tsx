@@ -3,7 +3,7 @@ import type { RollAudience, RollMode, RollResult } from "@dnd/shared";
 import { Button, Field, fieldControlClass, Panel } from "../../ui";
 import { CabeceraDeSeccion } from "../entities/CabeceraDeSeccion";
 import { ApiError } from "../../lib/api";
-import { DadoDibujado } from "./DadoDibujado";
+import { IconoD20 } from "../../ui/Iconos";
 import { ResultadoDeTirada } from "./ResultadoDeTirada";
 import { TiradaACiegas } from "./TiradaACiegas";
 import { SelectorDeAudiencia } from "./SelectorDeAudiencia";
@@ -185,7 +185,7 @@ export function PanelDeDados({ campaignId }: { campaignId: string }) {
               {/* El dado, dibujado y en cobre: el cobre significa «esto pertenece al mundo», y este
               dibujo enmarca la tarjeta sin pedir que se pulse. Nada de glifos de fuente. */}
               <span className="text-chrome-2xl text-copper-text">
-                <DadoDibujado />
+                <IconoD20 />
               </span>
             </div>
 

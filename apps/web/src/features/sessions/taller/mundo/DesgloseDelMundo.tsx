@@ -6,6 +6,7 @@ import { IconoDeTipo } from "../../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../../entities/resumen";
 import type { ArbolDelMundo, NodoDelMundo, RaizDeTipo } from "./arbolDelMundo";
 import { Punta } from "./Punta";
+import { normalizarTexto as normalizar } from "../../../../lib/texto";
 
 // **El desglose del mundo** (Task 14 bis, D-CF-64): un `tree` WAI-ARIA. **El fichero se llama
 // `DesgloseDelMundo` y no `ArbolDelMundo`** porque `./ArbolDelMundo` y `./arbolDelMundo` (el módulo
@@ -37,14 +38,6 @@ interface Fila {
   nombre: string;
   tieneHijos: boolean;
   expandido: boolean;
-}
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 }
 
 /** Recorta el árbol a lo que encaja con la búsqueda, dejando el camino hasta cada acierto. */

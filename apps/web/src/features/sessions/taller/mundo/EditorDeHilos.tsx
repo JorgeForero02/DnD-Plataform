@@ -10,6 +10,7 @@ import { useCreateLink, useDeleteLink } from "../../../links/hooks";
 import { relacionesSugeridas } from "../../../links/relaciones";
 import type { Vecino } from "./arbolDelMundo";
 import { Punta } from "./Punta";
+import { normalizarTexto as normalizar } from "../../../../lib/texto";
 
 // **El editor de hilos** (Task 14 bis, D-CF-64): la lista de hilos de la ficha abierta —una fila
 // por hilo: ficha · rótulo · cambiar · quitar, con iconos dibujados— y el gesto de añadir uno
@@ -45,14 +46,6 @@ function mensajeDeError(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   return "Algo ha ido mal. Vuelve a intentarlo.";
-}
-
-function normalizar(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
 }
 
 /**

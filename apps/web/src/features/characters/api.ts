@@ -1,6 +1,6 @@
 import type {
   AwardXpInput,
-  CreateCharacterInput,
+  CreateCharacterFormInput,
   UpdateCharacterInput,
   Visibility,
 } from "@dnd/shared";
@@ -76,7 +76,7 @@ export function awardXp(
 
 export function createCharacter(
   campaignId: string,
-  input: CreateCharacterInput,
+  input: CreateCharacterFormInput,
 ): Promise<Character> {
   return apiFetch<Character>(`/campaigns/${campaignId}/characters`, {
     method: "POST",

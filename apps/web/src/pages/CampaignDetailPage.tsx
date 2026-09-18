@@ -52,11 +52,10 @@ import {
 } from "../features/campaigns/iconosDeSeccion";
 import { CampaignItemsCatalogPage } from "../features/campaign-items/CampaignItemsCatalogPage";
 import { IconoImpedimenta } from "../features/campaign-items/iconos";
-import { IconoMas } from "../ui/Iconos";
+import { IconoD20, IconoMas } from "../ui/Iconos";
 import { PanelDeDados } from "../features/rolls/PanelDeDados";
 import { PanelDeTablas } from "../features/dm-tables/PanelDeTablas";
 import { IconoTabla } from "../features/dm-tables/iconos";
-import { DadoDibujado } from "../features/rolls/DadoDibujado";
 import { useCanalEnVivo } from "../features/live/canal";
 
 type TabConfig =
@@ -744,7 +743,7 @@ export function CampaignDetailPage() {
         group: t.group,
         // El mismo dado dibujado que la hoja usa para pedir una tirada: es la misma acción, y dos
         // dibujos distintos para lo mismo enseñan que son cosas distintas.
-        icon: <DadoDibujado />,
+        icon: <IconoD20 />,
         content: <PanelDeDados campaignId={id} />,
       };
     }

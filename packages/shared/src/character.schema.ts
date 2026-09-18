@@ -53,4 +53,6 @@ export const updateCharacterSchema = createCharacterSchema.partial().extend({
 });
 
 export type CreateCharacterInput = z.infer<typeof createCharacterSchema>;
+/** Lo que el formulario manda: `z.input` deja `level` opcional (el `default(1)` es del `parse`, no de quien pide). */
+export type CreateCharacterFormInput = z.input<typeof createCharacterSchema>;
 export type UpdateCharacterInput = z.infer<typeof updateCharacterSchema>;

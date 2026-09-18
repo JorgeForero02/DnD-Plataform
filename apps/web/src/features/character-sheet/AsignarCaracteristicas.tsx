@@ -506,7 +506,8 @@ function IntentoDeDados({
   return (
     <div className="flex flex-col gap-s2 border-t border-muted pt-s2">
       <p className="font-chrome text-chrome-sm text-text">
-        Intento {intento.attempt} de {intento.of}
+        Intento {intento.attempt}
+        {intento.of !== undefined ? ` de ${intento.of}` : ""}
       </p>
       <div className="grid grid-cols-2 gap-s2 sm:grid-cols-3">
         {intento.rolls.map((r, i) => (

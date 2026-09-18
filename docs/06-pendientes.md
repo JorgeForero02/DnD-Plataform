@@ -22,7 +22,9 @@ diez con un barrido o una cita de línea dentro— en
 y los **39 bloques de la poda del 2026-09-10** —falsas, tachadas y decididas— en
 [`_archivo/pendientes-cerrados-2026-09-10-poda.md`](./_archivo/pendientes-cerrados-2026-09-10-poda.md),
 y **el anexo #16 de la bandeja compacta**, cerrado por la Task 10 del pulido, en
-[`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md).
+[`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md),
+y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
+[`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -309,6 +311,9 @@ nivel es del DM (D-CF-66, hecha en la ola 3). Lo que queda:
 | M-14 | `borrador` de `ReglasDeLaMesa` se siembra una vez por campaña; re-sembrar cuando cambie la campaña y no haya edición en curso | 15 min |
 | — | Sin e2e de concurrencia real para los cerrojos `FOR UPDATE` (M-1/M-2): las unitarias prueban el orden de las sentencias, no el bloqueo de Postgres. Un e2e con dos `POST …/ability-rolls` en `Promise.all` y `intentos: 1` → exactamente un 201 y un 409 | 30 min |
 | — | `attemptId` bajo `MATRIZ`/`PUNTOS` se acepta y marca un intento caduco; rechazarlo con 400 cuando la regla no es `DADOS` | 10 min |
+
+M-4, M-5, `attemptId` y concurrencia: cerradas en T1 de la tanda «cierre antes de 3A.2» (rama
+`cierre/antes-de-3a2`).
 
 ## Cierre de la tanda del pulido antes del paso 3 (2026-09-13, Tarea 15)
 

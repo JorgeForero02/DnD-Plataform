@@ -7,7 +7,11 @@ import {
   Optional,
 } from "@nestjs/common";
 import type { AbilityRollAttempt, Prisma } from "@prisma/client";
-import { tableRulesSchema, type AbilityRollAttemptDto } from "@dnd/shared";
+import {
+  abilityRollAttemptSchema,
+  tableRulesSchema,
+  type AbilityRollAttemptDto,
+} from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -118,7 +122,7 @@ export class AbilityRollsService {
       const fila = await tx.abilityRollAttempt.create({
         data: { characterId, values, rollEventIds: rolls.map((r) => r.eventId), chosen: false },
       });
-      return {
+      return abilityRollAttemptSchema.parse({
         id: fila.id,
         values,
         chosen: false,
@@ -126,7 +130,7 @@ export class AbilityRollsService {
         of: intentos,
         createdAt: fila.createdAt.toISOString(),
         rolls,
-      };
+      });
     });
   }
 
@@ -139,7 +143,7 @@ export class AbilityRollsService {
     // El dueño o el DM ven los intentos; un compañero de mesa, no — las tiradas son `OWNER_DM`.
     await this.characters.requireEditable(userId, campaignId, characterId);
     const regla = await this.reglaDe(campaignId);
-    const of = regla.abilities.metodo === "DADOS" ? regla.abilities.intentos : 0;
+    const of = regla.abilities.metodo === "DADOS" ? regla.abilities.intentos : undefined;
     const filas = await this.prisma.abilityRollAttempt.findMany({
       where: { characterId },
       orderBy: { createdAt: "asc" },
@@ -149,29 +153,35 @@ export class AbilityRollsService {
       where: { id: { in: filas.flatMap((f) => f.rollEventIds as string[]) } },
     });
     const porId = new Map(eventos.map((e) => [e.id, e]));
-    return filas.map((f, i) => ({
-      id: f.id,
-      values: f.values as number[],
-      chosen: f.chosen,
-      attempt: i + 1,
-      of,
-      createdAt: f.createdAt.toISOString(),
-      rolls: (f.rollEventIds as string[]).map((id) => {
-        const p = porId.get(id)?.payload as Record<string, unknown>;
-        return {
-          eventId: id,
-          expression: String(p.expression),
-          rolls: p.rolls as number[],
-          kept: p.kept as number[],
-          dropped: p.dropped as number[],
-          dice: p.dice as AbilityRollAttemptDto["rolls"][number]["dice"],
-          modifier: Number(p.modifier),
-          total: Number(p.total),
-          natural: "NONE" as const,
-          outcome: "NO_DC" as const,
-        };
-      }),
-    }));
+    // M-4 (2026-09-17): la fila releída del `payload` pasa por el esquema compartido en vez de
+    // moldearse a mano — si el registro guardó algo con otra forma, que reviente aquí con el
+    // nombre del campo y no en la pantalla como `undefined`.
+    return filas.map((f, i) => {
+      const dto = {
+        id: f.id,
+        values: f.values,
+        chosen: f.chosen,
+        attempt: i + 1,
+        ...(of === undefined ? {} : { of }),
+        createdAt: f.createdAt.toISOString(),
+        rolls: (f.rollEventIds as string[]).map((id) => {
+          const p = porId.get(id)?.payload as Record<string, unknown>;
+          return {
+            eventId: id,
+            expression: p.expression,
+            rolls: p.rolls,
+            kept: p.kept,
+            dropped: p.dropped,
+            dice: p.dice,
+            modifier: p.modifier,
+            total: p.total,
+            natural: "NONE",
+            outcome: "NO_DC",
+          };
+        }),
+      };
+      return abilityRollAttemptSchema.parse(dto);
+    });
   }
 
   /** Para Task 4: la fila cruda, o 404 si no es de este personaje. */

@@ -374,6 +374,19 @@ describe("updateSheet bajo las reglas de la mesa (D-CF-53, Tarea 4)", () => {
     ).rejects.toThrow(/28/);
   });
 
+  it("updateSheet: con la regla en MATRIZ un `attemptId` se rechaza con 400 en vez de marcar un intento caduco", async () => {
+    const { service, prisma, characters, abilityRolls } = montar();
+    prep(prisma, characters, { abilities: { metodo: "MATRIZ" } });
+
+    await expect(
+      service.updateSheet("owner", "c1", "ch1", {
+        attemptId: "intento-viejo",
+        abilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+      }),
+    ).rejects.toThrow(/no se tiran con dados/);
+    expect(abilityRolls.requireAttempt).not.toHaveBeenCalled();
+  });
+
   it("DADOS: con attemptId cuyos valores encajan, guarda y marca chosen; sin attemptId es 400", async () => {
     const { service, prisma, characters, abilityRolls } = montar();
     prep(prisma, characters, {

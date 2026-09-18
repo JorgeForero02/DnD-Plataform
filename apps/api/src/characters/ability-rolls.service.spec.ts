@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { abilityRollAttemptSchema } from "@dnd/shared";
 import type { Roller } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -146,5 +147,41 @@ describe("AbilityRollsService", () => {
     characters.requireEditable.mockRejectedValue(new ForbiddenException());
 
     await expect(service.roll("otro", "c1", "ch1")).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("list: con la regla en MATRIZ las filas no llevan `of` (M-5) y cada una cumple abilityRollAttemptSchema (M-4)", async () => {
+    const { service, prisma } = montar();
+    prisma.campaign.findUnique.mockResolvedValue({
+      tableRules: { abilities: { metodo: "MATRIZ" } },
+    });
+    prisma.abilityRollAttempt.findMany.mockResolvedValue([
+      {
+        id: "a1",
+        characterId: "c1",
+        values: [15, 14, 13, 12, 10, 8],
+        chosen: false,
+        rollEventIds: ["e1", "e2", "e3", "e4", "e5", "e6"],
+        createdAt: new Date("2026-09-17T10:00:00Z"),
+      },
+    ]);
+    prisma.gameEvent.findMany.mockResolvedValue(
+      ["e1", "e2", "e3", "e4", "e5", "e6"].map((id, i) => ({
+        id,
+        payload: {
+          expression: "4d6kh3",
+          rolls: [6, 5, 4, 1],
+          kept: [6, 5, 4],
+          dropped: [1],
+          modifier: 0,
+          total: 15 - i,
+        },
+      })),
+    );
+
+    const filas = await service.list("dm", "camp", "c1");
+
+    expect(filas).toHaveLength(1);
+    expect(filas[0].of).toBeUndefined();
+    expect(() => abilityRollAttemptSchema.parse(filas[0])).not.toThrow();
   });
 });

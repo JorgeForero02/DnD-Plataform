@@ -303,4 +303,37 @@ describe("Reglas de la mesa (e2e)", () => {
     const pasos = hoja.body.sheet.derived.maxHp.steps.map((p: { labelKey: string }) => p.labelKey);
     expect(pasos).toContain("maxHp.perLevelAtCreation");
   });
+
+  it("DADOS con intentos: 1 — dos POST a la vez: exactamente un 201 y un 409 (cerrojo FOR UPDATE)", async () => {
+    const s = app.getHttpServer();
+    await fijarReglas({ abilities: { metodo: "DADOS", expresion: "4d6kh3", intentos: 1 } });
+    const id = await crearPersonaje("Carrera");
+    const url = `/campaigns/${campaignId}/characters/${id}/ability-rolls`;
+
+    const [a, b] = await Promise.all([
+      request(s).post(url).set(auth(tokenPL)),
+      request(s).post(url).set(auth(tokenPL)),
+    ]);
+
+    const codigos = [a.status, b.status].sort();
+    expect(codigos).toEqual([201, 409]);
+    const lista = await request(s).get(url).set(auth(tokenPL));
+    expect(lista.status).toBe(200);
+    expect(lista.body).toHaveLength(1);
+  });
+
+  it("MATRIZ: mandar las seis con un `attemptId` → 400 con la frase, y ningún intento queda marcado", async () => {
+    const s = app.getHttpServer();
+    await fijarReglas({ abilities: { metodo: "MATRIZ" } });
+    const id = await crearPersonaje("Sin dados");
+    const res = await request(s)
+      .patch(`/campaigns/${campaignId}/characters/${id}/sheet`)
+      .set(auth(tokenPL))
+      .send({
+        attemptId: "cualquiera",
+        abilities: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 },
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain("no se tiran con dados");
+  });
 });

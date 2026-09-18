@@ -936,6 +936,15 @@ export class CharacterSheetService {
         (k) => input.abilities![k] !== undefined,
       );
       if (regla.abilities.metodo !== "LIBRE") {
+        // RM-2 (2026-09-17): un `attemptId` solo significa algo con dados. Con MATRIZ o PUNTOS
+        // seguía llegando a `requireAttempt` y marcaba `chosen` un intento de una regla anterior
+        // — una fila caduca que después bloqueaba al dueño («Las características se fijaron con
+        // dados») en una mesa que ya no tira.
+        if (regla.abilities.metodo !== "DADOS" && input.attemptId) {
+          throw new BadRequestException(
+            "Con esta regla las características no se tiran con dados: manda las seis sin attemptId.",
+          );
+        }
         // Reglas de la mesa (E-RM-13, ronda 1 de arreglos): con dados y un intento ya elegido,
         // las seis están fijadas — y `OVERRIDABLE_KEYS` **no tiene `ability.*`**, así que
         // «el DM arbitra con `overrides`» era una puerta que no existía: el DM se topaba con el

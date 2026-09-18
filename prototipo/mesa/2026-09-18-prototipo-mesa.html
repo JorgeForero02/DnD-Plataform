@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MesaDeSesion — 3A.5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+<style>
+/* ════ tokens.css ════ */
+:root{
+  --bg:rgb(16 23 28); --surface:rgb(26 35 41); --text:rgb(220 227 230); --muted:rgb(139 153 161);
+  --accent:rgb(74 155 184); --accent-text:rgb(111 182 206); --copper:rgb(201 125 70); --copper-text:rgb(221 150 99);
+  --danger:rgb(196 86 75); --danger-text:rgb(224 128 118); --warning:rgb(224 168 60);
+  --salvia:rgb(141 194 145); --ciruela:rgb(203 152 214); --indigo:rgb(152 163 233); --arena:rgb(214 190 143);
+  --copper-rule:rgb(201 125 70 / .45); --veil:rgb(16 23 28 / .78);
+  --font-title:Marcellus,Georgia,serif; --font-chrome:"Public Sans",system-ui,sans-serif;
+  --font-world:"EB Garamond",Georgia,serif; --font-data:"IBM Plex Mono",Consolas,monospace;
+  --r:4px; --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem;
+
+  /* añadidos */
+  --sunk:rgb(11 17 21); --rule:rgb(139 153 161 / .2); --rule-fuerte:rgb(139 153 161 / .42);
+  --hover:rgb(255 255 255 / .04); --sombra:0 14px 34px -14px rgb(0 0 0 / .78);
+  --izq:16rem; --der:19rem;
+  /* densidad compacta, fija */
+  --fs:.8125rem; --fs-mundo:.9375rem; --pad:.42rem; --alto-fila:1.9rem; --hilo-lh:1.45;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:var(--fs)/1.45 var(--font-chrome);display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--copper);outline-offset:2px;border-radius:var(--r)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:rgb(139 153 161 / .26);border-radius:9px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-track{background:transparent}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.xs{width:13px;height:13px}
+.muted{color:var(--muted)} .xs{font-size:.75rem} .crece{flex:1}
+.sprite{position:absolute;width:0;height:0}
+.caja{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r)}
+.btn{font-size:.8125rem;background:transparent;border:1px solid var(--rule-fuerte);border-radius:var(--r);padding:.3rem .65rem;min-height:1.85rem;display:inline-flex;align-items:center;gap:.35rem;transition:border-color .15s,color .15s,background .15s}
+.btn:hover{border-color:var(--copper);color:var(--copper-text)}
+.btn.primario{background:var(--copper);border-color:var(--copper);color:var(--bg);font-weight:600}
+.btn.primario:hover{filter:brightness(1.1);color:var(--bg)}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--text);border-color:var(--rule)}
+.btn.peligro{border-color:rgb(196 86 75 / .5);color:var(--danger-text)}
+.btn.peligro:hover{background:rgb(196 86 75 / .12)}
+kbd{font-family:var(--font-data);font-size:.62rem;color:rgb(139 153 161 / .8);border:1px solid var(--rule);border-radius:3px;padding:0 .25rem;line-height:1.35}
+
+/* ════ banda ════ */
+.banda{display:flex;align-items:center;gap:var(--s3);height:3.25rem;padding:0 var(--s4);flex:none;border-bottom:1px solid var(--copper-rule);background:var(--surface);z-index:20}
+.banda .volver{display:inline-flex;align-items:center;gap:var(--s2);color:var(--muted);text-decoration:none;white-space:nowrap}
+.banda .volver:hover{color:var(--text)}
+.sep{width:1px;height:1.3rem;background:var(--rule-fuerte);flex:none}
+.escena-tit{display:flex;align-items:baseline;gap:var(--s3);min-width:0}
+.escena-tit h1{font:1.1875rem var(--font-title);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.escena-tit .lugar{font:1rem var(--font-world);color:var(--copper-text);text-decoration:none;white-space:nowrap}
+.escena-tit .lugar:hover{text-decoration:underline;text-underline-offset:3px}
+.sesion{display:inline-flex;gap:var(--s2);align-items:center;font-family:var(--font-data);font-size:.72rem;color:var(--accent-text);white-space:nowrap}
+.sesion .punto{width:7px;height:7px;border-radius:50%;background:var(--accent-text);box-shadow:0 0 0 3px rgb(74 155 184 / .22)}
+.reloj{display:inline-flex;align-items:center;gap:var(--s2);padding:0 .55rem;height:1.85rem;border:1px solid var(--rule);border-radius:var(--r);background:var(--sunk);white-space:nowrap}
+.reloj .hora{font-family:var(--font-data);font-size:.8125rem}
+.reloj .dia{font-size:.68rem;color:var(--muted)}
+.conmutador{display:inline-flex;border:1px solid var(--rule-fuerte);border-radius:999px;overflow:hidden;flex:none}
+.conmutador button{font-size:.72rem;color:var(--muted);padding:.22rem .65rem;white-space:nowrap;transition:.15s}
+.conmutador button:hover{color:var(--text)}
+.conmutador button[aria-pressed="true"]{background:var(--copper);color:var(--bg);font-weight:600}
+.vercomo{display:flex;gap:var(--s2);align-items:center;font-size:.72rem;color:var(--muted);white-space:nowrap}
+.vercomo select{font-size:.72rem;background:var(--sunk);border:1px solid var(--rule-fuerte);border-radius:var(--r);padding:.2rem .35rem}
+
+/* ════ franja de combate ════ */
+.franja{display:flex;align-items:center;gap:var(--s3);padding:var(--s2) var(--s4);flex:none;border-bottom:1px solid var(--rule);background:rgb(26 35 41 / .5);min-height:2.75rem}
+.ronda{font-family:var(--font-data);font-size:.72rem;color:var(--copper-text);white-space:nowrap}
+.turnos{display:flex;align-items:center;gap:.3rem;overflow-x:auto;min-width:0;padding:3px 0;scrollbar-width:none}
+.turnos::-webkit-scrollbar{height:0}
+.combatiente{display:inline-flex;gap:.38rem;align-items:center;padding:.2rem .55rem .2rem .42rem;border-radius:999px;border:1px solid transparent;font-size:.8125rem;white-space:nowrap;transition:.15s;min-height:1.6rem}
+.combatiente:hover{background:var(--hover)}
+.combatiente .voz{display:block;width:7px;height:7px;border-radius:50%;background:var(--voz,var(--muted));flex:none}
+.combatiente .ini{font-family:var(--font-data);font-size:.7rem;color:var(--muted)}
+.combatiente.actual{border-color:var(--copper);background:rgb(201 125 70 / .13);font-weight:500}
+.combatiente.actual .ini{color:var(--copper-text)}
+.combatiente.hecho{opacity:.4}
+.combatiente.caido{opacity:.35;text-decoration:line-through}
+.combatiente.objetivo{box-shadow:0 0 0 1px var(--danger)}
+.economia{display:inline-flex;align-items:center;gap:.65rem;padding:.2rem .7rem;border-left:1px solid var(--rule-fuerte);white-space:nowrap}
+.economia .dequien{font:.9375rem var(--font-title);color:var(--voz,var(--text))}
+.eco{display:inline-flex;align-items:center;gap:.32rem;font-size:.8125rem;transition:color .25s}
+.eco i{display:block;width:8px;height:8px;border-radius:50%;background:var(--copper);border:1.5px solid var(--copper);transition:.25s}
+.eco.gastada{color:var(--muted)} .eco.gastada i{background:transparent;border-color:var(--muted)}
+.mov{font-family:var(--font-data);font-size:.72rem;color:var(--muted)} .mov b{color:var(--text);font-weight:500}
+.sin-combate{display:flex;align-items:center;gap:var(--s3);color:var(--muted);font-size:.8125rem}
+
+/* ════ rejilla ════ */
+main.rejilla{display:grid;grid-template-columns:var(--izq) 8px minmax(0,1fr) 8px var(--der);gap:0;padding:var(--s3);flex:1;min-height:0}
+body[data-vista="jugador"]{--der:17rem}
+.tirador{cursor:col-resize;position:relative;display:grid;place-items:center;touch-action:none}
+.tirador::after{content:"";display:block;width:2px;height:2.2rem;border-radius:2px;background:var(--rule-fuerte);transition:.15s}
+.tirador:hover::after,.tirador.activo::after{background:var(--copper);height:3.6rem}
+/* flex, no grid-rows: así da igual cuántos hermanos estén ocultos */
+.col-elenco,.col-centro,.col-lateral{display:flex;flex-direction:column;gap:var(--s3);min-height:0;min-width:0}
+.elenco,.marco,.registro{flex:1;min-height:0}
+.rail,.barra,.bandeja,.herramientas{flex:none}
+body[data-vista="jugador"] .herramientas{display:none}
+body[data-modo="cronica"] .marco{display:none}
+
+/* ════ elenco ════ */
+.elenco{padding:var(--s3);overflow:auto;display:flex;flex-direction:column;gap:var(--s2)}
+.grupo-tit{display:flex;justify-content:space-between;align-items:baseline;font-size:.8125rem;color:var(--muted);margin:var(--s2) 0 0}
+.grupo-tit:first-child{margin-top:0}
+.grupo-tit .cuenta{font-family:var(--font-data);font-size:.7rem}
+.ficha{display:block;width:100%;text-align:left;border:1px solid var(--rule);border-left:3px solid var(--voz,var(--muted));border-radius:var(--r);padding:var(--pad) var(--s3);background:rgb(255 255 255 / .015);transition:background .15s,box-shadow .2s,border-color .15s}
+.ficha:hover{background:var(--hover)}
+.ficha.tuya{border-color:var(--copper-rule)}
+.ficha.objetivo{box-shadow:0 0 0 1px var(--danger),0 0 18px -6px rgb(196 86 75 / .55)}
+.ficha.actua{border-color:var(--copper)}
+.ficha.caida{opacity:.5}
+.ficha .cab{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s2)}
+.ficha .nombre{display:block;font:.9375rem var(--font-title);color:var(--voz,var(--text))}
+.ficha .sub{display:block;font-size:.68rem;color:var(--muted);white-space:nowrap}
+.ficha .pg{display:flex;justify-content:space-between;font-family:var(--font-data);font-size:.72rem;margin-top:.28rem;color:var(--muted)}
+.ficha .pg b{color:var(--text);font-weight:500}
+.ficha .barra{display:block;height:4px;background:rgb(255 255 255 / .08);border-radius:3px;margin-top:3px;overflow:hidden}
+.ficha .barra i{display:block;height:4px;background:var(--salvia);transition:width .5s cubic-bezier(.2,.8,.3,1),background .3s}
+.ficha .barra i.herido{background:var(--warning)} .ficha .barra i.grave{background:var(--danger)}
+.ficha .datos{display:flex;gap:var(--s3);font-size:.68rem;color:var(--muted);margin-top:.28rem}
+.ficha .datos span{display:inline-block}
+.ficha .datos b{color:var(--text);font-weight:500;font-family:var(--font-data)}
+.ficha .vago{display:block;font:italic .875rem var(--font-world);color:var(--muted);margin-top:.28rem}
+.ficha .cond{display:inline-block;margin-top:.3rem;font-size:.68rem;padding:.02rem .42rem;border-radius:999px;border:1px solid var(--ciruela);color:var(--ciruela)}
+.parpadeo{animation:golpe .5s ease-out}
+@keyframes golpe{0%{background:rgb(196 86 75 / .28)}100%{background:rgb(255 255 255 / .015)}}
+.parpadeo-bien{animation:alivio .5s ease-out}
+@keyframes alivio{0%{background:rgb(141 194 145 / .22)}100%{background:rgb(255 255 255 / .015)}}
+
+.rail{display:flex;gap:var(--s2);padding:var(--s2)}
+.rail button{flex:1;display:flex;flex-direction:column;align-items:center;gap:.22rem;font-size:.68rem;color:var(--muted);border:1px solid transparent;border-radius:var(--r);padding:.4rem .2rem;transition:.15s;min-height:2.8rem}
+.rail button:hover{color:var(--copper-text);border-color:var(--copper-rule);background:var(--hover)}
+.rail button svg{width:17px;height:17px}
+
+/* ════ marco ════ */
+.marco{position:relative;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;background:var(--sunk);display:flex;flex-direction:column}
+.marco-cab{display:flex;align-items:center;gap:var(--s2);height:2.1rem;padding:0 var(--s3);border-bottom:1px solid var(--rule);flex:none;font-size:.8125rem}
+.marco-cab .nom{font-family:var(--font-world);font-size:.9375rem}
+.marco-hueco{flex:1;min-height:0;position:relative}
+#lienzo{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+.respaldo{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:2rem;
+  background:repeating-linear-gradient(0deg,transparent 0 39px,rgb(255 255 255 / .026) 39px 40px),
+             repeating-linear-gradient(90deg,transparent 0 39px,rgb(255 255 255 / .026) 39px 40px),var(--sunk)}
+.respaldo.fuera{display:none}
+.respaldo h3{font:1.1875rem var(--font-title);margin:0 0 .4rem}
+.respaldo p{font:italic .9375rem var(--font-world);color:var(--muted);max-width:25rem;margin:0 auto 1rem;line-height:1.6}
+.giro{width:18px;height:18px;border-radius:50%;border:2px solid rgb(201 125 70 / .25);border-top-color:var(--copper);animation:gira .8s linear infinite;margin:0 auto .7rem}
+@keyframes gira{to{transform:rotate(360deg)}}
+
+/* ════ barra de acciones ════ */
+.barra{position:relative;border:1px solid var(--copper-rule);border-radius:var(--r);background:var(--surface)}
+.menus{display:flex;gap:var(--s2);padding:var(--s2) var(--s3);align-items:center;flex-wrap:wrap}
+.quien{display:inline-flex;align-items:center;gap:.4rem}
+.quien .n{font:1rem var(--font-title);color:var(--voz,var(--arena))}
+.quien .q{font-size:.68rem;color:var(--muted)}
+.obj-chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;border:1px solid rgb(196 86 75 / .5);color:var(--danger-text);border-radius:999px;padding:.18rem .5rem .18rem .6rem;white-space:nowrap;transition:.15s}
+.obj-chip:hover{background:rgb(196 86 75 / .12)}
+.obj-chip.vacio{border-color:var(--rule-fuerte);color:var(--muted)}
+.menu-btn{display:inline-flex;align-items:center;gap:.45rem;font:500 .8125rem var(--font-chrome);background:var(--sunk);border:1px solid var(--rule-fuerte);border-radius:var(--r);padding:.38rem .7rem;min-height:2rem;transition:.15s}
+.menu-btn svg.i{color:var(--copper-text)}
+.menu-btn .n{font-family:var(--font-data);font-size:.72rem;color:var(--muted)}
+.menu-btn .punta{width:11px;height:11px;stroke:var(--muted);transition:transform .2s}
+.menu-btn:hover{border-color:var(--copper)}
+.menu-btn[aria-expanded="true"]{border-color:var(--copper);color:var(--copper-text);background:rgb(201 125 70 / .1)}
+.menu-btn[aria-expanded="true"] .punta{transform:rotate(180deg)}
+.menus .der{margin-left:auto;display:flex;gap:var(--s2);align-items:center}
+.repetir{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);border:1px solid var(--rule);border-radius:var(--r);padding:.26rem .55rem;max-width:14rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.repetir:hover{border-color:var(--copper);color:var(--copper-text)}
+.repetir[hidden]{display:none}
+
+.panel{position:absolute;bottom:calc(100% + 3px);left:var(--s3);width:min(35rem,calc(100% - 1.5rem));background:var(--surface);border:1px solid var(--copper);border-radius:var(--r);box-shadow:var(--sombra);display:none;z-index:6}
+.panel.abierto{display:block;animation:sube .16s ease-out}
+@keyframes sube{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.panel header{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:.45rem .85rem;border-bottom:1px solid var(--copper-rule)}
+.panel header h3{margin:0;font:1rem var(--font-title);color:var(--copper-text)}
+.espacios{display:flex;gap:.75rem;font-family:var(--font-data);font-size:.72rem;color:var(--muted);align-items:center}
+.espacios .nivel{display:inline-flex;align-items:center;gap:.22rem}
+.espacios i{display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--accent-text);transition:.3s}
+.espacios i.lleno{background:var(--accent-text)}
+.panel ul{list-style:none;margin:0;padding:.2rem 0;max-height:44vh;overflow:auto}
+.fila{display:grid;grid-template-columns:1fr auto auto;gap:.7rem;align-items:center;padding:var(--pad) .85rem;cursor:pointer;border-left:2px solid transparent;min-height:var(--alto-fila)}
+.fila:hover{background:var(--hover);border-left-color:var(--copper)}
+.fila .nombre{font:var(--fs-mundo) var(--font-world);color:var(--text)}
+.fila .nombre small{font:.72rem var(--font-chrome);color:var(--muted);margin-left:.35rem}
+.fila .dato{font-family:var(--font-data);font-size:.72rem;color:var(--muted);white-space:nowrap}
+.coste{font-size:.68rem;color:var(--copper-text);border:1px solid var(--copper-rule);border-radius:999px;padding:.06rem .5rem;white-space:nowrap}
+.coste.reaccion{color:var(--accent-text);border-color:var(--accent)}
+.coste.adicional{color:var(--warning);border-color:var(--warning)}
+.coste.libre{color:var(--muted);border-color:var(--rule-fuerte)}
+.fila.apagada{cursor:not-allowed}
+.fila.apagada .nombre{color:var(--muted)}
+.fila.apagada:hover{background:transparent;border-left-color:transparent}
+.motivo{grid-column:2/4;font:italic .8125rem var(--font-world);color:var(--muted);text-align:right}
+.separador{border-top:1px solid rgb(255 255 255 / .07);margin:.28rem 0}
+.panel .pie{padding:.42rem .85rem .5rem;font-size:.72rem;color:var(--muted);border-top:1px solid rgb(255 255 255 / .06)}
+.panel .pie code{font-family:var(--font-data);font-size:.7rem;color:var(--accent-text)}
+
+/* ════ bandeja ════ */
+.bandeja{border:1px solid var(--warning);border-radius:var(--r);background:rgb(224 168 60 / .07);overflow:hidden;animation:sube .2s ease-out}
+.bandeja[hidden]{display:none}
+.bandeja .cab{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-bottom:1px solid rgb(224 168 60 / .28)}
+.bandeja .cab h2{margin:0;font:.9375rem var(--font-title);color:var(--warning)}
+.bandeja .cab .cuenta{font-family:var(--font-data);font-size:.68rem;color:var(--warning);border:1px solid rgb(224 168 60 / .5);border-radius:999px;padding:0 .38rem}
+.pend{display:flex;align-items:center;gap:var(--s2);padding:.36rem var(--s3);border-bottom:1px solid rgb(255 255 255 / .05);font-size:.8125rem}
+.pend:last-of-type{border-bottom:0}
+.pend .que{flex:1;min-width:0;font-family:var(--font-world);font-size:.9375rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pend .cifra{font-family:var(--font-data);font-size:.8125rem;color:var(--danger-text);white-space:nowrap}
+.pend .cifra.cura{color:var(--salvia)}
+.mini{width:1.6rem;height:1.6rem;border-radius:var(--r);border:1px solid var(--rule-fuerte);display:grid;place-items:center;color:var(--muted);flex:none;transition:.15s}
+.mini:hover{border-color:var(--copper);color:var(--copper-text)}
+.bandeja .pie{display:flex;gap:var(--s2);padding:var(--s2) var(--s3);align-items:center;border-top:1px solid rgb(224 168 60 / .25)}
+.bandeja .pie .nota{font-size:.7rem;color:var(--muted);flex:1;line-height:1.35}
+
+/* ════ registro ════ */
+.registro{display:flex;flex-direction:column;overflow:hidden;position:relative}
+.reg-cab{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-bottom:1px solid var(--rule);flex:none}
+.reg-cab h2{margin:0;font:1rem var(--font-title)}
+.filtros{display:flex;gap:2px;margin-left:auto}
+.filtro{font-size:.7rem;color:var(--muted);border-radius:999px;padding:.16rem .48rem;transition:.15s}
+.filtro:hover{background:var(--hover);color:var(--text)}
+.filtro[aria-pressed="true"]{background:rgb(201 125 70 / .14);color:var(--copper-text)}
+.hilo{flex:1;min-height:0;overflow:auto;padding:var(--s2) var(--s3);scroll-behavior:smooth}
+.linea{display:grid;grid-template-columns:2.5rem 1fr;gap:var(--s2);padding:.24rem 0;font-size:.8125rem}
+.linea time{font-family:var(--font-data);font-size:.66rem;color:rgb(139 153 161 / .7);padding-top:.2rem}
+.linea .txt{font-family:var(--font-world);font-size:var(--fs-mundo);line-height:var(--hilo-lh);color:var(--text)}
+.linea .txt .act{font-family:var(--font-title);color:var(--voz,var(--text))}
+.linea .txt .n{font-family:var(--font-data);font-size:.8rem;color:var(--accent-text)}
+.linea.mec .txt{font-family:var(--font-chrome);font-size:.8rem;color:var(--muted)}
+.linea.mec .txt b{color:var(--text);font-weight:500}
+.linea.sis .txt{font-family:var(--font-chrome);font-size:.75rem;color:var(--muted)}
+.linea.corte{grid-template-columns:1fr;margin:.45rem 0 .3rem}
+.linea.corte .txt{display:flex;align-items:center;gap:var(--s2);font-style:italic;font-size:.8125rem;color:var(--copper-text)}
+.linea.corte .txt::before,.linea.corte .txt::after{content:"";height:1px;flex:1;background:var(--copper-rule)}
+.linea.solodm{border-left:2px dashed var(--copper-rule);padding-left:.45rem;margin-left:-.45rem}
+.linea.solodm .txt::after{content:" · solo tú";font-family:var(--font-chrome);font-size:.66rem;color:var(--copper-text)}
+.linea.nueva{animation:entra .35s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.vacio{padding:1.5rem 1rem;text-align:center;font:italic .9375rem var(--font-world);color:var(--muted);line-height:1.6}
+.saltar{position:absolute;left:50%;transform:translateX(-50%);bottom:3rem;z-index:3;font-size:.7rem;background:var(--copper);color:var(--bg);border-radius:999px;padding:.22rem .65rem;box-shadow:var(--sombra);font-weight:600}
+.saltar[hidden]{display:none}
+.decir{display:flex;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--rule);flex:none}
+.decir input{flex:1;min-width:0;height:2rem;background:var(--sunk);border:1px solid var(--rule-fuerte);border-radius:var(--r);padding:0 .6rem;font-size:.8125rem;outline:none}
+.decir input:focus{border-color:var(--copper)}
+.decir input::placeholder{color:rgb(139 153 161 / .7)}
+.decir button{width:2rem;height:2rem;border-radius:var(--r);background:var(--copper);color:var(--bg);display:grid;place-items:center;flex:none}
+
+/* modo crónica: el registro ocupa el centro entero */
+body[data-modo="cronica"] .registro{--lat:max(var(--s4),calc((100% - 78rem) / 2))}
+body[data-modo="cronica"] .reg-cab,
+body[data-modo="cronica"] .hilo,
+body[data-modo="cronica"] .decir{padding-left:var(--lat);padding-right:var(--lat)}
+body[data-modo="cronica"] .linea{grid-template-columns:2.8rem 1fr;padding:.34rem 0}
+body[data-modo="cronica"] .linea .txt{font-size:1.0625rem;line-height:1.62}
+body[data-modo="cronica"] .linea.mec .txt{font-size:.875rem}
+body[data-modo="cronica"] .reg-cab h2{font-size:1.125rem}
+body[data-modo="cronica"] .vacio{font-size:1.125rem;padding:3rem 1rem}
+
+/* sin el registro al lado, las herramientas se estiran hasta abajo
+   y el motor queda anclado al pie en vez de dejar un hueco muerto */
+body[data-modo="cronica"] .herramientas{flex:1;max-height:none}
+body[data-modo="cronica"] .motor{margin-top:auto}
+
+/* jugador sin tablero: no queda nada en la columna lateral, así que se va
+   y el registro se lleva todo el ancho que sobra */
+body[data-modo="cronica"][data-vista="jugador"] main.rejilla{grid-template-columns:var(--izq) 8px minmax(0,1fr)}
+body[data-modo="cronica"][data-vista="jugador"] .col-lateral,
+body[data-modo="cronica"][data-vista="jugador"] .tirador.der{display:none}
+
+/* ════ herramientas ════ */
+.herramientas{padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2);max-height:19rem;overflow:auto}
+.herramientas h2{margin:0;font:1rem var(--font-title)}
+.herramientas .pista{margin:0;font:italic .8125rem var(--font-world);color:var(--muted)}
+.herr-rejilla{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+.herr-rejilla button{display:flex;gap:.4rem;align-items:center;font-size:.75rem;border:1px solid var(--rule);border-radius:var(--r);padding:.4rem .45rem;text-align:left;transition:.15s;line-height:1.2;min-height:2rem}
+.herr-rejilla button svg{color:var(--copper-text)}
+.herr-rejilla button:hover{border-color:var(--copper);background:var(--hover)}
+.motor{border-top:1px solid var(--rule);padding-top:var(--s2)}
+.fila-motor{display:flex;justify-content:space-between;align-items:baseline;font-size:.75rem;padding:.12rem 0}
+.fila-motor span:first-child{font-family:var(--font-world);font-size:.9375rem}
+.fila-motor span:last-child{font-family:var(--font-data);font-size:.68rem;color:var(--muted)}
+
+/* ════ velos ════ */
+.velo{position:fixed;inset:0;background:var(--veil);display:none;place-items:center;z-index:60;backdrop-filter:blur(3px)}
+.velo.abierto{display:grid}
+.dialogo{width:29rem;max-width:calc(100vw - 2rem);max-height:86vh;overflow:auto;background:var(--surface);border:1px solid var(--copper);border-radius:var(--r);padding:1rem 1.1rem;box-shadow:var(--sombra)}
+.dialogo h2{margin:0 0 .15rem;font:1.3125rem var(--font-title);color:var(--copper-text)}
+.dialogo .lede{margin:0 0 .85rem;font:.9375rem var(--font-world);color:var(--muted);line-height:1.55}
+fieldset{border:0;margin:0 0 .75rem;padding:0}
+legend{font-size:.8125rem;color:var(--muted);margin-bottom:.3rem}
+.radio{display:flex;gap:.55rem;align-items:baseline;padding:.36rem .5rem;border:1px solid transparent;border-radius:var(--r);cursor:pointer}
+.radio:has(input:checked){border-color:var(--copper-rule);background:rgb(255 255 255 / .03)}
+.radio input{accent-color:var(--copper)}
+.radio .et{font-family:var(--font-world);font-size:.9375rem}
+.chip{border:1px solid var(--rule-fuerte);border-radius:999px;padding:.22rem .65rem;font-size:.8125rem;margin-right:.3rem;transition:.15s}
+.chip.on{border-color:var(--copper);color:var(--copper-text);background:rgb(201 125 70 / .1)}
+.gasta{font-size:.8125rem;padding:.5rem .6rem;background:rgb(255 255 255 / .03);border-left:2px solid var(--copper);margin:.55rem 0 .85rem}
+.gasta b{color:var(--copper-text);font-weight:500}
+.acc-dlg{display:flex;justify-content:flex-end;gap:.5rem}
+.teclas{display:grid;grid-template-columns:auto 1fr;gap:.35rem .9rem;align-items:baseline;font-size:.8125rem}
+.teclas kbd{justify-self:start}
+.teclas .g{grid-column:1/-1;font:.9375rem var(--font-title);color:var(--copper-text);margin-top:.55rem}
+.teclas .g:first-child{margin-top:0}
+
+.deshacer{position:fixed;left:50%;bottom:1rem;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:var(--s3);
+  background:var(--surface);border:1px solid var(--copper-rule);border-radius:999px;padding:.35rem .45rem .35rem .95rem;box-shadow:var(--sombra);font-size:.8125rem;animation:sube .2s ease-out}
+.deshacer[hidden]{display:none}
+.deshacer .q{max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+
+@media (max-width:1280px){ :root{--izq:14.5rem;--der:17.5rem} }
+@media (max-width:1080px){
+  main.rejilla{grid-template-columns:14rem 8px minmax(0,1fr)}
+  .col-lateral,.tirador.der{display:none}
+  body[data-modo="cronica"] main.rejilla{grid-template-columns:14rem 8px minmax(0,1fr)}
+  .marco{min-height:15rem}
+}
+@media (max-width:760px){
+  main.rejilla{grid-template-columns:minmax(0,1fr);padding:var(--s2)}
+  .col-elenco,.tirador{display:none}
+  .banda{gap:var(--s2);padding:0 var(--s2)}
+  .banda .volver span,.sesion,.reloj .dia,.escena-tit .lugar{display:none}
+  .menus{flex-wrap:wrap} .menus .der{margin-left:0}
+  .panel{left:.4rem;width:calc(100% - .8rem)}
+  .fila{grid-template-columns:1fr auto} .fila .dato{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body data-vista="dm" data-modo="tablero">
+
+<svg class="sprite" aria-hidden="true"><defs>
+  <symbol id="s-atras" viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></symbol>
+  <symbol id="s-luna" viewBox="0 0 16 16"><path d="M11 2a6 6 0 1 0 3 10.5A5 5 0 0 1 11 2Z"/></symbol>
+  <symbol id="s-hoja" viewBox="0 0 16 16"><path d="M4 2h8v12H4zM6 5h4M6 8h4M6 11h2"/></symbol>
+  <symbol id="s-bolsa" viewBox="0 0 16 16"><path d="M3 6h10l-1 8H4zM6 6V4a2 2 0 0 1 4 0v2"/></symbol>
+  <symbol id="s-mundo" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2C6 4 6 12 8 14"/></symbol>
+  <symbol id="s-dado" viewBox="0 0 16 16"><path d="M8 1.5 14 5v6l-6 3.5L2 11V5z"/><path d="M8 1.5v13M2 5l6 3 6-3"/></symbol>
+  <symbol id="s-espada" viewBox="0 0 16 16"><path d="M3 13 13 3M9 3h4v4M4 9l3 3"/></symbol>
+  <symbol id="s-chispa" viewBox="0 0 16 16"><path d="M8 2v3M8 11v3M2 8h3M11 8h3M4 4l2 2M10 10l2 2M12 4l-2 2M6 10l-2 2"/></symbol>
+  <symbol id="s-estrella" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.2.6-3 2.9.7 4.2L8 11.5l-3.7 2 .7-4.2-3-2.9 4.2-.6z"/></symbol>
+  <symbol id="s-rombo" viewBox="0 0 16 16"><path d="M8 2 14 8 8 14 2 8z"/></symbol>
+  <symbol id="s-ojo" viewBox="0 0 16 16"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8Z"/><circle cx="8" cy="8" r="2"/></symbol>
+  <symbol id="s-bestia" viewBox="0 0 16 16"><path d="M3 13c1-4 3-6 5-6s4 2 5 6M6 5a2 2 0 1 0 4 0 2 2 0 1 0-4 0"/></symbol>
+  <symbol id="s-reloj" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></symbol>
+  <symbol id="s-libro" viewBox="0 0 16 16"><path d="M3 3h10v10H3zM6 7h4M6 10h4"/></symbol>
+  <symbol id="s-tabla" viewBox="0 0 16 16"><path d="M2 4h12M2 8h12M2 12h12"/></symbol>
+  <symbol id="s-enviar" viewBox="0 0 16 16"><path d="M2.5 8 14 3l-3 5 3 5z"/></symbol>
+  <symbol id="s-fuera" viewBox="0 0 16 16"><path d="M9.5 2.5H13v3.5M13 2.5 8 7.5"/><path d="M12 9.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5"/></symbol>
+  <symbol id="s-mapa" viewBox="0 0 16 16"><path d="M6 2.5 2 4v9.5L6 12l4 1.5 4-1.5V2.5L10 4z"/><path d="M6 2.5V12M10 4v9.5"/></symbol>
+  <symbol id="s-check" viewBox="0 0 16 16"><path d="M3 8.5 6.5 12 13 4.5"/></symbol>
+  <symbol id="s-equis" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></symbol>
+  <symbol id="s-mitad" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 2v12"/></symbol>
+  <symbol id="s-deshacer" viewBox="0 0 16 16"><path d="M3 7h7a3.5 3.5 0 0 1 0 7H7"/><path d="M5.5 4.5 3 7l2.5 2.5"/></symbol>
+  <symbol id="s-ayuda" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.2 2.1v1.1M8 11.6h.01"/></symbol>
+</defs></svg>
+
+<header class="banda">
+  <a class="volver" href="#"><svg class="i"><use href="#s-atras"/></svg><span>La Costa de las Espadas</span></a>
+  <span class="sep"></span>
+  <div class="escena-tit">
+    <h1>Los guardias del muelle</h1>
+    <a class="lugar" href="#">Muelle de los Faroles, Puerto Umbrío</a>
+  </div>
+  <span class="crece"></span>
+  <span class="sesion"><i class="punto"></i>1 h 12 min · 3 en la mesa</span>
+  <span class="reloj"><svg class="i xs" style="color:var(--copper-text)"><use href="#s-luna"/></svg>
+    <span class="hora">23:40</span><span class="dia">Día 14, de noche</span></span>
+  <div class="conmutador" role="group" aria-label="Disposición">
+    <button id="m-tablero" aria-pressed="true">Con tablero</button>
+    <button id="m-cronica" aria-pressed="false">Sin tablero</button>
+  </div>
+  <button class="btn ghost" id="btn-ayuda" title="Atajos (?)"><svg class="i xs"><use href="#s-ayuda"/></svg></button>
+  <div class="vercomo">Ver como
+    <select id="vercomo">
+      <option value="dm">yo (DM)</option><option value="sylas">Sylas</option>
+      <option value="corvin">Corvin</option><option value="brenna">Brenna</option>
+    </select>
+  </div>
+</header>
+
+<section class="franja" id="franja" aria-label="Combate"></section>
+
+<main class="rejilla" id="rejilla">
+  <div class="col-elenco">
+    <section class="elenco caja" id="elenco" aria-label="Elenco"></section>
+    <nav class="rail caja" aria-label="Paneles">
+      <button data-tecla="n"><svg class="i"><use href="#s-hoja"/></svg>Hoja <kbd>N</kbd></button>
+      <button data-tecla="i"><svg class="i"><use href="#s-bolsa"/></svg>Bolsa <kbd>I</kbd></button>
+      <button data-tecla="m"><svg class="i"><use href="#s-mundo"/></svg>Mundo <kbd>M</kbd></button>
+      <button data-tecla="d"><svg class="i"><use href="#s-dado"/></svg>Dados <kbd>D</kbd></button>
+    </nav>
+  </div>
+
+  <div class="tirador izq" id="tir-izq" role="separator" aria-label="Ancho del elenco"></div>
+
+  <div class="col-centro" id="col-centro">
+    <section class="marco" id="marco" aria-label="Tablero">
+      <div class="marco-cab">
+        <svg class="i xs muted"><use href="#s-mapa"/></svg>
+        <span class="nom">Muelle de los Faroles</span><span class="crece"></span>
+        <span class="xs muted">tablero en vivo</span>
+        <a class="btn ghost" href="https://tablero.supportive.pro/#/tablero/vucwv88b" target="_blank" rel="noopener" style="padding:.06rem .35rem;min-height:auto" aria-label="Abrir el tablero aparte"><svg class="i xs"><use href="#s-fuera"/></svg></a>
+      </div>
+      <div class="marco-hueco">
+        <iframe id="lienzo" src="https://tablero.supportive.pro/#/tablero/vucwv88b" title="Marco del tablero"></iframe>
+        <div class="respaldo" id="respaldo"><div>
+          <div class="giro" id="giro"></div>
+          <h3 id="r-tit">Cargando el tablero</h3>
+          <p id="r-txt">Cada jugador entra al tablero desde este marco, una vez por navegador.</p>
+          <a class="btn" id="r-link" href="https://tablero.supportive.pro/#/tablero/vucwv88b" target="_blank" rel="noopener" hidden>Abrir el tablero aparte</a>
+        </div></div>
+      </div>
+    </section>
+
+    <section class="barra" id="barra" aria-label="Acciones">
+      <div class="panel" id="p-ataques"><header><h3>Ataques</h3><span class="espacios">bono +2 · competencia +2</span></header><ul data-lista="ataques"></ul><div class="pie">El ataque de conjuro va contra la CA (T19): «1d20 + bono» sale de <code>resolveAttack</code>.</div></div>
+      <div class="panel" id="p-conjuros"><header><h3>Conjuros</h3><span class="espacios" id="slots"></span></header><ul data-lista="conjuros"></ul><div class="pie">Cada fila trae su motivo cuando no se puede; lo manda <code>GET …/characters/:id/actions</code> (T21).</div></div>
+      <div class="panel" id="p-aptitudes"><header><h3>Aptitudes</h3><span class="espacios">recuperación arcana <i class="lleno"></i></span></header><ul data-lista="aptitudes"></ul></div>
+      <div class="panel" id="p-objetos"><header><h3>Objetos</h3><span class="espacios">3 consumibles</span></header><ul data-lista="objetos"></ul></div>
+      <div class="panel" id="p-comunes"><header><h3>Lo que puede hacer cualquiera</h3></header><ul data-lista="comunes"></ul></div>
+
+      <div class="menus" role="toolbar" aria-label="Acciones">
+        <span class="quien" id="quien"></span>
+        <button class="obj-chip vacio" id="objetivo"></button>
+        <button class="menu-btn" data-panel="p-ataques" aria-expanded="false"><svg class="i"><use href="#s-espada"/></svg>Ataques <span class="n" data-cuenta="ataques"></span><kbd>1</kbd><svg class="punta" viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M3.5 10 8 5.5 12.5 10"/></svg></button>
+        <button class="menu-btn" data-panel="p-conjuros" aria-expanded="false"><svg class="i"><use href="#s-chispa"/></svg>Conjuros <span class="n" data-cuenta="conjuros"></span><kbd>2</kbd><svg class="punta" viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M3.5 10 8 5.5 12.5 10"/></svg></button>
+        <button class="menu-btn" data-panel="p-aptitudes" aria-expanded="false"><svg class="i"><use href="#s-estrella"/></svg>Aptitudes <span class="n" data-cuenta="aptitudes"></span><kbd>3</kbd><svg class="punta" viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M3.5 10 8 5.5 12.5 10"/></svg></button>
+        <button class="menu-btn" data-panel="p-objetos" aria-expanded="false"><svg class="i"><use href="#s-rombo"/></svg>Objetos <span class="n" data-cuenta="objetos"></span><kbd>4</kbd><svg class="punta" viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M3.5 10 8 5.5 12.5 10"/></svg></button>
+        <button class="menu-btn" data-panel="p-comunes" aria-expanded="false">Esquivar, ayudar… <kbd>5</kbd><svg class="punta" viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M3.5 10 8 5.5 12.5 10"/></svg></button>
+        <span class="der"><button class="repetir" id="repetir" hidden></button></span>
+      </div>
+    </section>
+  </div>
+
+  <div class="tirador der" id="tir-der" role="separator" aria-label="Ancho del lateral"></div>
+
+  <div class="col-lateral" id="col-lateral">
+    <section class="bandeja" id="bandeja" hidden aria-live="polite"></section>
+
+    <section class="registro caja" id="registro" aria-label="Registro">
+      <div class="reg-cab">
+        <h2>Registro</h2>
+        <div class="filtros" role="group" aria-label="Filtrar">
+          <button class="filtro" data-filtro="todo" aria-pressed="true">Todo</button>
+          <button class="filtro" data-filtro="hist" aria-pressed="false">Relato</button>
+          <button class="filtro" data-filtro="mec" aria-pressed="false">Números</button>
+        </div>
+      </div>
+      <div class="hilo" id="hilo" aria-live="polite"></div>
+      <button class="saltar" id="saltar" hidden>Nuevas líneas ↓</button>
+      <div class="decir">
+        <input id="decir" placeholder="…y en dos palabras, ¿qué pasó?" autocomplete="off" />
+        <button id="decir-btn" aria-label="Anotar"><svg class="i xs"><use href="#s-enviar"/></svg></button>
+      </div>
+    </section>
+
+    <aside class="herramientas caja" id="herramientas" aria-label="Herramientas del DM">
+      <h2>Herramientas</h2>
+      <p class="pista">Lo que la mesa todavía no ve.</p>
+      <div class="herr-rejilla">
+        <button data-herr="tirada"><svg class="i xs"><use href="#s-dado"/></svg>Pedir tirada</button>
+        <button data-herr="criatura"><svg class="i xs"><use href="#s-bestia"/></svg>Sacar criatura</button>
+        <button data-herr="revelar"><svg class="i xs"><use href="#s-ojo"/></svg>Revelar algo</button>
+        <button data-herr="reloj"><svg class="i xs"><use href="#s-reloj"/></svg>Avanzar reloj</button>
+        <button data-herr="xp"><svg class="i xs"><use href="#s-estrella"/></svg>Dar experiencia</button>
+        <button data-herr="reglas"><svg class="i xs"><use href="#s-libro"/></svg>Bloques de reglas</button>
+        <button data-herr="tablas"><svg class="i xs"><use href="#s-tabla"/></svg>Tablas de la casa</button>
+        <button data-herr="mundo"><svg class="i xs"><use href="#s-mundo"/></svg>Consultar mundo</button>
+      </div>
+      <div class="motor">
+        <p class="pista" style="margin-bottom:.3rem">Lo que el motor está siguiendo.</p>
+        <div class="fila-motor"><span>Furia · Corvin</span><span>3 asaltos</span></div>
+        <div class="fila-motor"><span>Bendición · Brenna</span><span>concentración</span></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="deshacer" id="deshacer" hidden>
+  <span class="q" id="deshacer-q"></span>
+  <button class="btn" id="deshacer-btn"><svg class="i xs"><use href="#s-deshacer"/></svg>Deshacer <kbd>Z</kbd></button>
+</div>
+
+<div class="velo" id="velo-conj">
+  <div class="dialogo" role="dialog" aria-labelledby="dc-t">
+    <h2 id="dc-t">Proyectil mágico</h2>
+    <p class="lede">Evocación de 1º · acción · 120 pies. Tres dardos que impactan siempre.</p>
+    <fieldset><legend>Con qué espacio</legend>
+      <label class="radio"><input type="radio" name="esp" value="1" checked /><span class="et">Nivel 1 <span class="muted xs">— 3 dardos, 3 × (1d4+1)</span></span></label>
+      <label class="radio"><input type="radio" name="esp" value="2" /><span class="et">Nivel 2 <span class="muted xs">— 4 dardos, 4 × (1d4+1)</span></span></label>
+    </fieldset>
+    <fieldset><legend>Contra quién</legend><div id="dc-objs"></div></fieldset>
+    <div class="gasta">Gasta <b>la acción</b> y <b>un espacio de <span id="dc-nivel">1º</span></b>. El daño va a tu bandeja antes de tocar a nadie.</div>
+    <div class="acc-dlg"><button class="btn" data-cerrar>Cancelar</button><button class="btn primario" id="dc-si">Lanzar</button></div>
+  </div>
+</div>
+
+<div class="velo" id="velo-ayuda">
+  <div class="dialogo" role="dialog" aria-labelledby="da-t">
+    <h2 id="da-t">Atajos</h2>
+    <p class="lede">Para no soltar el teclado en mitad de un turno.</p>
+    <div class="teclas">
+      <span class="g">La barra de acciones</span>
+      <kbd>1</kbd><span>Ataques</span><kbd>2</kbd><span>Conjuros</span><kbd>3</kbd><span>Aptitudes</span>
+      <kbd>4</kbd><span>Objetos</span><kbd>5</kbd><span>Esquivar, ayudar, esconderse…</span>
+      <kbd>R</kbd><span>Repetir la última acción</span><kbd>X</kbd><span>Cambiar de objetivo</span>
+      <span class="g">El turno</span>
+      <kbd>espacio</kbd><span>Siguiente turno</span><kbd>Z</kbd><span>Deshacer lo último</span>
+      <kbd>A</kbd><span>Aplicar todo lo que hay en la bandeja</span>
+      <span class="g">La mesa</span>
+      <kbd>/</kbd><span>Escribir en el registro</span>
+      <kbd>N</kbd><span>Hoja</span><kbd>I</kbd><span>Bolsa</span><kbd>M</kbd><span>Mundo</span><kbd>D</kbd><span>Dados</span>
+      <kbd>?</kbd><span>Esta lista</span><kbd>Esc</kbd><span>Cerrar lo que esté abierto</span>
+    </div>
+    <div class="acc-dlg" style="margin-top:1rem"><button class="btn primario" data-cerrar>Entendido</button></div>
+  </div>
+</div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const d=n=>1+Math.floor(Math.random()*n);
+
+const VOZ={sylas:'var(--arena)',corvin:'var(--salvia)',brenna:'var(--indigo)',klarg:'var(--danger-text)',goblin:'var(--danger-text)'};
+const M={
+  vista:'dm', modo:'tablero', combate:true, turno:1, ronda:2, objetivo:'klarg', filtro:'todo',
+  eco:{accion:false,adicional:false,reaccion:false}, mov:30,
+  slots:{1:3,2:2}, maxSlots:{1:4,2:2},
+  elenco:[
+    {id:'sylas',n:'Sylas',sub:'Mago · nv 3',pg:13,max:20,ca:12,vel:30,bando:'pj'},
+    {id:'corvin',n:'Corvin',sub:'Guerrero · nv 3',pg:28,max:31,ca:17,vel:30,bando:'pj'},
+    {id:'brenna',n:'Brenna',sub:'Clériga · nv 3',pg:19,max:24,ca:16,vel:25,bando:'pj'},
+    {id:'klarg',n:'Klarg',sub:'Osgo · enemigo',pg:27,max:27,ca:16,vel:30,bando:'pnj'},
+    {id:'goblin',n:'Goblin',sub:'enemigo',pg:7,max:7,ca:15,vel:30,bando:'pnj'}
+  ],
+  orden:[{id:'klarg',ini:18},{id:'sylas',ini:15},{id:'corvin',ini:12},{id:'brenna',ini:11},{id:'goblin',ini:9}],
+  log:[], bandeja:[], ultima:null, pila:[]
+};
+const per=id=>M.elenco.find(a=>a.id===id);
+const actua=()=>M.combate?M.orden[M.turno].id:'sylas';
+const mio=()=>M.vista==='dm'?actua():M.vista;
+const enemigos=()=>M.elenco.filter(a=>a.bando==='pnj'&&a.pg>0);
+const obj=()=>M.objetivo?per(M.objetivo):null;
+
+/* ═══ catálogo ═══ */
+const ACC={
+  ataques:[
+    {id:'daga',n:'Daga',sub:'arma · sutil, arrojadiza',dato:'1d4 perforante · 20/60',coste:'accion',necesita:'objetivo',
+     hacer:o=>({tirada:d(20)+2,bono:'1d20+2',contra:o.ca,dano:d(4)+2,tipo:'perforante',verbo:'ataca con la daga a'})},
+    {id:'baston',n:'Bastón',sub:'arma · versátil',dato:'1d6 (1d8) contundente',coste:'accion',necesita:'objetivo',
+     hacer:o=>({tirada:d(20),bono:'1d20+0',contra:o.ca,dano:d(6),tipo:'contundente',verbo:'golpea con el bastón a'})},
+    {id:'escarcha',n:'Rayo de escarcha',sub:'ataque de conjuro',dato:'1d8 frío · 60 pies',coste:'accion',necesita:'objetivo',
+     hacer:o=>({tirada:d(20)+4,bono:'1d20+4',contra:o.ca,dano:d(8),tipo:'frío',verbo:'lanza Rayo de escarcha contra'})}
+  ],
+  conjuros:[
+    {id:'proyectil',n:'Proyectil mágico',sub:'1º · preparado',dato:'3 × 1d4+1 fuerza · 120 pies',coste:'accion',espacio:1,dialogo:true},
+    {id:'manos',n:'Manos ardientes',sub:'1º · preparado',dato:'Des CD 13 · 3d6 fuego',coste:'accion',espacio:1,
+     hacer:()=>({texto:'lanza Manos ardientes (1º): salvación de Destreza CD 13, <span class="n">3d6</span> fuego en cono de 15 pies',
+       area:true,dano:d(6)+d(6)+d(6),tipo:'fuego'})},
+    {id:'escarcha2',n:'Rayo de escarcha',sub:'truco',dato:'1d8 frío · 60 pies',coste:'accion',necesita:'objetivo',
+     hacer:o=>({tirada:d(20)+4,bono:'1d20+4',contra:o.ca,dano:d(8),tipo:'frío',verbo:'lanza Rayo de escarcha contra'})},
+    {id:'luz',n:'Luz',sub:'truco',dato:'1 hora · toque',coste:'accion',hacer:()=>({texto:'enciende Luz sobre su bastón'})},
+    {id:'escudo',n:'Escudo',sub:'1º · preparado',dato:'+5 CA hasta tu turno',coste:'reaccion',espacio:1,
+     hacer:()=>({texto:'lanza Escudo (1º): <span class="n">+5</span> a la CA hasta su próximo turno'})},
+    {id:'paso',n:'Paso brumoso',sub:'2º · preparado',dato:'teletransporte 30 pies',coste:'adicional',espacio:2,
+     hacer:()=>({texto:'lanza Paso brumoso (2º) y aparece a 30 pies'})},
+    {sep:true},
+    {id:'dormir',n:'Dormir',sub:'1º',apagada:'no lo preparó hoy'},
+    {id:'bola',n:'Bola de fuego',sub:'3º',apagada:'a nivel 3 no hay espacios de 3º'}
+  ],
+  aptitudes:[
+    {id:'recu',n:'Recuperación arcana',sub:'mago 1',apagada:'solo en un descanso corto'},
+    {id:'furtivo',n:'Ataque furtivo',sub:'pícaro',apagada:'no es de su clase'}
+  ],
+  objetos:[
+    {id:'pocion',n:'Poción de curación',sub:'×2',dato:'2d4+2 PG',coste:'accion',
+     hacer:()=>({texto:'bebe una Poción de curación',cura:d(4)+d(4)+2,aQuien:mio()})},
+    {id:'cambiar',n:'Cambiar de arma',dato:'daga ↔ bastón',coste:'adicional',hacer:()=>({texto:'guarda la daga y saca el bastón'})},
+    {id:'pergamino',n:'Pergamino de Bola de fuego',apagada:'sin identificar'}
+  ],
+  comunes:[
+    {id:'esquivar',n:'Esquivar',dato:'desventaja contra ti',coste:'accion',hacer:()=>({texto:'esquiva: los ataques contra él tienen desventaja hasta su turno'})},
+    {id:'ayudar',n:'Ayudar',dato:'ventaja a un aliado',coste:'accion',hacer:()=>({texto:'ayuda a un compañero: su próxima tirada tiene ventaja'})},
+    {id:'esconderse',n:'Esconderse',dato:'Sigilo contra Percepción',coste:'accion',hacer:()=>({texto:`intenta esconderse: <span class="n">1d20+3 = ${d(20)+3}</span> de Sigilo`})},
+    {id:'correr',n:'Correr',dato:'+30 pies',coste:'accion',hacer:()=>({texto:'corre: dobla su movimiento este turno',mov:30})},
+    {id:'retirarse',n:'Retirarse',dato:'sin ataques de oportunidad',coste:'accion',hacer:()=>({texto:'se retira sin provocar ataques de oportunidad'})},
+    {id:'preparar',n:'Preparar',dato:'gasta también tu reacción',coste:'accion',hacer:()=>({texto:'prepara una acción a la espera de algo'})},
+    {id:'buscar',n:'Buscar',dato:'Percepción o Investigación',coste:'libre',hacer:()=>({texto:`busca entre las cajas del muelle: <span class="n">1d20+1 = ${d(20)+1}</span>`})}
+  ]
+};
+
+/* ═══ combate ═══ */
+function pintarFranja(){
+  const f=$('#franja');
+  if(!M.combate){
+    f.innerHTML=`<span class="sin-combate">La mesa no está en combate.
+      <button class="btn" id="entrar">Entrar en combate</button></span>`;
+    $('#entrar').onclick=()=>{M.combate=true;M.turno=0;M.ronda=1;nuevoTurno(true);};
+    return;
+  }
+  const a=per(actua());
+  f.innerHTML=`
+    <span class="ronda">Ronda ${M.ronda}</span>
+    <div class="turnos" id="turnos">${M.orden.map((o,i)=>{const c=per(o.id);return `
+      <button class="combatiente ${i===M.turno?'actual':''} ${i<M.turno?'hecho':''} ${c.pg<=0?'caido':''} ${o.id===M.objetivo?'objetivo':''}"
+        style="--voz:${VOZ[o.id]}" data-id="${o.id}" title="${c.bando==='pnj'?'Apuntar a '+c.n:c.n}">
+        <i class="voz"></i><span>${c.n}</span><span class="ini">${o.ini}</span></button>`;}).join('')}</div>
+    <span class="economia">
+      <span class="dequien" style="--voz:${VOZ[a.id]}">${a.n}</span>
+      <span class="eco ${M.eco.accion?'gastada':''}"><i></i>acción</span>
+      <span class="eco ${M.eco.adicional?'gastada':''}"><i></i>adicional</span>
+      <span class="eco ${M.eco.reaccion?'gastada':''}"><i></i>reacción</span>
+      <span class="mov"><b>${M.mov}</b>/30 pies</span>
+    </span>
+    <button class="btn ghost" id="corregir">Corregir</button>
+    <button class="btn primario" id="siguiente">Siguiente turno</button>`;
+  $('#turnos').onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;
+    const c=per(b.dataset.id);
+    if(c.bando==='pnj') apuntar(c.id); else {M.turno=M.orden.findIndex(o=>o.id===c.id);nuevoTurno(false);}};
+  $('#siguiente').onclick=()=>{M.turno=(M.turno+1)%M.orden.length;if(M.turno===0)M.ronda++;nuevoTurno(true);};
+  $('#corregir').onclick=()=>apunta({t:'sis',txt:'Abres la corrección de iniciativa.'});
+}
+function pintarQuien(){
+  const q=per(mio());
+  $('#quien').innerHTML=`<span class="n" style="--voz:${VOZ[q.id]}">${q.n}</span>
+    <span class="q">${M.vista==='dm'?(M.combate?'le toca':'lleva la escena'):'tú'}</span>`;
+}
+function nuevoTurno(escribe){
+  M.eco={accion:false,adicional:false,reaccion:false}; M.mov=30;
+  pintarTodo();
+  if(escribe) apunta({t:'sis',txt:`Turno de <b>${per(actua()).n}</b>`});
+}
+
+/* ═══ elenco ═══ */
+function pintarElenco(){
+  const dm=M.vista==='dm';
+  const bloque=(tit,l)=>l.length?`<div class="grupo-tit"><span>${tit}</span><span class="cuenta">${l.length}</span></div>`+l.map(tarjeta).join(''):'';
+  const yo=dm?[]:M.elenco.filter(a=>a.id===M.vista);
+  const resto=M.elenco.filter(a=>a.bando==='pj'&&!yo.includes(a));
+  $('#elenco').innerHTML=(yo.length?bloque('Tu personaje',yo):'')+
+    bloque(dm?'El grupo':'En la mesa',resto)+bloque('En escena',M.elenco.filter(a=>a.bando==='pnj'));
+}
+function tarjeta(a){
+  const pct=Math.max(0,Math.round(a.pg/a.max*100)), cl=pct<=25?'grave':pct<=60?'herido':'';
+  const oculto=M.vista!=='dm'&&a.bando==='pnj';
+  return `<button class="ficha ${a.id===M.vista?'tuya':''} ${a.id===M.objetivo?'objetivo':''} ${a.id===actua()&&M.combate?'actua':''} ${a.pg<=0?'caida':''}"
+    style="--voz:${VOZ[a.id]||'var(--muted)'}" data-id="${a.id}" title="${a.bando==='pnj'?'Apuntar a '+a.n:a.n}">
+    <span class="cab"><span class="nombre">${a.n}</span><span class="sub">${a.sub}</span></span>
+    ${oculto
+      ? `<span class="vago">${pct>75?'entero':pct>50?'algo tocado':pct>25?'malherido':'a punto de caer'}</span>`
+      : `<span class="pg"><span>PG</span><span><b>${a.pg}</b> / ${a.max}</span></span>
+         <span class="barra"><i class="${cl}" style="width:${pct}%"></i></span>`}
+    <span class="datos"><span>CA <b>${a.ca}</b></span>${a.vel?`<span>Vel. <b>${a.vel}</b></span>`:''}</span>
+    ${a.cond?`<span class="cond">${a.cond}</span>`:''}</button>`;
+}
+$('#elenco').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(!b)return;
+  const a=per(b.dataset.id);
+  if(a.bando==='pnj') apuntar(a.id); else apunta({t:'sis',txt:`Abres la ficha de ${a.n}.`});});
+
+/* ═══ objetivo ═══ */
+function apuntar(id){ M.objetivo=(M.objetivo===id?null:id); pintarTodo(); }
+function pintarObjetivo(){
+  const o=obj(), b=$('#objetivo');
+  b.className='obj-chip'+(o?'':' vacio');
+  b.innerHTML=o?`apuntas a <b>&nbsp;${o.n}</b>&nbsp;✕`:`sin objetivo <kbd>X</kbd>`;
+  b.title=o?'Quitar el objetivo':'Elige a alguien en el elenco o pulsa X';
+}
+$('#objetivo').onclick=()=>{ if(obj()) apuntar(M.objetivo); else ciclarObjetivo(); };
+function ciclarObjetivo(){
+  const e=enemigos(); if(!e.length) return;
+  const i=e.findIndex(a=>a.id===M.objetivo);
+  M.objetivo=e[(i+1)%e.length].id; pintarTodo();
+}
+
+/* ═══ listas ═══ */
+function porQueNo(a){
+  if(a.apagada) return a.apagada;
+  if(M.combate&&a.coste&&a.coste!=='libre'&&M.eco[a.coste])
+    return a.coste==='accion'?'ya gastó su acción':a.coste==='adicional'?'ya gastó la adicional':'ya gastó la reacción';
+  if(a.espacio&&!M.slots[a.espacio]) return `sin espacios de ${a.espacio}º`;
+  if(a.necesita==='objetivo'&&!obj()) return 'elige antes un objetivo';
+  return null;
+}
+function pintarListas(){
+  for(const [k,lista] of Object.entries(ACC)){
+    const ul=$(`ul[data-lista="${k}"]`); if(!ul) continue;
+    ul.innerHTML=lista.map(a=>{
+      if(a.sep) return '<li class="separador" role="separator"></li>';
+      const no=porQueNo(a);
+      if(no) return `<li class="fila apagada" aria-disabled="true"><span class="nombre">${a.n}${a.sub?` <small>${a.sub}</small>`:''}</span><span class="motivo">${no}</span></li>`;
+      return `<li class="fila" data-acc="${k}:${a.id}" tabindex="0">
+        <span class="nombre">${a.n}${a.sub?` <small>${a.sub}</small>`:''}</span>
+        <span class="dato">${a.dato||''}</span>
+        <span class="coste ${a.coste}">${a.coste==='libre'?'gratis':a.coste}</span></li>`;
+    }).join('');
+    const c=$(`[data-cuenta="${k}"]`);
+    if(c) c.textContent=lista.filter(a=>!a.sep&&!porQueNo(a)).length;
+  }
+  $('#slots').innerHTML=[1,2].map(n=>`<span class="nivel">${n}º ${
+    Array.from({length:M.maxSlots[n]},(_,i)=>`<i class="${i<M.slots[n]?'lleno':''}"></i>`).join('')}</span>`).join('');
+}
+
+/* ═══ ejecutar ═══ */
+document.addEventListener('click',e=>{
+  const f=e.target.closest('.fila[data-acc]'); if(!f) return;
+  const [k,id]=f.dataset.acc.split(':'); ejecutar(ACC[k].find(a=>a.id===id));
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  const f=e.target.closest?.('.fila[data-acc]'); if(!f) return;
+  const [k,id]=f.dataset.acc.split(':'); ejecutar(ACC[k].find(a=>a.id===id));
+});
+function ejecutar(a){
+  if(!a||porQueNo(a)) return;
+  if(a.dialogo) return abrirConjuro();
+  const antes={eco:{...M.eco},mov:M.mov,slots:{...M.slots},bandeja:M.bandeja.length,log:M.log.length};
+  if(M.combate&&a.coste&&a.coste!=='libre') M.eco[a.coste]=true;
+  if(a.espacio) M.slots[a.espacio]--;
+  const o=obj(), r=a.hacer(o), quien=mio();
+
+  if(r.tirada!==undefined){
+    const pega=r.tirada>=r.contra;
+    apunta({t:'mec',quien,txt:`${r.verbo} ${o.n}: <span class="n">${r.bono} = ${r.tirada}</span> contra CA ${r.contra} — ${pega?'impacta':'falla'}`});
+    if(pega) proponer({contra:o.id,dano:r.dano,tipo:r.tipo,que:`${a.n} de ${per(quien).n}`});
+  } else {
+    apunta({t:'mec',quien,txt:r.texto});
+    if(r.dano) enemigos().forEach(en=>proponer({contra:en.id,dano:r.dano,tipo:r.tipo,que:a.n,salvacion:true}));
+    if(r.cura) proponer({contra:r.aQuien,cura:r.cura,que:a.n});
+    if(r.mov) M.mov+=r.mov;
+  }
+  M.ultima=a;
+  empujar(`${a.n} · ${per(quien).n}`,()=>{
+    M.eco=antes.eco; M.mov=antes.mov; M.slots=antes.slots;
+    M.bandeja=M.bandeja.slice(0,antes.bandeja); M.log=M.log.slice(0,antes.log); pintarTodo();
+  });
+  cerrarMenus(); pintarTodo();
+  $('#repetir').hidden=false;
+  $('#repetir').innerHTML=`<svg class="i xs"><use href="#s-deshacer"/></svg>Repetir: ${a.n} <kbd>R</kbd>`;
+}
+$('#repetir').onclick=()=>{ if(M.ultima) ejecutar(M.ultima); };
+
+/* ═══ bandeja ═══ */
+let idPend=0;
+function proponer(p){ M.bandeja.push({...p,id:++idPend}); }
+function pintarBandeja(){
+  const b=$('#bandeja');
+  if(!M.bandeja.length||M.vista!=='dm'){ b.hidden=true; return; }
+  b.hidden=false;
+  b.innerHTML=`
+    <div class="cab"><h2>Tu bandeja</h2><span class="cuenta">${M.bandeja.length}</span>
+      <span class="crece"></span><span class="xs muted">nada se aplica sin ti</span></div>
+    ${M.bandeja.map(p=>`<div class="pend" data-p="${p.id}">
+        <span class="que">${p.que} → <b>${per(p.contra).n}</b></span>
+        <span class="cifra ${p.cura?'cura':''}">${p.cura?`+${p.cura}`:`−${p.dano}`} ${p.tipo||'PG'}</span>
+        ${p.salvacion?`<button class="mini" data-op="mitad" title="Salvó: la mitad"><svg class="i xs"><use href="#s-mitad"/></svg></button>`:''}
+        <button class="mini" data-op="ok" title="Aplicar"><svg class="i xs"><use href="#s-check"/></svg></button>
+        <button class="mini" data-op="no" title="Descartar"><svg class="i xs"><use href="#s-equis"/></svg></button>
+      </div>`).join('')}
+    <div class="pie">
+      <span class="nota">${M.bandeja.some(p=>p.salvacion)?'El botón del medio parte el daño para quien salvó.':'Ajusta antes de aplicar si hubo resistencia.'}</span>
+      <button class="btn peligro" data-op="nada">Descartar todo</button>
+      <button class="btn primario" data-op="todo">Aplicar todo</button>
+    </div>`;
+}
+$('#bandeja').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-op]'); if(!btn) return;
+  const op=btn.dataset.op;
+  if(op==='todo') return aplicarTodo();
+  if(op==='nada'){ const copia=[...M.bandeja]; M.bandeja=[]; pintarBandeja();
+    empujar('Descartar la bandeja',()=>{M.bandeja=copia;pintarBandeja();}); return; }
+  const p=M.bandeja.find(x=>x.id===+btn.closest('[data-p]').dataset.p);
+  if(op==='mitad'){ p.dano=Math.floor(p.dano/2); p.salvacion=false; pintarBandeja(); return; }
+  if(op==='no'){ M.bandeja=M.bandeja.filter(x=>x!==p); pintarBandeja();
+    empujar('Descartar '+p.que,()=>{M.bandeja.push(p);pintarBandeja();}); return; }
+  aplicar([p]);
+});
+function aplicarTodo(){ if(M.bandeja.length) aplicar([...M.bandeja]); }
+function aplicar(lista){
+  const antesPg=lista.map(p=>({p,pg:per(p.contra).pg})), antesLog=M.log.length;
+  lista.forEach(p=>{
+    const a=per(p.contra);
+    a.pg=p.cura?Math.min(a.max,a.pg+p.cura):Math.max(0,a.pg-p.dano);
+    apunta({t:'mec',quien:p.contra,txt:p.cura?`recupera <span class="n">${p.cura}</span> PG`:`pierde <span class="n">${p.dano}</span> PG (${p.tipo})`});
+    if(a.pg<=0) apunta({t:'corte',txt:`${a.n} cae`});
+    M.bandeja=M.bandeja.filter(x=>x!==p);
+    destello(p.contra,!!p.cura);
+  });
+  pintarTodo();
+  empujar(lista.length>1?`Aplicar ${lista.length} efectos`:`Aplicar ${lista[0].que}`,()=>{
+    antesPg.forEach(({p,pg})=>{per(p.contra).pg=pg;M.bandeja.push(p);});
+    M.log=M.log.slice(0,antesLog); pintarTodo();
+  });
+}
+function destello(id,bien){
+  requestAnimationFrame(()=>{const el=$(`.ficha[data-id="${id}"]`);
+    if(el){el.classList.add(bien?'parpadeo-bien':'parpadeo');
+      setTimeout(()=>el.classList.remove('parpadeo','parpadeo-bien'),520);}});
+}
+
+/* ═══ deshacer ═══ */
+let temp;
+function empujar(label,fn){
+  M.pila.push({label,fn}); if(M.pila.length>25) M.pila.shift();
+  $('#deshacer-q').textContent=label; $('#deshacer').hidden=false;
+  clearTimeout(temp); temp=setTimeout(()=>{$('#deshacer').hidden=true;},7000);
+}
+function deshacer(){
+  const u=M.pila.pop(); if(!u) return;
+  u.fn(); apunta({t:'sis',txt:`Deshecho: ${u.label.toLowerCase()}`}); $('#deshacer').hidden=true;
+}
+$('#deshacer-btn').onclick=deshacer;
+
+/* ═══ registro ═══ */
+const t0=Date.now();
+const hora=()=>'23:'+String(40+Math.floor((Date.now()-t0)/60000)).padStart(2,'0');
+function apunta(e){ M.log.push({...e,h:e.h||hora()}); pintarHilo(); }
+function pintarHilo(){
+  const h=$('#hilo'); if(!h) return;
+  const abajo=h.scrollHeight-h.scrollTop-h.clientHeight<70;
+  const ls=M.log.filter(e=>!(e.dm&&M.vista!=='dm'))
+    .filter(e=>M.filtro==='todo'||(M.filtro==='mec'?e.t==='mec':!e.t||e.t==='corte'));
+  h.innerHTML=ls.length?ls.map((e,i)=>{
+    if(e.t==='corte') return `<div class="linea corte"><span class="txt">${e.txt}</span></div>`;
+    const nom=e.quien?`<span class="act" style="--voz:${VOZ[e.quien]}">${per(e.quien).n}</span> `:'';
+    return `<div class="linea ${e.t||''} ${e.dm?'solodm':''} ${i===ls.length-1?'nueva':''}"><time>${e.h}</time><span class="txt">${nom}${e.txt}</span></div>`;
+  }).join('') : `<p class="vacio">Aquí queda lo que pase.<br>Lo que tires y lo que cuentes.</p>`;
+  if(abajo){h.scrollTop=h.scrollHeight;$('#saltar').hidden=true;} else $('#saltar').hidden=false;
+}
+$('#hilo').addEventListener('scroll',()=>{const h=$('#hilo');
+  if(h.scrollHeight-h.scrollTop-h.clientHeight<70) $('#saltar').hidden=true;});
+$('#saltar').onclick=()=>{const h=$('#hilo');h.scrollTop=h.scrollHeight;$('#saltar').hidden=true;};
+$$('.filtro').forEach(f=>f.onclick=()=>{$$('.filtro').forEach(x=>x.setAttribute('aria-pressed','false'));
+  f.setAttribute('aria-pressed','true'); M.filtro=f.dataset.filtro; pintarHilo();});
+$('#decir-btn').onclick=()=>{const v=$('#decir').value.trim();if(!v)return;
+  apunta({txt:v.replace(/[<>]/g,'')}); $('#decir').value='';};
+$('#decir').addEventListener('keydown',e=>{if(e.key==='Enter')$('#decir-btn').click();});
+
+/* ═══ menús ═══ */
+const botones=$$('.menu-btn[data-panel]');
+function cerrarMenus(){$$('.panel').forEach(p=>p.classList.remove('abierto'));botones.forEach(b=>b.setAttribute('aria-expanded','false'));}
+botones.forEach(b=>b.onclick=()=>{const p=$('#'+b.dataset.panel),ya=p.classList.contains('abierto');
+  cerrarMenus(); if(!ya){p.classList.add('abierto');b.setAttribute('aria-expanded','true');}});
+document.addEventListener('click',e=>{if(!e.target.closest('.barra'))cerrarMenus();});
+
+/* ═══ diálogo de conjuro ═══ */
+function abrirConjuro(){
+  cerrarMenus();
+  $('#dc-objs').innerHTML=enemigos().map(a=>`<button class="chip ${a.id===M.objetivo?'on':''}" data-obj="${a.id}">${a.n}</button>`).join('')
+    ||'<span class="muted xs">No queda nadie en pie.</span>';
+  $$('#dc-objs .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+  $('#velo-conj').classList.add('abierto');
+}
+$$('input[name=esp]').forEach(r=>r.addEventListener('change',()=>{$('#dc-nivel').textContent=r.value==='2'?'2º':'1º';}));
+$('#dc-si').onclick=()=>{
+  const nivel=+$('input[name=esp]:checked').value;
+  const objs=$$('#dc-objs .chip.on').map(c=>c.dataset.obj);
+  if(!M.slots[nivel]) return;
+  const antes={eco:{...M.eco},slots:{...M.slots},bandeja:M.bandeja.length,log:M.log.length};
+  cerrarVelos(); if(M.combate) M.eco.accion=true; M.slots[nivel]--;
+  const dardos=nivel+2, quien=mio();
+  apunta({t:'mec',quien,txt:`lanza Proyectil mágico (${nivel}º) contra ${objs.map(o=>per(o).n).join(' y ')||'nadie'}: ${dardos} dardos, <span class="n">${dardos} × (1d4+1)</span> fuerza`});
+  objs.forEach(o=>proponer({contra:o,dano:Math.ceil(dardos/objs.length)*3,tipo:'fuerza',que:'Proyectil mágico'}));
+  empujar('Proyectil mágico',()=>{M.eco=antes.eco;M.slots=antes.slots;
+    M.bandeja=M.bandeja.slice(0,antes.bandeja);M.log=M.log.slice(0,antes.log);pintarTodo();});
+  pintarTodo();
+};
+function cerrarVelos(){$$('.velo').forEach(v=>v.classList.remove('abierto'));}
+$$('[data-cerrar]').forEach(b=>b.onclick=cerrarVelos);
+$$('.velo').forEach(v=>v.addEventListener('click',e=>{if(e.target===v)cerrarVelos();}));
+$('#btn-ayuda').onclick=()=>$('#velo-ayuda').classList.add('abierto');
+
+/* ═══ herramientas ═══ */
+$('.herr-rejilla').addEventListener('click',e=>{
+  const b=e.target.closest('[data-herr]'); if(!b)return;
+  const h=b.dataset.herr, antes=M.log.length;
+  if(h==='tirada') M.elenco.filter(a=>a.bando==='pj').forEach(a=>
+    apunta({t:'mec',quien:a.id,txt:`tira Percepción: <span class="n">1d20+${2+d(3)} = ${d(20)+3}</span>`}));
+  else if(h==='criatura'){ VOZ['gob'+M.elenco.length]='var(--danger-text)';
+    const id='gob'+M.elenco.length;
+    M.elenco.push({id,n:'Goblin (2)',sub:'enemigo',pg:7,max:7,ca:15,vel:30,bando:'pnj'});
+    M.orden.push({id,ini:7}); apunta({t:'corte',txt:'Sale otro goblin de entre las redes'}); }
+  else if(h==='revelar') apunta({t:'corte',txt:'Se abre la puerta del almacén'});
+  else if(h==='reloj') apunta({t:'sis',txt:'Pasa media hora. Siguen siendo las horas muertas.'});
+  else if(h==='xp') apunta({t:'sis',txt:'El grupo se lleva 150 de experiencia.'});
+  else if(h==='reglas') apunta({t:'sis',dm:true,txt:'Agarrar: prueba enfrentada de Atletismo.'});
+  else if(h==='tablas') apunta({t:'sis',dm:true,txt:'Tabla del muelle: «un cuerpo flotando boca abajo».'});
+  else apunta({t:'sis',txt:'Abres el mundo: gente, lugares y objetos de la crónica.'});
+  pintarTodo();
+  empujar(b.textContent.trim(),()=>{M.log=M.log.slice(0,antes);pintarTodo();});
+});
+
+/* ═══ modo y vista ═══ */
+function montar(){
+  const reg=$('#registro');
+  if(M.modo==='tablero') $('#col-lateral').insertBefore(reg,$('#herramientas'));
+  else $('#col-centro').insertBefore(reg,$('#barra'));
+  document.body.dataset.modo=M.modo;
+  $('#m-tablero').setAttribute('aria-pressed',M.modo==='tablero');
+  $('#m-cronica').setAttribute('aria-pressed',M.modo==='cronica');
+  guarda('modo',M.modo);
+}
+$('#m-tablero').onclick=()=>{M.modo='tablero';montar();pintarHilo();};
+$('#m-cronica').onclick=()=>{M.modo='cronica';montar();pintarHilo();};
+$('#vercomo').onchange=e=>{
+  M.vista=e.target.value;
+  document.body.dataset.vista=M.vista==='dm'?'dm':'jugador';
+  cerrarMenus(); pintarTodo();
+};
+
+/* ═══ anchos recordados ═══ */
+function guarda(k,v){try{localStorage.setItem('ja.mesa.'+k,v);}catch(_){}}
+function lee(k){try{return localStorage.getItem('ja.mesa.'+k);}catch(_){return null;}}
+(function(){
+  const raiz=document.documentElement;
+  const mk=(el,cual,min,max,inv)=>el&&el.addEventListener('pointerdown',ev=>{
+    ev.preventDefault(); el.classList.add('activo'); el.setPointerCapture(ev.pointerId);
+    const x0=ev.clientX, base=parseFloat(getComputedStyle(raiz).getPropertyValue(cual))*16;
+    const mover=e2=>{
+      const px=base+(inv?-(e2.clientX-x0):(e2.clientX-x0));
+      raiz.style.setProperty(cual,Math.min(max,Math.max(min,px))/16+'rem');
+    };
+    const soltar=()=>{ el.classList.remove('activo');
+      document.removeEventListener('pointermove',mover); document.removeEventListener('pointerup',soltar);
+      guarda(cual.slice(2),getComputedStyle(raiz).getPropertyValue(cual).trim()); };
+    document.addEventListener('pointermove',mover); document.addEventListener('pointerup',soltar);
+  });
+  mk($('#tir-izq'),'--izq',200,420,false);
+  mk($('#tir-der'),'--der',240,520,true);
+})();
+
+/* ═══ teclado ═══ */
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){cerrarVelos();cerrarMenus();return;}
+  if(e.target.matches('input,select,textarea')) return;
+  if(e.target.closest('.fila[data-acc]')&&e.key==='Enter') return;
+  const k=e.key.toLowerCase();
+  if(e.key==='?'){e.preventDefault();$('#velo-ayuda').classList.add('abierto');return;}
+  if(e.key==='/'){e.preventDefault();$('#decir').focus();return;}
+  if(e.key===' '){e.preventDefault();$('#siguiente')?.click();return;}
+  if(k==='z'){e.preventDefault();deshacer();return;}
+  if(k==='a'){e.preventDefault();aplicarTodo();return;}
+  if(k==='x'){e.preventDefault();ciclarObjetivo();return;}
+  if(k==='r'){e.preventDefault();if(M.ultima)ejecutar(M.ultima);return;}
+  const i=['1','2','3','4','5'].indexOf(e.key);
+  if(i>=0){e.preventDefault();botones[i].click();return;}
+  const t=$$('.rail button').find(b=>b.dataset.tecla===k);
+  if(t) apunta({t:'sis',txt:`Abres ${t.textContent.trim().split(' ')[0].toLowerCase()}.`});
+});
+$$('.rail button').forEach(b=>b.onclick=()=>apunta({t:'sis',txt:`Abres ${b.textContent.trim().split(' ')[0].toLowerCase()}.`}));
+
+/* ═══ marco ═══ */
+$('#lienzo').addEventListener('load',()=>$('#respaldo').classList.add('fuera'));
+setTimeout(()=>{ if($('#respaldo').classList.contains('fuera'))return;
+  $('#giro').style.display='none';
+  $('#r-tit').textContent='El marco no puede cargarse aquí';
+  $('#r-txt').textContent='Esta vista previa bloquea los marcos externos. En tu app el tablero entra en este mismo hueco.';
+  $('#r-link').hidden=false;
+},4500);
+
+/* ═══ arranque ═══ */
+function pintarTodo(){ pintarFranja(); pintarQuien(); pintarElenco(); pintarObjetivo(); pintarListas(); pintarBandeja(); pintarHilo(); }
+(function(){
+  const i=lee('izq'), der=lee('der'), mo=lee('modo');
+  if(i) document.documentElement.style.setProperty('--izq',i);
+  if(der) document.documentElement.style.setProperty('--der',der);
+  if(mo) M.modo=mo;
+})();
+M.log=[
+  {h:'23:31',txt:'Los faroles del muelle chisporrotean. Klarg ruge desde el embarcadero.'},
+  {h:'23:32',t:'corte',txt:'Empieza el encuentro'},
+  {h:'23:33',t:'mec',quien:'klarg',txt:'ataca a Sylas: <span class="n">1d20+4 = 17</span> contra CA 12 — impacta'},
+  {h:'23:33',t:'mec',quien:'sylas',txt:'pierde <span class="n">7</span> PG (20 → 13)'},
+  {h:'23:34',t:'sis',dm:true,txt:'Klarg huye si baja de 8 PG.'},
+  {h:'23:34',t:'sis',txt:'Turno de <b>Sylas</b>'}
+];
+montar(); pintarTodo();
+</script>
+</body>
+</html>

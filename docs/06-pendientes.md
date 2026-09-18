@@ -344,10 +344,10 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 |---|---|---|
 | Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
 | Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar. P-1: pendiente de decidir por el autor (2026-09-17) | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
-| Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
-| Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
-| Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
-| Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+| Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
+| Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
+| Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
+| Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 
 **Descartado como ruido, con motivo** (no entra como ficha): la cita de Epip «resolver functions»
 en la nota de diseño y el hilo de Steam sin etiquetar como fuente débil (Tarea 0) — son citas de
@@ -362,23 +362,6 @@ en la red, y forzar la prop sería refactor sin beneficio medible; `DieRolled` d
 poder deshabilitarse— **ya está cerrado**: la ola de arreglo final (`0a8689e`) los dejó siempre
 habilitados con error en línea, la misma regla que el resto de botones de esta tanda; no abre
 ficha.
-
-### Regla candidata: `timeout` explícito en cada Bash de los agentes
-
-**De la tabla de observabilidad de esta tanda** (`.superpowers/sdd/2026-09-12-pulido-antes-del-paso-3/progress.md`,
-lectura 3): el harness manda al fondo cualquier `Bash` de más de 120 segundos si el agente no pasa
-`timeout: 600000` como **parámetro de la herramienta** — no es desobediencia del agente, es un
-límite del arnés que ningún brief mencionaba hasta que costó **~40 minutos** repartidos en
-esperas ciegas a lo largo de la tanda (Tareas 1, 4, 8 y 9). Ya se añadió la regla a
-`04-convenciones.md` § *Trabajo con varios agentes a la vez* en este mismo commit; esta ficha
-queda como recordatorio de que **la regla nueva no se ha probado en una tanda completa todavía** —
-cierra sola cuando la siguiente tanda (reglas de la mesa) no repita el patrón.
-
-**Medido en «reglas de la mesa» (2026-09-13):** seis implementadores y dos revisores llevaron la
-frase en el brief; **uno repitió el patrón** (Tarea 6: lanzó el `git commit` en segundo plano y se
-quedó esperando; ~5 min, informe pedido a posteriori). De ~40 min a ~5: la regla funciona pero no
-cierra sola. **Siguiente ajuste al brief**: la frase «INCLUIDO `git commit`» en mayúsculas al
-principio, no al final; se comprueba en la puerta de efectos.
 
 > ## Decidido el 2026-09-10 y todavía abierto — el trabajo que queda, con su decisión tomada
 >

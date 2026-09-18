@@ -385,6 +385,8 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
 > `apps/web/capturas-salida/`, que git ignora; para refrescar el juego de referencia del
 > repositorio hay que pedirlo: `SALIDA_CAPTURAS=capturas`.
 >
+> **Y desde el 2026-09-18 la mesa tiene el suyo propio**: [`prototipo/mesa/2026-09-18-prototipo-mesa.html`](../prototipo/mesa/2026-09-18-prototipo-mesa.html), dibujado por el autor; qué cambia frente a la mesa de hoy y qué no decide, en [su spec](./superpowers/specs/2026-09-18-prototipo-de-la-mesa.md). Para la mesa manda este; para el resto de pantallas, el de Figma.
+>
 > **Y lo que el prototipo NO decide**, porque ya se comprobó copiándolo y salió mal: su
 > conmutador DM/Jugador cambia lo que se pinta donde aquí `canView` decide lo que se **envía**;
 > su aviso de DM es falso tres veces; ofrece a un jugador un botón que el servidor rechaza; y se

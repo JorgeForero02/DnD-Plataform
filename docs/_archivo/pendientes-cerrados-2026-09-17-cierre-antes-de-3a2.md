@@ -209,3 +209,25 @@ pendiente de que lo decida el autor.
 |---|---|---|
 | Mesa / tablero | **Revisión final, #7**: dos implementaciones del mismo *chevron* — `Punta.tsx` (privado del árbol) e `IconoFlechaIzquierda` rotada en el cajón del registro, que además queda invertido al plegarse hacia abajo. Un `IconoPunta` único en `ui/Iconos.tsx` cierra las dos | `apps/web/src/features/sessions/taller/mundo/Punta.tsx`; `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx:78-82` |
 | Mesa / tablero | Plegar el cajón antes de que cargue el registro deja el contador de líneas nuevas en 0 | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
+
+### Regla candidata `timeout` — cerrada en T9
+
+**De la tabla de observabilidad de esta tanda** (`.superpowers/sdd/2026-09-12-pulido-antes-del-paso-3/progress.md`,
+lectura 3): el harness manda al fondo cualquier `Bash` de más de 120 segundos si el agente no pasa
+`timeout: 600000` como **parámetro de la herramienta** — no es desobediencia del agente, es un
+límite del arnés que ningún brief mencionaba hasta que costó **~40 minutos** repartidos en
+esperas ciegas a lo largo de la tanda (Tareas 1, 4, 8 y 9). Ya se añadió la regla a
+`04-convenciones.md` § *Trabajo con varios agentes a la vez* en este mismo commit; esta ficha
+queda como recordatorio de que **la regla nueva no se ha probado en una tanda completa todavía** —
+cierra sola cuando la siguiente tanda (reglas de la mesa) no repita el patrón.
+
+**Medido en «reglas de la mesa» (2026-09-13):** seis implementadores y dos revisores llevaron la
+frase en el brief; **uno repitió el patrón** (Tarea 6: lanzó el `git commit` en segundo plano y se
+quedó esperando; ~5 min, informe pedido a posteriori). De ~40 min a ~5: la regla funciona pero no
+cierra sola. **Siguiente ajuste al brief**: la frase «INCLUIDO `git commit`» en mayúsculas al
+principio, no al final; se comprueba en la puerta de efectos.
+
+**Medido en «cierre antes de 3A.2» (2026-09-17/18):** ocho implementadores; ninguno dejó un `Bash`
+en fondo esperando, pero **dos tuvieron timeouts falsos en tests web** por tener otro proceso (un
+Monitor, un log) leyendo en paralelo mientras corría `pnpm verify`. La frase del brief pasa a ser
+«NADA en fondo mientras corre verify», no solo «timeout explícito». **La regla cierra.**

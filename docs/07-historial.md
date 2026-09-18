@@ -99,6 +99,33 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Cierre antes de 3A.2 (2026-09-17/18) — rama `cierre/antes-de-3a2`, sin fusionar
+
+Qué — RM-2 entera; de las menores de la revisión del 13, las arregladas, las 7 que ya estaban
+cerradas o eran falsas (F) y las 6 descartadas con motivo (D) — apuntar al §0 del plan
+[`2026-09-17-cierre-antes-de-3a2.md`](./superpowers/plans/2026-09-17-cierre-antes-de-3a2.md);
+`CharacterRow.entityId`; EM-1; y **el hallazgo real**: `dadosTirados` tachaba el dado equivocado
+con valores repetidos (D-CF-122). Commits (`git log --oneline main..HEAD`):
+
+```
+c80609d test(web): table effects — unit tests for the pure detector, e2e proves the floating text leaves the DOM
+d3ea708 test(web): sheet e2e selects boxes by data-casilla, asserts exactly five, cites the «Vel.» label
+4aeb712 fix(web): log drawer keeps its Plegar/Desplegar label
+c458da2 fix(web): one IconoPunta for every chevron; log drawer counts lines that arrive after folding
+0e40447 fix(web): space activates a menu item once, advantage radios stay reachable, temp-HP prompt resets
+6dfaf8b fix(web): table rules validate ranges in Spanish and reseed when idle; deleting a link refreshes both ends
+b0005d7 refactor(web): fold duplicates — IconoD20, normalizarTexto, audience summary, accionesDeBando
+3929214 fix(api): dice keep/drop flags come from the evaluator, not from value matching
+02dc6ad fix(shared): dice cap matches the evaluator (2000), stable tie-break documented
+d08029e fix(api): ability rolls — optional `of`, parsed list, reject attemptId outside DADOS, concurrency e2e
+21a0ca2 docs(plan): pre-3A.2 cleanup — triage of open tickets and task plan
+```
+
+Por qué — deuda barata fuera antes de abrir 3A.2.
+Revertir — la rama entera; ningún cambio de datos ni migración.
+
+El autor entregó el prototipo de la mesa (D-CF-123).
+
 ## Despliegue de `main` `334912b` (2026-09-15) — lo lanzó el autor
 
 Qué — el autor desplegó `main` en `334912b` (fusión de `feat/efectos-de-mesa`) desde Coolify.

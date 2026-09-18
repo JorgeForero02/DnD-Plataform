@@ -155,7 +155,9 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
   expect(compositor).not.toBeNull();
   expect(compositor!.y + compositor!.height).toBeLessThanOrEqual(800);
 
-  await page.getByRole("button", { name: "Plegar el registro" }).click();
+  // Revisión #7 (2026-09-17): el botón ya no dice «Plegar»/«Desplegar el registro» — su nombre
+  // accesible es siempre «Registro» (más el contador si hay líneas nuevas).
+  await page.getByRole("button", { name: "Registro" }).click();
 
   // «Anotar» es el compositor del hilo (BandaDeSesion/HiloDeSesion), y con el registro plegado
   // ese carril no está montado — no hay ningún «Anotar» al que pulsar. La única puerta que queda
@@ -170,14 +172,15 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
     },
   });
   expect(sello.ok()).toBe(true);
-  await expect(page.getByRole("button", { name: "Desplegar el registro" })).toContainText("1", {
+  const registro = page.getByRole("button", { name: "Registro" });
+  await expect(registro).toContainText("1", {
     timeout: 20_000,
   });
 
   // Desplegado, el hilo vuelve a verse y el contador se pone a cero.
-  await page.getByRole("button", { name: "Desplegar el registro" }).click();
+  await registro.click();
   await expect(page.getByRole("region", { name: "Registro de la sesión" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Plegar el registro" })).not.toContainText(/\d/);
+  await expect(registro).not.toContainText(/\d/);
 });
 
 // **La mesa a 390 px sigue aplazada (D-CF-26): la rejilla de tres columnas no se apila ahí, y la

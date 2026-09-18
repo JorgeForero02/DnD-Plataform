@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "../../../../ui/Button";
-import { IconoMas, IconoPluma, IconoQuitar } from "../../../../ui/Iconos";
+import { IconoMas, IconoPluma, IconoPunta, IconoQuitar } from "../../../../ui/Iconos";
 import { ApiError } from "../../../../lib/api";
 import { IconoDeTipo } from "../../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../../entities/resumen";
@@ -9,7 +9,6 @@ import type { Entity } from "../../../entities/api";
 import { useCreateLink, useDeleteLink } from "../../../links/hooks";
 import { relacionesSugeridas } from "../../../links/relaciones";
 import type { Vecino } from "./arbolDelMundo";
-import { Punta } from "./Punta";
 import { normalizarTexto as normalizar } from "../../../../lib/texto";
 
 // **El editor de hilos** (Task 14 bis, D-CF-64): la lista de hilos de la ficha abierta —una fila
@@ -120,7 +119,7 @@ function DesplegableConBuscador({
           {valor ?? placeholder}
         </span>
         <span className="text-muted">
-          <Punta abierta={abierto} />
+          <IconoPunta hacia={abierto ? "abajo" : "derecha"} />
         </span>
       </button>
       {abierto && (

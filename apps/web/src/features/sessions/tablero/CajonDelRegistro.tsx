@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { IconoFlechaIzquierda } from "../../../ui/Iconos";
+import { IconoPunta } from "../../../ui/Iconos";
 
 // El registro en vivo, como un cajón inferior plegable tipo chat, con contador de líneas nuevas.
 // `eventos` llega más reciente primero (reincorporarse.ts): «nuevas desde que plegué» es la
@@ -42,13 +42,16 @@ export function CajonDelRegistro({
 }) {
   const [plegado, setPlegado] = useState(false);
   const [idAlPlegar, setIdAlPlegar] = useState<string | null>(null);
-  const nuevas =
-    plegado && idAlPlegar !== null
-      ? (() => {
+  // Plegado sin ninguna línea cargada (`idAlPlegar === null`): todo lo que llegue es nuevo. Antes
+  // ese caso devolvía 0 siempre — plegar antes de la primera carga apagaba el contador.
+  const nuevas = !plegado
+    ? 0
+    : idAlPlegar === null
+      ? eventos.length
+      : (() => {
           const i = eventos.findIndex((e) => e.id === idAlPlegar);
           return i === -1 ? eventos.length : i;
-        })()
-      : 0;
+        })();
 
   const alPulsar = () => {
     if (plegado) {
@@ -65,7 +68,11 @@ export function CajonDelRegistro({
   // ese `aria-label`: el `aria-label` suelto del `<span>` de dentro nunca llegaba a leerse. El
   // número visible se queda (`{nuevas}` en el span, sin su propio `aria-label`), y la cifra pasa
   // al nombre del botón.
-  const etiqueta = plegado ? "Desplegar el registro" : "Plegar el registro";
+  //
+  // Revisión #7 (2026-09-17): la etiqueta ya no dice «Plegar»/«Desplegar» — con la punta que
+  // apunta y `aria-expanded`, el verbo era el tercer aviso del mismo estado. «Registro» a secas,
+  // igual plegado que desplegado; lo que cambia es solo el contador.
+  const etiqueta = "Registro";
   return (
     <section
       aria-label="Registro en vivo"
@@ -78,11 +85,7 @@ export function CajonDelRegistro({
         onClick={alPulsar}
         className="flex items-center gap-s2 border-t border-muted bg-surface px-s3 py-s1 font-chrome text-chrome-xs text-muted hover:text-text"
       >
-        <IconoFlechaIzquierda
-          className={["h-4 w-4 transition-transform", plegado ? "-rotate-90" : "rotate-90"].join(
-            " ",
-          )}
-        />
+        <IconoPunta hacia={plegado ? "arriba" : "abajo"} className="h-4 w-4" />
         Registro
         {nuevas > 0 && (
           <span className="rounded-full bg-accent px-1.5 font-data text-bg">{nuevas}</span>

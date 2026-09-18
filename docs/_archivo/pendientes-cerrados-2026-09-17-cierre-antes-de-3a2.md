@@ -155,3 +155,22 @@ Diecisiete filas de la revisión final del pulido (2026-09-13), triadas por el p
 | Catálogo de objetos | Los `FilterChip` de tipo y origen no llevan `aria-pressed` | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+
+### Cajón del registro — `IconoPunta` único y contador honesto (cerradas en T6)
+
+Cerradas con código en la Tarea 6. `IconoPunta` (`apps/web/src/ui/Iconos.tsx`, junto a las
+flechas) sustituye a las dos implementaciones del mismo chevron: `Punta.tsx` (borrado; sus dos
+importadores, `DesgloseDelMundo.tsx` y `EditorDeHilos.tsx`, pasan a `<IconoPunta hacia={... ?
+"abajo" : "derecha"} />`) e `IconoFlechaIzquierda` rotada en `CajonDelRegistro.tsx`, que pasa a
+`<IconoPunta hacia={plegado ? "arriba" : "abajo"} className="h-4 w-4" />`. El contador de líneas
+nuevas ya no se apaga si el cajón se pliega antes de que el registro haya cargado ninguna línea
+(`idAlPlegar === null`): ese caso ahora cuenta `eventos.length`, no 0. De paso, la etiqueta del
+botón deja de decir «Plegar»/«Desplegar el registro» — la punta que apunta y `aria-expanded` ya
+dicen el estado, y el nombre accesible es «Registro» a secas (más el contador si hay líneas
+nuevas). P-1 (bajar `min-h-[14rem]` del cajón) **no entró**: se queda en `06-pendientes.md`
+pendiente de que lo decida el autor.
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Mesa / tablero | **Revisión final, #7**: dos implementaciones del mismo *chevron* — `Punta.tsx` (privado del árbol) e `IconoFlechaIzquierda` rotada en el cajón del registro, que además queda invertido al plegarse hacia abajo. Un `IconoPunta` único en `ui/Iconos.tsx` cierra las dos | `apps/web/src/features/sessions/taller/mundo/Punta.tsx`; `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx:78-82` |
+| Mesa / tablero | Plegar el cajón antes de que cargue el registro deja el contador de líneas nuevas en 0 | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |

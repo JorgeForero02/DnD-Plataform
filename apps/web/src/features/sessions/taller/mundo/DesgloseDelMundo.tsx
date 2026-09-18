@@ -1,11 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { FilterChip } from "../../../../ui/Collection";
-import { IconoLupa } from "../../../../ui/Iconos";
+import { IconoLupa, IconoPunta } from "../../../../ui/Iconos";
 import { IconoDeTipo } from "../../../entities/iconos";
 import { ETIQUETA_DE_TIPO } from "../../../entities/resumen";
 import type { ArbolDelMundo, NodoDelMundo, RaizDeTipo } from "./arbolDelMundo";
-import { Punta } from "./Punta";
 import { normalizarTexto as normalizar } from "../../../../lib/texto";
 
 // **El desglose del mundo** (Task 14 bis, D-CF-64): un `tree` WAI-ARIA. **El fichero se llama
@@ -290,7 +289,7 @@ export function DesgloseDelMundo({
               }}
               className="flex shrink-0 items-center rounded-radius-sm text-muted hover:text-text"
             >
-              <Punta abierta={fila.expandido} />
+              <IconoPunta hacia={fila.expandido ? "abajo" : "derecha"} />
             </button>
           ) : (
             <span aria-hidden="true" className="inline-block w-[1em] shrink-0" />
@@ -378,7 +377,7 @@ export function DesgloseDelMundo({
               >
                 <div className="flex items-center gap-s2 rounded-radius-sm px-s2 py-1 [li:focus-visible>&]:outline [li:focus-visible>&]:outline-2 [li:focus-visible>&]:outline-accent">
                   <span className="text-muted">
-                    <Punta abierta={fila.expandido} />
+                    <IconoPunta hacia={fila.expandido ? "abajo" : "derecha"} />
                   </span>
                   <span className="font-chrome text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
                     {r.etiqueta}

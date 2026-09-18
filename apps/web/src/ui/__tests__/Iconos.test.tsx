@@ -99,9 +99,10 @@ describe("Iconos — la regla de que los iconos se dibujan", () => {
     // más los cuatro del chrome que ya vivían aquí antes de la maqueta, más **la campana** de la
     // bandeja de avisos (plan 12 · 12.2), más **el menú de tres puntos** de la Tarea 7, más **el
     // menos** del modificador (revisión final de la rama, 2026-09-13: el «−» de fuente que el
-    // barrido no había visto). `IconoDado` no cuenta aquí porque no entra en este bucle (ver
-    // arriba).
-    expect(TODOS).toHaveLength(31);
+    // barrido no había visto), más **la punta** (#7, 2026-09-17: una sola silueta para «esto se
+    // abre/se cierra», que sustituye a `Punta.tsx` y a la `IconoFlechaIzquierda` rotada del cajón
+    // del registro). `IconoDado` no cuenta aquí porque no entra en este bucle (ver arriba).
+    expect(TODOS).toHaveLength(32);
   });
 
   it("IconoDado dibuja una forma distinta por dado y el d100 comparte la del d10", () => {

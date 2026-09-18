@@ -327,6 +327,25 @@ export function IconoFlechaDerecha({ className }: IconoProps) {
   );
 }
 
+/**
+ * La punta que dice «esto se abre / se cierra». Una silueta para un significado (#7, 2026-09-17):
+ * antes había dos — `Punta.tsx` en el árbol del mundo y `IconoFlechaIzquierda` rotada en el cajón
+ * del registro. `hacia` es a dónde apunta; quien la usa dice qué significa cada dirección.
+ */
+export function IconoPunta({
+  hacia,
+  className,
+}: IconoProps & { hacia: "arriba" | "abajo" | "derecha" | "izquierda" }) {
+  const giro = { derecha: "", abajo: "rotate-90", izquierda: "rotate-180", arriba: "-rotate-90" }[
+    hacia
+  ];
+  return (
+    <Marco className={["transition-transform", giro, className ?? ""].join(" ")} data-icono="punta">
+      <path d="M9 5.25 15.75 12 9 18.75" />
+    </Marco>
+  );
+}
+
 /** Más: añadir. */
 export function IconoMas({ className }: IconoProps) {
   return (

@@ -453,7 +453,6 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 | Área | Qué | Dónde |
 |---|---|---|
 | Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
-| Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar. P-1: pendiente de decidir por el autor (2026-09-17) | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
 | Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
 | Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
 | Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |

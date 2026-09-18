@@ -1164,15 +1164,16 @@ for (const theme of ["dark", "light", "reading"] as const) {
   });
 }
 
-// Tarea 6 (spec 2026-09-12, «el tablero dentro de la mesa», C1 bis) — **el botón del cajón del
-// registro**, la única superficie nueva de esa tarea. Se mide plegado (con su contador de
-// líneas nuevas, `bg-accent`/`text-bg`) y desplegado, en los tres temas — el mismo patrón que el
-// resto del fichero: `boardRoomUrl` se escribe por API para no repetir el recorrido de Ajustes,
-// y lo que se mide son colores reales, no la maquetación.
+// Task 5 (3A.3) — **el cajón del registro desapareció**, y con él el botón plegado/desplegado que
+// esta prueba medía. Lo que sustituye a esa única superficie nueva de C1 bis es otra: los tres
+// radios del filtro del registro lateral («Todo · Relato · Números»), la única pieza de color
+// nueva de esta tarea. Mismo patrón que el resto del fichero —`boardRoomUrl` por API, sin repetir
+// el recorrido de Ajustes— y se mide el radio ELEGIDO (fondo `--accent-tint`, como el botón
+// plegado medía `bg-accent`) y uno SIN elegir, en los tres temas.
 for (const theme of ["dark", "light", "reading"] as const) {
-  test(`contraste medido en el botón del cajón del registro (${theme})`, async ({ page }) => {
+  test(`contraste medido en los filtros del registro lateral (${theme})`, async ({ page }) => {
     await setStoredTheme(page, theme);
-    const cuenta = nuevaCuenta("cajon-contraste");
+    const cuenta = nuevaCuenta("filtro-registro-contraste");
     await page.goto("/register");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await page.getByLabel("Nombre").fill(cuenta.displayName);
@@ -1185,15 +1186,10 @@ for (const theme of ["dark", "light", "reading"] as const) {
     const headers = { Authorization: `Bearer ${token}` };
     const campana = await page.request.post("/api/campaigns", {
       headers,
-      data: { name: "Campaña de contraste (cajón)" },
+      data: { name: "Campaña de contraste (filtros)" },
     });
     expect(campana.ok()).toBe(true);
     const campaignId: string = (await campana.json()).id;
-    const sala = await page.request.patch(`/api/campaigns/${campaignId}`, {
-      headers,
-      data: { boardRoomUrl: `${new URL(page.url()).origin}/acerca-de` },
-    });
-    expect(sala.ok()).toBe(true);
     const sesion = await page.request.post(`/api/campaigns/${campaignId}/sessions`, {
       headers,
       data: { title: "El almacén cuatro" },
@@ -1206,19 +1202,26 @@ for (const theme of ["dark", "light", "reading"] as const) {
     );
     expect(iniciada.ok()).toBe(true);
 
+    // Sin `boardRoomUrl`: el registro va al centro y no a la lateral, pero es el mismo
+    // `ColumnaDelRegistro` con los mismos filtros — lo que se mide es el color, no la columna.
     await page.goto(`/campaigns/${campaignId}/sesion`);
-    const plegar = page.getByRole("button", { name: "Plegar el registro" });
-    await expect(plegar).toBeVisible();
+    // El «Todo» ELEGIDO por defecto: `label` en `border-accent bg-[color:var(--accent-tint)]`
+    // (`GrupoDeRadios.tsx`) — la misma clase de superficie que el botón plegado medía en
+    // `bg-accent`. Se mide el texto de la ETIQUETA («Todo»), no la frase de ayuda debajo: son dos
+    // tonos distintos (`text-text` contra `text-muted`) y mezclarlos en un solo nodo mediría un
+    // color que no existe en ningún píxel real.
+    const todo = page.getByRole("radio", { name: /^Todo/ });
+    await expect(todo).toBeVisible();
+    await expect(todo).toBeChecked();
     {
-      const { color, bg } = await effectiveTextColours(plegar);
-      record(theme, "cajón del registro: botón plegado texto", contrastRatio(color, bg), 4.5);
+      const { color, bg } = await effectiveTextColours(page.getByText("Todo", { exact: true }));
+      record(theme, "registro: filtro elegido (Todo) texto", contrastRatio(color, bg), 4.5);
     }
-    await plegar.click();
-    const desplegar = page.getByRole("button", { name: "Desplegar el registro" });
-    await expect(desplegar).toBeVisible();
+    // Y uno SIN elegir, sobre `border-transparent` — el radio que de verdad prueba el color de
+    // reposo, no el de selección.
     {
-      const { color, bg } = await effectiveTextColours(desplegar);
-      record(theme, "cajón del registro: botón desplegado texto", contrastRatio(color, bg), 4.5);
+      const { color, bg } = await effectiveTextColours(page.getByText("Relato", { exact: true }));
+      record(theme, "registro: filtro sin elegir (Relato) texto", contrastRatio(color, bg), 4.5);
     }
   });
 }

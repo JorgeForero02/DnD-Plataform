@@ -7,9 +7,8 @@ import { RailDePaneles, type PanelAbierto } from "./RailDePaneles";
 import { ColumnaElenco } from "./elenco/ColumnaElenco";
 import { EfectosDePantalla } from "./elenco/efectos/EfectosDePantalla";
 import { useClaseDePantalla } from "./elenco/efectos/pantalla.store";
-import { HiloDeSesion } from "./hilo/HiloDeSesion";
+import { ColumnaDelRegistro } from "./registro/ColumnaDelRegistro";
 import { MarcoDelTablero } from "./tablero/MarcoDelTablero";
-import { CajonDelRegistro } from "./tablero/CajonDelRegistro";
 import { HerramientasDeNarracion } from "./dm/HerramientasDeNarracion";
 import { ConsultaDelMundo } from "./dm/ConsultaDelMundo";
 import { TallerDelDM } from "./taller/TallerDelDM";
@@ -53,13 +52,30 @@ import { BarraDeAcciones } from "../actions/BarraDeAcciones";
 //  4. **Los superpuestos son cajones laterales, uno a la vez.** `ui/Dialog` los da; Escape cierra
 //     y el foco vuelve al control que lo abrió.
 //
-// ## Las tres disposiciones, con sus anchos literales (maqueta, §5 de la auditoría)
+// ## Las disposiciones, con sus anchos literales
+//
+// **Task 5 (3A.3) — las tres columnas del prototipo, y por qué ya no hay una tabla fija de tres
+// filas.** Hasta esta tarea el ancho dependía solo del rol (jugador/DM); ahora depende TAMBIÉN de
+// si el centro enseña el tablero o el registro, así que la tabla de antes —correcta cuando el
+// centro era siempre el mismo— se queda corta. Las reglas completas:
 //
 // ```
-// jugador   grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_1fr]
-// DM        grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_1fr_15rem]
-// taller    grid min-h-0 flex-1 gap-s3 grid-cols-[1.15fr_1fr]      (DM en reposo)
+// taller                          grid min-h-0 flex-1 gap-s3 grid-cols-[1.15fr_1fr]      (DM en reposo)
+// jugador, «Sin tablero»          grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_minmax(0,1fr)]
+// jugador, «Con tablero»          grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_minmax(0,1fr)_18rem]
+// DM (cualquier modo)             grid min-h-0 flex-1 gap-s3 grid-cols-[17rem_minmax(0,1fr)_18rem]
 // ```
+//
+// Y qué va en cada columna, que es la parte que de verdad decide esta tarea:
+//
+//  - **Centro** = el marco del tablero (con su cabecera y la barra de acciones debajo) si el modo
+//    es «Con tablero» **y** la campaña tiene `boardRoomUrl`; si no, el registro (con sus filtros)
+//    y la barra debajo — «Sin tablero», o sin sala guardada, es la misma rama.
+//  - **Lateral** (18rem, solo si hay algo que poner) = el registro **cuando el centro es el
+//    marco** —para que no desaparezca al mirar el mapa— más las herramientas del DM si lo es.
+//    **Ruling**: un jugador con tablero SÍ conserva su columna de registro; el prototipo «pierde
+//    la lateral» solo en «Sin tablero», donde el registro ya vive en el centro y no hay nada más
+//    que ofrecerle a un jugador sin herramientas de DM.
 //
 // **El rol lo dice el servidor.** No hay conmutador «ver como DM/jugador» que cambie lo pintado:
 // `useMyRole` pregunta, y `canView` filtra lo que llega. Y ojo con `isError` de `useMyRole`, que
@@ -75,8 +91,7 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   const [comoUsuario, setComoUsuario] = useState<string>("");
   // Task 3 (3A.3) — el modo del centro de la mesa: con tablero o sin él. Se lee de `localStorage`
   // UNA vez al montar (inicializador perezoso: no hay nada asíncrono que sincronizar) y se
-  // reescribe cada vez que cambia. La Task 5 es quien decide qué pinta el centro con esto; aquí
-  // solo se guarda y se ofrece por `BandaUnica`.
+  // reescribe cada vez que cambia.
   const [modoDeLaMesa, setModoDeLaMesa] = useState<ModoDeLaMesa>(() =>
     leerModoDeLaMesa(campaignId),
   );
@@ -84,6 +99,15 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
     setModoDeLaMesa(siguiente);
     guardarModoDeLaMesa(campaignId, siguiente);
   }
+
+  // Task 5 (3A.3) — **qué pinta el centro, y qué hay en la lateral.** `conTablero` es el modo
+  // guardado, PERO solo cuenta si de verdad hay una sala: sin `boardRoomUrl`, `BandaUnica` ni
+  // siquiera ofrece el conmutador (`hayTablero`, más abajo), así que el modo puede seguir diciendo
+  // «tablero» de una campaña anterior y aquí no hay que hacerle caso. `conLateral` es quien decide
+  // si existe la tercera columna: la del DM siempre la tiene (registro o herramientas, o las dos),
+  // la de un jugador solo cuando el marco le quitó el centro al registro.
+  const conTablero = Boolean(campana?.boardRoomUrl) && modoDeLaMesa === "tablero";
+  const conLateral = esDm || conTablero;
 
   const { data: log } = useGameLog(campaignId, {
     sessionId: sesion?.id,
@@ -136,6 +160,17 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   //  3. **No hacen lo que el botón se niega a hacer.** Sin personaje en la mesa, «Hoja» y «Bolsa»
   //     están deshabilitados con su motivo, así que sus teclas tampoco abren nada. Un atajo que
   //     esquiva la condición del botón es una segunda regla que acabaría discrepando.
+  //
+  // **Task 5 (3A.3) añade `/`, para enfocar la caja de anotar del registro** —el mismo gesto que
+  // Slack, GitHub o el propio prototipo del autor usan para «ir a escribir»—. Con las mismas dos
+  // primeras guardas de arriba (nada de modificador, nada mientras ya se escribe), pero SIN la
+  // tercera: a diferencia de «Hoja»/«Bolsa», anotar no depende de tener personaje propio —el DM
+  // sin ficha también sella notas—, así que no hay condición de botón que replicar. Se busca el
+  // campo por su `aria-label` («Qué anotar», el mismo nombre accesible en `HiloDeSesion.tsx`) en
+  // vez de guardar una referencia: el registro vive en sitios distintos de la rejilla según el
+  // modo (centro o lateral), y perseguir esa condición con un `ref` habría acoplado el atajo a
+  // CUÁL de las dos ramas está montada. Si no hay registro montado (el DM en su taller, sin
+  // sesión), `campo` es `null` y no pasa nada — ni error, ni atajo a medias.
   const tienePersonaje = Boolean(miPersonaje);
   useEffect(() => {
     function alPulsar(e: KeyboardEvent) {
@@ -152,6 +187,13 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
       else if (tecla === "i" && tienePersonaje) setPanel("bolsa");
       else if (tecla === "m") setPanel("mundo");
       else if (tecla === "d") setDadosPuestos((puestos) => !puestos);
+      else if (e.key === "/") {
+        const campo = document.querySelector<HTMLTextAreaElement>('[aria-label="Qué anotar"]');
+        if (campo) {
+          e.preventDefault();
+          campo.focus();
+        }
+      }
     }
     document.addEventListener("keydown", alPulsar);
     return () => document.removeEventListener("keydown", alPulsar);
@@ -216,7 +258,14 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
           <main
             className={[
               "grid min-h-0 flex-1 gap-s3",
-              esDm ? "grid-cols-[17rem_1fr_15rem]" : "grid-cols-[17rem_1fr]",
+              // Task 5 (3A.3) — hay lateral (18rem) siempre que sea el DM, o cuando el centro
+              // enseña el marco (el registro se muda ahí para no perderse). Sin ninguna de las
+              // dos cosas —un jugador en «Sin tablero»— el registro ya está en el centro y no
+              // queda nada que poner en una tercera columna: ver el comentario de cabecera del
+              // fichero para el porqué completo de cada rama.
+              conLateral
+                ? "grid-cols-[17rem_minmax(0,1fr)_18rem]"
+                : "grid-cols-[17rem_minmax(0,1fr)]",
             ].join(" ")}
           >
             {/* **El rail vive al pie de la columna del elenco, y no en una fila propia.**
@@ -243,41 +292,24 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
               />
             </div>
 
-            {/* **C1 bis (2026-09-12): con `boardRoomUrl`, el tablero PlanarAlly ocupa el centro
-                y el registro pasa a un cajón inferior plegable.** Sin sala guardada, el hilo
-                sigue a pelo, exactamente como antes — es la rama que `mesa-mide.spec.ts` sigue
-                midiendo sin cambios (D-CF-63).
-
-                **Ronda de revisión (2026-09-12): la fila de abajo se queda en `auto` a
-                propósito.** El techo de un hilo largo no lo pone esta rejilla — lo pone
-                `CajonDelRegistro.tsx` (`max-h-[32vh]` desplegado): la fila `auto` se mide por el
-                tamaño YA acotado de esa sección, así que nunca vuelve a comerse la fila `1fr`
-                del marco. Ver el comentario de `CajonDelRegistro.tsx` para el porqué completo. */}
-            {/* **Task 4 de 3A.3 (T22) — la barra de acciones va debajo del centro**, en su
-                propia fila `shrink-0` de esta misma columna. Envuelve lo que ya había (el
-                tablero+registro con sala, o el hilo a pelo sin ella) en una rejilla de dos
-                filas — la de arriba `1fr` para que el contenido de siempre siga ocupando lo que
-                hay, la de abajo `auto` para la barra, que no crece ni scrollea. **Solo con
-                `miPersonaje`**: el DM sin personaje propio, o un asistente sin ficha, no tiene
-                ninguna acción que gastar — la Task 5 es quien va a reordenar estas columnas
-                (`modo`/`onModo`, ya presentes en este fichero desde la Task 3, sin usar
-                todavía); esta tarea solo añade la fila donde ya estaba el centro. */}
+            {/* **El centro: el marco del tablero, o el registro — nunca los dos.** Hasta la Task 5
+                el registro vivía siempre en esta columna, con o sin tablero (plegado en un cajón
+                inferior si había sala). El prototipo lo cambia: con el modo «Con tablero» puesto
+                y `boardRoomUrl` guardada, el centro es el mapa —con su cabecera de escena— y el
+                registro se muda a la columna lateral (o desaparece, para un jugador sin tablero
+                que ya no lo tiene ahí porque lo tiene aquí mismo). Sin eso, el centro sigue siendo
+                el registro de siempre, con sus filtros. `campana?.boardRoomUrl` se repite en la
+                condición (y no solo `conTablero`) para que TypeScript estreche el tipo dentro de
+                la rama: sin esto, `campana.boardRoomUrl` seguiría siendo `string | null` para
+                `MarcoDelTablero`, que exige `string`. */}
+            {/* **La barra de acciones sigue debajo del centro** (Task 4, T22), en su propia fila
+                `auto` de esta misma columna — eso no cambia con esta tarea, solo cambia qué hay
+                en la fila de arriba. */}
             <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
-              {campana?.boardRoomUrl ? (
-                <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
-                  <MarcoDelTablero url={campana.boardRoomUrl} />
-                  <CajonDelRegistro eventos={eventos}>
-                    <HiloDeSesion
-                      campaignId={campaignId}
-                      eventos={eventos}
-                      esDm={esDm}
-                      comoUsuario={comoUsuario}
-                      pnjs={pnjs ?? []}
-                    />
-                  </CajonDelRegistro>
-                </div>
+              {conTablero && campana?.boardRoomUrl ? (
+                <MarcoDelTablero campaignId={campaignId} url={campana.boardRoomUrl} />
               ) : (
-                <HiloDeSesion
+                <ColumnaDelRegistro
                   campaignId={campaignId}
                   eventos={eventos}
                   esDm={esDm}
@@ -296,13 +328,40 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
               )}
             </div>
 
-            {esDm && (
-              <aside className="scroll-quiet flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3">
-                <HerramientasDeNarracion
-                  campaignId={campaignId}
-                  onConsultarElMundo={() => setPanel("mundo")}
-                />
-              </aside>
+            {/* **La lateral: el registro (si el centro se lo llevó el marco) y las herramientas
+                del DM, cada una en su propio contenedor.** Dos `grid-rows` en vez de un `<aside>`
+                único que las envuelva a las dos: las herramientas llevan SU PROPIO `<aside
+                aria-label="Herramientas del DM">` —así lo pide `mesa-en-estrecho.spec.ts`—, y
+                envolverlo en un segundo `aside` exterior anidaría dos regiones con el mismo papel
+                por nada. El registro no necesita una envoltura propia: `HiloDeSesion` ya es un
+                `<section aria-label="Registro de la sesión">` por dentro de `ColumnaDelRegistro`.
+                Auto-colocación de la rejilla: con las dos presentes, el registro (primero en el
+                DOM) cae en la fila `1fr` y las herramientas en la `auto` que se ajusta a su
+                contenido; con una sola, esa única pieza hereda la fila `1fr` y ocupa el hueco
+                entero — es lo mismo que ya hacía el centro de esta rejilla con el marco/registro. */}
+            {conLateral && (
+              <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
+                {conTablero && (
+                  <ColumnaDelRegistro
+                    campaignId={campaignId}
+                    eventos={eventos}
+                    esDm={esDm}
+                    comoUsuario={comoUsuario}
+                    pnjs={pnjs ?? []}
+                  />
+                )}
+                {esDm && (
+                  <aside
+                    aria-label="Herramientas del DM"
+                    className="scroll-quiet flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3"
+                  >
+                    <HerramientasDeNarracion
+                      campaignId={campaignId}
+                      onConsultarElMundo={() => setPanel("mundo")}
+                    />
+                  </aside>
+                )}
+              </div>
             )}
           </main>
         )}

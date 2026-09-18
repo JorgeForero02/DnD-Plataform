@@ -183,3 +183,20 @@ export function IconoBajarAlFondo({ className }: Props) {
     </svg>
   );
 }
+
+/**
+ * Task 5 (3A.3) — «abrir aparte»: una caja con una flecha que se escapa por la esquina, el dibujo
+ * habitual de «esto abre en otra pestaña». Vive aquí y no en `ui/Iconos` porque solo lo usa la
+ * cabecera del marco del tablero, la misma regla de «cada módulo grande dibuja los suyos» que
+ * `IconoBajarAlFondo`. **No es el glifo `↗` de fuente**: la maqueta escribe «tablero en vivo ↗»
+ * como texto de referencia, pero `docs/04-convenciones.md` prohíbe un glifo de fuente como icono
+ * — se dibuja en trazo, igual que el resto de la casa.
+ */
+export function IconoAbrirAparte({ className }: Props) {
+  return (
+    <svg {...base(className)}>
+      <path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v10A1.5 1.5 0 0 0 6.5 19h10a1.5 1.5 0 0 0 1.5-1.5V14" />
+      <path d="M14 5h5v5M19 5 11 13" />
+    </svg>
+  );
+}

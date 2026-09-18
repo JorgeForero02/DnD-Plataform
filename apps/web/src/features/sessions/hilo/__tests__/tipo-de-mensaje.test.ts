@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GAME_EVENT_TYPES, type GameEventPayload, type GameEventType } from "@dnd/shared";
-import { tipoDeMensaje, type TipoDeMensaje } from "../tipo-de-mensaje";
+import { grupoDeMensaje, tipoDeMensaje, type TipoDeMensaje } from "../tipo-de-mensaje";
 
 // Qué defiende este fichero, en una frase: **que los 36 tipos de suceso del registro estén
 // clasificados, cada uno en el cubo que le toca, y que el color de una voz sea siempre uno de los
@@ -147,6 +147,32 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
   it("usa los cinco cubos", () => {
     const usados = new Set(GAME_EVENT_TYPES.map((type) => tipoDeMensaje(soloElTipo(type))));
     expect([...usados].sort()).toEqual(["narracion", "personaje", "sello", "sistema", "tirada"]);
+  });
+});
+
+// Task 5 (3A.3) — **`grupoDeMensaje`: de los cinco cubos a los dos filtros del registro lateral.**
+// El reparto es por CUBO (ver el comentario del propio fichero para el porqué), así que esta
+// prueba no repite los 55 tipos de suceso: le basta con los cinco valores que `tipoDeMensaje`
+// puede devolver, que es todo lo que `grupoDeMensaje` mira.
+describe("grupoDeMensaje — de los cinco cubos a Relato o Números", () => {
+  it("tirada y personaje son Números", () => {
+    expect(grupoDeMensaje("tirada")).toBe("NUMEROS");
+    expect(grupoDeMensaje("personaje")).toBe("NUMEROS");
+  });
+
+  it("sello, narración y sistema son Relato", () => {
+    expect(grupoDeMensaje("sello")).toBe("RELATO");
+    expect(grupoDeMensaje("narracion")).toBe("RELATO");
+    expect(grupoDeMensaje("sistema")).toBe("RELATO");
+  });
+
+  // Y sobre sucesos reales, no solo sobre los cinco nombres de cubo: cada tipo de suceso cae en
+  // el mismo filtro que su cubo, sin excepción — la red completa contra un reparto que se
+  // desincronizara del switch de `tipoDeMensaje`.
+  it.each(GAME_EVENT_TYPES)("%s cae en el filtro de su cubo", (type) => {
+    const cubo = tipoDeMensaje(soloElTipo(type));
+    const filtroEsperado = cubo === "tirada" || cubo === "personaje" ? "NUMEROS" : "RELATO";
+    expect(grupoDeMensaje(cubo)).toBe(filtroEsperado);
   });
 });
 

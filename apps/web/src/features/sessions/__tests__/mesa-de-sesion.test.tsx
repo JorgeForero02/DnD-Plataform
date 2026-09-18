@@ -385,7 +385,12 @@ describe("el registro en vivo", () => {
 });
 
 describe("el tablero enmarcado (C1 bis)", () => {
-  it("con boardRoomUrl, la mesa monta el marco y el registro en su cajón", async () => {
+  // Task 5 (3A.3): el cajón inferior desapareció — el registro es ahora la columna lateral, con
+  // filtros, y no un `<section aria-label="Registro en vivo">` que se pliega. Lo que esta prueba
+  // comprobaba (que el marco enmarca Y el hilo sigue montado) sigue siendo cierto; lo que cambia
+  // es DÓNDE vive el hilo: en la lateral, junto a las herramientas del DM, no en un cajón bajo el
+  // marco.
+  it("con boardRoomUrl, la mesa monta el marco en el centro y el registro en la lateral", async () => {
     vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
       id: "c1",
       name: "La costa de la espada",
@@ -401,12 +406,15 @@ describe("el tablero enmarcado (C1 bis)", () => {
       "src",
       "https://tablero.example/game/la-mesa",
     );
-    expect(screen.getByRole("region", { name: "Registro en vivo" })).toBeInTheDocument();
-    // El hilo sigue montado, dentro del cajón: no se pierde por enmarcar el tablero.
+    // El hilo sigue montado: no se pierde por enmarcar el tablero, solo se muda a la lateral.
     expect(screen.getByRole("region", { name: "Registro de la sesión" })).toBeInTheDocument();
+    // Y sus filtros están ahí, con «Todo» elegido de entrada.
+    expect(screen.getByRole("radio", { name: /^Todo/ })).toBeChecked();
+    // Las herramientas del DM conviven con el registro en la misma lateral.
+    expect(screen.getByRole("heading", { name: "Herramientas del DM" })).toBeInTheDocument();
   });
 
-  it("sin boardRoomUrl, el hilo va a pelo y no hay marco ni cajón", async () => {
+  it("sin boardRoomUrl, el registro ocupa el centro y no hay marco", async () => {
     vi.spyOn(campaignsApi, "fetchCampaign").mockResolvedValue({
       id: "c1",
       name: "La costa de la espada",
@@ -420,7 +428,10 @@ describe("el tablero enmarcado (C1 bis)", () => {
 
     await screen.findByRole("region", { name: "Registro de la sesión" });
     expect(screen.queryByTitle("Sala del tablero")).not.toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Registro en vivo" })).not.toBeInTheDocument();
+    // Solo una copia del registro: no se duplica entre el centro y la lateral.
+    expect(screen.getAllByRole("region", { name: "Registro de la sesión" })).toHaveLength(1);
+    // La lateral del DM sigue existiendo, pero solo con las herramientas.
+    expect(screen.getByRole("heading", { name: "Herramientas del DM" })).toBeInTheDocument();
   });
 });
 

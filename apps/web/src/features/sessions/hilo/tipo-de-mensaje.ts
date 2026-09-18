@@ -144,6 +144,43 @@ export function tipoDeMensaje(p: GameEventPayload): TipoDeMensaje {
   }
 }
 
+/** Los tres filtros del registro lateral (Task 5, 3A.3): «Todo», y sus dos mitades. */
+export type FiltroDeRegistro = "TODO" | "RELATO" | "NUMEROS";
+
+/**
+ * De los cinco cubos de `tipoDeMensaje` a las dos mitades que pide la maqueta: «Relato» y
+ * «Números».
+ *
+ * **No se reclasifica suceso por suceso.** El encargo dice «tiradas/daño/economía/recursos =
+ * Números, el resto = Relato», y esas cuatro palabras son, literalmente, la descripción que el
+ * propio `tipoDeMensaje` ya da de sus cubos «tirada» (números tirados) y «personaje» (puntos de
+ * golpe, condiciones, recursos, objetos, dinero, nivel — la mitad de "daño/economía/recursos"
+ * vive ahí). Partir «personaje» en dos —por ejemplo, sacando `CONDITION_APPLIED` a Relato— sería
+ * inventar una sexta categoría que el encargo no pide y que `tipoDeMensaje` no sostiene: esa
+ * tabla ya decidió, caso por caso y con su propio comentario, qué le pasa a un personaje y qué es
+ * el mundo hablando. Reclasificar aquí sería una segunda fuente de verdad para la misma pregunta.
+ *
+ * Así que el reparto es por CUBO, no por tipo de suceso:
+ *
+ *  - **Números** — `tirada` (las cuatro tiradas con número) y `personaje` (lo que le pasa a
+ *    alguien: puntos de golpe, condiciones, recursos, objetos, dinero, nivel).
+ *  - **Relato** — `sello` (los hitos que parten el hilo), `narracion` (el mundo revelándose) y
+ *    `sistema` (el andamiaje: reloj, turnos, señales del motor). Ninguno de los tres trae una
+ *    cifra que alguien quisiera filtrar buscando «cuánto pasó», y los tres son la mitad narrativa
+ *    de la mesa: lo que se cuenta, no lo que se calcula.
+ */
+export function grupoDeMensaje(tipo: TipoDeMensaje): Exclude<FiltroDeRegistro, "TODO"> {
+  switch (tipo) {
+    case "tirada":
+    case "personaje":
+      return "NUMEROS";
+    case "sello":
+    case "narracion":
+    case "sistema":
+      return "RELATO";
+  }
+}
+
 // **`colorDeVoz` se fue, y esto explica adónde** (plan 05, decisión D3, 2026-09-06).
 //
 // Vivía aquí una huella del `actorUserId` sobre CUATRO clases de Tailwind. Tenía dos defectos que

@@ -31,12 +31,14 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
    manual básico y admite las tuyas.
 5. **Pega la sala del tablero, si usáis mapa.** En Ajustes → «Sala del tablero», pega la
    dirección de vuestra partida en PlanarAlly (`https://tablero.supportive.pro/game/…`, la que
-   ves al abrir o crear vuestra partida allí). Con la dirección guardada, la mesa enmarca el
-   tablero en el centro y el registro en vivo pasa a un cajón inferior plegable, con un contador
-   de cuántas líneas nuevas llegaron mientras estaba plegado (D-CF-63). **Cada jugador inicia
-   sesión en PlanarAlly dentro de ese marco**, con su propia cuenta, una vez por navegador — el
-   marco lo dice siempre, debajo del mapa. Sin sala guardada, la mesa es la de siempre: el hilo
-   ocupa el centro y no hay marco.
+   ves al abrir o crear vuestra partida allí). Con la dirección guardada y el modo «Con tablero»
+   puesto en la banda de arriba, la mesa enmarca el tablero en el centro —con una cabecera propia
+   que dice dónde está la escena y un enlace para abrirlo aparte— y el registro se muda a una
+   columna lateral, con filtros («Todo · Relato · Números») para no perder de vista lo que importa
+   mientras se mira el mapa. **Cada jugador inicia sesión en PlanarAlly dentro de ese marco**, con
+   su propia cuenta, una vez por navegador — el marco lo dice siempre, debajo del mapa. Sin sala
+   guardada, o con el modo «Sin tablero» puesto, la mesa es la de siempre: el registro ocupa el
+   centro, con sus mismos filtros.
 
 ## Los cinco niveles de visibilidad
 

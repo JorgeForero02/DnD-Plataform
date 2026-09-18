@@ -17,7 +17,7 @@ import { MensajeDelHilo } from "./MensajeDelHilo";
 import { IconoPluma } from "../../../ui/Iconos";
 import { lineaDeLog } from "../linea-de-log";
 import { nombresDelHilo } from "../nombres-del-hilo";
-import { tipoDeMensaje } from "./tipo-de-mensaje";
+import { grupoDeMensaje, tipoDeMensaje, type FiltroDeRegistro } from "./tipo-de-mensaje";
 
 // **El hilo de la sesión: los cinco tipos de mensaje de la maqueta, no una lista plana.**
 //
@@ -107,6 +107,7 @@ export function HiloDeSesion({
   esDm,
   comoUsuario,
   pnjs = [],
+  filtro = "TODO",
 }: {
   campaignId: string;
   eventos: GameEventRow[];
@@ -118,6 +119,15 @@ export function HiloDeSesion({
    * aquí es lo que ya hace con `ColumnaElenco`, no una excepción para el hilo.
    */
   pnjs?: NpcEnLaMesa[];
+  /**
+   * Task 5 (3A.3). **Filtra lo que se PINTA, no lo que se sabe.** Todo lo demás —la marca de
+   * leído, la franja de «te perdiste», el anclaje al fondo, quién es quién— sigue mirando
+   * `eventos` entero: filtrar esas cuentas dejaría la marca de lectura desincronizada del
+   * registro real en cuanto alguien cambiara de pestaña con «Números» puesto. Solo la lista que
+   * se ve (`enOrden`) se recorta — es literalmente el mismo componente sin desmontarse, como pide
+   * el brief («sin desmontar la lista al filtrar»).
+   */
+  filtro?: FiltroDeRegistro;
 }) {
   const { data: miembros } = useMembers(campaignId);
   const sellar = useStampNote(campaignId);
@@ -252,6 +262,15 @@ export function HiloDeSesion({
   // **Lo último abajo**: se pinta sobre una COPIA invertida. `eventos` no se toca nunca.
   const enOrden = [...eventos].reverse();
 
+  // Task 5 (3A.3) — el filtro se aplica AQUÍ, sobre la copia ya invertida y solo para lo que se
+  // pinta: la franja de «te perdiste» y el anclaje siguen mirando `eventos`/`enOrden` sin filtrar
+  // en el resto del fichero (ver el comentario de la prop `filtro`, arriba). Con «Todo» puesto no
+  // se crea un segundo array — es el mismo `enOrden` de siempre.
+  const enOrdenFiltrado =
+    filtro === "TODO"
+      ? enOrden
+      : enOrden.filter((e) => grupoDeMensaje(tipoDeMensaje(e.payload)) === filtro);
+
   // --- El anclaje al fondo ---
   //
   // `alFondo` vive en una referencia y no en un estado a propósito: se actualiza en cada píxel de
@@ -348,7 +367,15 @@ export function HiloDeSesion({
               Todavía no ha pasado nada en esta sesión.
             </li>
           )}
-          {enOrden.map((e) => {
+          {/* Distinto del vacío de arriba: aquí SÍ hay sucesos, pero ninguno cae en el filtro
+              puesto. No se nombra el filtro elegido — la enumeración no llega a la pantalla
+              (docs/04-convenciones.md); «con este filtro» basta para decir qué pasó. */}
+          {enOrden.length > 0 && enOrdenFiltrado.length === 0 && (
+            <li className="font-chrome text-chrome-sm text-muted">
+              Nada que enseñar con este filtro.
+            </li>
+          )}
+          {enOrdenFiltrado.map((e) => {
             // La franja va **encima** del primer suceso que no viste, así que se pinta antes de
             // su línea. Con el orden de conversación eso deja lo no leído **por debajo**, que es
             // exactamente lo que `loQueTePerdiste` decía querer y el orden viejo le negaba: su

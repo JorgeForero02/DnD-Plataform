@@ -278,6 +278,8 @@ function evaluarTermino(source: string, sign: 1 | -1, roller: Roller): DiceTermR
   // **Y se decide sobre lo que quedó en juego, no sobre `rolled`**: en `4d6r1kh3` el uno que se
   // relanzó ya no compite por quedarse. Ordenar `rolled` dejaría que un dado relanzado «ganara»
   // con su valor viejo, que es el fallo silencioso de combinar los dos modificadores.
+  // **Empate**: `Array.prototype.sort` es estable (ES2019), así que dos dados iguales quedan en el
+  // orden en que cayeron y se conserva el primero. No cambia la suma; fija cuál se pinta tachado.
   const porValor = enJuego.map((valor, indice) => ({ valor, indice }));
   porValor.sort((a, b) => (modo === "kh" ? b.valor - a.valor : a.valor - b.valor));
   const indicesConservados = new Set(porValor.slice(0, conservar).map((d) => d.indice));
@@ -351,11 +353,18 @@ export function dadosTirados(terms: DiceTermResult[]): DieRolled[] {
   return terms.flatMap((t) => {
     if (t.sides === 0) return [];
     const pendientes = [...t.dropped];
-    return t.rolled.map((value) => {
+    // **Empate**: con dos dados de igual valor, `dropped` no dice CUÁL de los dos cayó fuera —
+    // solo cuántos. `evaluar` ya lo decide con el sort estable, favoreciendo siempre al primero en
+    // caer (misma nota, unas líneas arriba de `porValor.sort`); esta reconstrucción tiene que
+    // coincidir. Por eso se empareja **desde el final**: el último físico en caer es el primero en
+    // consumir un hueco de `dropped`, dejando el más antiguo como el candidato final a «kept» —
+    // recorrer de principio a fin haría lo contrario y tacharía el dado equivocado.
+    const reconstruido = [...t.rolled].reverse().map((value) => {
       const i = pendientes.indexOf(value);
       if (i === -1) return { sides: t.sides, value, kept: true };
       pendientes.splice(i, 1);
       return { sides: t.sides, value, kept: false };
     });
+    return reconstruido.reverse();
   });
 }

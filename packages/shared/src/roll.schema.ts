@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { dmTableRollSchema } from "./dm-table.schema";
+import { MAX_DADOS_POR_TIRADA } from "./dice-limits";
 import type { Visibility } from "./visibility.schema";
 
 // Tarea 2A.13 — tirar de verdad.
@@ -183,7 +184,7 @@ const desglose = {
    * Cada dado, en el orden en que cayó, con sus caras y si cuenta (C5). **Opcional**: el
    * historial ya escrito antes de esta tarea no lo trae, y no se reescribe.
    */
-  dice: z.array(dieRolledSchema).max(100).optional(),
+  dice: z.array(dieRolledSchema).max(MAX_DADOS_POR_TIRADA).optional(),
   /** La parte que no son dados: el `+3` de `1d8+3`. */
   modifier: z.number().int(),
   total: z.number().int(),

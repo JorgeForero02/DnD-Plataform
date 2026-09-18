@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { MAX_DADOS_POR_TIRADA, dieRolledSchema } from "@dnd/shared";
 import {
   rollExpression,
   dadosTirados,
@@ -300,6 +302,32 @@ describe("el término constante tiene tope (ficha P2)", () => {
     } catch (e) {
       expect((e as DiceExpressionError).code).toBe("CONSTANTE_DEMASIADO_GRANDE");
     }
+  });
+});
+
+describe("contrato de `dice` (2026-09-17)", () => {
+  it("el tope del esquema cubre el peor caso del evaluador: términos × dados × relanzar una vez", () => {
+    expect(DICE_LIMITS.maxTerms * DICE_LIMITS.maxDicePerTerm * 2).toBeLessThanOrEqual(
+      MAX_DADOS_POR_TIRADA,
+    );
+  });
+
+  it("100d6r1 con todo unos produce 200 dados y el esquema los acepta", () => {
+    // Peor caso real: CADA tirada original y su relanzamiento salen 1, así los 100 dados
+    // relanzan y `rolled` guarda las dos caras de cada uno (200 llamadas al tirador). Un guion
+    // que solo cubra las primeras 100 llamadas deja a la mitad de los dados sin relanzar (su
+    // primera tirada ya cae después del corte) y nunca llega a 200: no es el peor caso.
+    const roller: Roller = () => 1;
+    const r = rollExpression("100d6r1", roller);
+    const dice = dadosTirados(r.terms);
+    expect(dice).toHaveLength(200);
+    expect(() => z.array(dieRolledSchema).max(MAX_DADOS_POR_TIRADA).parse(dice)).not.toThrow();
+  });
+
+  it("empate en kh: se conserva el primero en caer (sort estable), siempre el mismo", () => {
+    const r = rollExpression("2d20kh1", () => 15);
+    const dice = dadosTirados(r.terms);
+    expect(dice.map((d) => d.kept)).toEqual([true, false]);
   });
 });
 

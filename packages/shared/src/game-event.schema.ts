@@ -3,6 +3,7 @@ import { roleSchema, visibilitySchema } from "./visibility.schema";
 import { damageTypeSchema } from "./item.schema";
 import { costeSchema } from "./action-economy.schema";
 import { dieRolledSchema } from "./roll.schema";
+import { MAX_DADOS_POR_TIRADA } from "./dice-limits";
 
 // Tarea 2A.5 — el log de partida.
 //
@@ -298,7 +299,7 @@ export const gameEventPayloadSchema = z.discriminatedUnion("type", [
      * Cada dado, en el orden en que cayó, con sus caras y si cuenta (C5). **Opcional**: el
      * historial ya escrito antes de esta tarea no lo trae.
      */
-    dice: z.array(dieRolledSchema).max(100).optional(),
+    dice: z.array(dieRolledSchema).max(MAX_DADOS_POR_TIRADA).optional(),
     modifier: z.number().int(),
     total: z.number().int(),
     dc: z.number().int().optional(),

@@ -43,6 +43,34 @@ pasa a `vocabulario.ts`), #8 (`DadoDibujado` se funde en `IconoD20`), #9 (`norma
 | Elenco / menú | **Revisión final, #11**: `apps/web/src/features/sessions/elenco/CorregirBando.tsx` ya no tiene componente de fila (se borró en la Tarea 8) y solo exporta `useAccionesDeBando` — renombrar el fichero a `accionesDeBando.ts` la próxima vez que se toque | `apps/web/src/features/sessions/elenco/CorregirBando.tsx` |
 | Mundo (árbol) | **Revisión final, #9**: `normalizar()` (pliega tildes para comparar) está copiada una sexta vez entre `DesgloseDelMundo.tsx` y `EditorDeHilos.tsx` — extraer a una lib compartida | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx:42`; `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx:50` |
 
+### RM-2 · Menores aplazados de la revisión final (con su línea en `final-review.md`) — cerrada el 2026-09-17
+
+M-4, M-5, `attemptId` y concurrencia: cerradas en T1 de la tanda «cierre antes de 3A.2» (rama
+`cierre/antes-de-3a2`). M-6, M-7, M-8, M-12: cerradas en T3. M-9, M-14: cerradas en T4 (esta
+tarea) — `Number("")` en `ReglasDeLaMesa` ya no se manda (rango explicado en español antes del
+`PATCH`) y el borrador se re-siembra desde fuera solo cuando el DM no está editando.
+
+| | Qué | Coste |
+|---|---|---|
+| M-4 | `AbilityRollsService.list` moldea el `payload` releído a mano; pasar la respuesta por `abilityRollAttemptSchema.parse` | 20 min |
+| M-5 | `of = 0` cuando la regla no es `DADOS` viola `abilityRollAttemptSchema.of.min(1)`; hacer `of` opcional o `Math.max(1, …)` | 10 min |
+| M-6 | La invalidación de `abilityRollsKey` en `useUpdateSheet` es redundante (prefijo ya invalidado) — quitar o corregir el comentario | 5 min |
+| M-7 | `as CreateCharacterInput` en `CharacterEditor`: exportar `z.input<typeof createCharacterSchema>` en shared y usarlo | 10 min |
+| M-8 | `r as DesgloseDeTirada` en `AsignarCaracteristicas`: probar sin moldear; si no compila, `dc?` en el DTO | 10 min |
+| M-9 | `Number("")` = 0 en los campos numéricos de `ReglasDeLaMesa` se manda y vuelve un 400 técnico de Zod; comprobar rango en `onGuardar` y escribir la frase en español | 20 min |
+| M-12 | `CARACTERISTICAS` en `IdentidadEditable.tsx` duplica `ORDEN_DE_CARACTERISTICAS` de shared | 5 min |
+| M-14 | `borrador` de `ReglasDeLaMesa` se siembra una vez por campaña; re-sembrar cuando cambie la campaña y no haya edición en curso | 15 min |
+| — | Sin e2e de concurrencia real para los cerrojos `FOR UPDATE` (M-1/M-2): las unitarias prueban el orden de las sentencias, no el bloqueo de Postgres. Un e2e con dos `POST …/ability-rolls` en `Promise.all` y `intentos: 1` → exactamente un 201 y un 409 | 30 min |
+| — | `attemptId` bajo `MATRIZ`/`PUNTOS` se acepta y marca un intento caduco; rechazarlo con 400 cuando la regla no es `DADOS` | 10 min |
+
+Y dos menores de «Mundo (árbol)» de la tabla de fichas menores de la revisión final (2026-09-13),
+cerradas también en esta tarea:
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Mundo (árbol) | Borrar un hilo no invalida la consulta del otro extremo del enlace, así que su ficha puede quedar con el hilo fantasma hasta recargar | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
+| Mundo (árbol) | Las raíces sin hijos se abren desplegadas por defecto en vez de plegadas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
+
 ### Sin ficha propia · `CharacterRow` no declara `entityId` (2026-09-14)
 
 **Abierto, menor, encontrado en la Task 4.** `CharacterRow` (`apps/web/src/features/character-sheet/api.ts`)

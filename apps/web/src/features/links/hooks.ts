@@ -45,9 +45,12 @@ export function useCreateLink(entityId: string, campaignId: string) {
 export function useDeleteLink(entityId: string, campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (linkId: string) => deleteLink(linkId),
-    onSuccess: () => {
+    mutationFn: (link: { id: string; otherEntityId: string }) => deleteLink(link.id),
+    onSuccess: (_data, link) => {
       qc.invalidateQueries({ queryKey: linksKey(entityId) });
+      // **Y el otro extremo**: el hilo es de dos fichas; sin esto la de enfrente se quedaba con el
+      // hilo fantasma hasta recargar (revisión final 2026-09-13, cerrada el 2026-09-17).
+      qc.invalidateQueries({ queryKey: linksKey(link.otherEntityId) });
       qc.invalidateQueries({ queryKey: campaignLinksKey(campaignId) });
     },
   });

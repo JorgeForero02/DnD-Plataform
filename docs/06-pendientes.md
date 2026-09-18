@@ -295,25 +295,9 @@ servidor, medido allí y no de memoria.
 Rama `reglas-de-la-mesa/antes-del-paso-3`; revisión Opus de la rama entera en
 `.superpowers/sdd/2026-09-13-reglas-de-la-mesa/final-review.md` (0 críticos, 4 importantes —los
 cuatro cerrados en dos olas—, 14 menores). RM-1 (¿pierde el dueño el nivel a mano?) **la decidió el autor el mismo día**: el
-nivel es del DM (D-CF-66, hecha en la ola 3). Lo que queda:
+nivel es del DM (D-CF-66, hecha en la ola 3).
 
-### RM-2 · Menores aplazados de la revisión final (con su línea en `final-review.md`)
-
-| | Qué | Coste |
-|---|---|---|
-| M-4 | `AbilityRollsService.list` moldea el `payload` releído a mano; pasar la respuesta por `abilityRollAttemptSchema.parse` | 20 min |
-| M-5 | `of = 0` cuando la regla no es `DADOS` viola `abilityRollAttemptSchema.of.min(1)`; hacer `of` opcional o `Math.max(1, …)` | 10 min |
-| M-6 | La invalidación de `abilityRollsKey` en `useUpdateSheet` es redundante (prefijo ya invalidado) — quitar o corregir el comentario | 5 min |
-| M-7 | `as CreateCharacterInput` en `CharacterEditor`: exportar `z.input<typeof createCharacterSchema>` en shared y usarlo | 10 min |
-| M-8 | `r as DesgloseDeTirada` en `AsignarCaracteristicas`: probar sin moldear; si no compila, `dc?` en el DTO | 10 min |
-| M-9 | `Number("")` = 0 en los campos numéricos de `ReglasDeLaMesa` se manda y vuelve un 400 técnico de Zod; comprobar rango en `onGuardar` y escribir la frase en español | 20 min |
-| M-12 | `CARACTERISTICAS` en `IdentidadEditable.tsx` duplica `ORDEN_DE_CARACTERISTICAS` de shared | 5 min |
-| M-14 | `borrador` de `ReglasDeLaMesa` se siembra una vez por campaña; re-sembrar cuando cambie la campaña y no haya edición en curso | 15 min |
-| — | Sin e2e de concurrencia real para los cerrojos `FOR UPDATE` (M-1/M-2): las unitarias prueban el orden de las sentencias, no el bloqueo de Postgres. Un e2e con dos `POST …/ability-rolls` en `Promise.all` y `intentos: 1` → exactamente un 201 y un 409 | 30 min |
-| — | `attemptId` bajo `MATRIZ`/`PUNTOS` se acepta y marca un intento caduco; rechazarlo con 400 cuando la regla no es `DADOS` | 10 min |
-
-M-4, M-5, `attemptId` y concurrencia: cerradas en T1 de la tanda «cierre antes de 3A.2» (rama
-`cierre/antes-de-3a2`). M-6, M-7, M-8, M-12: cerradas en T3 (rama `cierre/antes-de-3a2`).
+RM-2 cerrada el 2026-09-17, en el archivo.
 
 ## Cierre de la tanda del pulido antes del paso 3 (2026-09-13, Tarea 15)
 
@@ -390,8 +374,6 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 | Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
 | Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
 | Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
-| Mundo (árbol) | Borrar un hilo no invalida la consulta del otro extremo del enlace, así que su ficha puede quedar con el hilo fantasma hasta recargar | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
-| Mundo (árbol) | Las raíces sin hijos se abren desplegadas por defecto en vez de plegadas | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |
 | Mundo (árbol) | El editor de hilos queda bajo el pliegue a 1280×800 | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 
 **Descartado como ruido, con motivo** (no entra como ficha): la cita de Epip «resolver functions»

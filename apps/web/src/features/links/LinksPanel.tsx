@@ -217,9 +217,10 @@ export function LinksPanel({
               type="button"
               onClick={() => {
                 if (!l.canRemove) return;
-                deleteLink.mutate(l.id, {
-                  onError: (err) => setError((err as Error).message),
-                });
+                deleteLink.mutate(
+                  { id: l.id, otherEntityId: l.to.id },
+                  { onError: (err) => setError((err as Error).message) },
+                );
               }}
               // Ficha U9 — **`aria-disabled`, no `disabled`.** Un botón deshabilitado de verdad
               // sale del recorrido de teclado, así que quien navega con teclado o con lector no

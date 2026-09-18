@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, type RenderResult } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReglasDeLaMesa } from "../ReglasDeLaMesa";
 import { reglasCompletas, AVISO_NO_RETROACTIVO, AVISO_PROGRESION_INMEDIATA } from "../reglas";
@@ -45,6 +45,32 @@ function montar(props: Parameters<typeof ReglasDeLaMesa>[0]) {
       <ReglasDeLaMesa {...props} />
     </QueryClientProvider>,
   );
+}
+
+/** M-14: monta con `reglas` variable y devuelve también `rerender` de RTL, para simular un
+ * refetch que trae reglas nuevas sin desmontar el componente. */
+function montarConRerender(
+  nivelInicial: number,
+): Omit<RenderResult, "rerender"> & { rerender: (nivelInicial: number) => void } {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const utils = render(
+    <QueryClientProvider client={qc}>
+      <ReglasDeLaMesa campaignId="c1" reglas={reglasCompletas({ nivelInicial })} disabled={false} />
+    </QueryClientProvider>,
+  );
+  return {
+    ...utils,
+    rerender: (siguienteNivel: number) =>
+      utils.rerender(
+        <QueryClientProvider client={qc}>
+          <ReglasDeLaMesa
+            campaignId="c1"
+            reglas={reglasCompletas({ nivelInicial: siguienteNivel })}
+            disabled={false}
+          />
+        </QueryClientProvider>,
+      ),
+  };
 }
 
 describe("ReglasDeLaMesa", () => {
@@ -138,6 +164,32 @@ describe("ReglasDeLaMesa", () => {
       { tableRules: expect.objectContaining({ progresion: "HITO" }) },
       expect.anything(),
     );
+  });
+
+  it("M-9: un campo numérico vacío o fuera de rango no se manda — se explica en español", async () => {
+    montar({
+      campaignId: "c1",
+      reglas: reglasCompletas({ abilities: { metodo: "PUNTOS" } }),
+      disabled: false,
+    });
+    const puntos = screen.getByLabelText("Puntos a repartir");
+    fireEvent.change(puntos, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar las reglas" }));
+    expect(mutate).not.toHaveBeenCalled();
+    expect(screen.getByText("Los puntos a repartir van de 15 a 40.")).toBeInTheDocument();
+  });
+
+  it("M-14: si llegan reglas nuevas del servidor y el DM no ha tocado nada, el borrador se re-siembra", () => {
+    const { rerender } = montarConRerender(1);
+    rerender(3);
+    expect(screen.getByLabelText("Nivel inicial")).toHaveValue(3);
+  });
+
+  it("M-14: si el DM está editando, un refetch no le pisa lo tecleado", () => {
+    const { rerender } = montarConRerender(1);
+    fireEvent.change(screen.getByLabelText("Nivel inicial"), { target: { value: "5" } });
+    rerender(3);
+    expect(screen.getByLabelText("Nivel inicial")).toHaveValue(5);
   });
 
   it("el botón de guardar no se deshabilita para un jugador: los controles sí, con el motivo a la vista", () => {

@@ -262,7 +262,8 @@ export function EditorDeHilos({
     try {
       await crear.mutateAsync({ toId: destino.id, label });
       creado = true;
-      if (modo.tipo === "cambiar") await quitar.mutateAsync(modo.vecino.hiloId);
+      if (modo.tipo === "cambiar")
+        await quitar.mutateAsync({ id: modo.vecino.hiloId, otherEntityId: modo.vecino.id });
       cerrar();
     } catch (err) {
       const mensaje = mensajeDeError(err);
@@ -277,7 +278,10 @@ export function EditorDeHilos({
 
   const quitarHilo = (vecino: Vecino) => {
     setError(null);
-    quitar.mutate(vecino.hiloId, { onError: (err) => setError(mensajeDeError(err)) });
+    quitar.mutate(
+      { id: vecino.hiloId, otherEntityId: vecino.id },
+      { onError: (err) => setError(mensajeDeError(err)) },
+    );
   };
 
   return (

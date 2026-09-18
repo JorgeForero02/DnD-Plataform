@@ -156,6 +156,23 @@ Diecisiete filas de la revisión final del pulido (2026-09-13), triadas por el p
 | Catálogo de objetos | Dos `Toolbar` de filtros apilados sin separación visual entre tipo y origen | `apps/web/src/features/campaign-items/CampaignItemsCatalogPage.tsx` |
 | Mundo (árbol) | Un rótulo libre de más de 80 caracteres no se valida en el cliente (el servidor sí lo corta) | `apps/web/src/features/sessions/taller/mundo/EditorDeHilos.tsx` |
 
+### Higiene del e2e de la hoja — `data-casilla`, `toBe(5)`, comentario «Vel.» (cerradas en T7)
+
+Cerradas con código en la Tarea 7. `Casilla.tsx` lleva ahora `data-casilla="derivada"` en su
+`<div>` raíz — las cinco casillas de la tira compacta pasan por ella (PG desde `Cabecera.tsx` y
+las otras cuatro desde `ValorDerivado` variante `"compacta"`, en `Traza.tsx`), así que el dato no
+varía por instancia. `hoja.spec.ts:339` y `:1013` seleccionan por `[data-casilla="derivada"]` en
+vez de por clase, con el comentario de motivo pedido; `:1014` pasa de `toBeGreaterThanOrEqual(4)`
+a `toBe(5)`, exacto porque `:339` ya afirmaba `toHaveCount(5)`. `hoja.spec.ts:318` y
+`Cabecera.test.tsx:90` llevan la misma línea de comentario citando el motivo de `Cabecera.tsx`
+(ronda 2026-09-12) para «Vel.» sin «(pies)».
+
+| Área | Qué | Dónde |
+|---|---|---|
+| Hoja / Casilla | El rótulo «Vel.» se repite en varios test como literal, sin motivo en el fichero de por qué es ese y no «Vel. (pies)» | `hoja.spec.ts:72,87`; `Cabecera.test.tsx:73,96` |
+| Hoja / Casilla | Aserción `>= 4` en vez de `toBe(5)` para el número de casillas | `hoja.spec.ts:160` |
+| Hoja / Casilla | Selector de Playwright `[class*='w-[6rem]']` es frágil a un cambio de clase; un `data-casilla` sería estable | `hoja.spec.ts` |
+
 ### Cajón del registro — `IconoPunta` único y contador honesto (cerradas en T6)
 
 Cerradas con código en la Tarea 6. `IconoPunta` (`apps/web/src/ui/Iconos.tsx`, junto a las

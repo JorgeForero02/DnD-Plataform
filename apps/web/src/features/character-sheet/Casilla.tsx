@@ -48,6 +48,10 @@ export function Casilla({
 }) {
   return (
     <div
+      // Selector estable para el e2e (revisión 2026-09-13): `Casilla` es siempre una de las
+      // cinco cajas derivadas de la tira compacta de la cabecera (PG y las cuatro de
+      // `ValorDerivado`), así que el dato no varía por instancia.
+      data-casilla="derivada"
       className={[
         // Desbordes, ronda 3 (2026-09-13, E-DB-10 — «la caja crece», la otra mitad de la
         // regla): forzar el rótulo a envolver DENTRO de los 6rem fijos partía palabras a mitad

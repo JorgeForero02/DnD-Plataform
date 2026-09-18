@@ -347,9 +347,6 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 
 | Área | Qué | Dónde |
 |---|---|---|
-| Hoja / Casilla | El rótulo «Vel.» se repite en varios test como literal, sin motivo en el fichero de por qué es ese y no «Vel. (pies)» | `hoja.spec.ts:72,87`; `Cabecera.test.tsx:73,96` |
-| Hoja / Casilla | Aserción `>= 4` en vez de `toBe(5)` para el número de casillas | `hoja.spec.ts:160` |
-| Hoja / Casilla | Selector de Playwright `[class*='w-[6rem]']` es frágil a un cambio de clase; un `data-casilla` sería estable | `hoja.spec.ts` |
 | Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
 | Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar. P-1: pendiente de decidir por el autor (2026-09-17) | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
 | Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |

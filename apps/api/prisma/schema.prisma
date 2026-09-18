@@ -719,9 +719,36 @@ model Character {
   combatants         Combatant[]
   temporaryModifiers TemporaryModifier[]
   abilityRollAttempts AbilityRollAttempt[]
+  spells             CharacterSpell[]
 
   @@index([campaignId])
   @@index([entityId])
+}
+
+// 3A.2 (Task 2) — el libro de conjuros de un personaje: qué conjuros de su clase tiene marcados
+// y en qué estado. Igual que `classKey`/`raceKey` (2A), y por el mismo motivo: el catálogo del
+// SRD vive en código (`apps/api/src/rules/catalog/generado/`), no en una tabla, así que
+// `spellKey` es una CADENA, nunca una clave foránea — no hay fila a la que apuntar.
+enum CharacterSpellState {
+  // Está en el libro del mago, copiado, pero no preparado para hoy.
+  EN_EL_LIBRO
+  // Preparado para hoy: quien prepara de lista o de libro puede lanzarlo.
+  PREPARADO
+  // Conocido, sin preparar: bardo, hechicero, brujo, explorador (y los trucos de todos).
+  CONOCIDO
+}
+
+model CharacterSpell {
+  id          String              @id @default(cuid())
+  characterId String
+  /// Clave del catálogo generado (`"fireball"`); el prefijo `SRD:` lo pone el servidor al
+  /// exponerla. Nunca clave foránea — ver el comentario de arriba.
+  spellKey    String
+  estado      CharacterSpellState
+  createdAt   DateTime            @default(now())
+  character   Character           @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, spellKey])
 }
 
 /// Reglas de la mesa (D-CF-53): un intento de tirar las seis características en el servidor.

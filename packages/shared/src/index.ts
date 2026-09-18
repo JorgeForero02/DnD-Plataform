@@ -31,3 +31,4 @@ export * from "./table-rules.schema";
 export * from "./xp";
 export * from "./catalog.schema";
 export * from "./dice-limits";
+export * from "./spellbook.schema";

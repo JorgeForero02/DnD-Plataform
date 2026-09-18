@@ -21,6 +21,7 @@ User ──dueño──> Campaign ──> CampaignMember (DM | PLAYER, único po
 Character ──> CharacterResource   (consumibles: inspiración, furia, ki, dados de golpe, espacios)
           ──> CharacterCondition  (clave LIBRE; las quince del SRD son las que el motor entiende)
           ──> InventoryItem       (2B; el objeto viene del SRD -clave- o de la campaña -id-)
+          ──> CharacterSpell      (3A.2; qué conjuros tiene y en qué estado; spellKey es CADENA)
           (y cinco columnas de moneda: cp, sp, ep, gp, pp)
 
 Campaign  ──> CampaignItem ──> CampaignItemVisibilityGrant   (2B; el homebrew del DM)
@@ -58,7 +59,7 @@ direcciones**: tanto los que salen de ella como los que otras entidades tienen h
 porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGrant` y sus
 `Comment`. **`Session` cuelga `Encounter` desde 2.5.2 —y con él `Combatant` y `RollRequest`, todo en cascada—; `Character` sí desde 2A.8 y 2A.12**:
 borrar un personaje se lleva sus `CharacterResource` y sus `CharacterCondition`, las dos en
-cascada. **`GameEvent` cuelga de la campaña, no de la
+cascada — y desde 3A.2, su `CharacterSpell` también. **`GameEvent` cuelga de la campaña, no de la
 sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
 borra su historia, que es lo que se quiere de un log.
 
@@ -1430,3 +1431,32 @@ revierte la columna que las motivó):
   de un suceso no se filtra por espectador, así que el nombre de un oculto no puede viajar aquí.
   Lo escribe `EncountersService.removeCombatant` (`DELETE …/encounters/:id/combatants/:combatantId`,
   200 con el `Encounter` entero, como `setSide` y `advanceTurn`).
+
+## `CharacterSpell` — el libro de conjuros de un personaje (3A.2, Task 2, D-CF-125, migración `20260918082612_character_spells`)
+
+**`CharacterSpell`**: qué conjuros de su clase tiene marcados un personaje y en qué estado
+(`EN_EL_LIBRO` | `PREPARADO` | `CONOCIDO`, `CharacterSpellState`). Una fila por conjuro que el
+personaje tiene en su lista; que no exista fila es «ni siquiera lo tiene apuntado» — distinto de
+`EN_EL_LIBRO` (lo tiene, pero no preparado para hoy). `@@unique([characterId, spellKey])`: un
+conjuro aparece como mucho una vez por personaje.
+
+**`spellKey` es una CADENA, nunca una clave foránea** — la misma decisión que `classKey`/
+`raceKey` de `Character` (2A) y `InventoryItem.ref` de 2B, y por el mismo motivo: el catálogo del
+SRD 5.1 (319 conjuros, tarea 3A.1) vive **en código**
+(`apps/api/src/rules/catalog/generado/spells-srd.json`), no en una tabla, así que no hay fila a
+la que apuntar con una clave foránea real. Guarda el `key` interno del catálogo (`"fireball"`,
+sin el prefijo `SRD:`); el servidor antepone `SRD:` solo al exponerla, igual que
+`InventoryItem.ref`.
+
+**Cuelga de `Character` en cascada** (`onDelete: Cascade`): borrar un personaje se lleva su libro
+de conjuros, igual que sus `CharacterResource` y `CharacterCondition` (comprobado por conteo de
+filas en `campaigns.e2e-spec.ts`, no por el tamaño de un volcado).
+
+**`createdAt`, sin más columnas de auditoría.** Cuándo cambió de estado —cuándo se preparó, cuándo
+se aprendió— no vive aquí: es `GameEvent` quien lo cuenta, con el suceso `SPELLBOOK_CHANGED`
+(mismo commit) que trae `cambio` (`PREPARADO` | `DESPREPARADO` | `APRENDIDO` | `OLVIDADO` |
+`SEMBRADO`) y el `estado` resultante. La misma separación que ya declara el encabezado de este
+fichero para `GameEvent` en general: la tabla es el estado, el registro es la historia.
+
+**Revertir**: `DROP TABLE "CharacterSpell"; DROP TYPE "CharacterSpellState";` — sin filas que
+dependan de ninguna de las dos hasta que la Task 3 empiece a escribirlas.

@@ -515,6 +515,12 @@ describe("Campaigns (e2e)", () => {
       expect(await prisma.rule.count({ where: { campaignId: campaignId2 } })).toBe(1);
       expect(await prisma.campaignItem.count({ where: { campaignId: campaignId2 } })).toBe(1);
       expect(await prisma.characterCondition.count({ where: { characterId } })).toBe(1);
+      // 3A.2 (Task 2): el libro de conjuros cuelga de `Character` en cascada, igual que sus
+      // condiciones y sus recursos.
+      await prisma.characterSpell.create({
+        data: { characterId, spellKey: "fireball", estado: "EN_EL_LIBRO" },
+      });
+      expect(await prisma.characterSpell.count({ where: { characterId } })).toBe(1);
       expect(await prisma.rollRequest.count({ where: { campaignId: campaignId2 } })).toBe(1);
       expect(await prisma.dmTable.count({ where: { campaignId: campaignId2 } })).toBe(1);
       expect(
@@ -550,6 +556,7 @@ describe("Campaigns (e2e)", () => {
       expect(await prisma.rule.count({ where: { campaignId: campaignId2 } })).toBe(0);
       expect(await prisma.campaignItem.count({ where: { campaignId: campaignId2 } })).toBe(0);
       expect(await prisma.characterCondition.count({ where: { characterId } })).toBe(0);
+      expect(await prisma.characterSpell.count({ where: { characterId } })).toBe(0);
       expect(await prisma.rollRequest.count({ where: { campaignId: campaignId2 } })).toBe(0);
       expect(await prisma.dmTable.count({ where: { campaignId: campaignId2 } })).toBe(0);
       expect(

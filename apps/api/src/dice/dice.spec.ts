@@ -329,6 +329,32 @@ describe("contrato de `dice` (2026-09-17)", () => {
     const dice = dadosTirados(r.terms);
     expect(dice.map((d) => d.kept)).toEqual([true, false]);
   });
+
+  it("relanzar: el físico descartado es el PRIMERO en caer, no el que empareje por valor", () => {
+    // `1d20r1` con el tirador sacando siempre 1: el primero se relanza (cae fuera) y el segundo,
+    // aunque tenga el mismo valor, es el que cuenta. Por valor son indistinguibles — por posición
+    // no: el evaluador ya sabe cuál es cuál, y `dadosTirados` solo debe repetirlo.
+    const r = rollExpression("1d20r1", () => 1);
+    const dice = dadosTirados(r.terms);
+    expect(dice).toEqual([
+      { sides: 20, value: 1, kept: false },
+      { sides: 20, value: 1, kept: true },
+    ]);
+  });
+
+  it("relanzar + kh combinados: cada físico se marca por su propia razón para caer", () => {
+    // `4d6r1kh3`: el primer dado sale 1, relanza y vuelve a salir 1 (se queda, aunque sea peor);
+    // los otros tres salen 6, 5, 4. `enJuego` queda [1, 6, 5, 4] y kh3 descarta el más bajo, que
+    // es ese mismo 1 relanzado — cae por relanzar Y por kh3, pero solo se cuenta una vez tachado.
+    const r = rollExpression("4d6r1kh3", tirador([1, 1, 6, 5, 4]));
+    const [t] = r.terms;
+    expect(t.rolled).toEqual([1, 1, 6, 5, 4]);
+    // La suma y el desglose por valor no cambian con este arreglo: sigue siendo el mismo cálculo.
+    expect(t.kept).toEqual([6, 5, 4]);
+    expect(t.dropped).toEqual([1, 1]);
+    const dice = dadosTirados(r.terms);
+    expect(dice.map((d) => d.kept)).toEqual([false, false, true, true, true]);
+  });
 });
 
 describe("dadosTirados", () => {

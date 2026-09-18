@@ -8,13 +8,19 @@ y por qué las marcadas **F**/**D** se cierran sin código). Ver `07-historial.m
 
 Cerradas con código en la Tarea 2: `MAX_DADOS_POR_TIRADA` (`packages/shared/src/dice-limits.ts`)
 sustituye el `.max(100)` suelto en `roll.schema.ts` y `game-event.schema.ts` por el producto real
-del evaluador (10 términos × 100 dados × 2 por relanzar = 2000); y el empate en `kh`/`kl` queda
-declarado — `evaluar` ya lo resolvía con un sort estable a favor del primero en caer, pero
-`dadosTirados` reconstruía el marcado «kept» por posición emparejando valores de principio a fin,
-lo que con dos dados iguales tachaba el físicamente equivocado. Se corrigió emparejando desde el
-final (`apps/api/src/dice/dice.ts`, `dadosTirados`) para que la reconstrucción visual concuerde
-con la regla ya vigente. Prueba: `apps/api/src/dice/dice.spec.ts`, describe `contrato de "dice"
-(2026-09-17)`.
+del evaluador (10 términos × 100 dados × 2 por relanzar = 2000).
+
+El empate en `kh`/`kl` queda resuelto, no solo declarado, y en dos rondas: la primera
+(`02dc6ad`) hizo que `dadosTirados` emparejara `dropped` contra `rolled` **desde el final** en
+vez de desde el principio, lo que arreglaba el empate pero rompía `1d20r1` — con relanzar, el
+físico descartado es el *primero* en caer, justo el orden contrario al que pide el empate, y un
+emparejado por *valor* no puede acertar los dos a la vez porque `dropped` no lleva posición. La
+segunda ronda quita la reconstrucción por completo: `evaluarTermino` (`apps/api/src/dice/dice.ts`)
+ya sabe, dado por dado, cuál físico cuenta —tanto el que pierde por relanzar como el que pierde
+por `kh`/`kl`— y lo deja en el nuevo campo `DiceTermResult.dice`, por posición; `dadosTirados` pasa
+a ser una simple concatenación (`terms.flatMap((t) => t.dice)`). Pruebas:
+`apps/api/src/dice/dice.spec.ts`, describe `contrato de "dice" (2026-09-17)` (empate, relanzar
+solo, y relanzar+kh combinados en la misma tirada).
 
 | Área | Qué | Dónde |
 |---|---|---|

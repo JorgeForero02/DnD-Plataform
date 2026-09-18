@@ -1,5 +1,5 @@
 import { Test } from "@nestjs/testing";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { SpellbookService } from "./spellbook.service";
 import { sembrarLibro } from "./sembrar";
 import { PrismaService } from "../prisma/prisma.service";
@@ -176,6 +176,31 @@ describe("SpellbookService", () => {
       expect(preparado.lanzable).toBe(true);
       const enLibro = respuesta.entradas.find((e) => e.key === "mage-armor")!;
       expect(enLibro.lanzable).toBe(false);
+    });
+
+    it("ronda de arreglo 1 — ninguna entrada trae textEs/textEn/higherLevels*", async () => {
+      const id = "mago-sin-prosa";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "wizard",
+        level: 3,
+      });
+      characterSheet.getSheet.mockResolvedValue({
+        sheet: { derived: { "abilityMod.int": { key: "abilityMod.int", total: 3, steps: [] } } },
+      });
+
+      const respuesta = await service.list(dueñoId, campaignId, id);
+
+      expect(respuesta.entradas.length).toBeGreaterThan(0);
+      for (const entrada of respuesta.entradas) {
+        expect(entrada).not.toHaveProperty("textEs");
+        expect(entrada).not.toHaveProperty("textEn");
+        expect(entrada).not.toHaveProperty("higherLevelsEs");
+        expect(entrada).not.toHaveProperty("higherLevelsEn");
+      }
     });
 
     it("clérigo: modelo PREPARA_DE_LISTA, sin topes.libro; todas las entradas de la lista", async () => {
@@ -388,6 +413,67 @@ describe("SpellbookService", () => {
       const suceso = events.record.mock.calls[0][2];
       expect(suceso.payload.cambio).toBe("OLVIDADO");
       expect(suceso.payload.estado).toBeNull();
+    });
+  });
+
+  // --- detalle (ronda de arreglo 1) ---------------------------------------------------------
+
+  describe("detalle", () => {
+    it("trae textEs/textEn — es lo único que list() ya no trae", async () => {
+      const id = "mago-detalle";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "wizard",
+        level: 3,
+      });
+      spells.set(clave(id, "magic-missile"), "PREPARADO");
+
+      const entrada = await service.detalle(dueñoId, campaignId, id, "magic-missile");
+
+      expect(entrada.estado).toBe("PREPARADO");
+      expect(entrada.lanzable).toBe(true);
+      expect(typeof entrada.textEs === "string" || entrada.textEs === null).toBe(true);
+      expect(entrada.textEs).not.toBe("");
+      expect(typeof entrada.textEn).toBe("string");
+      expect(entrada.textEn!.length).toBeGreaterThan(0);
+    });
+
+    it("una clave que no existe en el catálogo es 404", async () => {
+      const id = "mago-detalle2";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "wizard",
+        level: 3,
+      });
+
+      await expect(service.detalle(dueñoId, campaignId, id, "no-existe")).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it("un conjuro que no es de la clase se devuelve igual, con estado null (catálogo, no secreto)", async () => {
+      const id = "clerigo-detalle";
+      crearCharacter({
+        id,
+        campaignId,
+        ownerId: dueñoId,
+        visibility: "PLAYERS",
+        classKey: "cleric",
+        level: 3,
+      });
+
+      // magic-missile es de mago/hechicero, no de clérigo — y aun así se sirve.
+      const entrada = await service.detalle(dueñoId, campaignId, id, "magic-missile");
+
+      expect(entrada.key).toBe("magic-missile");
+      expect(entrada.estado).toBeNull();
+      expect(entrada.textEn!.length).toBeGreaterThan(0);
     });
   });
 

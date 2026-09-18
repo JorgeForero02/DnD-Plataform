@@ -67,8 +67,14 @@ export interface SpellbookEntry {
   objetivos: "ninguno" | "uno" | "varios";
   /** Tiene `escalado.por === "espacio"` (se ofrece elegir espacio). */
   escalaPorEspacio: boolean;
-  textEs: string | null;
-  textEn: string;
+  /**
+   * **Solo en el detalle** (`GET …/spellbook/:spellKey`), nunca en `list()` — ronda de arreglo
+   * 1: una lista de hasta 204 conjuros con su prosa completa del SRD (hasta 8000 caracteres por
+   * campo, en dos idiomas) pesaba ~460 KB por petición para una pantalla que solo abre el texto
+   * de UNO a la vez. Ausentes en `list`, presentes en `detalle`.
+   */
+  textEs?: string | null;
+  textEn?: string;
   higherLevelsEs?: string;
   higherLevelsEn?: string;
 }

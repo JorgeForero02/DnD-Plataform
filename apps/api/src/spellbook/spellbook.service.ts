@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { Character, Prisma } from "@prisma/client";
 import type {
   CharacterSpellState,
   SetCharacterSpellInput,
   SpellbookEntry,
   SpellbookResponse,
+  SrdSpell,
 } from "@dnd/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
@@ -52,6 +53,47 @@ export class SpellbookService {
       characterId,
     );
     return this.construirRespuesta(userId, campaignId, character);
+  }
+
+  /**
+   * Ronda de arreglo 1 (revisión del orquestador) — el conjuro entero, con su prosa del SRD.
+   * `list()` ya no la trae (ver el comentario de `entradaBase`): la pantalla abre esto solo
+   * cuando alguien pulsa UN conjuro, no los hasta 204 de la clase a la vez.
+   *
+   * **Mismo permiso que `list`** (`requireVisibleCharacter`, no `requireOwnerOrDM`): es una
+   * lectura, no una escritura del libro. **404 si la clave no existe en el catálogo** —un
+   * `spellKey` inventado no es "este conjuro no es tuyo", es "esto no existe". **Si el conjuro
+   * no es de la lista de la clase del personaje, se devuelve igual con `estado: null`**: es
+   * catálogo compartido, no un secreto de este personaje — la puerta que sí protege algo
+   * (`setEstado`) ya exige que sea de la clase antes de escribir.
+   */
+  async detalle(
+    userId: string,
+    campaignId: string,
+    characterId: string,
+    spellKey: string,
+  ): Promise<SpellbookEntry> {
+    const character = await requireVisibleCharacter(
+      this.prisma,
+      this.membership,
+      userId,
+      campaignId,
+      characterId,
+    );
+    const spell = SRD_SPELL_POR_KEY.get(spellKey);
+    if (!spell) {
+      throw new NotFoundException(`No existe el conjuro «${spellKey}» en el catálogo.`);
+    }
+    const fila = await this.prisma.characterSpell.findUnique({
+      where: { characterId_spellKey: { characterId: character.id, spellKey } },
+    });
+    return {
+      ...this.entradaBase(spell, fila?.estado ?? null),
+      textEs: spell.textEs,
+      textEn: spell.textEn,
+      ...(spell.higherLevelsEs !== undefined ? { higherLevelsEs: spell.higherLevelsEs } : {}),
+      ...(spell.higherLevelsEn !== undefined ? { higherLevelsEn: spell.higherLevelsEn } : {}),
+    };
   }
 
   async setEstado(
@@ -205,6 +247,37 @@ export class SpellbookService {
 
   // --- privado ------------------------------------------------------------------------------
 
+  /**
+   * Lo que `list()` y `detalle()` tienen en común: todo de `SpellbookEntry` salvo la prosa
+   * (`textEs`/`textEn`/`higherLevels*`), que solo añade `detalle()`. Un solo sitio calcula
+   * `lanzable`/`mecanica`/`objetivos`/`escalaPorEspacio` — dos copias de esa lógica es
+   * exactamente el vocabulario paralelo que el resto del proyecto evita.
+   */
+  private entradaBase(
+    spell: SrdSpell,
+    estado: CharacterSpellState | null,
+  ): Omit<SpellbookEntry, "textEs" | "textEn" | "higherLevelsEs" | "higherLevelsEn"> {
+    const actividad = actividadDeLanzamiento(spell);
+    return {
+      key: spell.key,
+      nameEs: spell.nameEs ?? spell.nameEn,
+      nameEn: spell.nameEn,
+      level: spell.level,
+      school: spell.school,
+      castingTime: spell.castingTime,
+      range: spell.range,
+      concentration: spell.concentration,
+      ritual: spell.ritual,
+      estado,
+      lanzable: estado === "PREPARADO" || estado === "CONOCIDO",
+      mecanica: mecanicaDe(spell),
+      objetivos: objetivosDe(spell),
+      escalaPorEspacio: Boolean(
+        actividad && "dados" in actividad && actividad.dados?.escalado?.por === "espacio",
+      ),
+    };
+  }
+
   private claseOMotivo(classKey: string | null): string {
     if (!classKey) return "personaje sin clase";
     try {
@@ -267,29 +340,12 @@ export class SpellbookService {
       }
       if (estado === "EN_EL_LIBRO") libroActual += 1;
 
-      const actividad = actividadDeLanzamiento(spell);
-      return {
-        key: spell.key,
-        nameEs: spell.nameEs ?? spell.nameEn,
-        nameEn: spell.nameEn,
-        level: spell.level,
-        school: spell.school,
-        castingTime: spell.castingTime,
-        range: spell.range,
-        concentration: spell.concentration,
-        ritual: spell.ritual,
-        estado,
-        lanzable: estado === "PREPARADO" || estado === "CONOCIDO",
-        mecanica: mecanicaDe(spell),
-        objetivos: objetivosDe(spell),
-        escalaPorEspacio: Boolean(
-          actividad && "dados" in actividad && actividad.dados?.escalado?.por === "espacio",
-        ),
-        textEs: spell.textEs,
-        textEn: spell.textEn,
-        ...(spell.higherLevelsEs !== undefined ? { higherLevelsEs: spell.higherLevelsEs } : {}),
-        ...(spell.higherLevelsEn !== undefined ? { higherLevelsEn: spell.higherLevelsEn } : {}),
-      };
+      // **Ronda de arreglo 1 — sin prosa aquí.** `entradaBase` no trae `textEs`/`textEn`/
+      // `higherLevels*`: `list()` pinta hasta 204 filas a la vez (la clase entera del
+      // personaje), y cargar el texto completo del SRD (hasta 8000 caracteres × 2 idiomas) de
+      // cada una pesaba ~460 KB por petición para una pantalla que solo abre el texto de UNA. El
+      // texto vive en `detalle()`, que se pide conjuro a conjuro.
+      return this.entradaBase(spell, estado);
     });
 
     const topes: SpellbookResponse["topes"] = {};

@@ -11,18 +11,14 @@ import { PrismaService } from "../src/prisma/prisma.service";
 // (modelo PREPARA_DE_LISTA, sin siembra, con el tope de preparados excedido a propósito —
 // D-CF-126: se escribe igual y el séptimo suceso lleva `fueraDeRegla: ["SOBRE_EL_TOPE"]`).
 //
-// **`.timeout({ response, deadline })` y un `listen(0, "127.0.0.1")` explícito — mitigan, no
-// eliminan, un fallo de la herramienta de pruebas y no del servidor.** `GET/PUT …/spellbook`
-// devuelve el catálogo entero de la clase (hasta 204 conjuros, ~460 KB con su prosa del SRD —
-// D-CF-125, `SpellbookEntry` trae `textEs`/`textEn` completos). Medido: `http.get` crudo contra
-// el mismo endpoint, mismo personaje, responde en ~60-108 ms y **nunca** falla (varias corridas).
-// Por `supertest`, la misma petición pasa la mayoría de las veces igual de rápido, pero de vez en
-// cuando (visto 1-2 de 9 peticiones grandes por corrida, nunca en las pequeñas) `superagent@10.3.0`
-// dispara su «double callback bug» conocido con cuerpos de esta talla y la petición muere con
-// `ECONNRESET` a los ~19 s — un artefacto de la librería de pruebas con Fastify + Windows, no un
-// fallo de `SpellbookService` ni del controlador: la aserción nunca es la que falla, solo la
-// conexión. Si una corrida del orquestador lo pisa, se relanza esa prueba sola; no hay nada que
-// arreglar en el código de producción.
+// **Ronda de arreglo 1 (revisión del orquestador) — `GET .../spellbook` ya no lleva la prosa
+// del SRD de cada conjuro.** Hasta esta ronda, la lista del mago (204 conjuros) pesaba ~460 KB
+// por petición y `supertest`/`superagent@10.3.0` disparaba de vez en cuando su «double callback
+// bug» con cuerpos de esa talla — de ahí las mitigaciones (`.timeout()`, `listen(0,
+// "127.0.0.1")`) que llevaba esta suite. Con `list()` sin `textEs`/`textEn`/`higherLevels*`
+// (ver `spellbook.service.ts`, `entradaBase`) la respuesta más grande de esta suite baja a
+// unos pocos KB, y las mitigaciones ya no hacen falta: esta suite usa el mismo patrón que el
+// resto de e2e de API (`app.init()` a secas, sin `.timeout()`).
 
 describe("El libro de conjuros de un personaje (e2e)", () => {
   let app: NestFastifyApplication;
@@ -43,15 +39,6 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     app = ref.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
-    // **`listen(0, "127.0.0.1")` explícito, y no solo `init()`.** El resto de los e2e de esta
-    // suite se apoyan en que `supertest` escuche por su cuenta sobre `app.getHttpServer()` —les
-    // basta, porque sus respuestas son pequeñas. Esta suite devuelve hasta ~460 KB por petición
-    // (el catálogo entero de una clase, con su prosa del SRD), y sin un bind explícito a IPv4
-    // Node/Windows a veces resuelve el oyente ad hoc de `supertest` por `::`/dual-stack — el
-    // camino donde el «double callback bug» conocido de `superagent@10.3.0` se dispara con
-    // cuerpos grandes. Medido: con `127.0.0.1` explícito, la misma petición que fallaba con
-    // `ECONNRESET` tras ~19 s responde en 60-100 ms, siempre.
-    await app.listen(0, "127.0.0.1");
     prisma = app.get(PrismaService);
     const s = app.getHttpServer();
 
@@ -73,7 +60,6 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
       await request(s)
         .post("/campaigns")
         .set("Authorization", `Bearer ${tokenDM}`)
-        .timeout({ response: 20000, deadline: 25000 })
         .send({ name: "Campaña del libro de conjuros" })
     ).body.id;
 
@@ -83,10 +69,7 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
           .post(`/campaigns/${campaignId}/invites`)
           .set("Authorization", `Bearer ${tokenDM}`)
       ).body.token;
-      await request(s)
-        .post(`/invites/${invite}/accept`)
-        .set("Authorization", `Bearer ${token}`)
-        .timeout({ response: 20000, deadline: 25000 });
+      await request(s).post(`/invites/${invite}/accept`).set("Authorization", `Bearer ${token}`);
     }
 
     // El mago de A: nivel 1 al fijar la clase, para que el libro sembrado (D-CF-125) coincida
@@ -95,13 +78,11 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenA}`)
-        .timeout({ response: 20000, deadline: 25000 })
         .send({ name: "Elminster", level: 1 })
     ).body.id;
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${personajeMago}/sheet`)
       .set("Authorization", `Bearer ${tokenDM}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({
         level: 1,
         abilities: { str: 8, dex: 12, con: 14, int: 16, wis: 10, cha: 10 },
@@ -115,13 +96,11 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
       await request(s)
         .post(`/campaigns/${campaignId}/characters`)
         .set("Authorization", `Bearer ${tokenB}`)
-        .timeout({ response: 20000, deadline: 25000 })
         .send({ name: "Ismark", level: 3 })
     ).body.id;
     await request(s)
       .patch(`/campaigns/${campaignId}/characters/${personajeClerigo}/sheet`)
       .set("Authorization", `Bearer ${tokenDM}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({
         level: 3,
         abilities: { str: 12, dex: 10, con: 14, int: 8, wis: 16, cha: 10 },
@@ -134,7 +113,6 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const goblins = await request(s)
       .post(`/campaigns/${campaignId}/npcs`)
       .set("Authorization", `Bearer ${tokenDM}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({ ref: "SRD:goblin", count: 1, hp: "AVERAGE" });
     personajeDmOnly = goblins.body[0].id;
   });
@@ -151,8 +129,7 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook`)
-      .set("Authorization", `Bearer ${tokenA}`)
-      .timeout({ response: 20000, deadline: 25000 });
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(res.status).toBe(200);
     expect(res.body.modelo).toBe("LIBRO");
     const enLibro = res.body.entradas.filter(
@@ -162,12 +139,26 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     expect(res.body.topes.libro).toEqual({ max: 6, actual: 6 });
   });
 
+  it("ronda de arreglo 1 — la lista NO trae la prosa del SRD de cada conjuro", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(res.status).toBe(200);
+    expect(res.body.entradas.length).toBeGreaterThan(0);
+    for (const entrada of res.body.entradas) {
+      expect(entrada.textEs).toBeUndefined();
+      expect(entrada.textEn).toBeUndefined();
+      expect(entrada.higherLevelsEs).toBeUndefined();
+      expect(entrada.higherLevelsEn).toBeUndefined();
+    }
+  });
+
   it("preparar magic-missile sube topes.preparados.actual a 1", async () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .put(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook/magic-missile`)
       .set("Authorization", `Bearer ${tokenA}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({ estado: "PREPARADO" });
     expect(res.status).toBe(200);
     expect(res.body.topes.preparados.actual).toBe(1);
@@ -176,12 +167,32 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     expect(entrada.lanzable).toBe(true);
   });
 
+  it("ronda de arreglo 1 — GET spellbook/magic-missile trae el detalle con su prosa y el estado", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook/magic-missile`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(res.status).toBe(200);
+    expect(res.body.estado).toBe("PREPARADO");
+    expect(typeof res.body.textEs === "string" || res.body.textEs === null).toBe(true);
+    expect(res.body.textEs).not.toBe("");
+    expect(res.body.textEn).toEqual(expect.any(String));
+    expect(res.body.textEn.length).toBeGreaterThan(0);
+  });
+
+  it("GET spellbook/:spellKey con una clave que no existe en el catálogo es 404", async () => {
+    const s = app.getHttpServer();
+    const res = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook/no-existe`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(res.status).toBe(404);
+  });
+
   it("preparar cure-wounds (no es de la clase del mago): 400", async () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .put(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook/cure-wounds`)
       .set("Authorization", `Bearer ${tokenA}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({ estado: "PREPARADO" });
     expect(res.status).toBe(400);
     expect(res.body.message).toContain("no está en la lista");
@@ -192,7 +203,6 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const res = await request(s)
       .put(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook/fire-bolt`)
       .set("Authorization", `Bearer ${tokenA}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({ estado: "CONOCIDO" });
     expect(res.status).toBe(200);
     expect(res.body.topes.trucos.actual).toBe(1);
@@ -203,8 +213,7 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const log = await request(s)
       .get(`/campaigns/${campaignId}/events`)
       .query({ limit: 100 })
-      .set("Authorization", `Bearer ${tokenA}`)
-      .timeout({ response: 20000, deadline: 25000 });
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(log.status).toBe(200);
     const evento = log.body.events.find(
       (e: { type: string; payload: { spellKey?: string; cambio?: string } }) =>
@@ -220,7 +229,6 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const res = await request(s)
       .put(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook/shield`)
       .set("Authorization", `Bearer ${tokenB}`)
-      .timeout({ response: 20000, deadline: 25000 })
       .send({ estado: "EN_EL_LIBRO" });
     expect(res.status).toBe(403);
   });
@@ -229,8 +237,7 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeDmOnly}/spellbook`)
-      .set("Authorization", `Bearer ${tokenA}`)
-      .timeout({ response: 20000, deadline: 25000 });
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(res.status).toBe(404);
   });
 
@@ -240,8 +247,7 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeClerigo}/spellbook`)
-      .set("Authorization", `Bearer ${tokenB}`)
-      .timeout({ response: 20000, deadline: 25000 });
+      .set("Authorization", `Bearer ${tokenB}`);
     expect(res.status).toBe(200);
     expect(res.body.modelo).toBe("PREPARA_DE_LISTA");
     expect(
@@ -265,7 +271,6 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
       ultima = await request(s)
         .put(`/campaigns/${campaignId}/characters/${personajeClerigo}/spellbook/${key}`)
         .set("Authorization", `Bearer ${tokenB}`)
-        .timeout({ response: 20000, deadline: 25000 })
         .send({ estado: "PREPARADO" });
       expect(ultima.status).toBe(200);
     }
@@ -274,8 +279,7 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const log = await request(s)
       .get(`/campaigns/${campaignId}/events`)
       .query({ limit: 100 })
-      .set("Authorization", `Bearer ${tokenB}`)
-      .timeout({ response: 20000, deadline: 25000 });
+      .set("Authorization", `Bearer ${tokenB}`);
     const septimo = log.body.events.find(
       (e: { type: string; payload: { spellKey?: string } }) =>
         e.type === "SPELLBOOK_CHANGED" && e.payload.spellKey === "blade-barrier",

@@ -155,3 +155,19 @@ conjuro preparado enseña **la misma fila** que un ataque del cuadro — porque 
 Está terminado cuando el autor apruebe **los tres modelos de preparación**, la tabla con su enum de
 tres, y la regla de que **el tope se deriva y no se guarda**. Su plan por tareas se escribe cuando el
 paso 3 haya traído el catálogo: sin conjuros que elegir, esta pantalla no se puede probar.
+
+## Decidido el 2026-09-18 sin el autor
+
+Las tres preguntas del §8 se contestaron la noche del 2026-09-18 por los cuatro pasos de
+`04-convenciones.md` (cambio rápido y duradero → cumple las reglas → lo contesta el SRD 5.1 en
+inglés, después Foundry), sin el autor, con la autorización escrita en el prompt de esa noche.
+Las filas son **D-CF-125, D-CF-126 y D-CF-127** en [decisiones.md](../../decisiones.md), y esto es
+solo el resumen: **(1) sí se siembra** —libro del mago y conocidos de las clases de lista fija— en
+el momento en que la clase se fija por primera vez, con un arranque curado por clase y editable
+desde la pestaña; clérigo, druida y paladín no guardan nada porque su lista conocida es la de su
+clase entera; **(2) preparar en combate se permite, cuenta y avisa** (suceso marcado
+`fueraDeRegla`, línea en el hilo, aviso en pantalla; nunca un rechazo); **(3) los trucos se
+eligen**, con el tope de la columna «Cantrips Known» del SRD derivado por clase y nivel, no
+gastan espacio y escalan por nivel de personaje con la forma que `Actividad` ya tiene. Las citas
+del SRD 5.1 (Foundry `classfeatures/*/spellcasting.yml` y `classes/*.yml`, `rules: '2014'`) van en
+el commit de cada tarea que las aplique.

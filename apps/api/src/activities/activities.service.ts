@@ -9,6 +9,7 @@ import type { Character, Prisma } from "@prisma/client";
 import type {
   Actividad,
   AbilityKey,
+  AttackVerdict,
   PendingSaveEffect,
   SrdSpell,
   TraceStep,
@@ -131,6 +132,9 @@ export class ActivitiesService {
     traza?: TraceStep[];
     rollEventIds?: string[];
     fueraDeRegla?: Array<"SIN_ESPACIO" | "NO_PREPARADO">;
+    // Task 5 (3A.2) — solo lo trae un `ataque` con exactamente un objetivo: el veredicto de
+    // `resolverAtaqueContraCa` (`resolveAttack`, la misma mecánica, comparte esta palabra).
+    verdict?: AttackVerdict;
   }> {
     await this.membership.requireMember(campaignId, userId);
 
@@ -179,11 +183,49 @@ export class ActivitiesService {
     // Los objetivos se resuelven ANTES de escribir nada: un objetivo inválido no debe dejar el
     // recurso ya gastado. `canView` decide qué objetivos son legítimos — la misma puerta que
     // gobierna el resto de la aplicación, no una segunda regla de visibilidad para actividades.
+    //
+    // Task 5 (3A.2) — un `ataque` (un conjuro o una aptitud con `attack.spell`, como `fire-bolt`)
+    // apunta con OTRO criterio: `sePuedeApuntar` (D-OP-11), el mismo que ya usa `resolveAttack`
+    // para un arma — `canView` **o** ser combatiente del encuentro activo. Con solo `canView` (la
+    // rama de abajo, la de siempre), un mago no podría lanzarlo contra el PNJ `DM_ONLY` que el DM
+    // acaba de bajar a la mesa, aunque el arma de al lado sí pudiera. Y solo admite UN objetivo:
+    // «ataco a X con mi rayo de fuego» no tiene la forma de «tres aliados suman 1d4», así que
+    // pedir más de uno es un 400, no un ataque que se calla a los sobrantes.
     const objetivos: Character[] = [];
-    for (const objetivoId of opciones?.objetivos ?? []) {
-      objetivos.push(
-        await requireVisibleCharacter(this.prisma, this.membership, userId, campaignId, objetivoId),
-      );
+    if (actividad.tipo === "ataque") {
+      const ids = opciones?.objetivos ?? [];
+      if (ids.length > 1) {
+        throw new BadRequestException("Un ataque tiene un objetivo.");
+      }
+      if (ids.length === 1) {
+        const objetivoId = ids[0];
+        // Mismo 400 que `resolveAttack`: atacarse a uno mismo no es una mecánica que exista.
+        if (objetivoId === actor.id) {
+          throw new BadRequestException("No se puede atacar al propio personaje.");
+        }
+        const target = await this.prisma.character.findFirst({
+          where: { id: objetivoId, campaignId, archivedAt: null },
+        });
+        // **El mismo 404 exacto que `resolveAttack`** (D-OP-11): el que no existe y el que existe
+        // pero no se puede ni ver ni tener delante comparten mensaje, para no abrir el oráculo
+        // por otra puerta.
+        if (!target || !(await this.characterSheet.sePuedeApuntar(userId, campaignId, target))) {
+          throw new NotFoundException("Character not found");
+        }
+        objetivos.push(target);
+      }
+    } else {
+      for (const objetivoId of opciones?.objetivos ?? []) {
+        objetivos.push(
+          await requireVisibleCharacter(
+            this.prisma,
+            this.membership,
+            userId,
+            campaignId,
+            objetivoId,
+          ),
+        );
+      }
     }
     const destinatarios = destinatariosOrdenados(objetivos, actor);
 
@@ -201,6 +243,17 @@ export class ActivitiesService {
           destinatarios: Character[];
         }
       | undefined;
+
+    // Task 5 (3A.2) — el caso `ataque` (T19). `bonoDeAtaque` es lo único que hace falta para
+    // llamar a `resolverAtaqueContraCa` DESPUÉS de la transacción (esa función tira con
+    // `RollsService.roll`, que abre su propia transacción y no puede anidar con la de aquí,
+    // exactamente el mismo motivo que ya obliga a diferir `danoDiferido`). `danoDeAtaque` es el
+    // daño de la actividad YA escalado —igual que en el caso `dados`—, listo para tirarse solo si
+    // el veredicto resulta `HIT`/`CRITICAL`: el crítico dobla los DADOS (nunca el bono, nunca las
+    // caras), y eso solo se sabe una vez que hay veredicto.
+    let bonoDeAtaque: number | undefined;
+    let danoDeAtaque:
+      { escalada: ReturnType<typeof dadosEscalados>; bonoValor: number } | undefined;
 
     // Task 4 (3A.2) — para un conjuro, lo que se gasta es el espacio (por su nivel o por el
     // elegido, T18); para una aptitud, sigue siendo `consumption` tal cual la declara. Se calcula
@@ -371,14 +424,33 @@ export class ActivitiesService {
             break;
           }
           case "ataque": {
-            // **No se resuelve el impacto.** No hay en el proyecto una puerta de "tirada de ataque
-            // contra la CA de un objetivo" desligada de un arma equipada (`rollAttack`/
-            // `resolveAttack` operan sobre el cuadro de ataques del inventario, no sobre el bono de
-            // una actividad). Inventar esa comparación aquí sería construir mecánica nueva, que
-            // este encargo tiene prohibido. Se resuelve el bono y su traza; el acierto lo decide
-            // quien juegue, con las herramientas que ya existen.
+            // Task 5 (3A.2, T19) — **ahora sí se resuelve el impacto.** Hasta esta tarea no había
+            // en el proyecto una puerta de "tirada de ataque contra la CA" desligada de un arma
+            // equipada; `resolverAtaqueContraCa` (extraída de `resolveAttack`) es esa puerta, y
+            // este caso la comparte en vez de reinventar la comparación. Aquí, dentro de la
+            // transacción, solo se resuelve lo que YA se resolvía —el bono y su traza— más el daño
+            // ya escalado (si la actividad lo trae): ninguna de las dos cosas toca la base de
+            // datos. La tirada de ataque de verdad, y el daño si impacta, viajan fuera (después de
+            // `gastarActivacion`), por el mismo motivo que `danoDiferido`: `resolverAtaqueContraCa`
+            // llama a `RollsService.roll`, que abre su propia transacción.
             const resuelto = resolverOrigen(actividad.ataque.bono, ctx);
             traza.push(resuelto.paso);
+            bonoDeAtaque = resuelto.valor;
+            if (actividad.dados) {
+              const nivelBase = esSpell ? spell!.level : 0;
+              const escaladaAtaque = dadosEscalados(actividad.dados, {
+                nivelBase,
+                nivelDeEspacio: ctx.nivelDeEspacio,
+                nivelDePersonaje: ctx.level,
+              });
+              let bonoValorAtaque = 0;
+              if (escaladaAtaque.bonus) {
+                const resueltoBono = resolverOrigen(escaladaAtaque.bonus, ctx);
+                bonoValorAtaque = resueltoBono.valor;
+                traza.push(resueltoBono.paso);
+              }
+              danoDeAtaque = { escalada: escaladaAtaque, bonoValor: bonoValorAtaque };
+            }
             break;
           }
           case "prueba": {
@@ -476,11 +548,77 @@ export class ActivitiesService {
       }
     }
 
+    // Task 5 (3A.2, T19) — el ataque de conjuro contra la CA, fuera de la transacción por el
+    // mismo motivo que `danoDiferido`: `resolverAtaqueContraCa` tira con `RollsService.roll`.
+    // Solo se resuelve con exactamente un objetivo (`bonoDeAtaque` solo se pone en el caso
+    // `ataque`, y la validación de arriba ya garantiza que `objetivos.length` es 0 o 1 para ese
+    // tipo) — «sin objetivo, solo traza del bono» sigue siendo el comportamiento de siempre.
+    let verdict: AttackVerdict | undefined;
+    if (bonoDeAtaque !== undefined && objetivos.length === 1) {
+      const target = objetivos[0];
+      const resuelto = await this.characterSheet.resolverAtaqueContraCa(
+        userId,
+        campaignId,
+        actor,
+        target,
+        {
+          bono: bonoDeAtaque,
+          label: `Ataque de conjuro: ${catalogado.name}`,
+          mode: "NORMAL",
+          attackName: catalogado.name,
+        },
+      );
+      verdict = resuelto.verdict;
+
+      // SRD 5.1, *Attack Rolls*: «Some spells require the caster to make an attack roll to
+      // determine whether the spell effect hits the intended target [...] A hit or a miss is
+      // determined by the same method as an ordinary attack.» Solo un HIT/CRITICAL cobra daño;
+      // un MISS —o una tirada a ciegas, sin veredicto— no tira nada.
+      if ((resuelto.verdict === "HIT" || resuelto.verdict === "CRITICAL") && danoDeAtaque) {
+        const { escalada, bonoValor } = danoDeAtaque;
+        // **El crítico dobla los DADOS, nunca el bono ni las caras** (SRD 5.1; mismo criterio que
+        // `duplicarDados` en `character-sheet.service.ts`, rama DAMAGE de `rollAttack`): `1d10`
+        // crítico es `2d10`, no `2d10+bono·2` ni `1d20`.
+        const n =
+          escalada.n !== undefined
+            ? resuelto.verdict === "CRITICAL"
+              ? escalada.n * 2
+              : escalada.n
+            : undefined;
+        const dados =
+          n !== undefined && escalada.caras !== undefined ? `${n}d${escalada.caras}` : undefined;
+        const expresionTexto = dados ? conSigno(dados, bonoValor) : `${bonoValor}`;
+        const etiqueta = `${esSpell ? "Conjuro" : "Actividad"}: ${catalogado.name}`;
+
+        const respuestaDano = await this.rolls.roll(
+          userId,
+          campaignId,
+          {
+            expression: expresionTexto,
+            label: `Daño de ${catalogado.name}`,
+            characterId: actor.id,
+            mode: "NORMAL",
+            audience: loVeLaMesa(actor.visibility) ? "PUBLIC" : "DM_PRIVATE",
+          },
+          {
+            pendingDamage: {
+              targetCharacterId: target.id,
+              damageType: escalada.tipoDeDano ?? "FORCE",
+              reason: etiqueta,
+              attackResolvedEventId: resuelto.attackResolvedEventId,
+            },
+          },
+        );
+        rollEventIds = [...(rollEventIds ?? []), respuestaDano.eventId];
+      }
+    }
+
     return {
       cd,
       traza: traza.length > 0 ? traza : undefined,
       rollEventIds,
       fueraDeRegla: fueraDeRegla.length > 0 ? fueraDeRegla : undefined,
+      verdict,
     };
   }
 

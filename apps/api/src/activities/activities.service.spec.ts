@@ -103,7 +103,15 @@ describe("ActivitiesService", () => {
     getMembership: jest.fn(),
   };
   const events = { record: jest.fn() };
-  const characterSheet = { changeHpFromEffect: jest.fn(), getSheet: jest.fn() };
+  // Task 5 (3A.2) — `sePuedeApuntar` (D-OP-11: canView o combatiente del encuentro activo) y
+  // `resolverAtaqueContraCa` (la mecánica extraída de `resolveAttack`) van mockeados, igual que
+  // el resto: cada uno tiene su propia suite en `character-sheet.service.spec.ts`.
+  const characterSheet = {
+    changeHpFromEffect: jest.fn(),
+    getSheet: jest.fn(),
+    sePuedeApuntar: jest.fn(),
+    resolverAtaqueContraCa: jest.fn(),
+  };
   const rollRequests = { createFromEffect: jest.fn() };
   const encounters = { gastar: jest.fn() };
   const conditions = { apply: jest.fn() };
@@ -558,6 +566,26 @@ describe("ActivitiesService", () => {
       },
     );
     characterSheet.getSheet.mockResolvedValue({ sheet: null });
+    // Task 5 (3A.2) — por defecto, cualquier objetivo se puede apuntar y cualquier ataque de
+    // conjuro impacta sin crítico; las pruebas del caso `ataque` lo sobreescriben.
+    characterSheet.sePuedeApuntar.mockResolvedValue(true);
+    characterSheet.resolverAtaqueContraCa.mockResolvedValue({
+      roll: {
+        revealed: true,
+        eventId: "roll-ataque",
+        expression: "1d20+5",
+        audience: "PUBLIC" as const,
+        rolls: [10],
+        kept: [10],
+        dropped: [],
+        modifier: 5,
+        total: 15,
+        natural: "NONE" as const,
+        outcome: "NO_DC" as const,
+      },
+      verdict: "HIT" as const,
+      attackResolvedEventId: "attack-resolved-1",
+    });
 
     // **Puerta de efectos (tarea 1, spec §3) — el mock replica el cuerpo REAL de
     // `createFromEffect`, sin `requireDM`.** Hasta esta tarea, el mock reproducía la autorización
@@ -1047,6 +1075,145 @@ describe("ActivitiesService", () => {
         (llamada) => llamada[2].payload.type === "ACTIVITY_USED",
       )!;
       expect(eventoActividad[2].payload.fueraDeRegla).toEqual(["NO_PREPARADO"]);
+    });
+  });
+
+  // Task 5 (3A.2, T19) — el caso `ataque`: `fire-bolt` contra un objetivo pide la MISMA mecánica
+  // que un arma equipada (`resolverAtaqueContraCa`, extraída de `resolveAttack`), en vez de
+  // quedarse solo con el bono resuelto sin comparar contra nada.
+  describe("el caso `ataque` — fire-bolt contra un objetivo (Task 5, 3A.2, T19)", () => {
+    it("con un objetivo, sePuedeApuntar se comprueba y resolverAtaqueContraCa se llama con el bono resuelto y la etiqueta de conjuro", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(characterSheet.sePuedeApuntar).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ id: pnjId }),
+      );
+      expect(characterSheet.resolverAtaqueContraCa).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ id: personajeId }),
+        expect.objectContaining({ id: pnjId }),
+        expect.objectContaining({
+          bono: 5, // fireBoltActividad.ataque.bono: { tipo: "fijo", valor: 5 }
+          label: "Ataque de conjuro: Rayo de fuego",
+          attackName: "Rayo de fuego",
+        }),
+      );
+      expect(r.verdict).toBe("HIT");
+    });
+
+    it("con verdict HIT, tira el daño escalado a la bandeja del DM con pendingDamage.attackResolvedEventId", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ expression: "1d10", characterId: personajeId }),
+        {
+          pendingDamage: {
+            targetCharacterId: pnjId,
+            damageType: "FIRE",
+            reason: "Conjuro: Rayo de fuego",
+            attackResolvedEventId: "attack-resolved-1",
+          },
+        },
+      );
+      expect(r.rollEventIds).toEqual(["roll-1"]);
+    });
+
+    it("con verdict CRITICAL, dobla los DADOS del daño (nunca el bono ni las caras)", async () => {
+      characterSheet.resolverAtaqueContraCa.mockResolvedValueOnce({
+        roll: { revealed: true, eventId: "roll-critico" },
+        verdict: "CRITICAL",
+        attackResolvedEventId: "attack-resolved-critico",
+      });
+
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ expression: "2d10" }),
+        expect.objectContaining({
+          pendingDamage: expect.objectContaining({
+            attackResolvedEventId: "attack-resolved-critico",
+          }),
+        }),
+      );
+    });
+
+    it("con verdict MISS, no tira ningún daño", async () => {
+      characterSheet.resolverAtaqueContraCa.mockResolvedValueOnce({
+        roll: { revealed: true, eventId: "roll-fallo" },
+        verdict: "MISS",
+      });
+
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(rolls.roll).not.toHaveBeenCalled();
+      expect(r.verdict).toBe("MISS");
+      expect(r.rollEventIds).toBeUndefined();
+    });
+
+    it("sin objetivo, solo la traza del bono — como hoy, resolverAtaqueContraCa no se llama", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt");
+
+      expect(characterSheet.resolverAtaqueContraCa).not.toHaveBeenCalled();
+      expect(rolls.roll).not.toHaveBeenCalled();
+      expect(r.verdict).toBeUndefined();
+      expect(r.traza).toBeDefined();
+    });
+
+    it("un ataque contra uno mismo es 400, como en resolveAttack", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [personajeId],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(characterSheet.resolverAtaqueContraCa).not.toHaveBeenCalled();
+    });
+
+    it("con más de un objetivo en una actividad `ataque`, es 400: «un ataque tiene un objetivo»", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [pnjId, magaId],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(characterSheet.sePuedeApuntar).not.toHaveBeenCalled();
+    });
+
+    it("un objetivo al que no se puede apuntar (sePuedeApuntar: false) es 404", async () => {
+      characterSheet.sePuedeApuntar.mockResolvedValueOnce(false);
+
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [ocultoId],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("sePuedeApuntar se comprueba ANTES de consumir el espacio de conjuro", async () => {
+      characterSheet.sePuedeApuntar.mockResolvedValueOnce(false);
+
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [ocultoId],
+        }),
+      ).rejects.toThrow(NotFoundException);
+
+      // fire-bolt no gasta recurso, así que el mejor testigo de «no se abrió la transacción de
+      // consumo» es que `events.record` (RESOURCE_SPENT/ACTIVITY_USED) nunca se llamó.
+      expect(events.record).not.toHaveBeenCalled();
     });
   });
 });

@@ -39,6 +39,9 @@ import type {
   SetHpInput,
   Overrides,
   OverridableKey,
+  RollAudience,
+  RollMode,
+  RollResult,
   RollSuggestions,
   SetOverrideInput,
   TraceStep,
@@ -400,7 +403,14 @@ export class CharacterSheetService {
    * Y **no vale con «está en algún encuentro»**: tiene que ser uno **activo** de esta campaña. Un
    * combatiente de una pelea de hace tres sesiones no está delante de nadie.
    */
-  private async sePuedeApuntar(
+  /**
+   * Task 5 (3A.2) — pública: `ActivitiesService.usar()` necesita el mismo criterio de «a quién
+   * se puede apuntar» que ya usaba `resolveAttack` para un arma (D-OP-11), y comprobarlo ANTES de
+   * gastar el espacio de conjuro — no dentro de `resolverAtaqueContraCa`, que se llama DESPUÉS de
+   * la transacción de consumo. Repetir la regla en `ActivitiesService` en vez de exponerla aquí
+   * sería la misma matriz de visibilidad reimplementada dos veces.
+   */
+  async sePuedeApuntar(
     userId: string,
     campaignId: string,
     target: { id: string; visibility: Visibility; ownerId: string },
@@ -3020,6 +3030,60 @@ export class CharacterSheetService {
       throw new NotFoundException("Character not found");
     }
 
+    // Task 5 (3A.2) — la mecánica de «tirar 1d20+bono contra la CA, comparar y dejar el suceso»
+    // ya no vive aquí: es `resolverAtaqueContraCa`, y la comparte con el caso `ataque` de
+    // `ActivitiesService.usar()`. `resolveAttack` solo hace lo que es SUYO —encontrar el arma
+    // equipada y su nombre/ref de mesa, y comprobar a quién se puede apuntar— y delega el resto.
+    const resuelto = await this.resolverAtaqueContraCa(userId, campaignId, character, target, {
+      bono: ataque.attackBonus.total,
+      label: `Ataque con ${nombreMesa}`,
+      mode: input.mode,
+      spendInspiration: input.spendInspiration,
+      audience: input.audience,
+      attackRef: refReal,
+      attackName: nombreMesa,
+    });
+
+    // **`attackResolvedEventId` NO viaja en la respuesta de este endpoint.** Es infraestructura
+    // interna de la Task 5 —lo usa `usar()` para citar el `ATTACK_RESOLVED` desde el daño
+    // diferido de un conjuro—; `resolveAttack` nunca lo devolvió y no hay ningún consumidor de
+    // un arma que lo necesite. Un e2e comprueba que la respuesta solo trae `roll`/`verdict`.
+    return resuelto.verdict === undefined
+      ? { roll: resuelto.roll }
+      : { roll: resuelto.roll, verdict: resuelto.verdict };
+  }
+
+  /**
+   * Task 5 (3A.2) — el ataque contra la CA, extraído de `resolveAttack` para que
+   * `ActivitiesService.usar()` (caso `ataque`: un conjuro o una aptitud con bono de ataque, como
+   * `fire-bolt`) lo comparta con un arma equipada, sin reimplementar «tirar 1d20+bono, comparar
+   * con la CA sin que salga de aquí, escribir `ATTACK_RESOLVED`» una segunda vez.
+   *
+   * **`atacante` y `target` ya vienen resueltos y autorizados por quien llama.** Esta función no
+   * comprueba `sePuedeApuntar` ni «no atacarse a uno mismo» — eso es del LLAMANTE, que conoce su
+   * propia forma de resolver el objetivo (`resolveAttack` contra el cuadro de inventario;
+   * `usar()` contra `opciones.objetivos`, con su propio 400 de cardinalidad).
+   *
+   * Ver el comentario original de `resolveAttack` (arriba, en el historial de este fichero) para
+   * el porqué de cada pieza: D-OP-11 (a quién se puede apuntar), D-OP-13 (el estado del objetivo
+   * cambia el modo), la ayuda del atacante, la audiencia por defecto de DOS niveles, y por qué el
+   * 20/1 natural manda sobre la CA.
+   */
+  async resolverAtaqueContraCa(
+    userId: string,
+    campaignId: string,
+    atacante: FilaPersonaje,
+    target: FilaPersonaje,
+    input: {
+      bono: number;
+      label: string;
+      mode: RollMode;
+      spendInspiration?: boolean;
+      audience?: RollAudience;
+      attackRef?: string;
+      attackName: string;
+    },
+  ): Promise<{ roll: RollResult; verdict?: AttackVerdict; attackResolvedEventId?: string }> {
     // La CA se calcula ANTES de tirar: si el objetivo no se puede resolver (un PNJ cuyo
     // statblock se borró, por ejemplo), es un 400 honesto y no una tirada que luego no se puede
     // comparar con nada.
@@ -3047,7 +3111,7 @@ export class CharacterSheetService {
     // del mismo signo siguen siendo una.
     // **Y la ayuda recibida, que es del atacante** (I8). Se combina con lo mismo: el SRD dice que
     // dos fuentes de ventaja siguen siendo ventaja, así que esto NO suma nada.
-    const ayuda = await this.ayudaViva(campaignId, characterId);
+    const ayuda = await this.ayudaViva(campaignId, atacante.id);
     const modo = combinarModo(
       combinarModo(input.mode, contra.effect),
       ayuda ? "ADVANTAGE" : "NONE",
@@ -3063,26 +3127,29 @@ export class CharacterSheetService {
     // `revealed` es falso y **no recibe veredicto**, lo que parece un fallo del ataque y es de
     // la audiencia. Lo cazó la revisión de cierre; el defecto venía copiado de `rollAttack` y
     // se arregla en los dos sitios.
-    const audienciaPorDefecto = loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE";
+    const audienciaPorDefecto = loVeLaMesa(atacante.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
     const roll = await this.rolls.roll(
       userId,
       campaignId,
       {
-        expression: conSigno("1d20", ataque.attackBonus.total),
-        label: `Ataque con ${nombreMesa}`,
-        characterId,
+        expression: conSigno("1d20", input.bono),
+        label: input.label,
+        characterId: atacante.id,
         mode: modo,
         spendInspiration: input.spendInspiration,
         audience: input.audience ?? audienciaPorDefecto,
       },
       // Fix round 1 (M6), fix round 2 (R3) — `roll.eventId` puede ser citado más tarde por
-      // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila
-      // escrito aquí para que el crítico se pueda casar sin depender del nombre ni del visor.
-      { attackRef: refReal },
+      // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila (cuando
+      // hay una, es decir, un arma) para que el crítico se pueda casar sin depender del nombre ni
+      // del visor. Un ataque de conjuro no tiene fila de inventario que citar: sin `attackRef`,
+      // el cuarto argumento no se pasa — mismo criterio que ya usa `rollAttack` (DAMAGE) para no
+      // meterle una forma nueva a la llamada cuando no hay nada que decir.
+      input.attackRef ? { attackRef: input.attackRef } : undefined,
     );
     if (ayuda) {
-      await this.consumirAyuda(userId, campaignId, characterId, character.visibility, ayuda);
+      await this.consumirAyuda(userId, campaignId, atacante.id, atacante.visibility, ayuda);
     }
 
     // Tirada a ciegas: quien la pidió no ve el total, así que tampoco ve el veredicto — decirle
@@ -3118,20 +3185,20 @@ export class CharacterSheetService {
     // Y tiene un segundo efecto que importa: **deja rastro de contra quién se tiró**. Sin él,
     // alguien podía acotar la CA de un objetivo a base de ataques sin que quedara constancia de
     // nada (ver la ficha del oráculo en `docs/06-pendientes.md`).
-    await this.events.record(userId, campaignId, {
+    const evento = await this.events.record(userId, campaignId, {
       subjectType: "character",
       subjectId: target.id,
       visibility: target.visibility,
       payload: {
         type: "ATTACK_RESOLVED",
-        attackerId: characterId,
-        attackName: nombreMesa,
+        attackerId: atacante.id,
+        attackName: input.attackName,
         verdict,
         rollEventId: roll.eventId,
       },
     });
 
-    return { roll, verdict };
+    return { roll, verdict, attackResolvedEventId: evento.id };
   }
 
   /**

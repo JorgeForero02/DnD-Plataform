@@ -1,7 +1,12 @@
 import { Test } from "@nestjs/testing";
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
-import type { Actividad } from "@dnd/shared";
-import { ActivitiesService, ACTIVITY_CATALOG, type ActivityCatalog } from "./activities.service";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import type { Actividad, SrdSpell } from "@dnd/shared";
+import {
+  ActivitiesService,
+  ACTIVITY_CATALOG,
+  type ActividadCatalogada,
+  type ActivityCatalog,
+} from "./activities.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { MembershipService } from "../campaigns/membership.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -9,7 +14,9 @@ import { CharacterSheetService } from "../characters/character-sheet.service";
 import { RollRequestsService } from "../roll-requests/roll-requests.service";
 import { EncountersService } from "../encounters/encounters.service";
 import { ConditionsService } from "../character-state/conditions/conditions.service";
-import { DICE_ROLLER } from "../rolls/rolls.service";
+import { TemporaryModifiersService } from "../character-state/temporary-modifiers/temporary-modifiers.service";
+import { SpellbookService } from "../spellbook/spellbook.service";
+import { RollsService, DICE_ROLLER } from "../rolls/rolls.service";
 
 // Tarea A7 (paso 2) — pegamento, no mecánica. Estas pruebas no comprueban una regla de D&D
 // nueva: comprueban que `usar()` gasta lo que la actividad cuesta, aplica su efecto por las
@@ -89,6 +96,11 @@ describe("ActivitiesService", () => {
     combatant: {
       findFirst: jest.fn(),
     },
+    // T15 (3A.2) — `caso "encantar"` resuelve el `itemId` con esta puerta ANTES de abrir la
+    // transacción (un objeto inválido no debe dejar el espacio ya gastado).
+    inventoryItem: {
+      findFirst: jest.fn(),
+    },
     transaction: jest.fn(),
   };
   const membership = {
@@ -97,10 +109,26 @@ describe("ActivitiesService", () => {
     getMembership: jest.fn(),
   };
   const events = { record: jest.fn() };
-  const characterSheet = { changeHpFromEffect: jest.fn(), getSheet: jest.fn() };
+  // Task 5 (3A.2) — `sePuedeApuntar` (D-OP-11: canView o combatiente del encuentro activo) y
+  // `resolverAtaqueContraCa` (la mecánica extraída de `resolveAttack`) van mockeados, igual que
+  // el resto: cada uno tiene su propia suite en `character-sheet.service.spec.ts`.
+  const characterSheet = {
+    changeHpFromEffect: jest.fn(),
+    getSheet: jest.fn(),
+    sePuedeApuntar: jest.fn(),
+    resolverAtaqueContraCa: jest.fn(),
+  };
   const rollRequests = { createFromEffect: jest.fn() };
   const encounters = { gastar: jest.fn() };
   const conditions = { apply: jest.fn() };
+  // T15 (3A.2) — `grantFromActivity` es la puerta de `caso "encantar"`, mockeada igual que el
+  // resto: tiene su propia suite (`temporary-modifiers.service.spec.ts`).
+  const temporaryModifiers = { grantFromActivity: jest.fn() };
+  // Task 4 (3A.2) — `lanzable` decide si un conjuro se puede lanzar (`SpellbookService`), y
+  // `roll` es la puerta que escribe el daño diferido en la bandeja del DM (`RollsService`). Los
+  // dos van mockeados, igual que el resto: cada uno tiene su propia suite.
+  const spellbook = { lanzable: jest.fn() };
+  const rolls = { roll: jest.fn() };
   const roller = () => 5; // 1d8 → 5, siempre: el bono lo pone la característica, no el azar.
 
   // --- El catálogo de actividades de prueba (A9/A11 todavía no existen) -----------------------
@@ -180,17 +208,164 @@ describe("ActivitiesService", () => {
     description: "Entras en furia y quedas marcado como enfurecido.",
   };
 
+  // --- Task 4 (3A.2) — dos conjuros de prueba, para no depender del catálogo real generado ------
+  //
+  // `magicMissileDePrueba` copia la forma real de `magic-missile` (nivel 1, `dados` signo −1,
+  // sin `target`): la actividad de prueba que ejercita «daño a otro va a la bandeja del DM»
+  // (D-CF-128). `curarHeridasDeConjuro` es `cure-wounds`-shaped: nivel 1, `dados` signo 1 — sigue
+  // yendo por `changeHpFromEffect`, la puerta de siempre, sin pasar por la bandeja.
+  const proyectilMagicoActividad: Actividad = {
+    tipo: "dados",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "instantanea", concentracion: false },
+    effects: [],
+    description: "Tres dardos de fuerza centellante.",
+    dados: { n: 1, caras: 4, bonus: { tipo: "fijo", valor: 1 }, signo: -1, tipoDeDano: "FORCE" },
+  };
+  const magicMissileDePrueba = {
+    key: "magic-missile",
+    level: 1,
+    nameEs: "Proyectil mágico",
+  } as SrdSpell;
+
+  const curarHeridasActividadDeConjuro: Actividad = {
+    tipo: "dados",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "instantanea", concentracion: false },
+    effects: [],
+    description: "Cura heridas al tacto.",
+    dados: { n: 1, caras: 8, bonus: { tipo: "modificador", ability: "wis" }, signo: 1 },
+  };
+  const cureWoundsDePrueba = { key: "cure-wounds", level: 1, nameEs: "Curar heridas" } as SrdSpell;
+
+  const fireBoltDePrueba = { key: "fire-bolt", level: 0, nameEs: "Rayo de fuego" } as SrdSpell;
+  const fireBoltActividad: Actividad = {
+    tipo: "ataque",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "instantanea", concentracion: false },
+    effects: [],
+    description: "Un rayo de fuego.",
+    // `bono: { tipo: "fijo" }` y no `"ataqueDeConjuro"` a propósito: esta suite no deriva una hoja
+    // real (`characterSheet.getSheet` está mockeado a `{ sheet: null }`), y un truco sin clase de
+    // lanzamiento nunca llega a pedirle `attack.spell` al motor — usar `ataqueDeConjuro` aquí
+    // solo probaría el mock, no `usar()`. Ese origen ya tiene su propia prueba en `engine.spec.ts`.
+    ataque: { bono: { tipo: "fijo", valor: 5 } },
+    dados: { n: 1, caras: 10, signo: -1, tipoDeDano: "FIRE" },
+  };
+
+  const sleepDePrueba = { key: "sleep", level: 1, nameEs: "Dormir" } as SrdSpell;
+  const sleepActividad: Actividad = {
+    tipo: "utilidad",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "minuto", valor: 1, concentracion: false },
+    effects: [],
+    description: "Sume a las criaturas en un sueño mágico.",
+  };
+
+  // T15 (3A.2) — *Arma mágica*: nivel 2, `BONUS`, 1 hora de concentración (SRD 5.1 real).
+  const magicWeaponDePrueba = {
+    key: "magic-weapon",
+    level: 2,
+    nameEs: "Arma mágica",
+    duration: { unidad: "hora", valor: 1, concentracion: true },
+  } as SrdSpell;
+  const magicWeaponActividad: Actividad = {
+    tipo: "utilidad",
+    activation: { coste: "BONUS" },
+    consumption: [],
+    duration: { unidad: "hora", valor: 1, concentracion: true },
+    effects: [],
+    description: "Tocas un arma no mágica. Se convierte en un arma mágica con un bonificador.",
+  };
+
+  // Ola de arreglos de 3A.2 (I-4a) — `dados` SIN `n`: daño fijo, como `earthquake@4` (50 contundente)
+  // en el catálogo real. `rollExpression` no se llama para un número sin dados.
+  // Nivel 1 y no 8 a propósito: lo que se prueba es «sin dados», no el espacio; el PNJ de esta
+  // mesa solo tiene espacios de nivel 1 sembrados.
+  const terremotoDePrueba = { key: "terremoto", level: 1, nameEs: "Terremoto" } as SrdSpell;
+  const terremotoActividad: Actividad = {
+    tipo: "dados",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "instantanea", concentracion: false },
+    effects: [],
+    description: "Un temblor derrumba lo que haya encima.",
+    dados: { signo: -1, bonus: { tipo: "fijo", valor: 50 }, tipoDeDano: "BLUDGEONING" },
+  };
+
+  const noEsSuyoDePrueba = { key: "no-es-suyo", level: 1, nameEs: "No es suyo" } as SrdSpell;
+  const noEsSuyoActividad: Actividad = {
+    tipo: "utilidad",
+    activation: { coste: "ACTION" },
+    consumption: [],
+    duration: { unidad: "instantanea", concentracion: false },
+    effects: [],
+    description: "Un conjuro que este personaje nunca tuvo.",
+  };
+
   const catalogo: ActivityCatalog = {
-    find: (key: string) =>
-      ({
-        rage,
-        bendicion,
-        "aliento-de-fuego": alientoDeFuego,
-        "curar-heridas": curarHeridas,
-        "dardo-de-fuego": dardoDeFuego,
-        "bola-de-fuego": bolaDeFuego,
-        "rage-con-estado": rageConEstado,
-      })[key],
+    find: (key: string): ActividadCatalogada | undefined =>
+      (
+        ({
+          rage: { actividad: rage, name: "Furia", kind: "FEATURE" },
+          bendicion: { actividad: bendicion, name: "Bendición", kind: "FEATURE" },
+          "aliento-de-fuego": {
+            actividad: alientoDeFuego,
+            name: "Aliento de fuego",
+            kind: "FEATURE",
+          },
+          "curar-heridas": { actividad: curarHeridas, name: "Curar heridas", kind: "FEATURE" },
+          "dardo-de-fuego": { actividad: dardoDeFuego, name: "Dardo de fuego", kind: "FEATURE" },
+          "bola-de-fuego": { actividad: bolaDeFuego, name: "Bola de fuego", kind: "FEATURE" },
+          "rage-con-estado": { actividad: rageConEstado, name: "Furia", kind: "FEATURE" },
+          "spell:magic-missile": {
+            actividad: proyectilMagicoActividad,
+            name: "Proyectil mágico",
+            kind: "SPELL",
+            spell: magicMissileDePrueba,
+          },
+          "spell:cure-wounds": {
+            actividad: curarHeridasActividadDeConjuro,
+            name: "Curar heridas",
+            kind: "SPELL",
+            spell: cureWoundsDePrueba,
+          },
+          "spell:fire-bolt": {
+            actividad: fireBoltActividad,
+            name: "Rayo de fuego",
+            kind: "SPELL",
+            spell: fireBoltDePrueba,
+          },
+          "spell:sleep": {
+            actividad: sleepActividad,
+            name: "Dormir",
+            kind: "SPELL",
+            spell: sleepDePrueba,
+          },
+          "spell:no-es-suyo": {
+            actividad: noEsSuyoActividad,
+            name: "No es suyo",
+            kind: "SPELL",
+            spell: noEsSuyoDePrueba,
+          },
+          "spell:magic-weapon": {
+            actividad: magicWeaponActividad,
+            name: "Arma mágica",
+            kind: "SPELL",
+            spell: magicWeaponDePrueba,
+          },
+          "spell:terremoto": {
+            actividad: terremotoActividad,
+            name: "Terremoto",
+            kind: "SPELL",
+            spell: terremotoDePrueba,
+          },
+        }) as const satisfies Record<string, ActividadCatalogada>
+      )[key],
   };
 
   // --- Ids de la mesa de mentira ---------------------------------------------------------------
@@ -359,6 +534,8 @@ describe("ActivitiesService", () => {
 
     sembrarRecurso(personajeId, "rage", 2, 2);
     sembrarRecurso(personajeId, "spell-slot-1", 3, 3);
+    sembrarRecurso(personajeId, "spell-slot-2", 2, 2);
+    sembrarRecurso(clerigoPersonajeId, "spell-slot-1", 3, 3);
     sembrarRecurso(personajeSinCombateId, "rage", 2, 2);
 
     combatientes.set("comb-personaje", {
@@ -377,6 +554,12 @@ describe("ActivitiesService", () => {
       },
     );
     prisma.user.findUnique.mockResolvedValue({ isAdmin: false });
+    // T15 (3A.2) — una única espada de mentira, `"inv-espada"`, en la mochila EQUIPADA del
+    // clérigo: la fila que `caso "encantar"` resuelve a partir de `itemId`.
+    prisma.inventoryItem.findFirst.mockImplementation(
+      async ({ where }: { where: { id: string } }) =>
+        where.id === "inv-espada" ? { id: "inv-espada", characterId: clerigoPersonajeId } : null,
+    );
     prisma.combatant.findFirst.mockImplementation(
       async ({ where }: { where: { characterId: string } }) => {
         const fila = [...combatientes.values()].find(
@@ -441,6 +624,26 @@ describe("ActivitiesService", () => {
       },
     );
     characterSheet.getSheet.mockResolvedValue({ sheet: null });
+    // Task 5 (3A.2) — por defecto, cualquier objetivo se puede apuntar y cualquier ataque de
+    // conjuro impacta sin crítico; las pruebas del caso `ataque` lo sobreescriben.
+    characterSheet.sePuedeApuntar.mockResolvedValue(true);
+    characterSheet.resolverAtaqueContraCa.mockResolvedValue({
+      roll: {
+        revealed: true,
+        eventId: "roll-ataque",
+        expression: "1d20+5",
+        audience: "PUBLIC" as const,
+        rolls: [10],
+        kept: [10],
+        dropped: [],
+        modifier: 5,
+        total: 15,
+        natural: "NONE" as const,
+        outcome: "NO_DC" as const,
+      },
+      verdict: "HIT" as const,
+      attackResolvedEventId: "attack-resolved-1",
+    });
 
     // **Puerta de efectos (tarea 1, spec §3) — el mock replica el cuerpo REAL de
     // `createFromEffect`, sin `requireDM`.** Hasta esta tarea, el mock reproducía la autorización
@@ -479,6 +682,26 @@ describe("ActivitiesService", () => {
     );
     conditions.apply.mockResolvedValue({ id: "cond1" });
 
+    // Task 4 (3A.2) — por defecto cualquier conjuro «se puede lanzar»; las pruebas de
+    // `NO_ES_SUYO`/`NO_PREPARADO` lo sobreescriben con `mockResolvedValueOnce`.
+    spellbook.lanzable.mockResolvedValue({ ok: true });
+    // `roll` responde con un `eventId` distinto cada vez, para que una actividad con varios
+    // destinatarios deje varias tarjetas distinguibles (`rollEventIds`).
+    let rollEventCounter = 0;
+    rolls.roll.mockImplementation(async () => ({
+      revealed: true,
+      eventId: `roll-${++rollEventCounter}`,
+      expression: "",
+      audience: "PUBLIC" as const,
+      rolls: [],
+      kept: [],
+      dropped: [],
+      modifier: 0,
+      total: 0,
+      natural: "NONE" as const,
+      outcome: "NO_DC" as const,
+    }));
+
     const ref = await Test.createTestingModule({
       providers: [
         ActivitiesService,
@@ -489,6 +712,9 @@ describe("ActivitiesService", () => {
         { provide: RollRequestsService, useValue: rollRequests },
         { provide: EncountersService, useValue: encounters },
         { provide: ConditionsService, useValue: conditions },
+        { provide: TemporaryModifiersService, useValue: temporaryModifiers },
+        { provide: SpellbookService, useValue: spellbook },
+        { provide: RollsService, useValue: rolls },
         { provide: ACTIVITY_CATALOG, useValue: catalogo },
         { provide: DICE_ROLLER, useValue: roller },
       ],
@@ -502,6 +728,7 @@ describe("ActivitiesService", () => {
     membership.requireMember.mockResolvedValue(undefined);
     membership.requireDM.mockResolvedValue(undefined);
     events.record.mockResolvedValue({ id: "ev1" });
+    spellbook.lanzable.mockResolvedValue({ ok: true });
   });
 
   it("usar una actividad gasta su coste y su recurso, en la misma transacción", async () => {
@@ -526,11 +753,22 @@ describe("ActivitiesService", () => {
       data: { current: 1 },
     });
 
-    expect(events.record).toHaveBeenCalledTimes(1);
+    // Task 4 (3A.2) — dos sucesos ahora: `RESOURCE_SPENT` y, tras él, `ACTIVITY_USED` (toda
+    // actividad usada deja línea, no solo las que tienen `effects`).
+    expect(events.record).toHaveBeenCalledTimes(2);
     const [, , sucesoInput, txDelSuceso] = events.record.mock.calls[0];
     expect(txDelSuceso).toBe(ultimoTx);
     expect(sucesoInput.payload.type).toBe("RESOURCE_SPENT");
     expect(sucesoInput.payload.key).toBe("rage");
+
+    const [, , sucesoActivityUsed, txDelSegundoSuceso] = events.record.mock.calls[1];
+    expect(txDelSegundoSuceso).toBe(ultimoTx);
+    expect(sucesoActivityUsed.payload).toMatchObject({
+      type: "ACTIVITY_USED",
+      actividadKey: "rage",
+      name: "Furia",
+      kind: "FEATURE",
+    });
   });
 
   it("sin usos, avisa y NO gasta la acción adicional", async () => {
@@ -648,12 +886,60 @@ describe("ActivitiesService", () => {
 
   // **I7 (vuelta de arreglo 1) — el guardián de `signo` que faltaba.** La única prueba de
   // `dados` era de curación (`signo: 1`); con `delta = total` en vez de `signo * total` esa
-  // prueba seguía en verde. Esta la ata: `signo: -1` tiene que DAÑAR.
-  it("una actividad de dados con signo negativo DAÑA, no cura (guardián de signo)", async () => {
-    const antes = pg(magaId);
-    await service.usar(dmId, campaignId, pnjId, "dardo-de-fuego", { objetivos: [magaId] });
+  // prueba seguía en verde. Esta la ata: `signo: -1` sobre el PROPIO actor tiene que DAÑAR (no
+  // pasa por la bandeja del DM: D-CF-128 solo desvía el daño hacia OTRO personaje).
+  it("una actividad de dados con signo negativo sobre uno mismo DAÑA, no cura (guardián de signo)", async () => {
+    const antes = pg(pnjId);
+    await service.usar(dmId, campaignId, pnjId, "dardo-de-fuego");
 
-    expect(pg(magaId)).toBeLessThan(antes);
+    expect(pg(pnjId)).toBeLessThan(antes);
+    expect(rolls.roll).not.toHaveBeenCalled();
+  });
+
+  // Task 4 (3A.2), D-CF-128 — el daño directo de una actividad `dados` (signo −1) sobre OTRO
+  // personaje ya no pasa por `changeHpFromEffect`: va a la bandeja del DM, como `pendingDamage`
+  // de un `ABILITY_ROLL`. SRD 5.1, *Damage Rolls*: «roll the damage once for all of them».
+  it("una actividad de dados con signo negativo sobre OTRO personaje va a la bandeja del DM, no a sus PG", async () => {
+    const antes = pg(magaId);
+    const r = await service.usar(dmId, campaignId, pnjId, "dardo-de-fuego", {
+      objetivos: [magaId],
+    });
+
+    expect(pg(magaId)).toBe(antes);
+    expect(characterSheet.changeHpFromEffect).not.toHaveBeenCalled();
+    expect(rolls.roll).toHaveBeenCalledTimes(1);
+    const [, , peticion, interno, txDeLaTirada] = rolls.roll.mock.calls[0];
+    expect(peticion.characterId).toBe(pnjId);
+    expect(interno.pendingDamage).toMatchObject({
+      targetCharacterId: magaId,
+      damageType: "FIRE",
+      reason: "Actividad: Dardo de fuego",
+    });
+    expect(interno.resultadoFijo).toBeDefined();
+    // Ola de arreglos (I-4b): la tarjeta se escribe DENTRO de la transacción de `usar()` — el
+    // mismo cliente que descontó el recurso —, para que un fallo al tirar deshaga el gasto.
+    expect(txDeLaTirada).toBe(ultimoTx);
+    expect(r.rollEventIds).toEqual(["roll-1"]);
+  });
+
+  // Ola de arreglos (I-4a) — `dados` sin `n` (daño fijo, `earthquake@4`): no se llama a
+  // `rollExpression` con un número suelto; la tarjeta lleva `resultadoFijo` con el bono como
+  // total. Antes `expresionTexto = "50"` viajaba a `rollExpression` DESPUÉS de gastar el espacio.
+  it("I-4a: un `dados` sin dados (daño fijo 50) va a la bandeja con resultadoFijo.total = 50, sin tirar nada", async () => {
+    const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:terremoto", {
+      objetivos: [magaId],
+    });
+
+    expect(rolls.roll).toHaveBeenCalledTimes(1);
+    const [, , peticion, interno] = rolls.roll.mock.calls[0];
+    expect(peticion.expression).toBe("50");
+    expect(interno.resultadoFijo).toMatchObject({ total: 50 });
+    expect(interno.resultadoFijo.terms.every((t: { sides: number }) => t.sides === 0)).toBe(true);
+    expect(interno.pendingDamage).toMatchObject({
+      targetCharacterId: magaId,
+      damageType: "BLUDGEONING",
+    });
+    expect(r.rollEventIds).toEqual(["roll-1"]);
   });
 
   it("un jugador no usa la actividad del personaje de otro (403)", async () => {
@@ -785,5 +1071,349 @@ describe("ActivitiesService", () => {
       objetivos: [magaId],
     });
     expect(characterSheet.changeHpFromEffect.mock.calls[0][0]).toBe(ultimoTx);
+  });
+
+  // Task 4 (3A.2) — lanzar un conjuro por `usar()`: espacio por nivel, T18, la bandeja del DM
+  // para el daño directo a otro, y `ACTIVITY_USED` con `kind: "SPELL"`.
+  describe("lanzar un conjuro (spell:<key>)", () => {
+    it("magic-missile contra un objetivo: ACTIVITY_USED, sin changeHpFromEffect, daño a la bandeja del DM", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-missile", {
+        objetivos: [magaId],
+      });
+
+      expect(characterSheet.changeHpFromEffect).not.toHaveBeenCalled();
+      expect(rolls.roll).toHaveBeenCalledTimes(1);
+      const [, , peticion, interno] = rolls.roll.mock.calls[0];
+      expect(peticion.characterId).toBe(personajeId);
+      expect(interno.pendingDamage).toMatchObject({
+        targetCharacterId: magaId,
+        damageType: "FORCE",
+        reason: "Conjuro: Proyectil mágico",
+      });
+      expect(r.rollEventIds).toEqual(["roll-1"]);
+
+      // El espacio de nivel 1 se gastó (3 → 2), y el evento ACTIVITY_USED quedó escrito.
+      expect(recurso(personajeId, "spell-slot-1")?.current).toBe(2);
+      const eventoActividad = events.record.mock.calls.find(
+        (llamada) => llamada[2].payload.type === "ACTIVITY_USED",
+      )!;
+      expect(eventoActividad[2].payload).toMatchObject({
+        actividadKey: "spell:magic-missile",
+        name: "Proyectil mágico",
+        kind: "SPELL",
+        spellLevel: 1,
+        nivelDeEspacio: 1,
+        targetCharacterIds: [magaId],
+      });
+    });
+
+    it("magic-missile con nivelDeEspacio: 2 consume spell-slot-2, y ACTIVITY_USED lo refleja", async () => {
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-missile", {
+        objetivos: [magaId],
+        nivelDeEspacio: 2,
+      });
+
+      expect(recurso(personajeId, "spell-slot-1")?.current).toBe(3); // intacto
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(1); // de 2
+      const eventoActividad = events.record.mock.calls.find(
+        (llamada) => llamada[2].payload.type === "ACTIVITY_USED",
+      )!;
+      expect(eventoActividad[2].payload).toMatchObject({ nivelDeEspacio: 2 });
+    });
+
+    it("cure-wounds sobre otro personaje SÍ cura por changeHpFromEffect (curación, no bandeja)", async () => {
+      const antes = pg(magaId);
+      await service.usar(clerigoId, campaignId, clerigoPersonajeId, "spell:cure-wounds", {
+        objetivos: [magaId],
+      });
+
+      expect(pg(magaId)).toBeGreaterThan(antes);
+      expect(rolls.roll).not.toHaveBeenCalled();
+    });
+
+    it("fire-bolt (truco, nivel 0) no consume ningún recurso", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt");
+
+      expect(recurso(personajeId, "spell-slot-1")?.current).toBe(3);
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(2);
+      expect(r.traza).toBeDefined();
+    });
+
+    // Ola de arreglos (I-5) — `spell:<key>@N` con N > 0 (una actividad secundaria: el segundo
+    // rayo de `scorching-ray`, el daño de área de `earthquake`) entraba por el camino completo de
+    // lanzar y volvía a gastar un espacio. Hasta 3B se rechaza con 400; la semántica de `@N`
+    // queda como ficha en 06.
+    it("I-5: `spell:<key>@1` es 400 hasta 3B — no gasta ningún espacio ni mira el catálogo", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:magic-missile@1", {
+          objetivos: [magaId],
+        }),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: expect.stringContaining("3B"),
+      });
+      expect(recurso(personajeId, "spell-slot-1")?.current).toBe(3);
+      expect(prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    // Ola de arreglos (m-8) — sin FILA de `spell-slot-N` (un mago de nivel 3 pidiendo nivel 5), el
+    // aviso decía «Sin usos de «spell-slot-5»»: una clave interna en pantalla.
+    it("m-8: sin fila de espacio del nivel pedido, el aviso dice «No tiene espacios de nivel 5», no la clave", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-missile", {
+        objetivos: [magaId],
+        nivelDeEspacio: 5,
+      });
+
+      expect(r.fueraDeRegla).toEqual(["SIN_ESPACIO"]);
+      expect(r.aviso).toBe("No tiene espacios de nivel 5.");
+      expect(r.aviso).not.toContain("spell-slot");
+    });
+
+    it("un conjuro que `lanzable` dice NO_ES_SUYO es un 400", async () => {
+      spellbook.lanzable.mockResolvedValueOnce({ ok: false, motivo: "NO_ES_SUYO" });
+
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:no-es-suyo"),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("un conjuro NO_PREPARADO se lanza igual, con fueraDeRegla", async () => {
+      spellbook.lanzable.mockResolvedValueOnce({ ok: false, motivo: "NO_PREPARADO" });
+
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:sleep");
+
+      expect(r.fueraDeRegla).toEqual(["NO_PREPARADO"]);
+      const eventoActividad = events.record.mock.calls.find(
+        (llamada) => llamada[2].payload.type === "ACTIVITY_USED",
+      )!;
+      expect(eventoActividad[2].payload.fueraDeRegla).toEqual(["NO_PREPARADO"]);
+    });
+  });
+
+  // Task 5 (3A.2, T19) — el caso `ataque`: `fire-bolt` contra un objetivo pide la MISMA mecánica
+  // que un arma equipada (`resolverAtaqueContraCa`, extraída de `resolveAttack`), en vez de
+  // quedarse solo con el bono resuelto sin comparar contra nada.
+  describe("el caso `ataque` — fire-bolt contra un objetivo (Task 5, 3A.2, T19)", () => {
+    it("con un objetivo, sePuedeApuntar se comprueba y resolverAtaqueContraCa se llama con el bono resuelto y la etiqueta de conjuro", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(characterSheet.sePuedeApuntar).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ id: pnjId }),
+      );
+      expect(characterSheet.resolverAtaqueContraCa).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ id: personajeId }),
+        expect.objectContaining({ id: pnjId }),
+        expect.objectContaining({
+          bono: 5, // fireBoltActividad.ataque.bono: { tipo: "fijo", valor: 5 }
+          label: "Ataque de conjuro: Rayo de fuego",
+          attackName: "Rayo de fuego",
+        }),
+        // Ola de arreglos (I-4b): el impacto se resuelve DENTRO de la transacción de `usar()`.
+        ultimoTx,
+      );
+      expect(r.verdict).toBe("HIT");
+    });
+
+    it("con verdict HIT, tira el daño escalado a la bandeja del DM con pendingDamage.attackResolvedEventId", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ expression: "1d10", characterId: personajeId }),
+        {
+          pendingDamage: {
+            targetCharacterId: pnjId,
+            damageType: "FIRE",
+            reason: "Conjuro: Rayo de fuego",
+            attackResolvedEventId: "attack-resolved-1",
+          },
+          // I-4a: el daño de un ataque se tira aquí (`rollExpression`, o el bono a secas si no
+          // hay dados) y viaja ya resuelto — la misma forma que el daño diferido de `dados`.
+          resultadoFijo: expect.objectContaining({ total: expect.any(Number) }),
+        },
+        // I-4b: la tarjeta del daño, dentro de la transacción de `usar()`.
+        ultimoTx,
+      );
+      expect(r.rollEventIds).toEqual(["roll-1"]);
+    });
+
+    it("con verdict CRITICAL, dobla los DADOS del daño (nunca el bono ni las caras)", async () => {
+      characterSheet.resolverAtaqueContraCa.mockResolvedValueOnce({
+        roll: { revealed: true, eventId: "roll-critico" },
+        verdict: "CRITICAL",
+        attackResolvedEventId: "attack-resolved-critico",
+      });
+
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(rolls.roll).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        expect.objectContaining({ expression: "2d10" }),
+        expect.objectContaining({
+          pendingDamage: expect.objectContaining({
+            attackResolvedEventId: "attack-resolved-critico",
+          }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    it("con verdict MISS, no tira ningún daño", async () => {
+      characterSheet.resolverAtaqueContraCa.mockResolvedValueOnce({
+        roll: { revealed: true, eventId: "roll-fallo" },
+        verdict: "MISS",
+      });
+
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+        objetivos: [pnjId],
+      });
+
+      expect(rolls.roll).not.toHaveBeenCalled();
+      expect(r.verdict).toBe("MISS");
+      expect(r.rollEventIds).toBeUndefined();
+    });
+
+    it("sin objetivo, solo la traza del bono — como hoy, resolverAtaqueContraCa no se llama", async () => {
+      const r = await service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt");
+
+      expect(characterSheet.resolverAtaqueContraCa).not.toHaveBeenCalled();
+      expect(rolls.roll).not.toHaveBeenCalled();
+      expect(r.verdict).toBeUndefined();
+      expect(r.traza).toBeDefined();
+    });
+
+    it("un ataque contra uno mismo es 400, como en resolveAttack", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [personajeId],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(characterSheet.resolverAtaqueContraCa).not.toHaveBeenCalled();
+    });
+
+    it("con más de un objetivo en una actividad `ataque`, es 400: «un ataque tiene un objetivo»", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [pnjId, magaId],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(characterSheet.sePuedeApuntar).not.toHaveBeenCalled();
+    });
+
+    it("un objetivo al que no se puede apuntar (sePuedeApuntar: false) es 404", async () => {
+      characterSheet.sePuedeApuntar.mockResolvedValueOnce(false);
+
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [ocultoId],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("sePuedeApuntar se comprueba ANTES de consumir el espacio de conjuro", async () => {
+      characterSheet.sePuedeApuntar.mockResolvedValueOnce(false);
+
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:fire-bolt", {
+          objetivos: [ocultoId],
+        }),
+      ).rejects.toThrow(NotFoundException);
+
+      // fire-bolt no gasta recurso, así que el mejor testigo de «no se abrió la transacción de
+      // consumo» es que `events.record` (RESOURCE_SPENT/ACTIVITY_USED) nunca se llamó.
+      expect(events.record).not.toHaveBeenCalled();
+    });
+  });
+
+  // T15 (3A.2) — `caso "encantar"`: la maga (`personajeId`, dueña `jugadoraId`) encanta la
+  // espada del clérigo (`clerigoPersonajeId`, dueño `clerigoId`, visible PLAYERS) — un
+  // encantamiento entre dos personajes de dos jugadores distintos, el caso real de mesa.
+  describe("el caso `encantar` — magic-weapon sobre un arma del inventario (T15, 3A.2)", () => {
+    it("con nivelDeEspacio 2 (base): +1 a weaponAttack y weaponDamage, gasta spell-slot-2, concentración en quien lanza", async () => {
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {
+        itemId: "inv-espada",
+      });
+
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(1); // de 2
+
+      // Dos filas: weaponAttack y weaponDamage, las dos sobre el DUEÑO DEL ARMA (el clérigo), con
+      // `inventoryItemId` puesto y 3600 segundos (1 hora) de duración.
+      expect(temporaryModifiers.grantFromActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        campaignId,
+        clerigoPersonajeId,
+        jugadoraId,
+        expect.objectContaining({
+          target: "item.weaponAttack",
+          amount: 1,
+          reason: "Arma mágica",
+          inventoryItemId: "inv-espada",
+          durationSeconds: 3600,
+        }),
+      );
+      expect(temporaryModifiers.grantFromActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        campaignId,
+        clerigoPersonajeId,
+        jugadoraId,
+        expect.objectContaining({ target: "item.weaponDamage", amount: 1 }),
+      );
+
+      // La concentración es de QUIEN LANZA (`personajeId`), no de quien lleva el arma.
+      expect(conditions.apply).toHaveBeenCalledWith(
+        jugadoraId,
+        campaignId,
+        personajeId,
+        expect.objectContaining({ key: "concentrating-magic-weapon", durationSeconds: 3600 }),
+        expect.anything(),
+        { concedidoPorActividad: true },
+      );
+    });
+
+    it("con nivelDeEspacio 4: el bono sube a +2 (SRD, Higher Levels)", async () => {
+      sembrarRecurso(personajeId, "spell-slot-4", 1, 1);
+
+      await service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {
+        itemId: "inv-espada",
+        nivelDeEspacio: 4,
+      });
+
+      expect(temporaryModifiers.grantFromActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        campaignId,
+        clerigoPersonajeId,
+        jugadoraId,
+        expect.objectContaining({ target: "item.weaponAttack", amount: 2 }),
+      );
+    });
+
+    it("sin itemId, 400 y no gasta el espacio", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(2); // sin tocar
+      expect(temporaryModifiers.grantFromActivity).not.toHaveBeenCalled();
+    });
+
+    it("un itemId que no existe, 404, y no gasta el espacio", async () => {
+      await expect(
+        service.usar(jugadoraId, campaignId, personajeId, "spell:magic-weapon", {
+          itemId: "inv-inexistente",
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(recurso(personajeId, "spell-slot-2")?.current).toBe(2);
+    });
   });
 });

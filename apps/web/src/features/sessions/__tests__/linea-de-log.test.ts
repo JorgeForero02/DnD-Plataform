@@ -78,3 +78,134 @@ describe("HP_CHANGED con sujeto conserva el (from → to)", () => {
     expect(frase).toBe("Sylas pierde 7 PG (20 → 13)");
   });
 });
+
+// 3A.2 (Task 2, «elegir, lanzar y usar»): usar una actividad y cambiar el libro de conjuros.
+describe("ACTIVITY_USED tiene frase", () => {
+  it("un conjuro, con espacio de nivel: sin sujeto", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTIVITY_USED",
+        actividadKey: "spell:magic-missile",
+        name: "Proyectil mágico",
+        kind: "SPELL",
+        nivelDeEspacio: 1,
+      }),
+    ).toBe("Lanza Proyectil mágico (espacio de nivel 1)");
+  });
+
+  it("un rasgo, sin campos de conjuro", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTIVITY_USED",
+        actividadKey: "second-wind",
+        name: "Segundo aliento",
+        kind: "FEATURE",
+      }),
+    ).toBe("Usa Segundo aliento");
+  });
+
+  it("fuera de regla: sin espacio y sin tenerlo preparado", () => {
+    expect(
+      lineaDeLog({
+        type: "ACTIVITY_USED",
+        actividadKey: "spell:fireball",
+        name: "Bola de fuego",
+        kind: "SPELL",
+        fueraDeRegla: ["SIN_ESPACIO", "NO_PREPARADO"],
+      }),
+    ).toBe("Lanza Bola de fuego — sin espacio — sin tenerlo preparado");
+  });
+
+  it("con sujeto resuelto y en cabecera, arranca por el verbo", () => {
+    const frase = lineaDeLog(
+      {
+        type: "ACTIVITY_USED",
+        actividadKey: "spell:magic-missile",
+        name: "Proyectil mágico",
+        kind: "SPELL",
+      },
+      { sujeto: "Elara", sujetoEnCabecera: true },
+    );
+    expect(frase).toBe("lanza Proyectil mágico");
+  });
+});
+
+describe("SPELLBOOK_CHANGED tiene frase", () => {
+  it("prepara, deja de preparar, aprende y olvida, sin sujeto", () => {
+    expect(
+      lineaDeLog({
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "fireball",
+        name: "Bola de fuego",
+        cambio: "PREPARADO",
+        estado: "PREPARADO",
+      }),
+    ).toBe("Prepara Bola de fuego");
+    expect(
+      lineaDeLog({
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "fireball",
+        name: "Bola de fuego",
+        cambio: "DESPREPARADO",
+        estado: "EN_EL_LIBRO",
+      }),
+    ).toBe("Deja de preparar Bola de fuego");
+    expect(
+      lineaDeLog({
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "magic-missile",
+        name: "Proyectil mágico",
+        cambio: "APRENDIDO",
+        estado: "CONOCIDO",
+      }),
+    ).toBe("Aprende Proyectil mágico");
+    expect(
+      lineaDeLog({
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "magic-missile",
+        name: "Proyectil mágico",
+        cambio: "OLVIDADO",
+        estado: null,
+      }),
+    ).toBe("Olvida Proyectil mágico");
+  });
+
+  it("el sembrado inicial no nombra un solo conjuro", () => {
+    expect(
+      lineaDeLog({
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "fireball",
+        name: "Bola de fuego",
+        cambio: "SEMBRADO",
+        estado: "EN_EL_LIBRO",
+      }),
+    ).toBe("Recibe su libro de conjuros");
+  });
+
+  it("fuera de regla: en combate y por encima del tope", () => {
+    expect(
+      lineaDeLog({
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "fireball",
+        name: "Bola de fuego",
+        cambio: "PREPARADO",
+        estado: "PREPARADO",
+        fueraDeRegla: ["EN_COMBATE", "SOBRE_EL_TOPE"],
+      }),
+    ).toBe("Prepara Bola de fuego · fuera de regla: en combate · por encima del tope");
+  });
+
+  it("con sujeto resuelto y en cabecera, arranca por el verbo", () => {
+    const frase = lineaDeLog(
+      {
+        type: "SPELLBOOK_CHANGED",
+        spellKey: "fireball",
+        name: "Bola de fuego",
+        cambio: "PREPARADO",
+        estado: "PREPARADO",
+      },
+      { sujeto: "Elara", sujetoEnCabecera: true },
+    );
+    expect(frase).toBe("prepara Bola de fuego");
+  });
+});

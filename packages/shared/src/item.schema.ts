@@ -374,8 +374,28 @@ export const resolvedItemSchema = itemFieldsSchema.extend({
    * mundanas.
    */
   attuned: z.boolean().default(false),
+  /**
+   * **T15 (3A.2) — los `TemporaryModifier` VIVOS de esta fila del inventario**, ya resueltos
+   * contra el reloj de campaña (D-2C-2: el que vence no se borra, deja de listarse aquí). Es
+   * estado de LA FILA, como `attuned`, no del objeto: la misma espada larga está encantada en la
+   * mochila de un personaje y mundana en la de otro. `efectosActivos` (`rules/items.ts`) los lee
+   * como si fueran `ItemEffect` de `kind: "weaponAttack"/"weaponDamage"` — el mismo vocabulario
+   * que ya usa un objeto mágico permanente, aplicado a un efecto que caduca.
+   *
+   * Ausente = sin ninguno vivo, igual que `effects: []` no se escribe como "no hay objeto".
+   */
+  temporales: z
+    .array(
+      z.object({
+        effect: z.enum(["weaponAttack", "weaponDamage"]),
+        amount: z.number().int(),
+        reason: z.string().min(1),
+      }),
+    )
+    .optional(),
 });
 export type ResolvedItem = z.infer<typeof resolvedItemSchema>;
+export type TemporalDeItem = NonNullable<ResolvedItem["temporales"]>[number];
 
 /**
  * El título genérico de un objeto sin identificar al que el DM todavía no le ha puesto un

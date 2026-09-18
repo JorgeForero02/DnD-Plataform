@@ -7,6 +7,7 @@ import {
 } from "./character-build.schema";
 import type { ResourceReset } from "./character-state.schema";
 import { damageTypeSchema } from "./item.schema";
+import { damageExtraSchema, damageExtraOptionSchema } from "./damage-extra.schema";
 
 // Tareas 2A.6 y 2A.7 — la hoja persistida y su estado mutable.
 //
@@ -121,18 +122,36 @@ export type SetHpInput = z.infer<typeof setHpSchema>;
  * PG temporales, cuánto se toma de verdad, y con qué modificador y motivo si el objetivo resiste,
  * es vulnerable o inmune), y `canApply`/`appliedEventId` para que el botón sepa si ya se pulsó.
  */
+/**
+ * Task 8 (3A.2) — **dos formas en la misma respuesta, tipadas con campos opcionales y no con
+ * una unión discriminada.** El dueño del atacante (que no es DM ni dueño del objetivo) recibe
+ * SOLO `extrasDisponibles`/`extras`: sin `target`, `amount` ni `resulting`, que siguen siendo del
+ * DM/dueño del objetivo (spec §4b.5 — el mismo motivo por el que un espectador cualquiera sigue
+ * recibiendo 404 y no un cuerpo vacío). El DM y el dueño del objetivo reciben todo, extras
+ * incluidos: `extrasDisponibles` también les sirve, porque el permiso para marcar un extra es
+ * «dueño del atacante o DM» (Task 8 brief) y el DM necesita ver qué puede marcar en nombre de
+ * quien tiró. Se dejan opcionales en vez de una unión con `view` para no romper el tipo de las
+ * filas escritas y las pruebas que ya destructuran `DamagePreview` sin comprobar un
+ * discriminante — ver el Ruling de la tarea en el informe.
+ */
 export const damagePreviewSchema = z.object({
-  target: z.object({ id: z.string(), name: z.string() }),
-  amount: z.number().int().min(0),
-  damageType: damageTypeSchema,
-  resulting: z.object({
-    taken: z.number().int().min(0),
-    absorbedByTemp: z.number().int().min(0),
-    modifier: z.enum(["resistant", "vulnerable", "immune"]).nullable(),
-    reason: z.string().nullable(),
-  }),
-  canApply: z.boolean(),
-  appliedEventId: z.string().nullable(),
+  target: z.object({ id: z.string(), name: z.string() }).optional(),
+  amount: z.number().int().min(0).optional(),
+  damageType: damageTypeSchema.optional(),
+  resulting: z
+    .object({
+      taken: z.number().int().min(0),
+      absorbedByTemp: z.number().int().min(0),
+      modifier: z.enum(["resistant", "vulnerable", "immune"]).nullable(),
+      reason: z.string().nullable(),
+    })
+    .optional(),
+  canApply: z.boolean().optional(),
+  appliedEventId: z.string().nullable().optional(),
+  /** Lo que la hoja del atacante todavía puede marcar sobre esta tirada. */
+  extrasDisponibles: z.array(damageExtraOptionSchema).optional(),
+  /** Los que ya se marcaron, con su dado ya tirado. */
+  extras: z.array(damageExtraSchema).optional(),
 });
 export type DamagePreview = z.infer<typeof damagePreviewSchema>;
 
@@ -306,4 +325,13 @@ export interface ResolvedActivityUses {
 export type CharacterSheetActivity = Actividad & {
   key: string;
   usos?: ResolvedActivityUses;
+  /**
+   * Tarea 7 de 3A.2 («elegir, lanzar y usar») — el nombre del rasgo que concede esta actividad
+   * («Furia»), ya en español y nunca la clave del catálogo («rage»). Hasta esta tarea
+   * `Actividades.tsx` traducía la clave a mano con su propia tabla (`NOMBRE_ACTIVIDAD`), y una
+   * segunda tabla de nombres es justo la clase de vocabulario duplicado que este proyecto evita
+   * en todas partes: el nombre YA vive en `ClassFeature.name` (`resolve.ts`, `concederActividadDe`)
+   * y esto es solo copiarlo a la actividad que ese mismo rasgo concede.
+   */
+  name: string;
 };

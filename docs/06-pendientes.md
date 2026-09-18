@@ -29,6 +29,103 @@ y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
 
+## Dejado por 3A.2 (2026-09-18)
+
+Fichas que dejaron la revisión final de la rama (`review-final-api.md`, `review-final-web.md`) y
+la ola de arreglos (`wave-1-report.md`) de `.superpowers/sdd/2026-09-18-3a2-elegir-lanzar-y-usar/`,
+no cerradas por decisión explícita del cierre — cada una con su fichero y su porqué.
+
+### API
+
+- **`damageType ?? "FORCE"` inventa un tipo** (API m-4) — `activities.service.ts`, dos sitios:
+  `hunters-mark@0`, `acid-arrow@1`, `wall-of-ice@1` no traen `tipoDeDano` en el catálogo y las
+  resistencias del objetivo se evalúan contra «FORCE» sin que el conjuro lo diga. Pide `damageType`
+  opcional en `pendingDamage` y un valor neutro en `applyDamageModifiers`.
+- **Arma mágica sin dos guardas del SRD** (API m-6) — `usar()` caso `encantar`: no comprueba que el
+  arma sea «nonmagical» ni evita apilar dos `TemporaryModifier` (+1 +1) si se relanza sobre la misma
+  arma. Mínimo: `fueraDeRegla` en la respuesta.
+- **La concentración solo se registra al encantar** (API m-7) — `concentrating-<key>` se escribe en
+  `caso "encantar"` y en ningún otro `usar(spell:…)`; 126 conjuros de concentración del catálogo
+  (`bless`, `hunters-mark`, `hold-person`) no dejan condición al lanzarse. Es mover el bloque fuera
+  de `if (esEncantamiento)` y condicionarlo a `spell.duration.concentracion`.
+- **`contarTope` y `list()` cuentan poblaciones distintas** (API m-9) — `contarTope` cuenta todas
+  las filas `CharacterSpell`; `list()` solo las de la clase actual. Divergen si el DM cambia
+  `classKey`.
+- **`addDamageExtra` responde 403 donde `damagePreview` responde 404** (API m-10) — mismo lector
+  ajeno, dos códigos distintos sobre la misma tirada. Decidir si se unifica (cambia
+  `dano-extra.e2e-spec.ts` y `08-pruebas.md`).
+- **`damagePreviewSchema` con todo opcional, sin discriminante** (API m-11, D-CF-143) —
+  recomendado: unión discriminada `vista: "completa" | "atacante"` en una limpieza aparte (afecta
+  `BandejaDeDano.tsx:81`, `p.resulting!`).
+- **`upsert` sin candado en `setEstado`** (API m-12) — dos `PUT` concurrentes sobre la misma clave
+  nueva pueden chocar en `P2002` → 500 en vez de 409. Riesgo bajo; si se toca, `SELECT … FOR UPDATE`
+  sobre `Character` como en `updateSheet`.
+- **Explorador sembrado a nivel 1, y `PATCH characters/:id { level }` del DM no re-siembra
+  recursos** (API m-13 + informe Task 7) — `arranqueDe("ranger", 1) = []`, y la siembra de
+  libro/espacios/dados de golpe solo corre la primera vez que hay clase o al pasar por «Subir de
+  nivel» (`useUpdateSheet`); un `PATCH` directo del DM sobre el nivel deja los recursos del nivel
+  viejo. No se comprobó si la interfaz ofrece hoy otro camino para subir el nivel sin pasar por
+  «Subir de nivel».
+- **Semántica de `spell:<key>@N`** (API I-5, D-CF-141) — hoy `usar()` rechaza `N > 0` con 400 hasta
+  3B; con `@0` = «la de lanzamiento», la actividad real en la posición 0 del catálogo es
+  inalcanzable cuando no es la de lanzar (`hunters-mark`, su `dados` FREE está en `[0]`). 3B (Marca
+  del cazador, reacciones) tiene que decidir la semántica real con un test que alcance ese `dados`.
+- **Castigo divino sin selector de nivel en la web** (Task 8, Ruling 3) — la API acepta
+  `nivelDeEspacio`, pero la pantalla nunca lo manda: siempre gasta `spell-slot-1`. Un paladín de
+  nivel 5+ con solo espacios de nivel 2+ no puede elegirlo desde la pantalla hoy.
+- **El preview de la bandeja reduce solo el daño base** (Task 8, Ruling 6) — la resistencia que
+  `damagePreview.resulting` muestra antes de aplicar no incluye los extras marcados (Furtivo,
+  Castigo divino); el total aplicado sí es correcto (`amount + Σ extras`, reducido junto en
+  `changeHpEnTransaccion`), solo el número que se ve antes de pulsar «Aplicar» podría discrepar.
+- **Marca del cazador, *Shillelagh* y Arma elemental quedan en 3B** (D-CF-130, Task 9 Ruling 1) —
+  mismo mecanismo que *Arma mágica* (`ENCANTAMIENTOS`), fuera de alcance a propósito.
+- **Perder la concentración no borra el encantamiento** (D-CF-130) — decisión declarada, no un
+  defecto: hoy el DM lo quita a mano desde `ModificadoresTemporales`; sigue como límite conocido de
+  la mecánica de concentración en general (no solo de encantar).
+- **El chip de encantamiento no dice «hasta las…»** (Task 9, Ruling 3) — `ResolvedItem.temporales`
+  no lleva `expiresAtClock`; añadirlo exige decidir en qué reloj mostrarlo.
+- **Encantar solo ofrece las armas del propio personaje** (Task 9, Ruling 4) — no hay hoy un hook
+  que traiga el inventario de un aliado sin pedirlo personaje por personaje; el servidor sí acepta
+  encantar el arma de otro (probado por e2e), la limitación es solo de esta pantalla.
+- **El corte de respuestas > 64 KB en este PC** (ola de arreglos, fix rounds 2/3/5) — medido:
+  `PUT`/`GET …/spellbook` de un mago (~67 KB sin comprimir) se corta intermitentemente con `read
+  ECONNRESET` en `supertest`/superagent y en el proxy de Vite, nunca en el navegador (sospecha:
+  Norton sobre loopback). El fix round 5 añadió gzip (`@fastify/compress`, D-CF-131) para el
+  navegador; **los e2e de API con `supertest` siguen expuestos** porque no mandan
+  `Accept-Encoding` — esta tarea lo cierra para `libro-de-conjuros`/`lanzar-conjuros`, pero
+  cualquier otro e2e con una respuesta grande puede repetir el síntoma. Medir en el servidor
+  (`responseTime` de Fastify + `pg_stat_activity`) si vuelve a aparecer fuera de este PC.
+
+### Web
+
+- **`role="listbox"` con botones** (web m-3) — `LanzarConjuro.tsx` (listas `uno` y encantar) y
+  `TirarAtaqueBoton.tsx:342-358`: cada opción es un `<button role="option">` sin gestión de foco por
+  flechas. Deuda compartida entre los dos ficheros; arreglar los dos juntos o ninguno.
+- **`<summary>` sin marcador visible** (web m-7) — `FilaDeConjuro.tsx:82`, `BloquesDelPie.tsx`: solo
+  el anillo de foco delata que el nombre se despliega. Un chevron dibujado de `ui/Iconos.tsx`
+  (girado con `[details[open]>&]`) lo resuelve.
+- **RTL que faltan** (web m-8, c/d/e) — `objetivos: "uno"` (un clic manda `{ objetivos: [id] }`,
+  hoy solo lo cubre Playwright); «Dejar de preparar»/«Quitar» mandan `estado: null` con el rótulo
+  del modelo (`rotuloDeQuitar` sin prueba propia); `puedeEditar: false` no pinta ninguna acción ni
+  «Lanzar».
+- **La captura `conjuros-1280.png` lleva la cabecera pegajosa superpuesta** (web m-11) — artefacto
+  de `fullPage: true` con `sticky`; `page.addStyleTag(...)` antes de fotografiar, o capturar solo la
+  pestaña.
+
+### Las dos capturas de `e2e-resultados/`
+
+`apps/web/e2e-resultados/conjuros-1280.png` y `conjuros-390.png` seguían sin trackear al llegar a
+esta tarea (decisión explícita de la ola: «se limpia o se trackea en el cierre»). **Se añaden con
+el commit de este cierre**, como reconocimiento visual — mismo criterio que ya usan
+`desbordes`/`color-de-personaje`.
+
+### El tablero: Just Another VTT
+
+Decisión del autor de la madrugada del 2026-09-18: **el tablero oficial es Just Another VTT**
+(`~/Desktop/Trabajo/Mine/mini-vtt`), no el `<iframe>` de PlanarAlly que este documento seguía
+considerando (ficha «Tablero: sandbox del iframe», arriba). Queda pendiente la integración fina:
+ficha ↔ token, y que los PG del token respeten `canView` igual que el resto de la mesa.
+
 ## Menores dejados por la revisión final de `cierre/antes-de-3a2` (revisión final 2026-09-18)
 
 La ola de arreglos tras `review-final.md` cerró los tres importantes y cuatro menores baratos con
@@ -489,57 +586,12 @@ no ata la mesa a un servicio de terceros; el coste es el peso de BabylonJS/AmmoJ
 verdad —qué necesita el `sandbox` de PlanarAlly (popups de su propio login, almacenamiento,
 formularios) antes de escribirlo a ciegas y romper la sesión del jugador dentro del marco.
 
-## P1 · Un mago no tiene conjuros: existen los espacios y no existe ni un hechizo (2026-09-05)
+## P1 · Un mago no tiene conjuros — **cerrada el 2026-09-18 por 3A.2**
 
-**Medido:** búsqueda de cualquier conjuro concreto en `apps/api/src` y `packages/shared/src` —
-**cero**. No hay lista, ni catálogo, ni fichero de conjuros.
-
-Lo que sí hay es `apps/api/src/rules/catalog/spell-slots.ts`, **y su propia cabecera declara el
-hueco**: *«Lo que entra es la tabla, no la matemática de conjuros… Lo que sigue fuera es la
-interpretación de cada conjuro: preparados contra conocidos, trucos que escalan, y la lista por
-clase.»*
-
-**O sea que está decidido y documentado, no roto.** Pero desde la mesa **parece un fallo**: la hoja
-de un mago enseña sus casillas de espacios de conjuro y no hay nada que meter dentro. Un mago sin
-conjuros no es un mago, y es lo primero que va a preguntar cualquiera que se haga uno.
-
-**Decisión del autor, 2026-09-05: se hace la versión larga** —los conjuros de verdad—, y no le
-preocupa que alargue la partida de agentes.
-
-**Y ese mismo día se descubrió que NO es un hueco suyo: es el mismo que el de las aptitudes.** Las
-aptitudes de clase eran solo un nombre —`f(1, "rage", "Furia")` en el catálogo de clases, con
-**cero usos** de `"rage"` o `"extra-attack"` en todo el árbol—, así que un bárbaro de nivel 5
-jugaba **exactamente igual** que un guerrero: los dos pegaban una vez con su arma.
-
-> **La mitad de la Furia se cerró, y esta ficha no se enteró hasta el 2026-09-08.** Ya no es una
-> línea suelta: `RASGO_FURIA` (`apps/api/src/rules/catalog/classes.ts:124`) declara la aptitud con
-> su concesión de usos, y `apps/api/src/activities/` la ejecuta —`"rage"` consume su recurso
-> (`activities.service.ts`, con la clave declarada en su catálogo) y tiene su recorrido de
-> navegador en `apps/web/e2e/furia.spec.ts`—. La construyeron A9, A10 y A11. Así que **el bárbaro
-> ya no juega igual que el guerrero**, y la frase de arriba se conserva en pasado en vez de
-> borrarse porque es el razonamiento que abrió esta ficha.
->
-> **Y la cita de esta ficha se había desplazado**: decía `classes.ts:60`, que hoy es un comentario
-> sobre el nivel 20 de la Furia, no su declaración. Corregida arriba, y con el nombre delante del
-> número para que la próxima vez se pueda encontrar sin él.
->
-> **Lo que sigue midiéndose igual es `"extra-attack"`**: sus siete apariciones están todas en
-> `classes.ts` (líneas 172, 401, 403, 407, 445, 497 y 551) y `rules/attacks.ts` no lo lee, así que
-> el nivel 5 del guerrero sigue pegando una vez. Y **de conjuros no hay ni uno**, que es el
-> enunciado principal de esta ficha y no ha cambiado: `rules/catalog/` no tiene fichero de
-> conjuros, y un barrido de nombres reales del SRD por api, web y `packages/shared` no devuelve
-> más que fixtures de prueba y comentarios.
-
-Un conjuro y una aptitud son **lo mismo con distinto origen**: algo que un personaje puede hacer, que
-gasta un recurso, elige objetivo, tira o pide una tirada, y a veces deja un efecto con duración. El
-diseño está en
-[`superpowers/specs/2026-09-05-conjuros-design.md`](./superpowers/specs/2026-09-05-conjuros-design.md).
-
-**Cierra con el trabajo que el autor partió en tres el 2026-09-05**: arreglar la iniciativa (su plan
-ya está escrito), **auditar el sistema entero de ataques, aptitudes y hojas**, y planificar lo que
-falte **con esa auditoría delante**. Planificarlo antes de auditarlo repetiría el error que lo trajo
-hasta aquí.
-
+Movida entera a
+[`_archivo/pendientes-cerrados-2026-09-18-3a2.md`](./_archivo/pendientes-cerrados-2026-09-18-3a2.md):
+319 conjuros elegibles y lanzables desde la pestaña Conjuros, probado en verde por
+`apps/web/e2e/conjuros.spec.ts` y `apps/web/e2e/lanzar.spec.ts`.
 
 ## P2 · La mesa a 390 px reparte sus tres columnas a lo ancho (2026-09-05, paseo de uso)
 

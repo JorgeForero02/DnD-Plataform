@@ -21,6 +21,7 @@ User ──dueño──> Campaign ──> CampaignMember (DM | PLAYER, único po
 Character ──> CharacterResource   (consumibles: inspiración, furia, ki, dados de golpe, espacios)
           ──> CharacterCondition  (clave LIBRE; las quince del SRD son las que el motor entiende)
           ──> InventoryItem       (2B; el objeto viene del SRD -clave- o de la campaña -id-)
+          ──> CharacterSpell      (3A.2; qué conjuros tiene y en qué estado; spellKey es CADENA)
           (y cinco columnas de moneda: cp, sp, ep, gp, pp)
 
 Campaign  ──> CampaignItem ──> CampaignItemVisibilityGrant   (2B; el homebrew del DM)
@@ -58,7 +59,7 @@ direcciones**: tanto los que salen de ella como los que otras entidades tienen h
 porque `from` y `to` tienen ambos `onDelete: Cascade`), sus `EntityVisibilityGrant` y sus
 `Comment`. **`Session` cuelga `Encounter` desde 2.5.2 —y con él `Combatant` y `RollRequest`, todo en cascada—; `Character` sí desde 2A.8 y 2A.12**:
 borrar un personaje se lleva sus `CharacterResource` y sus `CharacterCondition`, las dos en
-cascada. **`GameEvent` cuelga de la campaña, no de la
+cascada — y desde 3A.2, su `CharacterSpell` también. **`GameEvent` cuelga de la campaña, no de la
 sesión**, y su `sessionId` es una columna suelta sin clave foránea: borrar una sesión **no**
 borra su historia, que es lo que se quiere de un log.
 
@@ -1430,3 +1431,89 @@ revierte la columna que las motivó):
   de un suceso no se filtra por espectador, así que el nombre de un oculto no puede viajar aquí.
   Lo escribe `EncountersService.removeCombatant` (`DELETE …/encounters/:id/combatants/:combatantId`,
   200 con el `Encounter` entero, como `setSide` y `advanceTurn`).
+
+## `CharacterSpell` — el libro de conjuros de un personaje (3A.2, Task 2, D-CF-125, migración `20260918082612_character_spells`)
+
+**`CharacterSpell`**: qué conjuros de su clase tiene marcados un personaje y en qué estado
+(`EN_EL_LIBRO` | `PREPARADO` | `CONOCIDO`, `CharacterSpellState`). Una fila por conjuro que el
+personaje tiene en su lista; que no exista fila es «ni siquiera lo tiene apuntado» — distinto de
+`EN_EL_LIBRO` (lo tiene, pero no preparado para hoy). `@@unique([characterId, spellKey])`: un
+conjuro aparece como mucho una vez por personaje.
+
+**`spellKey` es una CADENA, nunca una clave foránea** — la misma decisión que `classKey`/
+`raceKey` de `Character` (2A) y `InventoryItem.ref` de 2B, y por el mismo motivo: el catálogo del
+SRD 5.1 (319 conjuros, tarea 3A.1) vive **en código**
+(`apps/api/src/rules/catalog/generado/spells-srd.json`), no en una tabla, así que no hay fila a
+la que apuntar con una clave foránea real. Guarda **y expone** el `key` interno del catálogo (`"fireball"`,
+sin ningún prefijo): `GET .../spellbook` devuelve `key: "magic-missile"` y `PUT
+.../spellbook/magic-missile` lo recibe igual. El prefijo `spell:` lo lleva solo la clave de
+ACTIVIDAD (`claveDeConjuro`, `rules/catalog/spell-activities.ts`: `usar("spell:magic-missile")`,
+`ACTIVITY_USED.actividadKey`) — no es parte de la clave del conjuro, y `SRD:` no aparece en ningún
+sitio (a diferencia de `InventoryItem.ref`).
+
+**Cuelga de `Character` en cascada** (`onDelete: Cascade`): borrar un personaje se lleva su libro
+de conjuros, igual que sus `CharacterResource` y `CharacterCondition` (comprobado por conteo de
+filas en `campaigns.e2e-spec.ts`, no por el tamaño de un volcado).
+
+**`createdAt`, sin más columnas de auditoría.** Cuándo cambió de estado —cuándo se preparó, cuándo
+se aprendió— no vive aquí: es `GameEvent` quien lo cuenta, con el suceso `SPELLBOOK_CHANGED`
+(siguiente sección, misma tarea) que trae `cambio` (`PREPARADO` | `DESPREPARADO` | `APRENDIDO` |
+`OLVIDADO` | `SEMBRADO`) y el `estado` resultante. La misma separación que ya declara el
+encabezado de este fichero para `GameEvent` en general: la tabla es el estado, el registro es la
+historia.
+
+**Revertir**: `DROP TABLE "CharacterSpell"; DROP TYPE "CharacterSpellState";` — sin filas que
+dependan de ninguna de las dos hasta que la Task 3 empiece a escribirlas.
+
+### `ACTIVITY_USED` y `SPELLBOOK_CHANGED` (3A.2, Task 2, migración `20260918083644_activity_events`)
+
+Dos valores más de `GameEventType` (`ALTER TYPE … ADD VALUE`, cada uno en su propia sentencia —
+la misma regla que ya declaran `NPC_REVEALED`/`NPC_HIDDEN`/`COMBATANT_LEFT`: un valor se añade,
+nunca se edita ni se borra, así que revertir la migración no quita el valor del tipo).
+
+- **`ACTIVITY_USED`**: usar una actividad —lanzar un conjuro o activar un rasgo— es un hecho
+  propio y no un eco de `RESOURCE_SPENT`. `RESOURCE_SPENT` ya cuenta que se gastó un espacio o un
+  uso, pero no dice CON QUÉ: la crónica dice «Elara lanza Proyectil mágico», no «gasta 1 de
+  Espacios (nivel 1)». `kind` distingue `SPELL` de `FEATURE`; `spellLevel`/`nivelDeEspacio` solo
+  aparecen con un conjuro, y `fueraDeRegla` (`SIN_ESPACIO` | `NO_PREPARADO`) sigue la doctrina de
+  siempre — el sistema avisa, no bloquea (paso 2, tarea A2).
+- **`SPELLBOOK_CHANGED`**: cambiar el libro de conjuros —preparar, dejar de preparar, aprender,
+  olvidar, o el sembrado inicial de la clase (`"SEMBRADO"`, el primer libro que recibe un mago al
+  crear el personaje, D-CF-125)— es un hecho de la ficha, igual que subir de nivel. `estado` es
+  el estado DESPUÉS del cambio, `null` si el conjuro salió de la lista — la misma forma que
+  `HP_CHANGED.to`, para que la línea de tiempo no tenga que recalcular el historial. `fueraDeRegla`
+  (`EN_COMBATE` | `SOBRE_EL_TOPE`) avisa sin bloquear, igual que en `ACTIVITY_USED`.
+
+Sus frases del hilo viven en `apps/web/src/features/sessions/linea-de-log.ts`; las dos se
+clasifican como «personaje» en `apps/web/src/features/sessions/hilo/tipo-de-mensaje.ts`, el mismo
+cubo que `RESOURCE_SPENT` — le pasan a alguien de la mesa, no son el mundo hablando ni andamiaje
+del sistema.
+
+## `TemporaryModifier.inventoryItemId` — el encantamiento vive sobre una fila, no sobre el personaje (T15, 3A.2, migración `20260918143214_temporary_modifier_item`)
+
+**Columna nueva, nullable, con su índice y su clave foránea** hacia `InventoryItem` (`onDelete:
+Cascade`). Las once filas de `TEMPORARY_MODIFIER_TARGETS` que ya existían (las seis
+características, la CA, las cinco velocidades) apuntan al personaje entero, y para ellas
+`inventoryItemId` se queda en `null` — nada cambia. *Arma mágica* (SRD 5.1: «that weapon becomes
+a magic weapon with a +1 bonus to attack rolls and damage rolls») necesita decir **sobre qué
+arma**, y un personaje puede llevar más de una: `characterId` sigue diciendo de quién es la fila
+del inventario (normalmente el aliado al que se le encanta el arma, no quien lanza el conjuro),
+`inventoryItemId` dice cuál.
+
+Dos targets nuevos en `TEMPORARY_MODIFIER_TARGETS` (`@dnd/shared`): `item.weaponAttack` y
+`item.weaponDamage` — el mismo vocabulario que ya usa un objeto mágico permanente
+(`ItemEffect.kind`, ficha HP-9a), aplicado a un efecto que vence. `grantTemporaryModifierSchema`
+exige `inventoryItemId` cuando, y solo cuando, `target` empieza por `item.` (`esTargetDeObjeto`).
+
+**`Cascade` y no `SetNull`.** Si la fila del inventario desaparece —se tira, se vende, el DM la
+borra— el encantamiento sobre ella deja de significar algo: no hay «arma mágica sin arma». Un
+`inventoryItemId` huérfano sería un dato que nadie puede leer sin mentir sobre a qué apunta.
+
+**Se lee igual que los de personaje: por vencimiento contra el reloj, nunca se borra solo**
+(D-2C-2). Lo que cambia es DÓNDE se lee: `character-sheet.service.ts`
+(`temporalesPorObjeto`) agrupa los vivos por `inventoryItemId` y los adjunta a cada
+`ResolvedItem.temporales` — así `rules/items.ts` (`efectosActivos`) los suma exactamente como
+suma un `ItemEffect` del objeto, y `rules/attacks.ts` les da su propio paso de traza
+(`temporary:<reason>`, para no confundirlos con el `+N` permanente del objeto).
+
+**Revertir**: `ALTER TABLE "TemporaryModifier" DROP CONSTRAINT "TemporaryModifier_inventoryItemId_fkey"; DROP INDEX "TemporaryModifier_inventoryItemId_idx"; ALTER TABLE "TemporaryModifier" DROP COLUMN "inventoryItemId";` — ninguna fila existente antes de esta migración la usa, así que no hay dato que perder al quitarla.

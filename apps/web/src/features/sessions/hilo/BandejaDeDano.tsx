@@ -59,7 +59,12 @@ export function BandejaDeDano({
   // la bandeja no pinta nada.
   if (preview.isError && !es404) return null;
 
-  if (preview.isError || !preview.data) {
+  // Task 8 (3A.2) — **el dueño del atacante ahora recibe 200, no 404**, pero solo con
+  // `extrasDisponibles`/`extras` (sin `target` ni `resulting`, que siguen siendo del DM/dueño
+  // del objetivo). Esta bandeja es de ESE dueño/DM, así que un preview sin `target` es «nada que
+  // enseñar aquí» — la misma frase que antes decía el 404. `DanoExtra` es quien sí pinta algo con
+  // esa forma reducida.
+  if (preview.isError || !preview.data || !("target" in preview.data)) {
     return (
       <p className="my-s2 border-y border-copper/25 py-s2 font-chrome text-chrome-sm text-muted">
         {yaAplicado ? "Aplicado" : "Daño pendiente"}
@@ -67,15 +72,20 @@ export function BandejaDeDano({
     );
   }
 
+  // A esta altura `target` está presente (la guarda de arriba lo comprueba) — el resto de los
+  // campos de la vista completa vienen siempre junto a él (`character-sheet.service.ts`,
+  // `damagePreview`), así que se leen con `!`: el tipo los deja opcionales para dar cabida a la
+  // vista reducida del dueño del atacante (Task 8), no porque puedan faltar aquí.
   const p = preview.data;
-  const { modifier, reason, taken } = p.resulting;
+  const target = p.target!;
+  const { modifier, reason, taken } = p.resulting!;
   const nombreModificador = modifier ? NOMBRE_MODIFICADOR_DE_DANO[modifier] : null;
   const aplicado = yaAplicado || !p.canApply;
 
   return (
     <div className="my-s2 flex flex-col gap-s2 border-y border-copper/25 py-s2">
       <p className="font-chrome text-chrome-sm">
-        {`${p.target.name}: ${p.amount} ${nombreTipoDano(p.damageType)} → `}
+        {`${target.name}: ${p.amount} ${nombreTipoDano(p.damageType!)} → `}
         <span className="font-data">{taken}</span>
         {nombreModificador && ` · ${nombreModificador}`}
         {nombreModificador && reason && ` (${reason})`}
@@ -84,9 +94,9 @@ export function BandejaDeDano({
         <div>
           <Button
             variant="secondary"
-            aria-label={`Aplicar el daño a ${p.target.name}`}
+            aria-label={`Aplicar el daño a ${target.name}`}
             disabled={aplicar.isPending}
-            onClick={() => aplicar.mutate({ rollEventId, targetCharacterId: p.target.id })}
+            onClick={() => aplicar.mutate({ rollEventId, targetCharacterId: target.id })}
           >
             Aplicar
           </Button>

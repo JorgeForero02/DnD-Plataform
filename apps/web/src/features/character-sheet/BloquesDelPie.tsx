@@ -44,21 +44,37 @@ export function CompetenciasConArmas({ weaponProficiencies }: { weaponProficienc
 /**
  * Rasgos y aptitudes, **uno por línea** en vez de una fila de cápsulas.
  *
- * La maqueta pone nombre y una línea de qué hace. Nosotros tenemos el nombre y nada más
- * (`ResolvedFeature` trae `name`, no descripción), así que la lista es de nombres — pero en
- * columna, que es como se lee una lista de aptitudes, y no en cápsulas, que es como se lee un
- * conjunto de etiquetas cortas.
+ * La maqueta pone nombre y una línea de qué hace. Tarea 7 de 3A.2 («elegir, lanzar y usar»):
+ * `ResolvedFeature` ya trae `textEs` cuando el catálogo lo enriqueció (`resolve.ts`), así que
+ * cada rasgo con texto se pinta como un `<details>` — el mismo patrón que `FilaDeConjuro.tsx`,
+ * la prosa se pide con un clic y no se enseña de más. Un rasgo sin `textEs` (la mayoría: solo
+ * nombre y nivel a mano, ver la cabecera de `ClassFeature` en el catálogo) se queda como una
+ * línea simple — envolver un `<details>` sin nada que desplegar sería un triángulo que no hace
+ * nada, y la regla de casa es no fingir una interacción que no existe.
  */
 export function RasgosYAptitudes({ features }: { features: ResolvedFeatureDto[] }) {
   if (features.length === 0) return null;
   return (
     <TarjetaDeHoja titulo="Rasgos y aptitudes" etiqueta="rasgos y aptitudes">
       <ul className="flex flex-col gap-1">
-        {features.map((f) => (
-          <li key={f.labelKey} className="font-chrome text-chrome-sm leading-snug text-text">
-            {f.name}
-          </li>
-        ))}
+        {features.map((f) =>
+          f.textEs ? (
+            <li key={f.labelKey}>
+              <details>
+                <summary className="cursor-pointer list-none font-chrome text-chrome-sm leading-snug text-text hover:text-accent-text hover:underline [&::-webkit-details-marker]:hidden">
+                  {f.name}
+                </summary>
+                <p className="mt-1 max-w-[70ch] font-chrome text-chrome-xs leading-relaxed text-muted">
+                  {f.textEs}
+                </p>
+              </details>
+            </li>
+          ) : (
+            <li key={f.labelKey} className="font-chrome text-chrome-sm leading-snug text-text">
+              {f.name}
+            </li>
+          ),
+        )}
       </ul>
     </TarjetaDeHoja>
   );

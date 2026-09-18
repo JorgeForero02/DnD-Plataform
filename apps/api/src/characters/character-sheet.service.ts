@@ -12,6 +12,7 @@ import {
   CLAVE_AYUDA,
   CLAVE_ESTABLE,
   CLAVE_MUY_CARGADO,
+  DAMAGE_EXTRA_KEYS,
   nivelPorXp,
   normalizeOverride,
   ORDEN_DE_CARACTERISTICAS,
@@ -23,9 +24,13 @@ import {
 import type {
   AbilityKey,
   Visibility,
+  AddDamageExtraInput,
   AttackVerdict,
   ContentRefInput,
   ResolvedItem,
+  DamageExtra,
+  DamageExtraKey,
+  DamageExtraOption,
   DamagePreview,
   DamageType,
   DerivationWarning,
@@ -39,6 +44,9 @@ import type {
   SetHpInput,
   Overrides,
   OverridableKey,
+  RollAudience,
+  RollMode,
+  RollResult,
   RollSuggestions,
   SetOverrideInput,
   TraceStep,
@@ -80,6 +88,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { StatblocksService } from "../statblocks/statblocks.service";
 import { CharactersService } from "./characters.service";
 import { AbilityRollsService } from "./ability-rolls.service";
+import { sembrarLibro } from "../spellbook/sembrar";
 import {
   comprobarPermitido,
   desgloseDeTirada,
@@ -141,10 +150,36 @@ type FilaPersonaje = Character;
  */
 type PendingDamage = {
   targetCharacterId: string;
-  attackResolvedEventId: string;
+  /** Task 4 (3A.2): opcional desde que una actividad sin ataque resuelto (un conjuro que no
+   * acierta contra una CA, solo se lanza) también deja daño pendiente. Ver `reason`. */
+  attackResolvedEventId?: string;
   damageType: DamageType;
   amount: number;
   appliedEventId?: string;
+  /** Task 4 (3A.2): el motivo, puesto por quien pidió la tirada. Sin él, `applyPendingDamage`
+   * lo deriva del `ATTACK_RESOLVED` citado por `attackResolvedEventId` — el camino de siempre. */
+  reason?: string;
+  /** Task 8 (3A.2): el daño extra al impactar que el jugador marcó sobre esta tirada. */
+  extras?: DamageExtra[];
+};
+
+/**
+ * Task 8 (3A.2) — de qué rasgo sale cada extra y con qué `labelKey` lo concede el catálogo
+ * (`sheet.features`, `apps/api/src/rules/catalog/resolve.ts`: `class.<clase>.<key>`). El vocabulario
+ * es cerrado (`DAMAGE_EXTRA_KEYS`, `@dnd/shared`): añadir uno nuevo es tocar esta tabla, no una
+ * rama nueva desperdigada por el servicio.
+ */
+// **El campo se llama `claveDeRasgo`, no `labelKey`** (a propósito, no por estilo): el barrido de
+// `rules/label-keys-catalog.spec.ts` exige registrar en `LABEL_KEYS` cualquier propiedad de ese
+// otro nombre con un texto suelto detrás, que encuentre en `apps/api/src`, porque esa forma casi
+// siempre significa «esto viaja a `traducirLabelKey`». Estas dos claves NO viajan ahí — son un
+// `ItemGrant.labelKey` del catálogo generado que aquí solo se COMPARA contra
+// `sheet.features[].labelKey` para saber si el rasgo está concedido, el mismo uso que ya hace
+// `resolve.ts` con `.name` en vez de traducir nada — así que llamar al campo con el nombre de esa
+// propiedad sería un falso positivo de esa prueba, no una clave sin registrar de verdad.
+const CONFIG_EXTRA_DE_DANO: Record<DamageExtraKey, { claveDeRasgo: string; nombre: string }> = {
+  "sneak-attack": { claveDeRasgo: "class.rogue.sneak-attack", nombre: "Ataque furtivo" },
+  "divine-smite": { claveDeRasgo: "class.paladin.divine-smite", nombre: "Castigo divino" },
 };
 
 /**
@@ -340,6 +375,50 @@ export function modificadoresTemporales(
 }
 
 /**
+ * T15 (3A.2) — los `TemporaryModifier` VIVOS de un objeto (*Arma mágica*), agrupados por
+ * `inventoryItemId` y ya traducidos a la forma que lee `ResolvedItem.temporales`
+ * (`rules/items.ts`, `efectosActivos`).
+ *
+ * **Misma doctrina que `modificadoresTemporales`, hermana de esta función**: la caducidad se
+ * resuelve AQUÍ, al leer, con `condicionesActivas` (2C.4) — sin barrido y sin una segunda verdad.
+ * Se le pasan solo las filas con `inventoryItemId` puesto: las de personaje (`ability.*`, `ac`,
+ * `speed.*`) no tienen nada que agrupar por objeto y `modificadoresTemporales` ya las cubre.
+ *
+ * `target` llega con el prefijo `"item."` (`TEMPORARY_MODIFIER_TARGETS`) y `ResolvedItem.temporales`
+ * lo guarda SIN él (`effect: "weaponAttack"`, no `"item.weaponAttack"`) — es el mismo vocabulario
+ * que `ItemEffect.kind`, y ese no lleva el prefijo.
+ */
+export function temporalesPorObjeto(
+  filas: {
+    target: string;
+    amount: number;
+    reason: string;
+    expiresAtClock: number | null;
+    inventoryItemId: string | null;
+  }[],
+  relojSegundos: number,
+): Map<string, { effect: "weaponAttack" | "weaponDamage"; amount: number; reason: string }[]> {
+  const deObjeto = filas.filter(
+    (f): f is typeof f & { inventoryItemId: string } => f.inventoryItemId !== null,
+  );
+  const vivos = condicionesActivas(
+    deObjeto.map((f) => ({ ...f, key: `${f.inventoryItemId}:${f.target}` })),
+    relojSegundos,
+  );
+  const mapa = new Map<
+    string,
+    { effect: "weaponAttack" | "weaponDamage"; amount: number; reason: string }[]
+  >();
+  for (const f of vivos) {
+    const effect = f.target.replace(/^item\./, "") as "weaponAttack" | "weaponDamage";
+    const lista = mapa.get(f.inventoryItemId) ?? [];
+    lista.push({ effect, amount: f.amount, reason: f.reason });
+    mapa.set(f.inventoryItemId, lista);
+  }
+  return mapa;
+}
+
+/**
  * En 2A solo hay contenido SRD (2B abrirá `CAMPAIGN`). Extrae la clave o rechaza con 400 —nunca
  * con el 500 que daría dejar pasar una referencia que el catálogo no sabe resolver.
  */
@@ -394,7 +473,14 @@ export class CharacterSheetService {
    * Y **no vale con «está en algún encuentro»**: tiene que ser uno **activo** de esta campaña. Un
    * combatiente de una pelea de hace tres sesiones no está delante de nadie.
    */
-  private async sePuedeApuntar(
+  /**
+   * Task 5 (3A.2) — pública: `ActivitiesService.usar()` necesita el mismo criterio de «a quién
+   * se puede apuntar» que ya usaba `resolveAttack` para un arma (D-OP-11), y comprobarlo ANTES de
+   * gastar el espacio de conjuro — no dentro de `resolverAtaqueContraCa`, que se llama DESPUÉS de
+   * la transacción de consumo. Repetir la regla en `ActivitiesService` en vez de exponerla aquí
+   * sería la misma matriz de visibilidad reimplementada dos veces.
+   */
+  async sePuedeApuntar(
     userId: string,
     campaignId: string,
     target: { id: string; visibility: Visibility; ownerId: string },
@@ -490,6 +576,24 @@ export class CharacterSheetService {
     });
     if (filas.length === 0) return { items: [], warnings: [] };
 
+    // T15 (3A.2) — los `TemporaryModifier` de objeto vivos (*Arma mágica*), agrupados por fila.
+    // Se piden aquí, no dentro del bucle de resolución: es la misma consulta para TODAS las
+    // filas equipadas, y una por fila sería N consultas donde una basta.
+    const [temporalesFilas, campana] = await Promise.all([
+      cliente.temporaryModifier.findMany({
+        where: { characterId: character.id, inventoryItemId: { not: null } },
+        select: {
+          target: true,
+          amount: true,
+          reason: true,
+          expiresAtClock: true,
+          inventoryItemId: true,
+        },
+      }),
+      cliente.campaign.findUniqueOrThrow({ where: { id: character.campaignId } }),
+    ]);
+    const temporalesPorFila = temporalesPorObjeto(temporalesFilas, campana.clockSeconds);
+
     const viewer = await viewerFor(this.prisma, this.membership, userId, character.campaignId, tx);
     const items: ResolvedItem[] = [];
     const warnings: DerivationWarning[] = [];
@@ -515,10 +619,14 @@ export class CharacterSheetService {
         // HP-9a — **y la sintonización también es de la fila.** El catálogo no sabe quién lo
         // lleva; el motor (`rules/items.ts`, `efectosActivos`) decide con este campo si los
         // `effects` cuentan (SRD 5.1 §Attunement: sin sintonizar, solo lo mundano).
+        // T15 (3A.2) — los temporales de ESTA fila, si tiene alguno vivo. `undefined` y no `[]`
+        // cuando no hay ninguno: la misma convención que `effects: []` no significa "sin objeto".
+        const temporalesDeLaFila = temporalesPorFila.get(fila.id);
         const conRanura: ResolvedItem = {
           ...resolved,
           slot: fila.slot ?? resolved.slot,
           attuned: fila.attuned,
+          ...(temporalesDeLaFila ? { temporales: temporalesDeLaFila } : {}),
         };
         // Fix round 2 (R2) — **la MISMA función que usa `InventoryService.list()`**
         // (`filaComoLaVeElViewer`), para que el dueño de un objeto sin identificar cuyo
@@ -1193,6 +1301,21 @@ export class CharacterSheetService {
         }
       }
       const fila = await tx.character.update({ where: { id: characterId }, data });
+      // D-CF-125 (Task 3 de 3A.2): el mismo gesto de nacer con clase que ya siembra los PG y el
+      // oro de arriba siembra también el libro/lista de conjuros — solo la primera vez que el
+      // personaje tiene clase, la misma condición que abrió `sucesosDeNacimiento`.
+      if (character.classKey === null && typeof data.classKey === "string") {
+        const nivel = (data.level as number | undefined) ?? character.level;
+        await sembrarLibro(
+          tx,
+          this.events,
+          userId,
+          campaignId,
+          { id: characterId, visibility: character.visibility },
+          data.classKey,
+          nivel,
+        );
+      }
       if (intentoAFijar) {
         const marcado = await tx.abilityRollAttempt.updateMany({
           where: { id: intentoAFijar, chosen: false },
@@ -1303,15 +1426,20 @@ export class CharacterSheetService {
     return { id: fila.id, note: fila.note };
   }
 
-  /** Retira la marca y lo cuenta, para que el ayudado vea POR QUÉ dejó de tenerla. */
+  /**
+   * Retira la marca y lo cuenta, para que el ayudado vea POR QUÉ dejó de tenerla. Ola de arreglos
+   * de 3A.2 (I-4b): con `tx` ajena (el caso `ataque` de `usar()`), escribe con ella en vez de
+   * abrir la suya — el patrón aditivo de `RollsService.roll`.
+   */
   private async consumirAyuda(
     userId: string,
     campaignId: string,
     characterId: string,
     visibility: Visibility,
     ayuda: { id: string },
+    txAjena?: Prisma.TransactionClient,
   ): Promise<void> {
-    await this.prisma.transaction(async (tx) => {
+    const retirar = async (tx: Prisma.TransactionClient) => {
       await tx.characterCondition.delete({ where: { id: ayuda.id } });
       await this.events.record(
         userId,
@@ -1328,7 +1456,9 @@ export class CharacterSheetService {
         },
         tx,
       );
-    });
+    };
+    if (txAjena) await retirar(txAjena);
+    else await this.prisma.transaction(retirar);
   }
 
   /**
@@ -2077,17 +2207,154 @@ export class CharacterSheetService {
   private async pendingDamageDeLaTirada(
     campaignId: string,
     rollEventId: string,
-  ): Promise<{ actorUserId: string; pendingDamage: PendingDamage }> {
+  ): Promise<{
+    actorUserId: string;
+    /** Task 8 (3A.2) — quién tiró: el sujeto del propio `ABILITY_ROLL`, normalmente el atacante.
+     * `null`/`"campaign"` cuando la tirada no es de ningún personaje (rarísimo con daño
+     * pendiente, pero no imposible con un dato viejo). */
+    subjectId: string | null;
+    subjectType: string;
+    pendingDamage: PendingDamage;
+  }> {
     const evento = await this.prisma.gameEvent.findFirst({
       where: { id: rollEventId, campaignId, type: "ABILITY_ROLL" },
-      select: { actorUserId: true, payload: true },
+      select: { actorUserId: true, subjectId: true, subjectType: true, payload: true },
     });
     const pendingDamage = (evento?.payload as { pendingDamage?: PendingDamage } | undefined)
       ?.pendingDamage;
     if (!evento || !pendingDamage) {
       throw new NotFoundException(SIN_DANO_PENDIENTE);
     }
-    return { actorUserId: evento.actorUserId, pendingDamage };
+    return {
+      actorUserId: evento.actorUserId,
+      subjectId: evento.subjectId,
+      subjectType: evento.subjectType,
+      pendingDamage,
+    };
+  }
+
+  /**
+   * Task 8 (3A.2) — el atacante de una tirada con daño pendiente: el `Character` sujeto del
+   * propio `ABILITY_ROLL`, o `null` si esta tirada no es de ningún personaje. Vive aparte de
+   * `pendingDamageDeLaTirada` porque `damagePreview` y `addDamageExtra` necesitan la FILA, no
+   * solo el id — para comprobar dueño y para derivar su hoja.
+   */
+  private async atacanteDeLaTirada(
+    campaignId: string,
+    subjectId: string | null,
+    subjectType: string,
+  ): Promise<FilaPersonaje | null> {
+    if (subjectType !== "character" || !subjectId) return null;
+    return this.prisma.character.findFirst({ where: { id: subjectId, campaignId } });
+  }
+
+  /**
+   * Task 8 (3A.2) — el número de d6 de Ataque furtivo de este pícaro, por su nivel de personaje
+   * (SRD 5.1, tabla del pícaro, columna «Sneak Attack»; catálogo generado,
+   * `escalas["rogue-sneak-attack"]`: el valor de cada tramo es el número de d6, no un bono).
+   * `undefined` si la clase no es pícaro o su tabla no está — la misma guarda que `bonoDeFuria`
+   * usa para la Furia, y el mismo motivo: `resolverOrigen` lanza si no hay tabla que leer.
+   */
+  private nDadosDeAtaqueFurtivo(character: FilaPersonaje): number | undefined {
+    const clase = SRD_CLASSES.find((c) => c.key === character.classKey);
+    if (!clase?.scales?.["rogue-sneak-attack"]) return undefined;
+    const ctx: ContextoDeDerivacion = {
+      abilities: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      level: character.level,
+      escalas: tablaDeEscalas(clase.scales),
+    };
+    return resolverOrigen({ tipo: "escala", clave: "rogue-sneak-attack" }, ctx).valor;
+  }
+
+  /**
+   * Task 8 (3A.2) — SRD 5.1, *Divine Smite*: «2d8 for a 1st-level spell slot, plus 1d8 for each
+   * spell level higher than 1st, to a maximum of 5d8» (la cita completa va en el commit).
+   * `nivelDeEspacio` por defecto 1: la web de esta tarea no ofrece selector de nivel (Ruling en
+   * el informe). **El tope va sobre el TOTAL de dados, no sobre el nivel** (ola de arreglos,
+   * I-1): `1 + min(n, 5)` daba 6d8 con un espacio de nivel 5, contra la cita de arriba. Nivel 4 y
+   * nivel 5 dan los mismos 5d8 — el esquema de entrada topa el nivel en 5, así que el `min` solo
+   * actúa en ese último escalón.
+   */
+  private dadosDeCastigoDivino(nivelDeEspacio: number): number {
+    return Math.min(1 + nivelDeEspacio, 5);
+  }
+
+  /**
+   * Task 8 (3A.2) — qué extras puede marcar todavía quien mira, sobre ESTE atacante: los que su
+   * hoja concede (`sheet.features` por `labelKey`, `CONFIG_EXTRA_DE_DANO`) y que esta tirada
+   * todavía no tiene marcados. El texto ya trae el dado resuelto («Ataque furtivo (2d6)») para
+   * que la casilla no prometa un número que no vaya a tirar.
+   *
+   * **Nunca lanza.** Una hoja que no se puede derivar (personaje a medio crear) simplemente no
+   * ofrece nada que marcar — no es el error de quien mira el preview.
+   *
+   * **Ola de arreglos (m-3) — solo lo que el servidor va a aceptar** («nunca un botón que el
+   * servidor rechace», Global Constraints): (a) Castigo divino gasta `spell-slot-1` al marcarse
+   * (D-CF-129, el nivel que manda la web), así que sin ese espacio no se ofrece; (b) los dos
+   * extras son de un ataque CON ARMA —SRD 5.1, *Sneak Attack*: «if you hit a creature with a
+   * finesse or a ranged weapon»; *Divine Smite*: «when you hit a creature with a melee weapon
+   * attack»—, y el daño de un conjuro o de una aptitud (`esAtaqueConArma` falso) no ofrece
+   * ninguno. Lo que SÍ sigue en manos del DM (D-CF-129): ventaja, aliado adyacente, arma
+   * sutil o a distancia — el servidor cuenta y avisa, no arbitra.
+   */
+  private async opcionesDeExtra(
+    attacker: FilaPersonaje,
+    yaMarcados: ReadonlySet<DamageExtraKey>,
+    esAtaqueConArma: boolean,
+  ): Promise<DamageExtraOption[]> {
+    if (!esAtaqueConArma) return [];
+    let sheet;
+    try {
+      sheet = await this.hojaDelServidor(attacker);
+    } catch {
+      return [];
+    }
+    const opciones: DamageExtraOption[] = [];
+    for (const key of DAMAGE_EXTRA_KEYS) {
+      if (yaMarcados.has(key)) continue;
+      const config = CONFIG_EXTRA_DE_DANO[key];
+      if (!sheet.features.some((f) => f.labelKey === config.claveDeRasgo)) continue;
+      if (key === "sneak-attack") {
+        const n = this.nDadosDeAtaqueFurtivo(attacker);
+        if (!n) continue;
+        opciones.push({ key, label: `${config.nombre} (${n}d6)` });
+      } else {
+        if (!(await this.quedaEspacioDeNivel1(attacker.id))) continue;
+        opciones.push({ key, label: `${config.nombre} (${this.dadosDeCastigoDivino(1)}d8)` });
+      }
+    }
+    return opciones;
+  }
+
+  /**
+   * m-3 (a) — ¿le queda al paladín el espacio que Castigo divino va a gastar? Mira SOLO el de
+   * nivel 1, que es el que manda la web (sin selector de nivel, Task 8): ofrecerlo por un espacio
+   * de nivel 2 que la petición no va a pedir sería el mismo botón rechazado por otra puerta.
+   * `max === null` es «sin tope» (mismo criterio que `ActivitiesService.consumir`).
+   */
+  private async quedaEspacioDeNivel1(characterId: string): Promise<boolean> {
+    // La clave del RECURSO (`CharacterResource`, la misma forma que `consumoDeEspacio`), no de
+    // una condición: se compone aparte para que `claves-que-el-motor-lee.spec.ts` —que barre
+    // este fichero buscando consultas por clave de CONDICIÓN escritas como texto— no la tome
+    // por una clave de condición sin reservar.
+    const recurso = `spell-slot-${1}`;
+    const fila = await this.prisma.characterResource.findUnique({
+      where: { characterId_key: { characterId, key: recurso } },
+      select: { current: true, max: true },
+    });
+    return fila !== null && (fila.max === null || fila.current > 0);
+  }
+
+  /**
+   * Ola de arreglos (m-3b) — un `pendingDamage` de un ataque CON ARMA es el que escribe
+   * `rollAttack` (DAMAGE): `reason: "Ataque: <arma>"` (Task 4 lo puso ahí «para que el camino de
+   * un ataque de arma y el de una actividad dejen la misma forma»), o **sin `reason`** en las
+   * filas de antes de esa tarea, que solo traían `attackResolvedEventId`. El daño de un conjuro o
+   * de una aptitud lleva `"Conjuro: …"`/`"Actividad: …"` (`usar()`), también cuando es un ataque
+   * de conjuro con su `ATTACK_RESOLVED` (`fire-bolt`): un rayo de fuego no es un arma.
+   */
+  private esAtaqueConArma(pendingDamage: PendingDamage): boolean {
+    return pendingDamage.reason === undefined || pendingDamage.reason.startsWith("Ataque: ");
   }
 
   /**
@@ -2112,8 +2379,8 @@ export class CharacterSheetService {
    * orden (`apply-damage-modifiers.ts`) y lo que queda vigente es lo último aplicado. Solo el
    * `base` (sin modificadores) da `null`.
    */
-  private modificadorDeLaTraza(steps: TraceStep[]): DamagePreview["resulting"]["modifier"] {
-    const CLAVE_A_MODIFICADOR: Record<string, DamagePreview["resulting"]["modifier"]> = {
+  private modificadorDeLaTraza(steps: TraceStep[]): "resistant" | "vulnerable" | "immune" | null {
+    const CLAVE_A_MODIFICADOR: Record<string, "resistant" | "vulnerable" | "immune"> = {
       "damage.modifier.immune": "immune",
       "damage.modifier.resist": "resistant",
       "damage.modifier.vulnerable": "vulnerable",
@@ -2138,19 +2405,48 @@ export class CharacterSheetService {
     rollEventId: string,
   ): Promise<DamagePreview> {
     await this.membership.requireMember(campaignId, userId);
-    const { pendingDamage } = await this.pendingDamageDeLaTirada(campaignId, rollEventId);
+    const { pendingDamage, subjectId, subjectType } = await this.pendingDamageDeLaTirada(
+      campaignId,
+      rollEventId,
+    );
 
     const target = await this.prisma.character.findFirst({
       where: { id: pendingDamage.targetCharacterId, campaignId },
     });
     if (!target) throw new NotFoundException(SIN_DANO_PENDIENTE);
-    try {
-      await requireOwnerOrDM(this.membership, campaignId, userId, target, SIN_DANO_PENDIENTE);
-    } catch (e) {
-      // **Solo el 403 se convierte en 404.** Un fallo de base o un error de programación no es
-      // «sin daño pendiente»: se propaga, o se escondería detrás de un 404 que parece legítimo.
-      if (e instanceof ForbiddenException) throw new NotFoundException(SIN_DANO_PENDIENTE);
-      throw e;
+
+    // Task 8 (3A.2) — **tres lectores posibles, no dos.** El DM y el dueño del objetivo ya
+    // veían esto entero; el dueño del ATACANTE (el `subjectId` de la propia tirada) se añade
+    // aquí, pero solo para `extrasDisponibles`/`extras` — nunca `resulting` ni resistencias, que
+    // siguen siendo del DM/dueño del objetivo (spec §4b.5 no cambia para eso). Un cuarto lector
+    // (ni DM, ni dueño de nada de esto) sigue recibiendo el mismo 404 de siempre: no delata que
+    // la tirada existe.
+    const member = await this.membership.getMembership(campaignId, userId);
+    const isDM = member?.role === "DM";
+    const esDueñoDelObjetivo = target.ownerId === userId;
+    const attacker = await this.atacanteDeLaTirada(campaignId, subjectId, subjectType);
+    const esDueñoDelAtacante = attacker != null && attacker.ownerId === userId;
+
+    if (!isDM && !esDueñoDelObjetivo && !esDueñoDelAtacante) {
+      throw new NotFoundException(SIN_DANO_PENDIENTE);
+    }
+
+    const marcados = new Set((pendingDamage.extras ?? []).map((e) => e.key));
+    const extras: DamageExtra[] = pendingDamage.extras ?? [];
+    // Ola de arreglos (web I-3 / API m-2) — `extrasDisponibles` es «lo que QUIEN MIRA puede
+    // marcar», y marcar es dueño del atacante o DM (`addDamageExtra`). Al dueño del objetivo se
+    // le ofrecía un botón que acababa en 403 —el defecto exacto que 04 cita del prototipo— y de
+    // paso leía el rasgo y el tramo de nivel del atacante (un PNJ pícaro `DM_ONLY`). Recibe `[]`;
+    // los `extras` YA marcados sí los ve, porque entran en la suma que va a aplicar.
+    const puedeMarcar = isDM || esDueñoDelAtacante;
+    const extrasDisponibles =
+      attacker && puedeMarcar
+        ? await this.opcionesDeExtra(attacker, marcados, this.esAtaqueConArma(pendingDamage))
+        : [];
+
+    if (!isDM && !esDueñoDelObjetivo) {
+      // Solo dueño del atacante: la vista reducida, sin `resulting` ni nombre del objetivo.
+      return { extrasDisponibles, extras };
     }
 
     const modificadores = await this.modificadoresDeDano(campaignId, target);
@@ -2174,7 +2470,217 @@ export class CharacterSheetService {
       },
       canApply: !pendingDamage.appliedEventId,
       appliedEventId: pendingDamage.appliedEventId ?? null,
+      extrasDisponibles,
+      extras,
     };
+  }
+
+  /**
+   * Task 8 (3A.2) — marcar un extra de daño (Ataque furtivo, Castigo divino) sobre una tirada de
+   * daño pendiente propia. **Permiso: dueño del personaje que tiró el daño, o DM** — el brief lo
+   * fija así porque es quien decide si había ventaja o un aliado adyacente, algo que el servidor
+   * no sabe (SRD 5.1: cuenta y avisa, el DM confirma al aplicar).
+   *
+   * **Una vez por tirada y por clave** (409 repetido; 409 sobre una tirada ya aplicada) y **sin
+   * el rasgo, 400 con el nombre** — las tres reglas del brief, comprobadas ANTES de gastar nada
+   * (un guerrero no llega a rodar dados ni a gastar un espacio por error de doble clic).
+   *
+   * **Castigo divino gasta el espacio al marcarlo**, no al aplicar (D-CF-129): es la propia
+   * declaración de la mesa —«lo estoy usando»— la que consume el recurso, igual que cualquier
+   * otra actividad. `nivelDeEspacio` por defecto 1 (Ruling de la tarea: la web no ofrece
+   * selector de nivel todavía).
+   */
+  async addDamageExtra(
+    userId: string,
+    campaignId: string,
+    rollEventId: string,
+    input: AddDamageExtraInput,
+  ): Promise<{ key: DamageExtraKey; label: string; amount: number; rollEventId: string }> {
+    await this.membership.requireMember(campaignId, userId);
+    const { pendingDamage, subjectId, subjectType } = await this.pendingDamageDeLaTirada(
+      campaignId,
+      rollEventId,
+    );
+    const attacker = await this.atacanteDeLaTirada(campaignId, subjectId, subjectType);
+    if (!attacker) throw new NotFoundException(SIN_DANO_PENDIENTE);
+    await requireOwnerOrDM(this.membership, campaignId, userId, attacker);
+
+    // **`claveExtra`, no `input.key` directo en cada comparación** (a propósito, no por estilo):
+    // `character-sheet.service.ts` está en la lista de ficheros del motor que
+    // `character-state/conditions/claves-que-el-motor-lee.spec.ts` barre buscando la forma con la
+    // que el motor lee una CONDICIÓN (un receptor, un punto, la propiedad reservada de la fila, y
+    // a la derecha un texto suelto comparado por igualdad). Esta clave no es la de ninguna
+    // condición (es la de un extra de daño, `DamageExtraKey`, vocabulario cerrado por Zod, no por
+    // la reserva de condiciones), pero comparar directamente sobre ese mismo nombre de propiedad
+    // tiene la MISMA forma textual y esa prueba no distingue el significado — la copia local a
+    // otro nombre rompe el patrón sin cambiar nada del comportamiento.
+    const claveExtra = input.key;
+    const config = CONFIG_EXTRA_DE_DANO[claveExtra];
+
+    // **Comprobación barata, antes de tirar ni gastar nada** (el mismo criterio que
+    // `applyPendingDamage`): un doble clic o una tirada ya aplicada no llegan a rodar dados. El
+    // candado real, contra la carrera de verdad, es el `WHERE` del `jsonb_set` de más abajo.
+    if (pendingDamage.appliedEventId) {
+      throw new ConflictException("Ese daño ya se aplicó.");
+    }
+    if ((pendingDamage.extras ?? []).some((e) => e.key === claveExtra)) {
+      throw new ConflictException(`«${config.nombre}» ya se marcó en esta tirada.`);
+    }
+    // m-3 (b) — la misma regla con la que `opcionesDeExtra` deja de ofrecerlos: solo sobre el
+    // daño de un ataque con arma (ver `esAtaqueConArma`).
+    if (!this.esAtaqueConArma(pendingDamage)) {
+      throw new BadRequestException(`${config.nombre} solo se suma al daño de un ataque con arma.`);
+    }
+
+    let sheet;
+    try {
+      sheet = await this.hojaDelServidor(attacker);
+    } catch {
+      throw new BadRequestException(`${attacker.name} no tiene ${config.nombre}.`);
+    }
+    if (!sheet.features.some((f) => f.labelKey === config.claveDeRasgo)) {
+      throw new BadRequestException(`${attacker.name} no tiene ${config.nombre}.`);
+    }
+
+    let expresion: string;
+    if (claveExtra === "sneak-attack") {
+      const n = this.nDadosDeAtaqueFurtivo(attacker);
+      // La hoja concede el rasgo (comprobado arriba) pero la tabla de escala no cubre este nivel
+      // — no debería pasar con un pícaro real (la tabla empieza en el nivel 1), pero un dato a
+      // medio migrar no se disfraza de un cero.
+      if (!n) throw new BadRequestException(`${attacker.name} no tiene ${config.nombre}.`);
+      expresion = `${n}d6`;
+    } else {
+      const nivelDeEspacio = input.nivelDeEspacio ?? 1;
+      expresion = `${this.dadosDeCastigoDivino(nivelDeEspacio)}d8`;
+    }
+    const etiqueta = `${config.nombre} (${expresion})`;
+
+    // **Ola de arreglos (I-3) — UNA transacción para las tres cosas: gastar el espacio, tirar el
+    // extra y anexarlo a la tarjeta.** La primera versión las hacía en tres pasos sueltos (una
+    // transacción para el espacio, la de `RollsService.roll`, y el `jsonb_set` fuera de ambas):
+    // si el candado del final no marcaba nada, el paladín perdía el espacio y la tirada quedaba
+    // huérfana. Ahora `roll` recibe este `tx` (I-4b, patrón aditivo) y el 409 del candado se lanza
+    // DENTRO: Postgres deshace el descuento, el `RESOURCE_SPENT` y el `ABILITY_ROLL` del extra.
+    //
+    // **Orden de candados** (para no cruzarse con `applyPendingDamage`, que bloquea la fila de
+    // la tirada y después la del objetivo): aquí se toma primero el `CharacterResource` del
+    // atacante y al final la fila de la tirada (el `UPDATE`); ninguna de las dos transacciones
+    // pide en orden inverso lo que la otra ya tiene.
+    return this.prisma.transaction(async (tx) => {
+      // **El espacio se gasta ANTES de tirar** (D-CF-129): si no queda, es 409 y no se tira nada
+      // — gastar lo que no hay es 409 (E-08-3), el mismo criterio que `ActivitiesService.consumir`.
+      if (claveExtra === "divine-smite") {
+        const nivelDeEspacio = input.nivelDeEspacio ?? 1;
+        await this.gastarEspacioDeCastigoDivino(tx, campaignId, attacker, nivelDeEspacio, etiqueta);
+      }
+
+      // Sin `pendingDamage`: este extra no se aplica por sí solo, cuelga del daño principal.
+      const respuesta = await this.rolls.roll(
+        userId,
+        campaignId,
+        {
+          expression: expresion,
+          label: etiqueta,
+          characterId: attacker.id,
+          mode: "NORMAL",
+          audience: loVeLaMesa(attacker.visibility) ? "PUBLIC" : "DM_PRIVATE",
+        },
+        {},
+        tx,
+      );
+      if (!respuesta.revealed) {
+        // No debería pasar: quien marca es dueño o DM, así que `puedeVerse` siempre deja pasar
+        // su propia tirada. Si algún día no fuera así, mentir con un 0 sería peor que fallar aquí.
+        throw new BadRequestException("La tirada del extra no se pudo leer.");
+      }
+      const amount = respuesta.total;
+      const nuevoExtra: DamageExtra = {
+        key: input.key,
+        label: etiqueta,
+        amount,
+        rollEventId: respuesta.eventId,
+      };
+
+      // **E-PE-4, generalizado a un array.** El `WHERE` es el candado real: `appliedEventId`
+      // sigue sin poner Y esta clave todavía no está en `extras` — así dos clics concurrentes en
+      // la MISMA clave no se pisan (uno gana, el otro ve 0 filas), y dos extras de claves
+      // DISTINTAS se anexan sin perder al otro, sin necesitar releer primero. Y como
+      // `applyPendingDamage` bloquea esta fila (`FOR UPDATE`) antes de sumar, este `UPDATE`
+      // espera a su commit y entonces ve `appliedEventId` puesto: el extra o entra en la suma o
+      // recibe su 409 — nunca queda escrito sin llegar a los PG (I-2).
+      const marcado = await tx.$executeRaw`
+        UPDATE "GameEvent"
+        SET payload = jsonb_set(
+          payload,
+          '{pendingDamage,extras}',
+          COALESCE(payload->'pendingDamage'->'extras', '[]'::jsonb) || ${JSON.stringify([nuevoExtra])}::jsonb
+        )
+        WHERE id = ${rollEventId}
+          AND payload->'pendingDamage'->>'appliedEventId' IS NULL
+          AND NOT (COALESCE(payload->'pendingDamage'->'extras', '[]'::jsonb) @> ${JSON.stringify([{ key: input.key }])}::jsonb)
+      `;
+      if (marcado === 0) {
+        // Lanzar aquí DENTRO es lo que devuelve el espacio y borra la tirada del extra: la
+        // transacción entera se deshace con el 409.
+        throw new ConflictException(
+          `«${config.nombre}» ya se marcó en esta tirada, o ese daño ya se aplicó.`,
+        );
+      }
+
+      return nuevoExtra;
+    });
+  }
+
+  /**
+   * Task 8 (3A.2) — gasta un `spell-slot-N` del atacante, con el mismo candado que
+   * `ActivitiesService.consumir` (`SELECT … FOR UPDATE` sobre `CharacterResource`): dos «Castigo
+   * divino» a la vez sobre el mismo paladín no leen el mismo `current` ni descuentan dos veces el
+   * mismo espacio. **Ola de arreglos (I-3): ya no abre transacción propia** — escribe con la de
+   * `addDamageExtra`, para que un candado que no marca nada devuelva el espacio.
+   */
+  private async gastarEspacioDeCastigoDivino(
+    tx: Prisma.TransactionClient,
+    campaignId: string,
+    attacker: FilaPersonaje,
+    nivelDeEspacio: number,
+    etiqueta: string,
+  ): Promise<void> {
+    const recurso = `spell-slot-${nivelDeEspacio}`;
+    const filas = await tx.$queryRaw<
+      { id: string; label: string; current: number; max: number | null }[]
+    >`SELECT id, label, current, max FROM "CharacterResource" WHERE "characterId" = ${attacker.id} AND key = ${recurso} FOR UPDATE`;
+    const fila = filas[0];
+    if (!fila || (fila.max !== null && fila.current < 1)) {
+      throw new ConflictException(
+        `Sin espacios de nivel ${nivelDeEspacio} que gastar para «${etiqueta}».`,
+      );
+    }
+    // Igual que `ActivitiesService.consumir`: `max === null` es «sin tope», y no se descuenta.
+    if (fila.max !== null) {
+      await tx.characterResource.update({
+        where: { id: fila.id },
+        data: { current: fila.current - 1 },
+      });
+      await this.events.record(
+        attacker.ownerId,
+        campaignId,
+        {
+          subjectType: "character",
+          subjectId: attacker.id,
+          visibility: attacker.visibility,
+          payload: {
+            type: "RESOURCE_SPENT",
+            key: recurso,
+            label: fila.label,
+            amount: 1,
+            remaining: fila.current - 1,
+            reason: etiqueta,
+          },
+        },
+        tx,
+      );
+    }
   }
 
   /**
@@ -2209,22 +2715,52 @@ export class CharacterSheetService {
       throw new ConflictException("Ese daño ya se aplicó.");
     }
 
-    const resuelto = await this.prisma.gameEvent.findFirst({
-      where: { id: pendingDamage.attackResolvedEventId, campaignId, type: "ATTACK_RESOLVED" },
-      select: { payload: true },
-    });
-    const attackName = (resuelto?.payload as { attackName?: string } | undefined)?.attackName;
-    // `pendingDamage` garantiza que el `ATTACK_RESOLVED` existe (E-PE-5: sin él no se escribe la
-    // clave). Si no aparece, la tirada está rota y la crónica no escribe un «Ataque: ?» para
-    // disimularlo: es el mismo 404 que una tirada sin daño pendiente.
-    if (!attackName) throw new NotFoundException(SIN_DANO_PENDIENTE);
+    // Task 4 (3A.2) — `reason` manda si vino puesto (una actividad sin ataque resuelto detrás:
+    // un conjuro, una aptitud). Sin él, se deriva del `ATTACK_RESOLVED` citado — el camino de
+    // siempre, para las filas de antes de esta tarea y para el daño de un ataque de arma.
+    let reason = pendingDamage.reason;
+    if (!reason) {
+      const resuelto = await this.prisma.gameEvent.findFirst({
+        where: { id: pendingDamage.attackResolvedEventId, campaignId, type: "ATTACK_RESOLVED" },
+        select: { payload: true },
+      });
+      const attackName = (resuelto?.payload as { attackName?: string } | undefined)?.attackName;
+      // `pendingDamage` garantiza que el `ATTACK_RESOLVED` existe (E-PE-5: sin él no se escribe
+      // la clave). Si no aparece, la tirada está rota y la crónica no escribe un «Ataque: ?» para
+      // disimularlo: es el mismo 404 que una tirada sin daño pendiente.
+      if (!attackName) throw new NotFoundException(SIN_DANO_PENDIENTE);
+      reason = `Ataque: ${attackName}`;
+    }
 
     return this.prisma.transaction(async (tx) => {
+      // **Ola de arreglos (I-2) — la tirada se lee BLOQUEADA antes de sumar nada.** La lectura
+      // barata de arriba decidió el 403/404 y el `reason`; lo que se APLICA sale de la fila con
+      // `FOR UPDATE`: entre una y otra, el pícaro pudo marcar su Furtivo (`addDamageExtra`), y
+      // sin el candado ese extra quedaba escrito en la tarjeta sin llegar nunca a los PG — la
+      // misma familia de carrera que E-PE-4 cerró para el doble clic, con otro actor legítimo.
+      // Con la fila bloqueada, el `UPDATE` de `addDamageExtra` espera a este commit y entonces
+      // ve `appliedEventId` puesto (su 409 devuelve el espacio); y un extra que llegó antes
+      // está aquí y entra en la suma. **Orden de candados**: primero la tirada, después el
+      // objetivo (`changeHpEnTransaccion` bloquea `Character`) — `addDamageExtra` toma el
+      // recurso del atacante y luego la tirada, nunca al revés.
+      const bloqueadas = await tx.$queryRaw<
+        { payload: { pendingDamage?: PendingDamage } | null }[]
+      >`SELECT payload FROM "GameEvent" WHERE id = ${rollEventId} AND "campaignId" = ${campaignId} FOR UPDATE`;
+      const vigente = bloqueadas[0]?.payload?.pendingDamage;
+      if (!vigente) throw new NotFoundException(SIN_DANO_PENDIENTE);
+      if (vigente.appliedEventId) throw new ConflictException("Ese daño ya se aplicó.");
+
+      // Task 8 (3A.2) — el daño extra marcado (Ataque furtivo, Castigo divino) se suma al
+      // aplicar, con el MISMO `damageType` que el daño principal: el servidor no distingue el
+      // tipo de cada extra (D-CF-129 — la simplificación declarada en el mismo sitio que «no
+      // sabe ventaja ni adyacencia»).
+      const totalExtras = (vigente.extras ?? []).reduce((suma, e) => suma + e.amount, 0);
+
       const resultado = await this.changeHpFromEffect(tx, actorUserId, campaignId, target.id, {
-        delta: -pendingDamage.amount,
-        damageType: pendingDamage.damageType,
+        delta: -(vigente.amount + totalExtras),
+        damageType: vigente.damageType,
         rollEventId,
-        reason: `Ataque: ${attackName}`,
+        reason,
       });
       const hpEventId = resultado.hpEventId;
       // **E-PE-4: el candado real.** `jsonb_set` sobre el propio `payload`, con el `WHERE` que
@@ -2763,6 +3299,11 @@ export class CharacterSheetService {
             targetCharacterId: veredicto.subjectId,
             attackResolvedEventId: veredicto.id,
             damageType: dano.type,
+            // Task 4 (3A.2): el mismo motivo que ya lleva `peticion.label` sin el sufijo de
+            // crítico — `applyPendingDamage` lo usa tal cual si viene, sin volver a mirar el
+            // `ATTACK_RESOLVED`. Puesto aquí también (y no solo derivado allí) para que el
+            // camino de un ataque de arma y el de una actividad (Task 4) dejen la misma forma.
+            reason: `Ataque: ${nombreMesa}`,
           }
         : undefined;
 
@@ -2987,6 +3528,67 @@ export class CharacterSheetService {
       throw new NotFoundException("Character not found");
     }
 
+    // Task 5 (3A.2) — la mecánica de «tirar 1d20+bono contra la CA, comparar y dejar el suceso»
+    // ya no vive aquí: es `resolverAtaqueContraCa`, y la comparte con el caso `ataque` de
+    // `ActivitiesService.usar()`. `resolveAttack` solo hace lo que es SUYO —encontrar el arma
+    // equipada y su nombre/ref de mesa, y comprobar a quién se puede apuntar— y delega el resto.
+    const resuelto = await this.resolverAtaqueContraCa(userId, campaignId, character, target, {
+      bono: ataque.attackBonus.total,
+      label: `Ataque con ${nombreMesa}`,
+      mode: input.mode,
+      spendInspiration: input.spendInspiration,
+      audience: input.audience,
+      attackRef: refReal,
+      attackName: nombreMesa,
+    });
+
+    // **`attackResolvedEventId` NO viaja en la respuesta de este endpoint.** Es infraestructura
+    // interna de la Task 5 —lo usa `usar()` para citar el `ATTACK_RESOLVED` desde el daño
+    // diferido de un conjuro—; `resolveAttack` nunca lo devolvió y no hay ningún consumidor de
+    // un arma que lo necesite. Un e2e comprueba que la respuesta solo trae `roll`/`verdict`.
+    return resuelto.verdict === undefined
+      ? { roll: resuelto.roll }
+      : { roll: resuelto.roll, verdict: resuelto.verdict };
+  }
+
+  /**
+   * Task 5 (3A.2) — el ataque contra la CA, extraído de `resolveAttack` para que
+   * `ActivitiesService.usar()` (caso `ataque`: un conjuro o una aptitud con bono de ataque, como
+   * `fire-bolt`) lo comparta con un arma equipada, sin reimplementar «tirar 1d20+bono, comparar
+   * con la CA sin que salga de aquí, escribir `ATTACK_RESOLVED`» una segunda vez.
+   *
+   * **`atacante` y `target` ya vienen resueltos y autorizados por quien llama.** Esta función no
+   * comprueba `sePuedeApuntar` ni «no atacarse a uno mismo» — eso es del LLAMANTE, que conoce su
+   * propia forma de resolver el objetivo (`resolveAttack` contra el cuadro de inventario;
+   * `usar()` contra `opciones.objetivos`, con su propio 400 de cardinalidad).
+   *
+   * Ver el comentario original de `resolveAttack` (arriba, en el historial de este fichero) para
+   * el porqué de cada pieza: D-OP-11 (a quién se puede apuntar), D-OP-13 (el estado del objetivo
+   * cambia el modo), la ayuda del atacante, la audiencia por defecto de DOS niveles, y por qué el
+   * 20/1 natural manda sobre la CA.
+   *
+   * **`tx` (ola de arreglos de 3A.2, I-4b)**: la transacción de quien llama, si ya tiene una. Se
+   * propaga a `rolls.roll`, a `consumirAyuda` y a `events.record`, para que el caso `ataque` de
+   * `usar()` resuelva el impacto DENTRO de la transacción que gastó el espacio: si algo de esto
+   * revienta, el espacio vuelve en lugar de quedar gastado con un 500. `resolveAttack` (un arma)
+   * sigue sin pasarla, como siempre.
+   */
+  async resolverAtaqueContraCa(
+    userId: string,
+    campaignId: string,
+    atacante: FilaPersonaje,
+    target: FilaPersonaje,
+    input: {
+      bono: number;
+      label: string;
+      mode: RollMode;
+      spendInspiration?: boolean;
+      audience?: RollAudience;
+      attackRef?: string;
+      attackName: string;
+    },
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ roll: RollResult; verdict?: AttackVerdict; attackResolvedEventId?: string }> {
     // La CA se calcula ANTES de tirar: si el objetivo no se puede resolver (un PNJ cuyo
     // statblock se borró, por ejemplo), es un 400 honesto y no una tirada que luego no se puede
     // comparar con nada.
@@ -3014,7 +3616,7 @@ export class CharacterSheetService {
     // del mismo signo siguen siendo una.
     // **Y la ayuda recibida, que es del atacante** (I8). Se combina con lo mismo: el SRD dice que
     // dos fuentes de ventaja siguen siendo ventaja, así que esto NO suma nada.
-    const ayuda = await this.ayudaViva(campaignId, characterId);
+    const ayuda = await this.ayudaViva(campaignId, atacante.id);
     const modo = combinarModo(
       combinarModo(input.mode, contra.effect),
       ayuda ? "ADVANTAGE" : "NONE",
@@ -3030,26 +3632,29 @@ export class CharacterSheetService {
     // `revealed` es falso y **no recibe veredicto**, lo que parece un fallo del ataque y es de
     // la audiencia. Lo cazó la revisión de cierre; el defecto venía copiado de `rollAttack` y
     // se arregla en los dos sitios.
-    const audienciaPorDefecto = loVeLaMesa(character.visibility) ? "PUBLIC" : "DM_PRIVATE";
+    const audienciaPorDefecto = loVeLaMesa(atacante.visibility) ? "PUBLIC" : "DM_PRIVATE";
 
-    const roll = await this.rolls.roll(
-      userId,
-      campaignId,
-      {
-        expression: conSigno("1d20", ataque.attackBonus.total),
-        label: `Ataque con ${nombreMesa}`,
-        characterId,
-        mode: modo,
-        spendInspiration: input.spendInspiration,
-        audience: input.audience ?? audienciaPorDefecto,
-      },
-      // Fix round 1 (M6), fix round 2 (R3) — `roll.eventId` puede ser citado más tarde por
-      // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila
-      // escrito aquí para que el crítico se pueda casar sin depender del nombre ni del visor.
-      { attackRef: refReal },
-    );
+    const peticion = {
+      expression: conSigno("1d20", input.bono),
+      label: input.label,
+      characterId: atacante.id,
+      mode: modo,
+      spendInspiration: input.spendInspiration,
+      audience: input.audience ?? audienciaPorDefecto,
+    };
+    // Fix round 1 (M6), fix round 2 (R3) — `roll.eventId` puede ser citado más tarde por
+    // `rollAttack` (DAMAGE) con `attackRollEventId`: necesita el `ref` REAL de la fila (cuando
+    // hay una, es decir, un arma) para que el crítico se pueda casar sin depender del nombre ni
+    // del visor. Un ataque de conjuro no tiene fila de inventario que citar: sin `attackRef`,
+    // el cuarto argumento no se pasa — mismo criterio que ya usa `rollAttack` (DAMAGE) para no
+    // meterle una forma nueva a la llamada cuando no hay nada que decir. Y el quinto (`tx`,
+    // I-4b) tampoco se pasa cuando no hay transacción ajena, por el mismo criterio.
+    const interno = input.attackRef ? { attackRef: input.attackRef } : undefined;
+    const roll = tx
+      ? await this.rolls.roll(userId, campaignId, peticion, interno, tx)
+      : await this.rolls.roll(userId, campaignId, peticion, interno);
     if (ayuda) {
-      await this.consumirAyuda(userId, campaignId, characterId, character.visibility, ayuda);
+      await this.consumirAyuda(userId, campaignId, atacante.id, atacante.visibility, ayuda, tx);
     }
 
     // Tirada a ciegas: quien la pidió no ve el total, así que tampoco ve el veredicto — decirle
@@ -3085,20 +3690,25 @@ export class CharacterSheetService {
     // Y tiene un segundo efecto que importa: **deja rastro de contra quién se tiró**. Sin él,
     // alguien podía acotar la CA de un objetivo a base de ataques sin que quedara constancia de
     // nada (ver la ficha del oráculo en `docs/06-pendientes.md`).
-    await this.events.record(userId, campaignId, {
-      subjectType: "character",
-      subjectId: target.id,
-      visibility: target.visibility,
-      payload: {
-        type: "ATTACK_RESOLVED",
-        attackerId: characterId,
-        attackName: nombreMesa,
-        verdict,
-        rollEventId: roll.eventId,
+    const evento = await this.events.record(
+      userId,
+      campaignId,
+      {
+        subjectType: "character",
+        subjectId: target.id,
+        visibility: target.visibility,
+        payload: {
+          type: "ATTACK_RESOLVED",
+          attackerId: atacante.id,
+          attackName: input.attackName,
+          verdict,
+          rollEventId: roll.eventId,
+        },
       },
-    });
+      tx,
+    );
 
-    return { roll, verdict };
+    return { roll, verdict, attackResolvedEventId: evento.id };
   }
 
   /**

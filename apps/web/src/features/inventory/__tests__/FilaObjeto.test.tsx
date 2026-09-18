@@ -262,3 +262,62 @@ describe("FilaObjeto — la mitad mágica envuelve, lista y salta los ceros (rev
     );
   });
 });
+
+// T15 (3A.2) — el chip «+1 · Arma mágica» cuando el objeto trae un `TemporaryModifier` vivo.
+describe("FilaObjeto — el chip del encantamiento (T15, 3A.2)", () => {
+  const espada = {
+    ref: "SRD:long-sword",
+    source: "SRD",
+    kind: "WEAPON",
+    name: "Espada larga",
+    weightOz: 48,
+    effects: [],
+    requiresAttunement: false,
+    attuned: false,
+    weapon: {
+      category: "MARTIAL",
+      range: "MELEE",
+      damageDice: "1d8",
+      damageType: "SLASHING",
+      properties: [],
+    },
+  } as unknown as ResolvedItem;
+
+  it("con un temporal vivo, pinta «+1 · Arma mágica» junto al nombre", () => {
+    montar(
+      fila({
+        item: {
+          ...espada,
+          temporales: [{ effect: "weaponAttack", amount: 1, reason: "Arma mágica" }],
+        },
+        slot: "MAIN_HAND",
+      }),
+    );
+    const item = screen.getByRole("listitem");
+    const nombre = within(item).getByText("Espada larga");
+    expect(within(nombre).getByText("+1 · Arma mágica")).toBeInTheDocument();
+  });
+
+  it("weaponAttack y weaponDamage del MISMO lanzamiento pintan un solo chip, no dos", () => {
+    montar(
+      fila({
+        item: {
+          ...espada,
+          temporales: [
+            { effect: "weaponAttack", amount: 1, reason: "Arma mágica" },
+            { effect: "weaponDamage", amount: 1, reason: "Arma mágica" },
+          ],
+        },
+        slot: "MAIN_HAND",
+      }),
+    );
+    const item = screen.getByRole("listitem");
+    expect(within(item).getAllByText("+1 · Arma mágica")).toHaveLength(1);
+  });
+
+  it("sin ningún temporal, no hay chip", () => {
+    montar(fila({ item: espada, slot: "MAIN_HAND" }));
+    const item = screen.getByRole("listitem");
+    expect(within(item).queryByText(/Arma mágica/)).toBeNull();
+  });
+});

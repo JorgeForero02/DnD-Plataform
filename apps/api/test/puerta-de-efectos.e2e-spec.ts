@@ -58,11 +58,17 @@ const pruebaConRecurso: Actividad = {
 
 const catalogoDePrueba: ActivityCatalog = {
   find: (key) =>
-    ({
-      "cura-de-prueba": curaDePrueba,
-      "bola-de-prueba": bolaDePrueba,
-      "prueba-con-recurso": pruebaConRecurso,
-    })[key],
+    (
+      ({
+        "cura-de-prueba": { actividad: curaDePrueba, name: "Cura de prueba", kind: "FEATURE" },
+        "bola-de-prueba": { actividad: bolaDePrueba, name: "Bola de prueba", kind: "FEATURE" },
+        "prueba-con-recurso": {
+          actividad: pruebaConRecurso,
+          name: "Prueba con recurso",
+          kind: "FEATURE",
+        },
+      }) as const
+    )[key],
 };
 
 describe("La puerta de efectos: el daño de una salvación se tira una vez y se aplica al responder (e2e)", () => {
@@ -451,12 +457,18 @@ describe("La puerta de efectos: el daño de una salvación se tira una vez y se 
       expect(pendingDamage?.targetCharacterId).toBe(fantasmaId);
     });
 
-    it("A pide el preview de su propio daño: 404. El DM: 200, con la mitad exacta y el modificador", async () => {
+    it("A pide el preview de su propio daño: 200 pero solo extras (Task 8, 3A.2), sin `resulting`. El DM: 200, con la mitad exacta y el modificador", async () => {
       const s = app.getHttpServer();
+      // Task 8 (3A.2) — el dueño del atacante deja de ver 404: ahora es uno de los tres lectores
+      // posibles de `damagePreview`, pero SOLO para `extrasDisponibles`/`extras` — nunca
+      // `resulting` ni el nombre del objetivo, que siguen siendo del DM/dueño del objetivo (spec
+      // §4b.5 no cambia para eso). A no tiene ningún rasgo de daño extra, así que ambos arrays
+      // salen vacíos.
       const comoA = await request(s)
         .get(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-preview`)
         .set("Authorization", `Bearer ${tokenA}`);
-      expect(comoA.status).toBe(404);
+      expect(comoA.status).toBe(200);
+      expect(comoA.body).toEqual({ extrasDisponibles: [], extras: [] });
 
       const comoDM = await request(s)
         .get(`/campaigns/${campaignId}/rolls/${danoRollEventId}/damage-preview`)

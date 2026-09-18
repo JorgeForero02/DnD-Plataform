@@ -34,6 +34,28 @@ import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizac
  */
 export type DatoDeObjeto = { mundano: string | null; magico: string | null };
 
+/**
+ * T15 (3A.2) — el chip «+1 · Arma mágica» cuando el objeto trae un `TemporaryModifier` vivo
+ * (`item.temporales`, `ResolvedItem`). **Un solo chip, aunque `weaponAttack` y `weaponDamage`
+ * lleguen como dos filas**: las dos nacen del MISMO lanzamiento (mismo `reason`, mismo bono —
+ * `caso "encantar"` siempre las escribe juntas), así que pintar las dos sería la misma frase dos
+ * veces. Se prefiere la de `weaponAttack` como representante —es la que decide si el ataque
+ * "acierta con magia"— y si un día solo llega `weaponDamage` (un objeto homebrew futuro que solo
+ * dé daño), esa es la que se enseña.
+ *
+ * **No dice «hasta las…»** (a diferencia del texto que sugería el encargo): `ResolvedItem.temporales`
+ * solo trae `effect`/`amount`/`reason` — sin `expiresAtClock` no hay hora que enseñar, y
+ * enseñar una que no se tiene sería inventarla. Ficha en `docs/06-pendientes.md` si algún día
+ * hace falta.
+ */
+export function chipDeEncantamiento(item: ResolvedItem): string | null {
+  const temporales = item.temporales;
+  if (!temporales || temporales.length === 0) return null;
+  const representativo = temporales.find((t) => t.effect === "weaponAttack") ?? temporales[0];
+  const signo = representativo.amount > 0 ? "+" : "";
+  return `${signo}${representativo.amount} · ${representativo.reason}`;
+}
+
 export function datoDeObjeto(item: ResolvedItem): DatoDeObjeto {
   let mundano: string | null = null;
   if (item.weapon) mundano = danioCorto(item.weapon.damageDice, item.weapon.damageType);
@@ -179,6 +201,8 @@ export function FilaObjeto({
   // se haya vuelto a leer — se trata igual que el `true` explícito de la columna (nace
   // identificado), nunca como «sin identificar».
   const sinIdentificar = item.identified === false;
+  // T15 (3A.2) — el chip del encantamiento vivo, si lo hay.
+  const chipEncantamiento = chipDeEncantamiento(item);
   // El campo de texto del DM es un borrador local: solo se manda al soltar el foco, para no
   // disparar un `PATCH` por cada letra tecleada de un alias que la mesa todavía está pensando.
   const [alias, setAlias] = useState(item.unidentifiedName ?? "");
@@ -226,6 +250,15 @@ export function FilaObjeto({
             {row.attuned && (
               <span className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text">
                 {ETIQUETA_SINTONIZADO}
+              </span>
+            )}
+            {/* T15 (3A.2) — «+1 · Arma mágica»: el encantamiento vivo, si lo hay. */}
+            {chipEncantamiento && (
+              <span
+                data-chip="encantamiento"
+                className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text"
+              >
+                {chipEncantamiento}
               </span>
             )}
             {/* El jugador ve la etiqueta dibujada junto al alias que ya le mandó el servidor

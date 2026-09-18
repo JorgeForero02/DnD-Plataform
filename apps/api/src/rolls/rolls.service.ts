@@ -18,6 +18,7 @@ import {
   type RollResult,
   type Visibility,
 } from "@dnd/shared";
+import type { Prisma } from "@prisma/client";
 import {
   DiceExpressionError,
   rollExpression,
@@ -99,7 +100,22 @@ export class RollsService {
    *   por el nombre que lleva `label` — que cambia si el DM identifica el objeto entre las dos
    *   tiradas. `pendingDamage` (spec §4b.4, E-PE-3): a quién le toca este daño, sin `amount` ni
    *   `appliedEventId` — los pone este servicio, no quien llama, porque son «lo que solo pone el
-   *   servidor» tanto como el resto de este campo.
+   *   servidor» tanto como el resto de este campo. `reason` (Task 4, 3A.2): el motivo con el que
+   *   se aplicará el daño si alguien lo cobra — compatibilidad con filas de antes de esta tarea,
+   *   que solo traían `attackResolvedEventId`. `resultadoFijo` (Task 4, 3A.2, corrección de
+   *   plan): SRD 5.1 *Damage Rolls* — «roll the damage once for all of them». Cuando el daño de
+   *   una actividad alcanza a varios objetivos, el azar se tira UNA vez con `rollExpression` y
+   *   cada tarjeta de la bandeja del DM se escribe con ESE mismo resultado; con este campo
+   *   puesto, `roll()` no vuelve a llamar a `rollExpression`. Nunca viaja en el cuerpo de una
+   *   petición — lo compone `ActivitiesService.usar`, el único llamador que repite un azar.
+   * @param tx Ola de arreglos de 3A.2 (I-4b) — **la transacción de quien llama, si ya tiene una
+   *   abierta**: el patrón aditivo de `changeHpFromEffect`/`ConditionsService.apply`. Con ella,
+   *   esta función NO abre la suya (dos transacciones de Prisma no anidan: la segunda sale por
+   *   otra conexión y no ve lo que la primera todavía no ha confirmado) y escribe la tirada, el
+   *   gasto de inspiración y la tabla de la casa con ESE cliente. Es lo que permite que
+   *   `ActivitiesService.usar()` escriba las tarjetas de daño DENTRO de la transacción que gastó
+   *   el espacio —si tirar revienta, el espacio vuelve— y que `addDamageExtra` deshaga la tirada
+   *   del extra cuando su `jsonb_set` no marca nada. Sin `tx`, todo sigue como siempre.
    */
   async roll(
     userId: string,
@@ -110,10 +126,13 @@ export class RollsService {
       attackRef?: string;
       pendingDamage?: {
         targetCharacterId: string;
-        attackResolvedEventId: string;
+        attackResolvedEventId?: string;
         damageType: DamageType;
+        reason?: string;
       };
+      resultadoFijo?: DiceRollResult;
     },
+    tx?: Prisma.TransactionClient,
   ): Promise<RollResult> {
     const propio = await this.membership.requireMember(campaignId, userId);
 
@@ -147,13 +166,19 @@ export class RollsService {
     const modo = inspiracion ? "ADVANTAGE" : input.mode;
 
     let resultado: DiceRollResult;
-    try {
-      resultado = rollExpression(conVentaja(input.expression, modo), this.roller);
-    } catch (error) {
-      // Una expresión inválida es **400 con su motivo**, no un 500 ni un total que miente.
-      if (error instanceof DiceExpressionError)
-        throw new BadRequestException({ code: error.code, message: error.message });
-      throw error;
+    if (interno?.resultadoFijo) {
+      // Task 4 (3A.2): el azar ya se tiró para esta ronda de daño — no se vuelve a tirar. Ver el
+      // comentario de `interno` arriba: «roll the damage once for all of them».
+      resultado = interno.resultadoFijo;
+    } else {
+      try {
+        resultado = rollExpression(conVentaja(input.expression, modo), this.roller);
+      } catch (error) {
+        // Una expresión inválida es **400 con su motivo**, no un 500 ni un total que miente.
+        if (error instanceof DiceExpressionError)
+          throw new BadRequestException({ code: error.code, message: error.message });
+        throw error;
+      }
     }
 
     const rolls = resultado.terms.flatMap((t) => t.rolled);
@@ -179,7 +204,7 @@ export class RollsService {
     //
     // `prisma.transaction` es además lo que hace que los sucesos se emitan **tras el commit**
     // (ficha M2B-3): el motor de reglas ve la tirada y su tabla ya escritas, nunca a medias.
-    const { evento, deLaCasa, tabla } = await this.prisma.transaction(async (tx) => {
+    const escribir = async (tx: Prisma.TransactionClient) => {
       const evento = await this.events.record(
         userId,
         campaignId,
@@ -262,7 +287,11 @@ export class RollsService {
         : undefined;
 
       return { evento, deLaCasa, tabla };
-    });
+    };
+    // I-4b: con transacción ajena se escribe con ella; sin ella, la de siempre (y su buzón).
+    const { evento, deLaCasa, tabla } = tx
+      ? await escribir(tx)
+      : await this.prisma.transaction(escribir);
 
     // **Y el texto de esa tabla no vuelve a quien no puede ver la tabla.**
     //

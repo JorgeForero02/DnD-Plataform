@@ -22,8 +22,9 @@ describe("actividadCatalogada — el catálogo real de ACTIVITY_CATALOG", () => 
   it('encuentra "rage" y ya no responde con undefined (lo que causaba el 404 de usar())', () => {
     const furia = actividadCatalogada("rage");
     expect(furia).toBeDefined();
-    expect(furia?.activation).toEqual({ coste: "BONUS" });
-    expect(furia?.consumption).toEqual([{ recurso: "rage", cantidad: 1 }]);
+    expect(furia?.kind).toBe("FEATURE");
+    expect(furia?.actividad.activation).toEqual({ coste: "BONUS" });
+    expect(furia?.actividad.consumption).toEqual([{ recurso: "rage", cantidad: 1 }]);
   });
 
   // Importante I1 (ronda de arreglo 1): medido, quitar `effects` de `FURIA` en `classes.ts` deja
@@ -32,7 +33,9 @@ describe("actividadCatalogada — el catálogo real de ACTIVITY_CATALOG", () => 
   // exactamente el segundo defecto que el propio encargo nombraba por su nombre.
   it("la Furia deja su estado: `effects` concede la condición «raging»", () => {
     const furia = actividadCatalogada("rage");
-    expect(furia?.effects).toEqual([{ key: "raging", durationSeconds: 60, note: "Furia activa" }]);
+    expect(furia?.actividad.effects).toEqual([
+      { key: "raging", durationSeconds: 60, note: "Furia activa" },
+    ]);
   });
 
   it("una clave que ningún rasgo concede sigue devolviendo undefined, no revienta", () => {
@@ -49,8 +52,24 @@ describe("actividadCatalogada — el catálogo real de ACTIVITY_CATALOG", () => 
     // sin inventar un dato: el bucle de subclases SÍ encuentra lo que de verdad hay.
     const frenzy = actividadCatalogada("frenzy");
     expect(frenzy).toBeDefined();
-    expect(frenzy?.tipo).toBe("utilidad");
-    expect(frenzy?.activation).toEqual({ coste: "BONUS" });
+    expect(frenzy?.kind).toBe("FEATURE");
+    expect(frenzy?.actividad.tipo).toBe("utilidad");
+    expect(frenzy?.actividad.activation).toEqual({ coste: "BONUS" });
+  });
+
+  // Task 4 (3A.2) — `actividadCatalogada` se extiende a `spell:<key>`: la misma puerta que ya
+  // resolvía un rasgo por su clave estable ahora también resuelve un conjuro por la suya.
+  it('resuelve "spell:magic-missile" con su nombre en español y kind "SPELL"', () => {
+    const proyectilMagico = actividadCatalogada("spell:magic-missile");
+    expect(proyectilMagico).toBeDefined();
+    expect(proyectilMagico?.kind).toBe("SPELL");
+    expect(proyectilMagico?.name).toBe("Proyectil mágico");
+    expect(proyectilMagico?.actividad.tipo).toBe("dados");
+    expect(proyectilMagico?.spell?.key).toBe("magic-missile");
+  });
+
+  it("una clave de conjuro que no existe en el catálogo devuelve undefined", () => {
+    expect(actividadCatalogada("spell:esto-no-es-un-conjuro")).toBeUndefined();
   });
 });
 

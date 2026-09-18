@@ -234,3 +234,29 @@ describe("DetalleDeObjeto — todos los tipos de efecto llevan cifra (HP-10)", (
     expect(within(panel).getByText(MARCA)).toBeInTheDocument();
   });
 });
+
+// T15 (3A.2) — el mismo chip que la fila, junto al título.
+describe("DetalleDeObjeto — el chip del encantamiento (T15, 3A.2)", () => {
+  const manos = () => ({ onAccionPrincipal: vi.fn(), onSoltar: vi.fn(), onSintonizar: vi.fn() });
+  function montar(row: InventoryRow) {
+    render(<DetalleDeObjeto row={row} acciones={accionesDeObjeto(row, manos())} esDM={false} />);
+    return screen.getByRole("complementary", { name: "detalle del objeto" });
+  }
+
+  it("con un temporal vivo, pinta «+1 · Arma mágica» junto al título", () => {
+    const panel = montar(
+      fila({
+        item: {
+          ...espadaMagica,
+          temporales: [{ effect: "weaponAttack", amount: 1, reason: "Arma mágica" }],
+        },
+      }),
+    );
+    expect(within(panel).getByText("+1 · Arma mágica")).toBeInTheDocument();
+  });
+
+  it("sin ningún temporal, no hay chip", () => {
+    const panel = montar(fila({ item: espadaMagica }));
+    expect(within(panel).queryByText(/Arma mágica/)).toBeNull();
+  });
+});

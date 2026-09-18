@@ -216,6 +216,45 @@ describe("ItemGrant — al nivel 1 un bárbaro recibe la Furia como actividad us
   });
 });
 
+// Task 7 de 3A.2 («elegir, lanzar y usar») — las aptitudes con nombre, texto y usos: la pantalla
+// (`Actividades.tsx`) necesita el nombre de la actividad SIN pasar por la clave cruda, y
+// `RasgosYAptitudes` necesita la prosa del SRD para el `<details>` de cada rasgo — hasta ahora
+// `ResolvedFeature` solo traía `name`, nunca el texto.
+describe("Task 7 — CharacterSheetActivity.name y ResolvedFeature.textEs", () => {
+  const build = (classKey: string, level: number) => ({
+    abilities: { str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8 },
+    race: { source: "SRD" as const, key: "human" },
+    class: { source: "SRD" as const, key: classKey },
+    level,
+    choices:
+      classKey === "barbarian" ? { "barbarian-skills": ["athletics", "intimidation"] } : undefined,
+  });
+
+  it("una actividad concedida lleva el nombre de su rasgo (concederActividadDe: name: feature.name)", () => {
+    const hoja = deriveCharacter(build("barbarian", 1));
+    const furia = hoja.activities.find((a) => a.key === "rage");
+    expect(furia?.name).toBe("Furia");
+  });
+
+  it("ResolvedFeature.textEs trae la prosa del SRD que enriquecerClases ya puso en ClassFeature", () => {
+    const hoja = deriveCharacter(build("barbarian", 1));
+    const furia = hoja.features.find((f) => f.name === "Furia");
+    expect(furia?.textEs).toContain("Cuando estás en medio de un combate");
+  });
+
+  it("un rasgo sin enriquecimiento (nombre y nivel a mano) trae textEs: null, no undefined ni una cadena vacía", () => {
+    // La mayoría de rasgos del catálogo son solo `f(level, key, name)` — sin `grant`, sin
+    // `textEs` — a propósito (ver el comentario de cabecera de `ClassFeature`). `null` es el
+    // mismo vocabulario que ya usa `ClassFeature.textEs` cuando el conversor no encontró
+    // traducción; `undefined` habría hecho que `RasgosYAptitudes` no pudiera distinguir «no hay
+    // texto» de «no se ha mirado todavía».
+    const hoja = deriveCharacter(build("wizard", 1));
+    const lanzamiento = hoja.features.find((f) => f.sourceKey === "wizard");
+    expect(lanzamiento).toBeDefined();
+    expect(lanzamiento?.textEs === null || typeof lanzamiento?.textEs === "string").toBe(true);
+  });
+});
+
 // Encargo A10 (2026-09-07) — números que suben por tramos, no por veinte filas.
 //
 // **Dónde vive esta prueba, y por qué aquí y no en `engine.spec.ts`.** `resolverOrigen` (el

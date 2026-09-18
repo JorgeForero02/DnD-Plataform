@@ -335,9 +335,24 @@ export const TEMPORARY_MODIFIER_TARGETS = [
   "speed.swim",
   "speed.fly",
   "speed.burrow",
+  /**
+   * **T15 (3A.2) — el arma mágica.** *Magic Weapon* (SRD 5.1) sube el ataque Y el daño de UN
+   * arma concreta del inventario, no del personaje entero: por eso son dos targets nuevos y no
+   * una reutilización de `ac`/`ability.*`, que sí son del personaje sin más. `item.weaponAttack`
+   * y `item.weaponDamage` son literalmente los mismos dos `ItemEffect.kind` que ya lee
+   * `apps/api/src/rules/items.ts` (`efectosActivos`) para el +N de un objeto mágico permanente —
+   * el mismo vocabulario, aplicado a un efecto que vence.
+   */
+  "item.weaponAttack",
+  "item.weaponDamage",
 ] as const;
 export const temporaryModifierTargetSchema = z.enum(TEMPORARY_MODIFIER_TARGETS);
 export type TemporaryModifierTarget = z.infer<typeof temporaryModifierTargetSchema>;
+
+/** ¿Este target es de un OBJETO del inventario, y no del personaje? */
+export function esTargetDeObjeto(target: TemporaryModifierTarget): boolean {
+  return target.startsWith("item.");
+}
 
 /**
  * Conceder un modificador temporal.
@@ -345,17 +360,29 @@ export type TemporaryModifierTarget = z.infer<typeof temporaryModifierTargetSche
  * **`durationSeconds` es del reloj de CAMPANA** (2C.3), no de pared: «una hora» son 3600 segundos
  * de la partida. Sin el, el modificador dura **hasta que alguien lo quite** — hay efectos que duran
  * «hasta que el DM lo diga», y fingir una duracion habria sido inventarse una regla.
+ *
+ * **`inventoryItemId` (T15, 3A.2) — obligatorio si, y solo si, `target` es de un objeto.** Un
+ * `item.weaponAttack` sin decir QUÉ arma no significa nada — a diferencia de `ability.str`, que
+ * ya sabe a qué fila apunta por ser el propio personaje. Y al revés: mandarlo con `ability.str`
+ * sería un dato que nadie lee, la misma media verdad que el resto del proyecto evita.
  */
-export const grantTemporaryModifierSchema = z.object({
-  target: temporaryModifierTargetSchema,
-  /** **Con signo**: los jugadores pidieron subidas Y bajadas. Cero no es un modificador. */
-  amount: z
-    .number()
-    .int()
-    .min(-20)
-    .max(20)
-    .refine((n) => n !== 0, "Un modificador de cero no hace nada."),
-  reason: z.string().min(1).max(160),
-  durationSeconds: z.number().int().min(1).max(31536000).optional(),
-});
+export const grantTemporaryModifierSchema = z
+  .object({
+    target: temporaryModifierTargetSchema,
+    /** **Con signo**: los jugadores pidieron subidas Y bajadas. Cero no es un modificador. */
+    amount: z
+      .number()
+      .int()
+      .min(-20)
+      .max(20)
+      .refine((n) => n !== 0, "Un modificador de cero no hace nada."),
+    reason: z.string().min(1).max(160),
+    durationSeconds: z.number().int().min(1).max(31536000).optional(),
+    inventoryItemId: z.string().cuid().optional(),
+  })
+  .refine((v) => esTargetDeObjeto(v.target) === (v.inventoryItemId !== undefined), {
+    message:
+      "Un modificador sobre un objeto necesita su inventoryItemId, y uno sobre el personaje no lo lleva.",
+    path: ["inventoryItemId"],
+  });
 export type GrantTemporaryModifierInput = z.infer<typeof grantTemporaryModifierSchema>;

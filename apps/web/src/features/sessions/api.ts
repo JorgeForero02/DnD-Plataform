@@ -1,6 +1,8 @@
 import type {
+  AddDamageExtraInput,
   CloseSessionInput,
   CreateSessionInput,
+  DamageExtra,
   DamagePreview,
   StampSessionNoteInput,
   StartSessionInput,
@@ -133,5 +135,20 @@ export function fetchDamagePreview(
 export function applyDamage(campaignId: string, rollEventId: string): Promise<unknown> {
   return apiFetch(`/campaigns/${campaignId}/rolls/${rollEventId}/apply-damage`, {
     method: "POST",
+  });
+}
+
+/**
+ * Task 8 (3A.2) — marcar Ataque furtivo o Castigo divino sobre una tirada de daño pendiente
+ * propia. Con cuerpo, a diferencia de `applyDamage`: la clave del extra viaja en el `body`.
+ */
+export function addDamageExtra(
+  campaignId: string,
+  rollEventId: string,
+  input: AddDamageExtraInput,
+): Promise<DamageExtra> {
+  return apiFetch(`/campaigns/${campaignId}/rolls/${rollEventId}/damage-extra`, {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }

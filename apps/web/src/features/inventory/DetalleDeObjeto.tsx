@@ -3,7 +3,7 @@ import type { InventoryRow } from "./api";
 import type { AccionDeObjeto } from "./accionesDeObjeto";
 import { Button } from "../../ui/Button";
 import { EmptyState } from "../../ui/EmptyState";
-import { DatoEnCifras, datoDeObjeto } from "./FilaObjeto";
+import { chipDeEncantamiento, DatoEnCifras, datoDeObjeto } from "./FilaObjeto";
 import { IconoSinIdentificar } from "./iconos";
 import { formatearKg } from "./peso";
 import { efectoInactivoPorSintonizacion, idDeEfectoInactivo } from "./sintonizacion";
@@ -114,6 +114,8 @@ function Contenido({
   // "x2", no "×2": el signo de multiplicación está en la lista de glifos prohibidos
   // (`ui/__tests__/Iconos.test.tsx`).
   const cantidad = row.quantity > 1 ? ` x${row.quantity}` : "";
+  // T15 (3A.2) — mismo chip que la fila, mismo cálculo (un solo sitio: `FilaObjeto.tsx`).
+  const chipEncantamiento = chipDeEncantamiento(item);
 
   return (
     <div className="flex flex-col gap-s3">
@@ -125,6 +127,14 @@ function Contenido({
           {row.attuned && (
             <span className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text">
               {ETIQUETA_SINTONIZADO}
+            </span>
+          )}
+          {chipEncantamiento && (
+            <span
+              data-chip="encantamiento"
+              className="ml-2 inline-flex items-center align-middle font-chrome text-chrome-xs text-accent-text"
+            >
+              {chipEncantamiento}
             </span>
           )}
         </h3>

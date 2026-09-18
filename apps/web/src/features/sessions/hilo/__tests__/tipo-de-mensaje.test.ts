@@ -90,6 +90,10 @@ const CUBO_ESPERADO: Record<GameEventType, TipoDeMensaje> = {
   // Sacar del combate (E-PM, spec §3.3): el sistema contando un reajuste de la mesa, con
   // COMBATANT_SIDE_CHANGED y ACTIVE_TURN_SHIFTED.
   COMBATANT_LEFT: "sistema",
+  // 3A.2 (Task 2, «elegir, lanzar y usar»): usar una actividad y cambiar el libro de conjuros le
+  // pasan a alguien de la mesa, igual que RESOURCE_SPENT.
+  ACTIVITY_USED: "personaje",
+  SPELLBOOK_CHANGED: "personaje",
 };
 
 /**
@@ -119,8 +123,9 @@ describe("de un suceso del registro a un tipo de mensaje", () => {
     // derivarse en silencio, **50 con `XP_AWARDED`** (puerta de efectos §5 bis, D-CF-68/69,
     // 2026-09-13): dar XP es un hecho propio de la crónica, **52 con `NPC_REVEALED` y
     // `NPC_HIDDEN`** (PNJ del mundo y la mesa, 2026-09-14): revelar y ocultar una criatura, y
-    // **53 con `COMBATANT_LEFT`** (spec §3.3): sacar del combate.
-    expect(GAME_EVENT_TYPES).toHaveLength(53);
+    // **53 con `COMBATANT_LEFT`** (spec §3.3): sacar del combate, y **55 con `ACTIVITY_USED` y
+    // `SPELLBOOK_CHANGED`** (3A.2, Task 2): usar una actividad y cambiar el libro de conjuros.
+    expect(GAME_EVENT_TYPES).toHaveLength(55);
     const sinCubo = GAME_EVENT_TYPES.filter((type) => CUBO_ESPERADO[type] === undefined);
     expect(sinCubo).toEqual([]);
   });

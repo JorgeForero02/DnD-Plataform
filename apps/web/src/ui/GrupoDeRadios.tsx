@@ -21,7 +21,7 @@ export function GrupoDeRadios<T extends string>({
 }: {
   legend: string;
   name: string;
-  opciones: Record<T, { etiqueta: string; frase: string }>;
+  opciones: Record<T, { etiqueta: string; frase: string; deshabilitada?: boolean }>;
   valor: T;
   onChange: (v: T) => void;
   /** Desactiva TODO el grupo (no una opción suelta). Por defecto, activo — solo lo usaba
@@ -36,40 +36,46 @@ export function GrupoDeRadios<T extends string>({
     <fieldset className={className}>
       <legend className="px-1 font-chrome text-chrome-sm text-text">{legend}</legend>
       <div className="space-y-1">
-        {(Object.entries(opciones) as [T, { etiqueta: string; frase: string }][]).map(
-          ([clave, opcion]) => {
-            const elegida = valor === clave;
-            return (
-              <label
-                key={clave}
-                className={[
-                  "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
-                  elegida
-                    ? "border-accent bg-[color:var(--accent-tint)]"
-                    : "border-transparent hover:bg-bg",
-                  disabled ? "cursor-not-allowed opacity-60" : "",
-                ].join(" ")}
-              >
-                <input
-                  type="radio"
-                  name={name}
-                  checked={elegida}
-                  disabled={disabled}
-                  onChange={() => onChange(clave)}
-                  className="mt-1 accent-[var(--accent)]"
-                />
-                <span className="min-w-0">
-                  <span className="block font-chrome text-chrome-sm text-text">
-                    {opcion.etiqueta}
-                  </span>
-                  <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
-                    {opcion.frase}
-                  </span>
+        {(
+          Object.entries(opciones) as [
+            T,
+            { etiqueta: string; frase: string; deshabilitada?: boolean },
+          ][]
+        ).map(([clave, opcion]) => {
+          const elegida = valor === clave;
+          // Ola de arreglos de 3A.2 (web I-1): una opción suelta puede estar apagada (el
+          // espacio propio agotado, que se ve pero no se elige) sin apagar el grupo entero.
+          const apagada = disabled || opcion.deshabilitada === true;
+          return (
+            <label
+              key={clave}
+              className={[
+                "flex cursor-pointer items-start gap-s2 rounded-radius-sm border px-s2 py-1.5 transition-colors",
+                elegida
+                  ? "border-accent bg-[color:var(--accent-tint)]"
+                  : "border-transparent hover:bg-bg",
+                apagada ? "cursor-not-allowed opacity-60" : "",
+              ].join(" ")}
+            >
+              <input
+                type="radio"
+                name={name}
+                checked={elegida}
+                disabled={apagada}
+                onChange={() => onChange(clave)}
+                className="mt-1 accent-[var(--accent)]"
+              />
+              <span className="min-w-0">
+                <span className="block font-chrome text-chrome-sm text-text">
+                  {opcion.etiqueta}
                 </span>
-              </label>
-            );
-          },
-        )}
+                <span className="mt-0.5 block font-chrome text-chrome-xs leading-snug text-muted">
+                  {opcion.frase}
+                </span>
+              </span>
+            </label>
+          );
+        })}
       </div>
       {nota && <p className="mt-s2 font-chrome text-chrome-xs text-muted">{nota}</p>}
     </fieldset>

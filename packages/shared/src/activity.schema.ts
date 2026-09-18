@@ -572,6 +572,14 @@ export type Actividad = z.infer<typeof actividadSchema>;
 export const usarActividadSchema = z.object({
   objetivos: z.array(z.string().cuid()).max(12).optional(),
   nivelDeEspacio: z.number().int().min(1).max(9).optional(),
+  /**
+   * **T15 (3A.2) — sobre qué objeto del inventario.** Un encantamiento (*Arma mágica*) no apunta
+   * a un personaje con `objetivos`: apunta a UNA fila del inventario de alguien, propia o de un
+   * aliado visible. Solo lo lee `ActivitiesService.usar` cuando la actividad es un encantamiento
+   * (`ENCANTAMIENTOS`, `rules/catalog/spell-activities.ts`); en cualquier otra actividad se
+   * ignora, igual que `nivelDeEspacio` se ignora fuera de un conjuro.
+   */
+  itemId: z.string().cuid().optional(),
 });
 export type UsarActividadInput = z.infer<typeof usarActividadSchema>;
 

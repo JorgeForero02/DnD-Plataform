@@ -30,7 +30,10 @@ const actividadDeSalvacionDePrueba: Actividad = {
   salvacion: { ability: "dex", cd: { tipo: "fijo", valor: 15 }, siSalva: "ninguno" },
 };
 const catalogoDePrueba: ActivityCatalog = {
-  find: (key) => (key === "prueba-de-salvacion" ? actividadDeSalvacionDePrueba : undefined),
+  find: (key) =>
+    key === "prueba-de-salvacion"
+      ? { actividad: actividadDeSalvacionDePrueba, name: "Prueba de salvación", kind: "FEATURE" }
+      : undefined,
 };
 
 describe("Usar una actividad (e2e)", () => {

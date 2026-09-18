@@ -4,8 +4,9 @@ import {
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import type { RollResult, RollResultRevealed } from "@dnd/shared";
-import type { Roller } from "../dice/dice";
+import { rollExpression, type Roller } from "../dice/dice";
 import { MembershipService } from "../campaigns/membership.service";
 import { DmTablesService } from "../dm-tables/dm-tables.service";
 import { GameEventsService } from "../game-events/game-events.service";
@@ -216,6 +217,29 @@ describe("lo que se devuelve y lo que se escribe", () => {
       }),
       // La transacción que comparte con la tabla de la casa (2C.6).
       expect.anything(),
+    );
+  });
+
+  // Ola de arreglos de 3A.2 (API I-4b) — `tx` opcional, el patrón aditivo de `changeHpFromEffect`:
+  // con una transacción ajena, `roll` NO abre la suya y escribe el suceso con ESE cliente, para que
+  // `ActivitiesService.usar()` y `addDamageExtra` tiren dentro de la transacción que gastó el
+  // espacio — si el `jsonb_set` de después no marca nada, la tirada se deshace con el gasto.
+  it("con `tx` ajena, no abre transacción propia y escribe el ABILITY_ROLL con ese cliente", async () => {
+    const { service, prisma, events } = montar(dadosFijos(12));
+    const txAjena = { marca: "tx-ajena" };
+    await service.roll(
+      "u1",
+      "c1",
+      { expression: "2d6", label: "Furtivo", audience: "PUBLIC", mode: "NORMAL" as const },
+      {},
+      txAjena as unknown as Prisma.TransactionClient,
+    );
+    expect(prisma.transaction).not.toHaveBeenCalled();
+    expect(events.record).toHaveBeenCalledWith(
+      "u1",
+      "c1",
+      expect.objectContaining({ payload: expect.objectContaining({ type: "ABILITY_ROLL" }) }),
+      txAjena,
     );
   });
 
@@ -756,5 +780,94 @@ describe("interno.pendingDamage — lo que solo pone el servidor", () => {
 
     const payload = events.record.mock.calls[0][2].payload;
     expect(payload.pendingDamage).toBeUndefined();
+  });
+
+  it("pendingDamage.reason viaja tal cual, y attackResolvedEventId es opcional (Task 4, 3A.2)", async () => {
+    const { service, events } = montar(dadosFijos(5));
+    await service.roll(
+      "u1",
+      "c1",
+      { expression: "1d4+1", audience: "PUBLIC", mode: "NORMAL" },
+      {
+        pendingDamage: {
+          targetCharacterId: "goblin1",
+          damageType: "FORCE",
+          reason: "Conjuro: Proyectil mágico",
+        },
+      },
+    );
+
+    expect(events.record).toHaveBeenCalledWith(
+      "u1",
+      "c1",
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          pendingDamage: {
+            targetCharacterId: "goblin1",
+            damageType: "FORCE",
+            reason: "Conjuro: Proyectil mágico",
+            amount: 6, // el mock de `dadosFijos(5)` no clampa por caras: 5 (el dado) + 1 = 6.
+          },
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+});
+
+// Task 4 (3A.2), corrección de plan — `interno.resultadoFijo`: SRD 5.1 *Damage Rolls*, «roll the
+// damage once for all of them». `ActivitiesService.usar` tira UNA vez con `rollExpression` y
+// escribe N `ABILITY_ROLL` con ESE resultado: `roll()` no debe volver a tirar cuando lo recibe.
+describe("interno.resultadoFijo — el azar ya se tiró, no se vuelve a tirar", () => {
+  it("con resultadoFijo, no llama al roller y el payload lleva ESE resultado", async () => {
+    const roller = jest.fn(() => 3);
+    const { service, events } = montar(roller);
+    const resultadoFijo = rollExpression("2d6+1", () => 6); // total = 6+6+1 = 13, sin tocar `roller`
+
+    const respuesta = await service.roll(
+      "u1",
+      "c1",
+      { expression: "2d6+1", audience: "PUBLIC", mode: "NORMAL" },
+      { resultadoFijo },
+    );
+
+    expect(roller).not.toHaveBeenCalled();
+    if (respuesta.revealed) expect(respuesta.total).toBe(13);
+    const payload = events.record.mock.calls[0][2].payload;
+    expect(payload.total).toBe(13);
+    expect(payload.rolls).toEqual([6, 6]);
+  });
+
+  it("dos llamadas con el MISMO resultadoFijo escriben dos ABILITY_ROLL con los mismos dados", async () => {
+    const roller = jest.fn(() => 1); // si se llamara, se notaría: 1 no es 6
+    const { service, events } = montar(roller);
+    const resultadoFijo = rollExpression("1d6", () => 6);
+
+    await service.roll(
+      "u1",
+      "c1",
+      { expression: "1d6", audience: "PUBLIC", mode: "NORMAL" },
+      {
+        pendingDamage: { targetCharacterId: "a", damageType: "FORCE", reason: "x" },
+        resultadoFijo,
+      },
+    );
+    await service.roll(
+      "u1",
+      "c1",
+      { expression: "1d6", audience: "PUBLIC", mode: "NORMAL" },
+      {
+        pendingDamage: { targetCharacterId: "b", damageType: "FORCE", reason: "x" },
+        resultadoFijo,
+      },
+    );
+
+    expect(roller).not.toHaveBeenCalled();
+    const [, , payload1] = events.record.mock.calls[0];
+    const [, , payload2] = events.record.mock.calls[1];
+    expect(payload1.payload.total).toBe(6);
+    expect(payload2.payload.total).toBe(6);
+    expect(payload1.payload.pendingDamage.amount).toBe(6);
+    expect(payload2.payload.pendingDamage.amount).toBe(6);
   });
 });

@@ -304,23 +304,6 @@ export const NOMBRE_RESET_RECURSO: Record<string, string> = {
 };
 
 /**
- * El nombre de una actividad concedida por el catálogo (`CharacterSheetActivity.key`), por la
- * misma razón que el resto de este fichero: la clave del servidor (`"rage"`) no llega nunca a la
- * pantalla. Hoy solo hay una entrada porque solo hay una actividad completa en el catálogo
- * (paso 2, tarea A11); una clave sin entrada aquí enseña su propia clave en vez de romper —
- * `Actividades.tsx` y una prueba pueden barrer esta tabla contra las que el catálogo declare de
- * verdad el día que haya una segunda. Sin entrada, se marca «Sin traducir» en vez de enseñar la
- * clave a secas — el mismo patrón que `nombreCondicion`, arriba.
- */
-export const NOMBRE_ACTIVIDAD: Record<string, string> = {
-  rage: "Furia",
-};
-
-export function nombreActividad(key: string): string {
-  return NOMBRE_ACTIVIDAD[key] ?? `Sin traducir: ${key}`;
-}
-
-/**
  * **Qué significa cada reposición**, para los radios de crear un recurso (paso 1, tarea 10).
  *
  * Una opción con significado no se esconde en un desplegable (`docs/04-convenciones.md`): son

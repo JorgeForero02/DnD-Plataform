@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
 import helmet from "@fastify/helmet";
+import compress from "@fastify/compress";
 
 /**
  * Loads apps/api/.env into process.env. Idempotent — dotenv never overwrites a key already
@@ -94,6 +95,17 @@ export async function configureApp(app: NestFastifyApplication): Promise<void> {
     // Strict-Transport-Security, X-DNS-Prefetch-Control: off, X-Download-Options: noopen,
     // Cross-Origin-Opener-Policy / -Resource-Policy: same-origin.
   });
+
+  // **Compresión de respuestas (ola de arreglos de 3A.2, fix round 5).** En producción comprime
+  // nginx; en local nadie, y algo en el PC del autor (Norton inspecciona el tráfico local, ver
+  // CLAUDE.md) corta de forma intermitente las respuestas HTTP locales por encima de 64 KB:
+  // `GET …/spellbook` de un mago son 66.907 bytes y Playwright caía 2 de 3 esperando datos que
+  // salían de ahí (medido durante toda una noche: 460 KB → casi siempre reset; ≥ ~65 KB →
+  // intermitente; < 4 KB → nunca). Comprimido cabe de sobra por debajo. `threshold: 1024`: un
+  // cuerpo pequeño no gana nada. Solo se comprime si el cliente lo pide (`Accept-Encoding`):
+  // supertest no lo pide, así que los e2e de la API leen los mismos cuerpos de siempre; y nginx,
+  // si ya comprime, no re-comprime lo que llega con `content-encoding` puesto.
+  await app.register(compress, { threshold: 1024, encodings: ["gzip", "deflate", "br"] });
 
   // No CORS by design (docs/01-arquitectura.md): production serves the web app and proxies
   // /api through the same nginx origin (apps/web/nginx.conf), and local dev proxies /api

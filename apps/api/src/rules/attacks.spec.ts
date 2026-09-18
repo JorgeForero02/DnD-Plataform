@@ -468,6 +468,77 @@ describe("el arma mágica (M2B-1, la ficha que abrió la auditoría de mecánica
   });
 });
 
+describe("T15 (3A.2) — un TemporaryModifier vivo (Arma mágica) suma al cuadro de ataques", () => {
+  const espadaEncantada = (): ResolvedItem => ({
+    ref: "SRD:long-sword",
+    source: "SRD",
+    name: "Espada larga",
+    kind: "WEAPON",
+    weightOz: 48,
+    effects: [],
+    requiresAttunement: false,
+    attuned: false,
+    slot: "MAIN_HAND",
+    weapon: arma({ properties: [] }),
+    temporales: [{ effect: "weaponAttack", amount: 1, reason: "Arma mágica" }],
+  });
+  const mods = { str: 3, dex: 1, con: 2, int: 0, wis: 0, cha: -1 };
+
+  it("el ataque suma +1 con su propio paso de traza `temporary:Arma mágica`", () => {
+    const r = buildAttacks({
+      items: [espadaEncantada()],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+    const ataque = r.attacks[0];
+    // Fuerza +3, competencia +3, +1 del encantamiento: 7.
+    expect(ataque.attackBonus.total).toBe(7);
+    expect(ataque.attackBonus.steps).toContainEqual(
+      expect.objectContaining({
+        op: "add",
+        amount: 1,
+        sourceType: "temporary",
+        labelKey: "temporary:Arma mágica",
+      }),
+    );
+    // Y NO deja un paso `item`: no es una propiedad permanente del objeto.
+    expect(ataque.attackBonus.steps.some((p) => p.sourceType === "item")).toBe(false);
+  });
+
+  it("el temporal y el propio del objeto conviven, cada uno con su paso", () => {
+    const conLosDoss: ResolvedItem = {
+      ...espadaEncantada(),
+      effects: [{ kind: "weaponAttack", amount: 1 }],
+    };
+    const r = buildAttacks({
+      items: [conLosDoss],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+    const ataque = r.attacks[0];
+    // Fuerza +3, competencia +3, +1 propio, +1 temporal: 8.
+    expect(ataque.attackBonus.total).toBe(8);
+    expect(ataque.attackBonus.steps.some((p) => p.sourceType === "item")).toBe(true);
+    expect(ataque.attackBonus.steps.some((p) => p.sourceType === "temporary")).toBe(true);
+  });
+
+  it("weaponDamage temporal sube el daño (sin paso propio, igual que el propio del objeto)", () => {
+    const soloDano: ResolvedItem = {
+      ...espadaEncantada(),
+      temporales: [{ effect: "weaponDamage", amount: 1, reason: "Arma mágica" }],
+    };
+    const r = buildAttacks({
+      items: [soloDano],
+      abilityMods: mods,
+      proficiencyBonus: 3,
+      weaponProficiencies: ["martial"],
+    });
+    expect(r.attacks[0].damage.expression).toBe("1d8+4");
+  });
+});
+
 // HP-9a (2026-09-12) — SRD 5.1 §Attunement: el +1 al ataque y al daño es propiedad mágica y
 // solo cuenta con el arma sintonizada; el dado del arma es mundano y se queda siempre.
 describe("HP-9a — el arma que requiere sintonización solo suma su +N sintonizada", () => {

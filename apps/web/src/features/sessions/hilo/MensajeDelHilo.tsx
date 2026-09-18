@@ -5,6 +5,7 @@ import { NOMBRE_SELLO } from "../vocabulario";
 import { Badge } from "../../../ui/Badge";
 import { TiradaIncrustada } from "./TiradaIncrustada";
 import { BandejaDeDano } from "./BandejaDeDano";
+import { DanoExtra } from "./DanoExtra";
 import { datosDeTirada } from "./tirada";
 import { tipoDeMensaje } from "./tipo-de-mensaje";
 import { vozDePersonaje, type ConColor } from "../../../dominio/voces";
@@ -184,11 +185,18 @@ export function MensajeDelHilo({
         <p className="font-chrome text-chrome-sm text-muted">{linea}</p>
         {datos && <TiradaIncrustada t={datos} />}
         {p.type === "ABILITY_ROLL" && p.pendingDamage && (
-          <BandejaDeDano
-            campaignId={campaignId}
-            rollEventId={evento.id}
-            pendingDamage={p.pendingDamage}
-          />
+          <>
+            <DanoExtra
+              campaignId={campaignId}
+              rollEventId={evento.id}
+              pendingDamage={p.pendingDamage}
+            />
+            <BandejaDeDano
+              campaignId={campaignId}
+              rollEventId={evento.id}
+              pendingDamage={p.pendingDamage}
+            />
+          </>
         )}
         <Firma autor={autor} hora={hora} visibility={evento.visibility} />
       </li>

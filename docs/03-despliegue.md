@@ -149,6 +149,11 @@ en orden de peso:
    `apps/api/src/configure-app.ts`). Darle a la API su propio dominio obliga a encender
    `CORS_ORIGIN` y a mantener una lista de orígenes permitidos: más superficie, y una regla
    de arquitectura rota para no ganar nada.
+   **La API comprime sus propias respuestas** (`@fastify/compress` en `configure-app.ts`,
+   ola de arreglos de 3A.2: cuerpos > 1 KB en gzip/deflate/br si el cliente lo pide) porque
+   en local nadie comprimía y el PC del autor corta de forma intermitente las respuestas
+   HTTP locales por encima de 64 KB. nginx puede seguir comprimiendo: lo que ya llega con
+   `content-encoding` no se vuelve a comprimir.
 2. **Cambia el número de saltos de proxy.** Una API con dominio propio queda a **un** salto
    de Traefik, mientras que las peticiones que entran por nginx siguen a **dos**. Con las
    dos rutas vivas a la vez **ningún valor de `TRUST_PROXY` es correcto**, y el que sobre

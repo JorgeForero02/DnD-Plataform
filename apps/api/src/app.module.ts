@@ -32,6 +32,7 @@ import { CampaignItemsModule } from "./campaign-items/campaign-items.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { EncountersModule } from "./encounters/encounters.module";
 import { ActivitiesModule } from "./activities/activities.module";
+import { SpellbookModule } from "./spellbook/spellbook.module";
 import { UsersModule } from "./users/users.module";
 import { LiveModule } from "./live/live.module";
 import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.constants";
@@ -77,6 +78,7 @@ import { DEFAULT_RATE_LIMIT, RATE_LIMIT_WINDOW_MS } from "./common/rate-limit.co
     InventoryModule,
     EncountersModule,
     ActivitiesModule,
+    SpellbookModule,
   ],
   // El cubo es por usuario con sesión y por IP sin ella (ficha R1, D-CF-17); ver el guard.
   providers: [{ provide: APP_GUARD, useClass: UserOrIpThrottlerGuard }],

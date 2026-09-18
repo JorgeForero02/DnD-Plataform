@@ -112,10 +112,6 @@ No son sorpresas y no van a aparecer solas a mitad de partida; cada uno tiene su
   el nivel 6** (`muertoPorAgotamiento`) y en los niveles 1 y 3 **sugiere desventaja** en pruebas,
   ataques y salvaciones (`suggested-roll-mode.ts`); lo que sigue arbitrándose es aplicar esa
   desventaja cuando el jugador no acepta la sugerencia.
-- **Los conjuros y las aptitudes con nombre.** Existen los espacios de conjuro y el nombre de cada
-  aptitud de clase, y **no existe ni un hechizo**: un mago ve sus casillas vacías y un bárbaro de
-  nivel 5 pega igual que un guerrero. Es el **paso 3** —el catálogo—, no la fase 3. Mientras tanto
-  se juegan de palabra.
 - **Un jugador no puede curar a otro ni pedirle una salvación** (ficha `P2-4`). Está decidido cómo
   se arregla y aún no está construido: hoy lo hace el DM.
 - **El daño de una actividad de salvación no se aplica al responderla** (ficha `P2-5`). El servidor
@@ -191,6 +187,41 @@ merece la pena contar.
   las renueve.
 - **Subir de nivel.** El servidor te propone el cambio antes de aplicarlo: qué sube y cuánto.
   Puedes tirar los dados de golpe sin que se aplique nada hasta que confirmes.
+- **Tus conjuros.** Si tu clase lanza, la pestaña «Conjuros» de tu hoja tiene dos partes. **«Listos
+  para lanzar»** es lo que ya puedes usar hoy — un contador arriba dice cuántos llevas de cuántos
+  puedes («5 de 6 preparados · 2 de 3 trucos»). **«Disponibles»** es todo lo demás de tu clase, con
+  un buscador y filtros por nivel y por escuela para encontrar uno entre cientos; cada fila ofrece
+  el gesto que le toca según cómo prepare tu clase — preparar, aprender, conocer un truco, o (solo
+  el mago) añadir al libro antes de poder prepararlo. Un mago nace ya con su libro copiado — nadie
+  lo rellena a mano, y lo que aún no está copiado se ve marcado «Fuera del libro», nunca escondido.
+  Pulsa el nombre de cualquier conjuro para leer su descripción entera. Elegir y preparar es tuyo;
+  **el tope avisa cuando te pasas, pero no te lo impide** —ningún botón se apaga por eso—: la mesa
+  manda, y a veces una emergencia justifica preparar de más. Los trucos se conocen, no se preparan
+  cada día.
+- **Lanzar.** Cada conjuro «Listo para lanzar» tiene su botón «Lanzar». Si no necesita objetivo
+  y no puede pagarse con un espacio superior, se lanza al pulsarlo y ya está. Si pide uno o
+  varios objetivos, se abre una lista de a quién apuntar —en combate, primero el bando contrario y
+  también tú mismo salvo que el conjuro sea un ataque (que ya rechaza atacarte a ti mismo); fuera
+  de combate, tú mismo y quien más se sienta a la mesa—; con «un objetivo» elegirlo ya lanza, con
+  «varios» los marcas y pulsas «Lanzar sobre N». Si el conjuro puede pagarse con un espacio de más
+  nivel del que le toca, aparece «¿Con qué espacio?» con una opción por nivel que te queda —por
+  defecto, el suyo propio—. Lo que responde el servidor se ve ahí mismo: un aviso si algo se sale
+  de regla (lanzarlo sin tenerlo preparado, por ejemplo, se avisa y se lanza igual), o «sin
+  espacios — no se lanzó» si de verdad no había con qué pagarlo, y esta vez sí para el
+  lanzamiento. Con ataque o daño, la línea queda en el registro de la sesión igual que cualquier
+  otra tirada, y si impacta, el daño espera al DM en su bandeja como el de cualquier arma.
+- **Daño extra al impactar.** Si tu personaje tiene Ataque furtivo o Castigo divino, la tarjeta de
+  daño pendiente de un ataque con arma trae un botón «Añadir …» además de «Aplicar»: lo pulsas tú
+  (o el DM), se tira aparte y se suma a la misma tarjeta antes de que el DM la aplique — Castigo
+  divino gasta su propio espacio de conjuro al pulsarlo. El servidor no comprueba ventaja ni
+  adyacencia: cuenta y avisa, la mesa decide.
+- **Encantar.** *Arma mágica* (y solo ella, por ahora) se lanza igual que cualquier otro conjuro,
+  pero en vez de un objetivo elige una de tus armas equipadas: el bono entra en su cuadro de
+  ataques mientras dure el conjuro, con un chip junto al nombre del arma en tu inventario que
+  explica por qué.
+- **Rasgos y aptitudes.** Los que el catálogo trae con la prosa del SRD se abren con un clic, como
+  un conjuro; los que solo tienen nombre y nivel se quedan en una línea — no hay un triángulo que
+  desplegar si no hay nada que leer.
 
 ## Lo que verás y lo que no
 

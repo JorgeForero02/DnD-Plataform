@@ -1,6 +1,5 @@
 import type { CharacterSheetActivity } from "@dnd/shared";
 import { useResources, useUsarActividad } from "./hooks";
-import { nombreActividad } from "./vocabulario";
 import { Button } from "../../ui/Button";
 
 // Paso 2, tarea A11 — **el botón de usar una actividad.**
@@ -59,9 +58,7 @@ export function Actividades({
             key={actividad.key}
             className="flex flex-wrap items-center gap-s3 rounded-radius-sm border border-muted/40 bg-surface px-s3 py-s2"
           >
-            <span className="font-chrome text-chrome-sm text-text">
-              {nombreActividad(actividad.key)}
-            </span>
+            <span className="font-chrome text-chrome-sm text-text">{actividad.name}</span>
             {recurso && (
               <span className="font-data text-chrome-xs tabular-nums text-muted">
                 {/* **Nunca el marcador crudo** (importante I3): `current` de un recurso sin tope
@@ -83,7 +80,7 @@ export function Actividades({
                 disabled={usar.isPending}
                 onClick={() => usar.mutate({ activityKey: actividad.key })}
               >
-                Usar {nombreActividad(actividad.key)}
+                Usar {actividad.name}
               </Button>
             )}
             {/* **Importante I2.** `description` existe y cumple la regla de interfaz —dice qué

@@ -18,6 +18,8 @@ import { encountersKey, useCurrentEncounter } from "../encounters/hooks";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
 import { useMyRole } from "../campaigns/members";
+import { spellbookKey } from "../spellbook/hooks";
+import { inventoryKey } from "../inventory/hooks";
 
 // Tarea 2A.10. Claves jerárquicas bajo la raíz `["campaigns", campaignId, ...]`
 // (docs/04-convenciones.md): invalidar `sheetKey` invalida solo la hoja de este personaje, y
@@ -353,7 +355,7 @@ export function useUsarActividad(campaignId: string, characterId: string) {
   return useMutation({
     mutationFn: (vars: { activityKey: string; input?: UsarActividadInput }) =>
       characterSheetApi.usarActividad(campaignId, characterId, vars.activityKey, vars.input),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: resourcesKey(campaignId, characterId) });
       void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, characterId) });
       void qc.invalidateQueries({ queryKey: sheetKey(campaignId, characterId) });
@@ -366,6 +368,18 @@ export function useUsarActividad(campaignId: string, characterId: string) {
       // `sessionId`, que este gancho no tiene en su firma (mismo patrón que ya documenta
       // `encountersKey`, pensado para `features/live/canal.ts`).
       void qc.invalidateQueries({ queryKey: encountersKey(campaignId) });
+      // **Fix round 3 de la ola de 3A.2 — el libro, el hilo y el inventario se invalidan AQUÍ,
+      // en el gancho, no en el `onSuccess` del `mutate(...)` de `LanzarConjuro`.** Un callback
+      // pasado a `mutate` solo corre si el componente sigue montado cuando llega la respuesta;
+      // el del gancho corre siempre. Y son de cualquier actividad, no solo de un conjuro: un
+      // conjuro gasta `espacios` (la tarjeta «Espacios de conjuro» los lee de `useSpellbook`, no
+      // de `useResources`), toda actividad deja línea en el hilo, y encantar (`itemId`) cambia
+      // el inventario (m-4).
+      void qc.invalidateQueries({ queryKey: spellbookKey(campaignId, characterId) });
+      void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
+      if (vars.input?.itemId) {
+        void qc.invalidateQueries({ queryKey: inventoryKey(campaignId, characterId) });
+      }
     },
   });
 }

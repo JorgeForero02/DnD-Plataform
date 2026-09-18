@@ -1,13 +1,11 @@
 import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import type { SpellbookEntry, SpellbookResponse } from "@dnd/shared";
 import { NOMBRE_NIVEL_CONJURO } from "../../dominio/conjuros";
 import { NOMBRE_VEREDICTO } from "../character-sheet/vocabulario";
 import { useCharacters } from "../characters/hooks";
 import { useNpcs } from "../bestiario/hooks";
 import { useCombatientesDelEncuentro, useUsarActividad } from "../character-sheet/hooks";
-import { inventoryKey, useInventory } from "../inventory/hooks";
-import { spellbookKey } from "./hooks";
+import { useInventory } from "../inventory/hooks";
 import { Button } from "../../ui/Button";
 import { GrupoDeRadios } from "../../ui/GrupoDeRadios";
 import { PanelFlotante } from "../../ui/PanelFlotante";
@@ -72,7 +70,6 @@ export function LanzarConjuro({
   entrada: SpellbookEntry;
   espacios: SpellbookResponse["espacios"];
 }) {
-  const qc = useQueryClient();
   const usar = useUsarActividad(campaignId, characterId);
   const combate = useCombatientesDelEncuentro(campaignId, characterId);
   // Fuera de combate hacen falta los nombres de todo el mundo; en combate ya los trae
@@ -173,33 +170,17 @@ export function LanzarConjuro({
   };
 
   const lanzar = (objetivos?: string[], itemId?: string) => {
-    usar.mutate(
-      {
-        activityKey: `spell:${entrada.key}`,
-        input: {
-          ...(objetivos && objetivos.length > 0 ? { objetivos } : {}),
-          ...(itemId ? { itemId } : {}),
-          ...(mostrarSelectorDeEspacio ? { nivelDeEspacio: nivelEfectivo } : {}),
-        },
+    // Las invalidaciones (libro/espacios, hilo, inventario si `itemId`) viven en
+    // `useUsarActividad` (fix round 3 de la ola): un `onSuccess` pasado a `mutate` no corre si
+    // el componente ya no está montado cuando llega la respuesta.
+    usar.mutate({
+      activityKey: `spell:${entrada.key}`,
+      input: {
+        ...(objetivos && objetivos.length > 0 ? { objetivos } : {}),
+        ...(itemId ? { itemId } : {}),
+        ...(mostrarSelectorDeEspacio ? { nivelDeEspacio: nivelEfectivo } : {}),
       },
-      {
-        // `useUsarActividad` ya invalida recursos/condiciones/hoja/encuentro (cualquier
-        // actividad puede tocarlos); un conjuro además cambia SU PROPIO libro (el estado
-        // `SEMBRADO`/preparado no se toca, pero `espacios` sí, y la tarjeta «Espacios de
-        // conjuro» lee de ahí) y siempre deja una línea en el hilo — ninguna de las dos
-        // consultas la pide `useUsarActividad`, que no sabe que esta actividad es un conjuro.
-        // Y un encantamiento (`itemId`) cambia el INVENTARIO: sin invalidarlo, el chip «+1 ·
-        // Arma mágica» de la pestaña Objetos tardaba hasta 60 s en aparecer (ola de arreglos,
-        // m-4).
-        onSuccess: () => {
-          void qc.invalidateQueries({ queryKey: spellbookKey(campaignId, characterId) });
-          void qc.invalidateQueries({ queryKey: ["campaigns", campaignId, "events"] });
-          if (itemId) {
-            void qc.invalidateQueries({ queryKey: inventoryKey(campaignId, characterId) });
-          }
-        },
-      },
-    );
+    });
     cerrar();
   };
 

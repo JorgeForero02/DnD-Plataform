@@ -12,6 +12,7 @@ import * as bestiarioApi from "../../bestiario/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import * as inventoryApi from "../../inventory/api";
 import { inventoryKey } from "../../inventory/hooks";
+import { spellbookKey } from "../hooks";
 import type { InventoryRow } from "../../inventory/api";
 
 // Tarea 7 de 3A.2 («elegir, lanzar y usar») — el botón «Lanzar» de la pestaña Conjuros. Reusa el
@@ -246,6 +247,40 @@ describe("LanzarConjuro — sin objetivo y sin espacio superior", () => {
 
     await waitFor(() => expect(usar).toHaveBeenCalledWith("c1", "p-maga", "spell:light", {}));
     expect(screen.queryByRole("group")).not.toBeInTheDocument();
+  });
+});
+
+// Fix round 3 de la ola — las invalidaciones viven en `useUsarActividad` (el gancho), no en el
+// `onSuccess` del `mutate` de este componente: un callback de `mutate` no corre si el componente
+// ya no está montado cuando llega la respuesta, y la tarjeta «Espacios de conjuro» lee
+// `espacios` de `useSpellbook`. Se comprueba desmontando ANTES de que resuelva la petición.
+describe("LanzarConjuro — el libro y el hilo se invalidan aunque el componente se desmonte", () => {
+  it("fix round 3: tras lanzar, spellbookKey y el hilo se invalidan incluso con el componente desmontado", async () => {
+    let resolver: (v: Record<string, never>) => void = () => {};
+    vi.spyOn(characterSheetApi, "usarActividad").mockImplementation(
+      () => new Promise((res) => (resolver = res)),
+    );
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidar = vi.spyOn(qc, "invalidateQueries");
+    const vista = render(
+      <QueryClientProvider client={qc}>
+        <LanzarConjuro
+          campaignId="c1"
+          characterId="p-maga"
+          entrada={TRUCO}
+          espacios={SIN_ESPACIOS}
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Lanzar Luz" }));
+    await waitFor(() => expect(characterSheetApi.usarActividad).toHaveBeenCalled());
+    vista.unmount();
+    resolver({});
+
+    await waitFor(() =>
+      expect(invalidar).toHaveBeenCalledWith({ queryKey: spellbookKey("c1", "p-maga") }),
+    );
+    expect(invalidar).toHaveBeenCalledWith({ queryKey: ["campaigns", "c1", "events"] });
   });
 });
 

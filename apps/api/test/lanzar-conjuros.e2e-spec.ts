@@ -145,6 +145,17 @@ describe("Lanzar un conjuro por usar() — espacio por nivel, T18, la bandeja de
 
     const despues = await espacioDeNivel(1);
     expect(despues.current).toBe(antes.current - 1);
+    // Fix round 3 de la ola — lo que la tarjeta «Espacios de conjuro» de la pestaña lee de verdad
+    // es `GET …/spellbook` → `espacios` (no `useResources`): tiene que reflejar el descuento.
+    const libro = await request(s)
+      .get(`/campaigns/${campaignId}/characters/${magoId}/spellbook`)
+      .set("Authorization", `Bearer ${tokenMago}`);
+    expect(libro.status).toBe(200);
+    expect(libro.body.espacios.find((e: { nivel: number }) => e.nivel === 1)).toEqual({
+      nivel: 1,
+      actual: antes.current - 1,
+      max: antes.max,
+    });
 
     const actividadUsada = (await eventosDe("ACTIVITY_USED")).find(
       (e) => e.payload.actividadKey === "spell:magic-missile",

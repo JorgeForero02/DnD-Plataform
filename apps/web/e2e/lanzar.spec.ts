@@ -284,7 +284,13 @@ test("lanzar desde la pestaña Conjuros: objetivos, espacio superior y avisos, c
   await abrirPestana(cajon, "Conjuros");
 
   const listos = cajon.getByRole("region", { name: "listos para lanzar" });
-  await expect(listos.getByText("Proyectil mágico")).toBeVisible({ timeout: 10_000 });
+  // Fix round 3 de la ola — la fila es un `<details>` (rol `group`) cuyo nombre accesible
+  // concatena el nombre y la meta («Proyectil mágico Nivel 1 · Evocación»): se localiza por ese
+  // rol y el prefijo, no por un texto suelto que dependa de cómo se parta el `<summary>`. Y
+  // 15 s como el resto de esperas de red de este fichero: la lista del mago ronda los 67 KB.
+  await expect(listos.getByRole("group", { name: /^Proyectil mágico/ })).toBeVisible({
+    timeout: 15_000,
+  });
 
   // --- «Lanzar» Proyectil mágico: elige espacio de nivel 1 (el propio) y «Goblin» ---
   await listos.getByRole("button", { name: "Lanzar Proyectil mágico" }).click();

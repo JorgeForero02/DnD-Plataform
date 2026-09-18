@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AccionesResponse, SpellbookResponse } from "@dnd/shared";
+import type { AccionesResponse, Encounter, SpellbookResponse } from "@dnd/shared";
 import { BarraDeAcciones } from "../BarraDeAcciones";
 import { useObjetivoStore } from "../../sessions/objetivo.store";
 import * as actionsApi from "../api";
@@ -13,6 +13,7 @@ import * as charactersApi from "../../characters/api";
 import * as bestiarioApi from "../../bestiario/api";
 import * as inventoryApi from "../../inventory/api";
 import type { Character } from "../../characters/api";
+import type { Session } from "../../sessions/api";
 
 // Task 4 de 3A.3 (T22) — RTL de la barra de acciones. Mismo patrón de mocks que
 // `spellbook/__tests__/LanzarConjuro.test.tsx`: sesión/encuentro/personajes/PNJ/inventario en
@@ -37,6 +38,57 @@ const YO: Character = {
 };
 
 const ALIADO: Character = { ...YO, id: "p-aliado", name: "Klarg" };
+
+const SESION: Session = {
+  id: "s1",
+  campaignId: "c1",
+  title: "El asedio",
+  scheduledAt: null,
+  notes: null,
+  visibility: "PLAYERS",
+  createdAt: "2026-09-18T00:00:00.000Z",
+  startedAt: "2026-09-18T00:00:00.000Z",
+  endedAt: null,
+  status: "IN_PROGRESS",
+  attendance: null,
+};
+
+/** Un encuentro `ACTIVE` con la maga y Klarg combatiendo — lo que necesita `ControlDeAtaque`
+ *  para abrir su lista de objetivos anidada (fix round 2, ver el `it` de más abajo). */
+const ENCUENTRO: Encounter = {
+  id: "enc-1",
+  sessionId: "s1",
+  status: "ACTIVE",
+  round: 1,
+  activePosition: 0,
+  finalPropuesto: false,
+  combatants: [
+    {
+      id: "cb-maga",
+      characterId: "p-maga",
+      side: "ALLY",
+      position: 0,
+      initiative: 15,
+      actionUsed: false,
+      bonusUsed: false,
+      reactionUsed: false,
+      movementUsed: 0,
+      derrotado: false,
+    },
+    {
+      id: "cb-aliado",
+      characterId: "p-aliado",
+      side: "ENEMY",
+      position: 1,
+      initiative: 10,
+      actionUsed: false,
+      bonusUsed: false,
+      reactionUsed: false,
+      movementUsed: 0,
+      derrotado: false,
+    },
+  ],
+};
 
 function acciones(overrides: Partial<AccionesResponse["grupos"]> = {}): AccionesResponse {
   return {
@@ -207,6 +259,103 @@ describe("BarraDeAcciones — Conjuros abre LanzarConjuro con el objetivo del ch
     fireEvent.click(await screen.findByRole("button", { name: /^Conjuros: 1/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Lanzar Proyectil mágico" }));
     expect(await screen.findByRole("button", { name: "Lanzar sobre Klarg" })).toBeInTheDocument();
+  });
+
+  // Fix round 2 — el hallazgo del orquestador con un navegador real: dos `PanelFlotante`
+  // anidados (el `MenuQueSube` de «Conjuros» por fuera, el propio panel de `LanzarConjuro» por
+  // dentro), cada uno con su portal aparte a `document.body`. El «clic fuera» de CADA panel se
+  // detecta en `mousedown` (`ui/PanelFlotante.tsx`); sin la guarda de `data-panel-flotante`, el
+  // `mousedown` de «Lanzar sobre Klarg» —dentro del panel INTERNO— hacía que el panel EXTERNO se
+  // creyera clicado por fuera y cerrara (desmontando el árbol entero, botón incluido) ANTES de
+  // que su propio `click` llegara a disparar `mutate`. `fireEvent.click` por sí solo no lo
+  // reproduce —no dispara `mousedown`—, así que aquí se dispara la secuencia real: `mouseDown`
+  // y LUEGO `click`, sobre el mismo nodo.
+  it("pulsar «Lanzar sobre Klarg» llama a usarActividad — un panel anidado no cierra al padre", async () => {
+    useObjetivoStore.setState({ objetivo: { id: "p-aliado", nombre: "Klarg" } });
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Conjuros: 1/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Lanzar Proyectil mágico" }));
+    const lanzarSobre = await screen.findByRole("button", { name: "Lanzar sobre Klarg" });
+
+    fireEvent.mouseDown(lanzarSobre);
+    fireEvent.click(lanzarSobre);
+
+    await waitFor(() =>
+      expect(usar).toHaveBeenCalledWith(
+        "c1",
+        "p-maga",
+        "spell:magic-missile",
+        expect.objectContaining({ objetivos: ["p-aliado"] }),
+      ),
+    );
+  });
+});
+
+describe("BarraDeAcciones — Ataques: la lista de objetivos anidada tampoco se cierra sola", () => {
+  // Mismo defecto de fondo que CONJUROS (fix round 2): `ControlDeAtaque` abre su propia lista
+  // de combatientes en OTRO `PanelFlotante`, anidado dentro del `MenuQueSube` de «Ataques». Sin
+  // chip puesto, es el único camino de la barra que nunca pasó por la corrección de arriba en
+  // ningún otro `it` — se comprueba aparte.
+  it("sin chip, pulsar un combatiente de la lista llama a resolveAttack", async () => {
+    useObjetivoStore.setState({ objetivo: null });
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(SESION);
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue(ENCUENTRO);
+    const resolver = vi.spyOn(characterSheetApi, "resolveAttack").mockResolvedValue({
+      roll: {
+        revealed: true,
+        audience: "PUBLIC",
+        eventId: "e1",
+        expression: "1d20+5",
+        rolls: [13],
+        kept: [13],
+        dropped: [],
+        modifier: 5,
+        total: 18,
+        natural: "NONE",
+        outcome: "NO_DC",
+      },
+      verdict: "HIT",
+    });
+
+    montar(
+      acciones({
+        ATAQUES: [
+          {
+            key: "attack:dagger",
+            grupo: "ATAQUES",
+            name: "Daga",
+            coste: "ACTION",
+            mecanica: { tipo: "ataque" },
+            objetivos: "uno",
+            disponible: true,
+            motivos: [],
+          },
+        ],
+      }),
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Ataques: 1/ }));
+    // `combate.cargando` (`useCombatientesDelEncuentro`) apaga el botón mientras la sesión/el
+    // encuentro simulados siguen en vuelo — se espera a que se active de verdad, el mismo
+    // patrón que ya usa `TirarAtaqueBoton.test.tsx` (`abrirPanelYEsperarAtacar`), o el clic cae
+    // en una carrera y dispara `tirar.mutate` (sin objetivo) en vez de abrir la lista.
+    const botonAtacar = await screen.findByRole("button", { name: "Atacar con Daga" });
+    await waitFor(() => expect(botonAtacar).not.toHaveAttribute("aria-disabled", "true"));
+    fireEvent.click(botonAtacar);
+    const opcionKlarg = await screen.findByRole("option", { name: "Klarg" });
+
+    fireEvent.mouseDown(opcionKlarg);
+    fireEvent.click(opcionKlarg);
+
+    await waitFor(() =>
+      expect(resolver).toHaveBeenCalledWith(
+        "c1",
+        "p-maga",
+        "dagger",
+        expect.objectContaining({ targetCharacterId: "p-aliado" }),
+      ),
+    );
   });
 });
 

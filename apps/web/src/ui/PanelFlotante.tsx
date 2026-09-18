@@ -101,6 +101,17 @@ export function PanelFlotante({
     const onMouseDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (caja.current?.contains(t) || disparador.current?.contains(t)) return;
+      // **Fix round 2 de la barra de acciones (T22) — un panel anidado no es «fuera».**
+      // `MenuQueSube` (la lista de una fila del grupo) y el panel propio de `LanzarConjuro` (o
+      // la lista de objetivos de `TirarAtaqueBoton`) son dos `PanelFlotante` DISTINTOS, cada
+      // uno con su propio portal a `document.body` — así que el segundo NO es descendiente del
+      // primero en el DOM, aunque lo esté visualmente. Sin esta guarda, pulsar «Lanzar sobre 1»
+      // (dentro del panel interno) disparaba TAMBIÉN el `mousedown` del panel EXTERNO —el
+      // `<ul>` de la lista de conjuros—, que veía el clic fuera de SU `caja` y cerraba (y
+      // desmontaba) el árbol entero antes de que el `click` del botón llegara a disparar
+      // `mutate`: el lanzamiento nunca salía. `data-panel-flotante` marca la raíz de CUALQUIER
+      // panel; un `target` que cae dentro de uno —el que sea— no es un clic fuera de este.
+      if (t instanceof Element && t.closest("[data-panel-flotante]")) return;
       onCerrar();
     };
     document.addEventListener("mousedown", onMouseDown);

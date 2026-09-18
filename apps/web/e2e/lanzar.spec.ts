@@ -241,11 +241,22 @@ test("lanzar desde la pestaña Conjuros: objetivos, espacio superior y avisos, c
   await abrirLaMesa(maga, campaignId);
 
   // --- Entrar en combate: la maga y el goblin ---
+  //
+  // Fix round 2: la maga es «ajena» al DM (de la jugadora, no del DM que pulsa el diálogo), así
+  // que el encuentro nace `PREPARING` (`encounters.service.ts`, `ajenos.length > 0 ?
+  // "PREPARING" : "ACTIVE"`) — no `ACTIVE` directo como en `combate.spec.ts`, donde el mismo DM
+  // es dueño de los dos combatientes. Hace falta que la maga tire su propia iniciativa desde su
+  // navegador para que el encuentro pase a `ACTIVE` — mismo camino que
+  // `iniciativa-en-vivo.spec.ts` y `puerta-de-efectos.spec.ts` (Kara, también «ajena»).
   await dm.getByRole("button", { name: "Entrar en combate" }).click();
   const dialogoDeCombate = dm.getByRole("dialog", { name: "Entrar en combate" });
   await dialogoDeCombate.getByRole("checkbox", { name: /Seraphine/ }).click();
   await dialogoDeCombate.getByRole("checkbox", { name: /Goblin/ }).click();
   await dialogoDeCombate.getByRole("button", { name: "Pedir iniciativa" }).click();
+
+  await expect(maga.getByText("EMPIEZA EL COMBATE")).toBeVisible({ timeout: 15_000 });
+  await maga.getByRole("button", { name: "Tirar iniciativa" }).click();
+
   await expect(dm.getByRole("region", { name: "Orden de turnos" })).toBeVisible({
     timeout: 15_000,
   });

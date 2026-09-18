@@ -53,26 +53,37 @@ export function FilaDeConjuro({
   return (
     <li className="border-b border-muted py-s2 last:border-b-0">
       <details onToggle={(e) => setAbierto((e.target as HTMLDetailsElement).open)}>
-        <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-s3 gap-y-1 [&::-webkit-details-marker]:hidden">
-          <span className="font-chrome text-chrome-sm text-text hover:text-accent-text hover:underline">
+        {/* **Una sola línea a ≥ 1024 px (`lg:`)** (regla vinculante de interfaz,
+            `docs/04-convenciones.md` §maquetación) — arreglo previo a la Task 7 (paso 0b): a
+            1280 px cada fila envolvía su propio botón a una segunda línea, doblando la altura de
+            «Disponibles», y `jsdom` no lo había visto porque una suite sin navegador no maqueta.
+            `lg:flex-nowrap` en el `<summary>` para que nada de esto envuelva por su cuenta; el
+            nombre lleva `min-w-0 flex-1 truncate` (el `min-w-0` es lo que deja que un hijo `flex`
+            se encoja por debajo de su contenido — sin él, `truncate` no tiene nada que recortar,
+            y `flex-1` es lo que ya empuja el resto a la derecha, sin un `<span className="flex-1"
+            />` de relleno aparte) y los chips llevan `shrink-0 whitespace-nowrap` para no
+            partirse a media palabra. A 390 px sí puede envolver (`flex-wrap` por defecto): nadie
+            pidió una sola línea en móvil, y forzarla ahí habría exigido recortar el nombre a la
+            fuerza. */}
+        <summary className="flex flex-wrap cursor-pointer list-none items-baseline gap-x-s3 gap-y-1 lg:flex-nowrap [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 flex-1 truncate font-chrome text-chrome-sm text-text hover:text-accent-text hover:underline">
             {entrada.nameEs}
           </span>
-          <span className="flex-1" />
-          <span className="whitespace-nowrap font-chrome text-chrome-xs text-muted">
+          <span className="shrink-0 whitespace-nowrap font-chrome text-chrome-xs text-muted">
             {NOMBRE_NIVEL_CONJURO(entrada.level)} · {NOMBRE_ESCUELA[entrada.school]}
           </span>
           {entrada.concentration && (
-            <span className="inline-flex items-center rounded-radius-sm border border-muted px-s2 py-0.5 font-chrome text-chrome-xs text-muted">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-radius-sm border border-muted px-s2 py-0.5 font-chrome text-chrome-xs text-muted">
               Concentración
             </span>
           )}
           {entrada.ritual && (
-            <span className="inline-flex items-center rounded-radius-sm border border-muted px-s2 py-0.5 font-chrome text-chrome-xs text-muted">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-radius-sm border border-muted px-s2 py-0.5 font-chrome text-chrome-xs text-muted">
               Ritual
             </span>
           )}
           {fueraDelLibro && (
-            <span className="inline-flex items-center rounded-radius-sm border border-muted px-s2 py-0.5 font-chrome text-chrome-xs text-muted">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-radius-sm border border-muted px-s2 py-0.5 font-chrome text-chrome-xs text-muted">
               Fuera del libro
             </span>
           )}

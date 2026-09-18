@@ -51,6 +51,19 @@ async function comoLaSesion(page: Page) {
  * — fijar la primera clase es lo que dispara `sembrarLibro` (Task 3, D-CF-125), así que el
  * personaje llega a la pantalla con sus seis conjuros de nivel 1 ya `EN_EL_LIBRO` sin que nadie
  * los pida uno a uno.
+ *
+ * **Arreglo previo a la Task 7 (paso 0a del encargo).** Nace nivel 1 (para que `sembrarLibro`
+ * siga sembrando solo los seis de nivel 1) y el DM —la misma cuenta, dueña de su propia
+ * campaña— lo sube a **nivel 3** con un segundo `PATCH` sobre `characters/:id` (D-CF-66: el
+ * nivel lo fija el DM, nunca el propio `/sheet`, ver `characters.service.ts`). Con INT 16
+ * (mod +3) el tope de preparados es `mod + nivel` (`topeDePreparados`, SRD *Preparing and
+ * Casting Spells*): a nivel 1 daba 4, y este mismo fichero llevaba desde la Task 6 afirmando
+ * «de 6 preparados» — un número que en realidad correspondía al tamaño del libro
+ * (`tamanoDelLibro`), no al tope de preparados, y que solo coincidía por descuido. A nivel 3 el
+ * tope de verdad es `3 + 3 = 6`, así que las aserciones «de 6 preparados» de más abajo pasan a
+ * ser ciertas sin tocar su texto; lo que sí cambia es el tamaño del libro
+ * (`6 + 2×(nivel-1) = 10` a nivel 3), y el nivel 3 además abre espacios de nivel 2 — el mismo
+ * personaje pensado para poder probar el selector de espacio superior si hiciera falta.
  */
 async function montarMaga(page: Page) {
   const headers = await comoLaSesion(page);
@@ -83,6 +96,12 @@ async function montarMaga(page: Page) {
   );
   expect(hoja.ok()).toBe(true);
 
+  const subida = await page.request.patch(
+    `/api/campaigns/${campaignId}/characters/${characterId}`,
+    { headers, data: { level: 3 } },
+  );
+  expect(subida.ok()).toBe(true);
+
   return { campaignId, characterId };
 }
 
@@ -106,7 +125,8 @@ test("Conjuros: 6 de 6 en el libro, preparar dos, conocer un truco, y «Fuera de
   // El mago nace con su libro sembrado: los seis conjuros de nivel 1 EN_EL_LIBRO, ninguno
   // preparado todavía. El contador vive en la cabecera de «Listos para lanzar»
   // (`LibroDeConjuros.tsx`): es la misma tarjeta que enseña, debajo, lo que ya se puede lanzar.
-  await expect(listos.getByText("6 de 6 en el libro")).toBeVisible();
+  // El libro cabe hasta 10 a nivel 3 (`tamanoDelLibro`, paso 0a): siguen siendo 6 copiadas.
+  await expect(listos.getByText("6 de 10 en el libro")).toBeVisible();
 
   // Preparar «Proyectil mágico» y «Escudo» desde «Disponibles» — las dos van al mago sembrado.
   await disponibles
@@ -142,10 +162,19 @@ test("Conjuros: 6 de 6 en el libro, preparar dos, conocer un truco, y «Fuera de
   await expect(filaBola.getByRole("button", { name: "Añadir al libro" })).toBeVisible();
   await expect(disponibles.locator("li")).toHaveCount(1);
 
+  // **Arreglo previo a la Task 7 (paso 0b), medido en el navegador, no en `jsdom`.** A 1280 px
+  // la fila de «Bola de fuego» (nombre + nivel·escuela + «Fuera del libro» + «Añadir al libro»)
+  // tiene que caber en una sola línea (`FilaDeConjuro.tsx`, regla vinculante de interfaz): la
+  // altura de una fila de una sola línea con este tipo de letra ronda los 24-32 px, así que 48 px
+  // deja margen sin dejar pasar la regresión de dos líneas que sí medía el doble.
+  const cajaBola = await filaBola.boundingBox();
+  expect(cajaBola?.height ?? Infinity).toBeLessThanOrEqual(48);
+
   await page.screenshot({ path: "e2e-resultados/conjuros-1280.png", fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(pestana).toBeVisible();
   await expect(disponibles.getByText("1 de 3 trucos")).toBeVisible();
+  // A 390 px SÍ puede envolver — nadie pidió una sola línea en móvil, así que no hay tope aquí.
   await page.screenshot({ path: "e2e-resultados/conjuros-390.png", fullPage: true });
 });

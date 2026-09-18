@@ -64,11 +64,20 @@ export function LanzarConjuro({
   characterId,
   entrada,
   espacios,
+  objetivoInicial,
 }: {
   campaignId: string;
   characterId: string;
   entrada: SpellbookEntry;
   espacios: SpellbookResponse["espacios"];
+  /**
+   * Task 4 de 3A.3 (T22) — **el chip de la barra de acciones** (`objetivo.store.ts`). Con un
+   * conjuro de `objetivos: "uno"` y un objetivo ya apuntado, el panel no vuelve a preguntar «a
+   * quién»: enseña un único botón «Lanzar sobre <nombre>» junto al selector de espacio, si lo
+   * hay. Sin `objetivoInicial` (el uso de siempre, desde la pestaña Conjuros) el panel sigue
+   * mostrando la lista entera de objetivos, sin cambios.
+   */
+  objetivoInicial?: string;
 }) {
   const usar = useUsarActividad(campaignId, characterId);
   const combate = useCombatientesDelEncuentro(campaignId, characterId);
@@ -90,7 +99,12 @@ export function LanzarConjuro({
   );
 
   const [abierto, setAbierto] = useState(false);
-  const [objetivosVarios, setObjetivosVarios] = useState<ReadonlySet<string>>(new Set());
+  // El chip pre-marca la casilla en «varios» (Descarga de fuego reparte, pero el chip sigue
+  // siendo un punto de partida razonable) — la mesa puede desmarcarlo y marcar otros, es solo el
+  // valor inicial. `useState(() => …)`, no un valor sembrado en cada render.
+  const [objetivosVarios, setObjetivosVarios] = useState<ReadonlySet<string>>(() =>
+    objetivoInicial ? new Set([objetivoInicial]) : new Set(),
+  );
   const disparador = useRef<HTMLButtonElement>(null);
 
   const nivelesDisponibles = espacios
@@ -279,29 +293,51 @@ export function LanzarConjuro({
               </ul>
             )}
 
-            {entrada.objetivos === "uno" && (
-              <ul
-                role="listbox"
-                aria-label={`Objetivo de ${entrada.nameEs}`}
-                className="flex flex-col gap-1"
-              >
-                {objetivosDisponibles.map((o) => (
-                  <li key={o.id} role="presentation">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      role="option"
-                      aria-selected="false"
-                      disabled={usar.isPending}
-                      onClick={() => lanzar([o.id])}
-                      className="!flex w-full justify-start text-left font-normal hover:bg-[color:var(--accent-tint)]"
-                    >
-                      {o.nombre}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* Task 4 de 3A.3 — con un objetivo ya apuntado desde el chip, la lista entera sobra:
+                un único botón confirma sobre ÉL. Si el chip apunta a alguien que esta pantalla
+                no ofrece como objetivo válido (no está en `objetivosDisponibles` — un caso raro,
+                p. ej. el chip quedó apuntando a alguien fuera de combate), se cae a la lista de
+                siempre en vez de mandar un `id` que el servidor no reconozca. */}
+            {entrada.objetivos === "uno" &&
+              objetivoInicial &&
+              objetivosDisponibles.some((o) => o.id === objetivoInicial) && (
+                <div className="mt-s2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={usar.isPending}
+                    onClick={() => lanzar([objetivoInicial])}
+                  >
+                    Lanzar sobre{" "}
+                    {objetivosDisponibles.find((o) => o.id === objetivoInicial)?.nombre}
+                  </Button>
+                </div>
+              )}
+
+            {entrada.objetivos === "uno" &&
+              !(objetivoInicial && objetivosDisponibles.some((o) => o.id === objetivoInicial)) && (
+                <ul
+                  role="listbox"
+                  aria-label={`Objetivo de ${entrada.nameEs}`}
+                  className="flex flex-col gap-1"
+                >
+                  {objetivosDisponibles.map((o) => (
+                    <li key={o.id} role="presentation">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        role="option"
+                        aria-selected="false"
+                        disabled={usar.isPending}
+                        onClick={() => lanzar([o.id])}
+                        className="!flex w-full justify-start text-left font-normal hover:bg-[color:var(--accent-tint)]"
+                      >
+                        {o.nombre}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
             {entrada.objetivos === "varios" && (
               <>

@@ -10,6 +10,8 @@ import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./accionesDeBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
 import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
+import { useObjetivoStore } from "../objetivo.store";
+import { alPulsarLaTarjeta } from "./apuntar";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -157,11 +159,31 @@ export function FichaDePnj({
     combateEnMarcha,
   });
 
+  // Task 4 de 3A.3 (T22) — mismo gesto que `FichaDeElenco`: la tarjeta entera apunta. Un PNJ es
+  // precisamente el objetivo más habitual de un ataque o un conjuro, así que esto no es simetría
+  // por capricho — es el caso que más se va a usar.
+  const objetivo = useObjetivoStore((s) => s.objetivo);
+  const apuntar = useObjetivoStore((s) => s.apuntar);
+  const apuntado = objetivo?.id === pnj.id;
+
   return (
     <li
+      role="button"
+      tabIndex={0}
+      aria-pressed={apuntado}
+      aria-label={`Apuntar a ${pnj.name}`}
+      onClick={(e) => alPulsarLaTarjeta(e, () => apuntar(pnj.id, pnj.name))}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        alPulsarLaTarjeta(e, () => {
+          e.preventDefault();
+          apuntar(pnj.id, pnj.name);
+        });
+      }}
       className={[
-        "relative rounded-radius-md border border-muted bg-bg p-s2",
+        "relative cursor-pointer rounded-radius-md border border-muted bg-bg p-s2",
         turnoActual ? "ring-2 ring-warning" : "",
+        apuntado ? "ring-2 ring-accent" : "",
         efectos.clase,
         // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.
         actual === 0 ? "fx-tarjeta-caido" : "",

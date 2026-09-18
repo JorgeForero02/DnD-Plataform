@@ -5,6 +5,8 @@ import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
 import { vozDePersonaje } from "../../../dominio/voces";
 import { AyudarA } from "./AyudarA";
+import { useObjetivoStore } from "../objetivo.store";
+import { alPulsarLaTarjeta } from "./apuntar";
 import {
   useCharacterSheet,
   useChangeHp,
@@ -192,8 +194,29 @@ export function FichaDeElenco({
     combateEnMarcha,
   });
 
+  // Task 4 de 3A.3 (T22) — apuntar desde el elenco. **La tarjeta entera es el gesto**, no un
+  // botón nuevo: `role="button"` + `tabIndex`/`onKeyDown` la hacen alcanzable por teclado sin
+  // tocar el orden de tabulación de sus mandos internos (siguen siendo los primeros, porque
+  // vienen antes en el DOM). `aria-pressed` es el propio de un botón conmutador (patrón WAI-ARIA
+  // "Button (Toggle)"): esta tarjeta es o no es el objetivo, exactamente ese binario.
+  const objetivo = useObjetivoStore((s) => s.objetivo);
+  const apuntar = useObjetivoStore((s) => s.apuntar);
+  const apuntado = objetivo?.id === personaje.id;
+
   return (
     <li
+      role="button"
+      tabIndex={0}
+      aria-pressed={apuntado}
+      aria-label={`Apuntar a ${personaje.name}`}
+      onClick={(e) => alPulsarLaTarjeta(e, () => apuntar(personaje.id, personaje.name))}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        alPulsarLaTarjeta(e, () => {
+          e.preventDefault();
+          apuntar(personaje.id, personaje.name);
+        });
+      }}
       className={[
         // **Dos desviaciones declaradas de la maqueta, y son la misma decisión.** La maqueta
         // pone la tarjeta en `bg-surface` sobre el fondo de la página; aquí el elenco vive
@@ -202,11 +225,14 @@ export function FichaDeElenco({
         // `bg-bg` dentro de un panel claro— y por lo mismo el filete se queda opaco en vez de
         // los `border-accent/60` y `border-muted/20` de la maqueta, que sobre este fondo
         // apenas se ven. **Está preguntado al autor**; el radio sí es el de la maqueta.
-        "relative rounded-radius-md bg-bg",
+        "relative cursor-pointer rounded-radius-md bg-bg",
         destacado ? "border border-accent p-s3" : "border border-muted p-s2",
         // El anillo del turno. **No es el único portador**: el rótulo «Su turno» de arriba dice
         // lo mismo con palabras, igual que la tira de iniciativa lleva su «Le toca».
         turnoActual ? "ring-2 ring-warning" : "",
+        // El objetivo apuntado, con su propio anillo — de acento, para no confundirse con el
+        // aro ámbar del turno (los dos pueden coincidir: apuntas a quien le toca jugar).
+        apuntado ? "ring-2 ring-accent" : "",
         efectos.clase,
         // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.
         actual === 0 ? "fx-tarjeta-caido" : "",

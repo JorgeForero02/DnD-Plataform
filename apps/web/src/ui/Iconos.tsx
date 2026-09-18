@@ -530,3 +530,31 @@ export function IconoMenu({ className }: IconoProps) {
     </Marco>
   );
 }
+
+/**
+ * Task 4 de 3A.3 (T22) — los dos que faltaban para los cinco botones de la barra de acciones.
+ * Ataques reutiliza `IconoD20` (tirar es lo que hace un ataque), Conjuros ya tiene su estrella
+ * (`IconoConjuro`) y Objetos su frasco (`IconoPocion`) — **APTITUDES** y **BASICAS** («Esquivar,
+ * ayudar…») no tenían ningún dibujo que les sentara, así que son los dos nuevos de esta tarea.
+ */
+
+/** Aptitud: el destello de un rasgo especial — ni la estrella de un conjuro ni la espada de un
+ *  ataque, un rombo partido en cuatro puntas para no repetir la silueta de `IconoConjuro`. */
+export function IconoAptitud({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="aptitud">
+      <path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" />
+    </Marco>
+  );
+}
+
+/** Básicas («Esquivar, ayudar…»): las huellas del gesto de mesa que no es ni ataque ni conjuro. */
+export function IconoBasica({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="basica">
+      <ellipse cx="9" cy="8.5" rx="2" ry="2.7" />
+      <ellipse cx="15.5" cy="13" rx="2" ry="2.7" />
+      <path d="M9 11.2v2M15.5 15.7v2" />
+    </Marco>
+  );
+}

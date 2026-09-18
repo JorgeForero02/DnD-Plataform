@@ -121,7 +121,16 @@ export function useConsumeInventoryItem(campaignId: string, characterId: string)
   return useMutation({
     mutationFn: ({ rowId, amount }: { rowId: string; amount?: number }) =>
       inventoryApi.consumeInventoryItem(campaignId, characterId, rowId, amount),
-    onSuccess: () => invalidarTrasCambio(qc, campaignId, characterId),
+    onSuccess: () => {
+      invalidarTrasCambio(qc, campaignId, characterId);
+      // Task 4 de 3A.3 (T22) — cada fila de OBJETOS en la barra es `item:<rowId>`; beber una
+      // poción cambia su `recurso.actual` (o la borra, si era la última). Clave literal, mismo
+      // motivo que `character-sheet/hooks.ts` (evita un ciclo entre `features/inventory` y
+      // `features/actions`, que ya importa de character-sheet).
+      void qc.invalidateQueries({
+        queryKey: ["campaigns", campaignId, "characters", characterId, "actions"],
+      });
+    },
   });
 }
 

@@ -26,6 +26,7 @@ import type { Character } from "../characters/api";
 import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
+import { BarraDeAcciones } from "../actions/BarraDeAcciones";
 
 // **La mesa. Un compositor, y nada más.**
 //
@@ -252,28 +253,48 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
                 `CajonDelRegistro.tsx` (`max-h-[32vh]` desplegado): la fila `auto` se mide por el
                 tamaño YA acotado de esa sección, así que nunca vuelve a comerse la fila `1fr`
                 del marco. Ver el comentario de `CajonDelRegistro.tsx` para el porqué completo. */}
-            {campana?.boardRoomUrl ? (
-              <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
-                <MarcoDelTablero url={campana.boardRoomUrl} />
-                <CajonDelRegistro eventos={eventos}>
-                  <HiloDeSesion
+            {/* **Task 4 de 3A.3 (T22) — la barra de acciones va debajo del centro**, en su
+                propia fila `shrink-0` de esta misma columna. Envuelve lo que ya había (el
+                tablero+registro con sala, o el hilo a pelo sin ella) en una rejilla de dos
+                filas — la de arriba `1fr` para que el contenido de siempre siga ocupando lo que
+                hay, la de abajo `auto` para la barra, que no crece ni scrollea. **Solo con
+                `miPersonaje`**: el DM sin personaje propio, o un asistente sin ficha, no tiene
+                ninguna acción que gastar — la Task 5 es quien va a reordenar estas columnas
+                (`modo`/`onModo`, ya presentes en este fichero desde la Task 3, sin usar
+                todavía); esta tarea solo añade la fila donde ya estaba el centro. */}
+            <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
+              {campana?.boardRoomUrl ? (
+                <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-s3">
+                  <MarcoDelTablero url={campana.boardRoomUrl} />
+                  <CajonDelRegistro eventos={eventos}>
+                    <HiloDeSesion
+                      campaignId={campaignId}
+                      eventos={eventos}
+                      esDm={esDm}
+                      comoUsuario={comoUsuario}
+                      pnjs={pnjs ?? []}
+                    />
+                  </CajonDelRegistro>
+                </div>
+              ) : (
+                <HiloDeSesion
+                  campaignId={campaignId}
+                  eventos={eventos}
+                  esDm={esDm}
+                  comoUsuario={comoUsuario}
+                  pnjs={pnjs ?? []}
+                />
+              )}
+              {miPersonaje && (
+                <div className="shrink-0">
+                  <BarraDeAcciones
                     campaignId={campaignId}
-                    eventos={eventos}
-                    esDm={esDm}
-                    comoUsuario={comoUsuario}
-                    pnjs={pnjs ?? []}
+                    characterId={miPersonaje.id}
+                    nombre={miPersonaje.name}
                   />
-                </CajonDelRegistro>
-              </div>
-            ) : (
-              <HiloDeSesion
-                campaignId={campaignId}
-                eventos={eventos}
-                esDm={esDm}
-                comoUsuario={comoUsuario}
-                pnjs={pnjs ?? []}
-              />
-            )}
+                </div>
+              )}
+            </div>
 
             {esDm && (
               <aside className="scroll-quiet flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3">

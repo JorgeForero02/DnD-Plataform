@@ -256,6 +256,12 @@ export function useHelp(campaignId: string, helperCharacterId: string) {
     onSuccess: (_r, vars) => {
       void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, vars.targetCharacterId) });
       void qc.invalidateQueries({ queryKey: sheetKey(campaignId, vars.targetCharacterId) });
+      // Task 4 de 3A.3 — Ayudar gasta la acción del ayudante (docs/09-jugar.md), y `basic:help`
+      // vive en `grupos.BASICAS` de la barra de ESE personaje, no del ayudado. Misma clave
+      // literal que el resto de este fichero — ver el comentario de `useUsarActividad`.
+      void qc.invalidateQueries({
+        queryKey: ["campaigns", campaignId, "characters", helperCharacterId, "actions"],
+      });
     },
   });
 }
@@ -380,6 +386,17 @@ export function useUsarActividad(campaignId: string, characterId: string) {
       if (vars.input?.itemId) {
         void qc.invalidateQueries({ queryKey: inventoryKey(campaignId, characterId) });
       }
+      // **Task 4 de 3A.3 (T22) — y la barra de acciones.** `usar()` es la puerta que gasta la
+      // economía del turno (`gastarActivacion`, más arriba) para CONJUROS, APTITUDES y BASICAS:
+      // sin esto, `GET …/actions` seguía diciendo «disponible» hasta el siguiente sondeo de
+      // `useAcciones` (`SONDEO_DE_MESA_MS`), la misma contradicción de pantalla que ya documenta
+      // `invalidarRegistro` para los PG. La clave se escribe literal, no importada de
+      // `features/actions/hooks.ts` (`actionsKey`): esa hoja ya importa `SONDEO_DE_MESA_MS` DE
+      // AQUÍ, y una importación de vuelta cerraría un ciclo entre los dos módulos — la forma es
+      // idéntica a la que declara `actionsKey`, y una prueba lo comprueba (`hooks.test.ts`).
+      void qc.invalidateQueries({
+        queryKey: ["campaigns", campaignId, "characters", characterId, "actions"],
+      });
     },
   });
 }

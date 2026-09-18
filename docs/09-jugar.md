@@ -167,6 +167,27 @@ merece la pena contar.
 - **Ayudar cuesta tu acción del turno.** Es la regla del manual —Ayudar es una acción— y desde el
   2026-09-07 la mesa la cobra: se descuenta y se anuncia. **Fuera de combate no cuesta nada**,
   porque sin turnos no hay economía que gastar.
+- **La barra de acciones**, bajo el marco de la mesa (con tablero o sin él, y solo si tienes
+  personaje propio en la campaña): cinco menús que suben desde ella —**Ataques**, **Conjuros**,
+  **Aptitudes**, **Objetos** y **Esquivar, ayudar…**— con lo que de verdad puedes hacer ahora
+  mismo, lo compone el servidor. Cada fila trae su coste, lo que gasta y por qué está en gris si
+  lo está —el mismo motivo que te daría el botón si lo intentaras de todos modos—. **«Esquivar,
+  ayudar…»** son las ocho básicas del combate del manual (Esquivar, Ayudar, Esconderse,
+  Desengancharse, Correr, Prepararse, Buscar, Usar un objeto); fuera de combate no tienen coste
+  que gastar y siguen disponibles igual, salvo que necesiten un objetivo que solo existe en
+  pelea. **Ayudar** abre el mismo selector de destino que ya tenías en tu tarjeta del elenco —no
+  es una segunda mecánica—.
+  - **El chip de objetivo** («apuntas a…») es un atajo de mesa: pulsa la tarjeta de cualquiera
+    en «En la mesa» —la tuya, la de otro jugador, un PNJ— y la barra recuerda a quién estás
+    mirando hasta que pulses la X del chip o apuntes a otro. Con un conjuro o un ataque que
+    piden un solo objetivo, el chip dispara directo, sin volver a preguntar; sin chip, se abre
+    la lista de siempre.
+  - **Ataques** usa exactamente el mismo flujo que el dado de tu cuadro de ataques: con
+    objetivo, resuelve contra su CA; sin objetivo y en combate, te deja elegir; fuera de combate,
+    tira suelto.
+  - **Conjuros** abre el mismo panel «Lanzar» de tu hoja, con el objetivo ya puesto si tienes
+    chip. **Objetos** bebe o usa la fila de tu inventario. **Aptitudes** usa la misma puerta que
+    tus rasgos y dones.
 - **La economía del turno es estado que se gasta al actuar, no un botón que tú aprietas**
   (D-CF-145). Sobre la tira de iniciativa ves tres marcas —acción, acción adicional, reacción— y
   tus pies de movimiento; atacar, lanzar un conjuro o usar una actividad las gasta solas, por la

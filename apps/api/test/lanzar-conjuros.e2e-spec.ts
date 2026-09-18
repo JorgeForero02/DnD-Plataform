@@ -149,7 +149,8 @@ describe("Lanzar un conjuro por usar() — espacio por nivel, T18, la bandeja de
     // es `GET …/spellbook` → `espacios` (no `useResources`): tiene que reflejar el descuento.
     const libro = await request(s)
       .get(`/campaigns/${campaignId}/characters/${magoId}/spellbook`)
-      .set("Authorization", `Bearer ${tokenMago}`);
+      .set("Authorization", `Bearer ${tokenMago}`)
+      .set("Accept-Encoding", "gzip");
     expect(libro.status).toBe(200);
     expect(libro.body.espacios.find((e: { nivel: number }) => e.nivel === 1)).toEqual({
       nivel: 1,

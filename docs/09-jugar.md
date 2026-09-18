@@ -200,16 +200,25 @@ merece la pena contar.
   cada día.
 - **Lanzar.** Cada conjuro «Listo para lanzar» tiene su botón «Lanzar». Si no necesita objetivo
   y no puede pagarse con un espacio superior, se lanza al pulsarlo y ya está. Si pide uno o
-  varios objetivos, se abre una lista de a quién apuntar —en combate, primero el bando contrario;
-  fuera de combate, tú mismo y quien más se sienta a la mesa—; con «un objetivo» elegirlo ya
-  lanza, con «varios» los marcas y pulsas «Lanzar sobre N». Si el conjuro puede pagarse con un
-  espacio de más nivel del que le toca, aparece «¿Con qué espacio?» con una opción por nivel que
-  te queda —por defecto, el suyo propio—. Lo que responde el servidor se ve ahí mismo: un aviso
-  si algo se sale de regla (lanzarlo sin tenerlo preparado, por ejemplo, se avisa y se lanza
-  igual), o «sin espacios — no se lanzó» si de verdad no había con qué pagarlo, y esta vez sí para
-  el lanzamiento. Con ataque o daño, la línea queda en el registro de la sesión igual que
-  cualquier otra tirada, y si impacta, el daño espera al DM en su bandeja como el de cualquier
-  arma.
+  varios objetivos, se abre una lista de a quién apuntar —en combate, primero el bando contrario y
+  también tú mismo salvo que el conjuro sea un ataque (que ya rechaza atacarte a ti mismo); fuera
+  de combate, tú mismo y quien más se sienta a la mesa—; con «un objetivo» elegirlo ya lanza, con
+  «varios» los marcas y pulsas «Lanzar sobre N». Si el conjuro puede pagarse con un espacio de más
+  nivel del que le toca, aparece «¿Con qué espacio?» con una opción por nivel que te queda —por
+  defecto, el suyo propio—. Lo que responde el servidor se ve ahí mismo: un aviso si algo se sale
+  de regla (lanzarlo sin tenerlo preparado, por ejemplo, se avisa y se lanza igual), o «sin
+  espacios — no se lanzó» si de verdad no había con qué pagarlo, y esta vez sí para el
+  lanzamiento. Con ataque o daño, la línea queda en el registro de la sesión igual que cualquier
+  otra tirada, y si impacta, el daño espera al DM en su bandeja como el de cualquier arma.
+- **Daño extra al impactar.** Si tu personaje tiene Ataque furtivo o Castigo divino, la tarjeta de
+  daño pendiente de un ataque con arma trae un botón «Añadir …» además de «Aplicar»: lo pulsas tú
+  (o el DM), se tira aparte y se suma a la misma tarjeta antes de que el DM la aplique — Castigo
+  divino gasta su propio espacio de conjuro al pulsarlo. El servidor no comprueba ventaja ni
+  adyacencia: cuenta y avisa, la mesa decide.
+- **Encantar.** *Arma mágica* (y solo ella, por ahora) se lanza igual que cualquier otro conjuro,
+  pero en vez de un objetivo elige una de tus armas equipadas: el bono entra en su cuadro de
+  ataques mientras dure el conjuro, con un chip junto al nombre del arma en tu inventario que
+  explica por qué.
 - **Rasgos y aptitudes.** Los que el catálogo trae con la prosa del SRD se abren con un clic, como
   un conjuro; los que solo tienen nombre y nivel se quedan en una línea — no hay un triángulo que
   desplegar si no hay nada que leer.

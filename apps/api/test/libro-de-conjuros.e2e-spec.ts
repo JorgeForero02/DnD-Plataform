@@ -129,7 +129,8 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook`)
-      .set("Authorization", `Bearer ${tokenA}`);
+      .set("Authorization", `Bearer ${tokenA}`)
+      .set("Accept-Encoding", "gzip");
     expect(res.status).toBe(200);
     expect(res.body.modelo).toBe("LIBRO");
     const enLibro = res.body.entradas.filter(
@@ -143,7 +144,8 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook`)
-      .set("Authorization", `Bearer ${tokenA}`);
+      .set("Authorization", `Bearer ${tokenA}`)
+      .set("Accept-Encoding", "gzip");
     expect(res.status).toBe(200);
     expect(res.body.entradas.length).toBeGreaterThan(0);
     for (const entrada of res.body.entradas) {
@@ -175,7 +177,8 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
 
     const lista = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeMago}/spellbook`)
-      .set("Authorization", `Bearer ${tokenA}`);
+      .set("Authorization", `Bearer ${tokenA}`)
+      .set("Accept-Encoding", "gzip");
     const entrada = lista.body.entradas.find((e: { key: string }) => e.key === "magic-missile");
     expect(entrada.estado).toBe("PREPARADO");
     expect(entrada.lanzable).toBe(true);
@@ -252,7 +255,8 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeDmOnly}/spellbook`)
-      .set("Authorization", `Bearer ${tokenA}`);
+      .set("Authorization", `Bearer ${tokenA}`)
+      .set("Accept-Encoding", "gzip");
     expect(res.status).toBe(404);
   });
 
@@ -262,7 +266,8 @@ describe("El libro de conjuros de un personaje (e2e)", () => {
     const s = app.getHttpServer();
     const res = await request(s)
       .get(`/campaigns/${campaignId}/characters/${personajeClerigo}/spellbook`)
-      .set("Authorization", `Bearer ${tokenB}`);
+      .set("Authorization", `Bearer ${tokenB}`)
+      .set("Accept-Encoding", "gzip");
     expect(res.status).toBe(200);
     expect(res.body.modelo).toBe("PREPARA_DE_LISTA");
     expect(

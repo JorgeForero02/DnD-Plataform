@@ -82,14 +82,15 @@ que lo ofrece todo desde el menú «…». Una revisión de rama y una ola; e2e 
 26/26 en lo tocado, con la prueba a dos navegadores. **Fusionada a `main` el mismo 2026-09-14 (`07c9a9d`) junto con su cierre `pnj-del-mundo/cierre`
 (PM-1, T3, PE-2 y el caso de la tarea 11, D-CF-87); **desplegada la noche del 14 (`b6bbeb0`, comprobado con `SOURCE_COMMIT` en el contenedor).** Queda PM-2 en [06-pendientes.md](./06-pendientes.md). **3A.1 «El libro entra» quedó cerrada y fusionada el 2026-09-14** ([plan](./superpowers/plans/2026-09-14-3a1-el-libro-entra.md);
 [07-historial.md](./07-historial.md); D-CF-92..115): 319 conjuros y 234 aptitudes con nombre y prosa del SRD
-español y su mecánica en `Origen`/`Actividad`; sin desplegar. **Lo siguiente es fusionar
-`cierre/antes-de-3a2` con permiso del autor → las tres preguntas de 3A.2** (libro sembrado al
-crear, preparar en combate, trucos) **→ el plan de 3A.2, medido contra el prototipo de la mesa
-del 18** ([spec](./superpowers/specs/2026-09-18-prototipo-de-la-mesa.md)). **Y después el paso 3 en
-dos partes** ([orden que manda](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md), D-CF-70/71:
-**A** el libro de voz y con daño → elegir, lanzar y usar → la barra de acciones, y **se juega**;
-**B** el resto, en el orden que la partida pida), con sus propias reglas de proceso fijadas antes
-de 3A.1 (D-CF-65 no las anticipa).
+español y su mecánica en `Origen`/`Actividad`; sin desplegar. **3A.2 «Elegir, lanzar y usar» quedó
+cerrada el 2026-09-18 en la rama `3a2/elegir-lanzar-y-usar`** (nueve tareas sobre `bcba19a`,
+revisión final de la rama y una ola de arreglos de cinco commits; [07-historial.md](./07-historial.md),
+«3A.2 · Elegir, lanzar y usar»; D-CF-125..144): el libro de conjuros, lanzar a través de `usar()`,
+ataque de conjuro, daño extra al impactar (Furtivo, Castigo divino) y encantar (*Arma mágica*).
+**Fusionada a `main` en <se rellena al fusionar>**; hasta entonces, `main` sigue en `bcba19a` y
+producción en `334912b`. **Siguiente: 3A.3** ([plan](./superpowers/plans/2026-09-18-3a3-la-barra-de-acciones.md),
+escrito en `main`, D-CF-70/71: la barra de acciones que cierra el bloque A del paso 3) **→ Paso 4,
+la partida**.
 
 **La tanda «reglas de la mesa» quedó cerrada el 2026-09-13 en la rama
 `reglas-de-la-mesa/antes-del-paso-3`** (15 commits sobre `27304e1`; [plan](./superpowers/plans/2026-09-13-reglas-de-la-mesa.md);

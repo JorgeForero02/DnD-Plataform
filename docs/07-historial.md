@@ -101,69 +101,68 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## 3A.2 Task 6 — la pestaña «Conjuros»: elegir (2026-09-18), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
+## 3A.2 · Elegir, lanzar y usar (2026-09-18/19), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
 
-Qué — `features/spellbook/` en la web (T11, parte 1): `LibroDeConjuros.tsx` monta «Listos para
-lanzar» (con el contador «5 de 6 preparados · 2 de 3 trucos» y el aviso en línea si `avisos` trae
-algo) y «Disponibles» (buscador sin acentos, `FilterChip` por nivel/escuela), con `FilaDeConjuro.tsx`
-compartida por las dos y su `<details>` que pide la prosa del SRD (`useSpellDetail`) solo al abrir.
-Vocabulario en `dominio/conjuros.ts`, mismo patrón que `dominio/dano.ts`. **Ningún botón se apaga
-por tope**: el servidor cuenta y avisa. La pestaña `Conjuros.tsx` pinta ahora el `actual/max` real de
-los espacios (antes solo tenía `max`) y monta `LibroDeConjuros` debajo; el viejo `EmptyState` «Los
-conjuros llegan con el paso 3» desaparece.
+Qué — spellbook, lanzar conjuros a través de `usar()`, ataque de conjuro, daño extra al impactar
+y encantar; nueve tareas sobre `bcba19a`, revisión final de la rama, una ola de arreglos (cinco
+rondas) y el cierre documental:
 
-Por qué — Task 3 dejó `GET`/`PUT …/spellbook` sin ninguna pantalla que los usara.
+- **T1 — las tablas del SRD y el arranque por clase** (`831869d`): `spell-knowledge.ts`/
+  `spell-starters.ts` (catálogo puro): topes de preparados/trucos por clase y nivel,
+  `ARRANQUE_POR_CLASE` verificado contra las 319 claves generadas por 3A.1.
+- **T2 — `CharacterSpell`, esquema compartido y dos sucesos** (`2314937`, `1188842`): el modelo
+  (migración `character_spells`), `SpellbookEntry`/`SpellbookResponse` en `@dnd/shared`, y los
+  sucesos `ACTIVITY_USED`/`SPELLBOOK_CHANGED` (migración `activity_events`) con su línea en el
+  hilo.
+- **T3 — `SpellbookService`: listar, cambiar estado y sembrar** (`cf9ed68` + `135f400`, T10,
+  D-CF-125/126/127): `GET`/`PUT …/spellbook` (lista sin prosa; detalle por conjuro aparte, tras
+  encontrar que la lista con prosa llegaba a ~460 KB), `sembrarLibro` al fijar la primera clase.
+  Un defecto real arreglado en el camino: `getSheet` dentro de la transacción de `setEstado`
+  interbloqueaba el pool pequeño de pruebas (~19 s de cuelgue); movido fuera, dentro solo queda
+  aritmética.
+- **T4 — lanzar entra en `usar()`** (`2702777`, T18): espacio por nivel (el elegido, no el propio),
+  escalado por espacio, el daño directo sobre otro va a la bandeja del DM como `pendingDamage`
+  (una tirada, N tarjetas con los mismos dados, D-CF-128), `ACTIVITY_USED` siempre.
+- **T5 — ataque de conjuro contra la CA** (`d902e23`, T19): `resolverAtaqueContraCa` extraída de
+  `resolveAttack`, misma mecánica para un arma y para un conjuro; la CA sigue sin viajar por
+  ningún cuerpo.
+- **T6 — la pestaña «Conjuros»: elegir** (`d72d6c8`, T11 parte 1): `LibroDeConjuros.tsx` («Listos
+  para lanzar» + «Disponibles» con buscador y filtros), `FilaDeConjuro.tsx` compartida; ningún
+  botón se apaga por tope, el servidor cuenta y avisa.
+- **T7 — «Lanzar» y las aptitudes con nombre, texto y usos** (`b2256bb`+`0782ac3`+`417d3d5`+
+  `9dc5e88`+`d04a23d`+`2a71e06`, T11 parte 2): `LanzarConjuro.tsx` (objetivos, nivel de espacio,
+  avisos); `CharacterSheetActivity.name`/`textEs` para que las aptitudes dejen de llamarse por su
+  clave interna. Cuatro rondas de arreglo sobre el Playwright del orquestador (localizadores
+  exactos, fila que no envuelve su botón, nivel sembrado antes de fijar clase).
+- **T8 — daño extra al impactar** (`7d22b71`): Ataque furtivo y Castigo divino, marcados por el
+  jugador sobre su tirada pendiente y confirmados por el DM al aplicar (D-CF-129).
+- **T9 — encantar** (`d943122`+`1c4d8bb`, T15, migración `temporary_modifier_item`): *Arma mágica*
+  como `TemporaryModifier` con `inventoryItemId` sobre `item.weaponAttack`/`item.weaponDamage`,
+  leído por `efectosActivos` (D-CF-130).
 
-Ruling — el brief citaba «Rayo de fuego» para el truco de ejemplo del e2e; el nombre real del
-catálogo sembrado es «Descarga de fuego» (`fire-bolt`) — se usa ese, con la nota en la cabecera de
-`apps/web/e2e/conjuros.spec.ts`.
+Revisión final (`bcba19a..1c4d8bb`): **0C/5I/13m** en API+shared, **0C/6I/11m** en web+docs. Ola
+de arreglos, cinco commits (`170d8e5`, `155b432`, `fc4b1d9`, `ba21347`, `da9d17f`): los 11
+importantes cerrados (tope de Castigo divino, la carrera aplicar↔marcar-extra, el espacio de
+Castigo en la misma transacción que su tirada, tarjetas de daño dentro de la transacción de
+`usar()`, `spell:<key>@N` rechazado hasta 3B, el nivel de espacio que se quedaba rancio, «Tú
+mismo» en combate salvo para un ataque, la vista reducida de `damagePreview`, `GrupoDeRadios` en
+vez de radios a mano, dos filas de `08-pruebas.md` que mentían), 12 menores cerrados y el resto
+fichado (`06-pendientes.md`, «Dejado por 3A.2»); re-revisión: **11/11 addressed**. Las tres
+últimas rondas achicaron la respuesta del `PUT …/spellbook/:key` (solo la entrada cambiada) y
+añadieron gzip a la API (`@fastify/compress`, D-CF-131) tras medir que las respuestas > 64 KB se
+cortaban intermitentemente en este PC (Norton sobre loopback, sospecha) — en producción nginx ya
+comprimía.
 
-Tests — `dominio/__tests__/conjuros.test.ts` (5), `FilaDeConjuro.test.tsx` (8) y
-`LibroDeConjuros.test.tsx` (9) con `api.ts` simulado; el `Conjuros.test.tsx` de la pestaña reescrito para
-el `actual/max` real y `HojaCalculada.test.tsx` ajustado (mock de `spellbookApi.fetchSpellbook`, y
-el rótulo «Listos para lanzar» en la tabla de las siete pestañas). `pnpm verify` en verde
-(apps/web: 190 ficheros/1772 tests). `apps/web/e2e/conjuros.spec.ts` escrito, no corrido (D-CF-65).
-`apps/web/e2e/hoja-pestanas.spec.ts` ajustado en el mismo commit por el mismo motivo.
+Playwright del orquestador, todos verdes: `conjuros`, `lanzar` (×3 tras el gzip), `hoja-pestanas`,
+`furia`, `combate`, `puerta-de-efectos`, `inventario`, `objeto-sin-identificar`, `tirada`.
 
-Revertir — `git revert` del commit; sin desplegar. La Task 7 (el botón «Lanzar») cuelga del hueco
-`accionPrincipal?: ReactNode` que deja `FilaDeConjuro`.
+Tres migraciones, aditivas: `character_spells`, `activity_events` (T2), `temporary_modifier_item`
+(T9). Cierre documental (esta entrada): fusiona lo que T3 y T6 habían dejado suelto en este
+fichero; cierra P1 a `_archivo/pendientes-cerrados-2026-09-18-3a2.md`; D-CF-131..144 en
+`decisiones.md`; «Dejado por 3A.2» en `06-pendientes.md`.
 
----
-
-## 3A.2 Task 3 — `SpellbookService`: listar, cambiar estado y sembrar el libro (2026-09-18), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
-
-Qué — el módulo `spellbook` de la API (D-CF-125/126/127): `GET`/`PUT
-campaigns/:id/characters/:id/spellbook` para leer el libro (o la lista) de conjuros de un
-personaje y cambiar el estado de uno; `sembrarLibro` (`spellbook/sembrar.ts`, función libre) que
-llena la lista al fijar la primera clase; el helper puro `rules/catalog/spell-activities.ts`
-(`actividadDeLanzamiento`, `mecanicaDe`, `objetivosDe`, `claveDeConjuro`) que decide con cuál de
-las actividades de un conjuro se lanza. Pasarse de un tope o preparar en combate **se escribe
-igual**, marcado en `fueraDeRegla` del suceso (D-CF-126) — nunca un rechazo.
-
-Por qué — Task 2 dejó el modelo, los esquemas y los dos sucesos nuevos; esta tarea era el servicio
-que los usa de verdad. `sembrarLibro` vive en su propio fichero, no en `spellbook.service.ts` ni
-como método del servicio: evita que `characters` (que la llama desde
-`CharacterSheetService.updateSheet`) tenga que importar `spellbook`, que a su vez importa
-`characters` para `CharacterSheetService.getSheet` — un ciclo de módulos que Nest no resuelve.
-
-Un defecto real que la medición encontró y arregló en el camino: el modificador de lanzamiento
-(`getSheet`, que habla por el pool principal de Prisma) se pedía **dentro** de la transacción de
-`setEstado`, y bajo carga eso interbloqueaba el pool pequeño de pruebas — el `PUT` colgaba ~19 s.
-Se mueve fuera de la transacción (`modificadorDeLanzamiento`, resuelto antes de abrir el `tx`); lo
-que queda dentro es aritmética pura.
-
-Tests — `spell-activities.spec.ts` (16), `spellbook.service.spec.ts` (Prisma simulado, list/
-setEstado/lanzable/sembrarLibro) y `libro-de-conjuros.e2e-spec.ts` contra Postgres real, con dos
-bloques (mago LIBRO sembrado, clérigo PREPARA_DE_LISTA con el tope excedido a propósito). `pnpm
-verify` en verde. El e2e es intermitente por un motivo ajeno al código: `GET`/`PUT …/spellbook`
-devuelve hasta ~460 KB (el catálogo entero de una clase, con su prosa del SRD), y con cuerpos de
-esa talla `supertest`/`superagent@10.3.0` dispara de vez en cuando su «double callback bug»
-conocido y la petición muere con `ECONNRESET` — medido con `http.get` puro contra el mismo
-endpoint: 60-108 ms, nunca falla. Mitigado (no eliminado) con `.timeout()` explícito y
-`listen(0, "127.0.0.1")`; documentado en el propio fichero de la suite.
-
-Revertir — `git revert` de los commits de esta rama; ningún dato de producción depende de ella
-(sin desplegar).
+Revertir — `git revert -m 1 <hash del merge>` una vez fusionada a `main`; las migraciones son
+aditivas. **Sin desplegar.**
 
 ---
 

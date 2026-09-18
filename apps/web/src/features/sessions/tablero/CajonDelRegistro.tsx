@@ -68,11 +68,7 @@ export function CajonDelRegistro({
   // ese `aria-label`: el `aria-label` suelto del `<span>` de dentro nunca llegaba a leerse. El
   // número visible se queda (`{nuevas}` en el span, sin su propio `aria-label`), y la cifra pasa
   // al nombre del botón.
-  //
-  // Revisión #7 (2026-09-17): la etiqueta ya no dice «Plegar»/«Desplegar» — con la punta que
-  // apunta y `aria-expanded`, el verbo era el tercer aviso del mismo estado. «Registro» a secas,
-  // igual plegado que desplegado; lo que cambia es solo el contador.
-  const etiqueta = "Registro";
+  const etiqueta = plegado ? "Desplegar el registro" : "Plegar el registro";
   return (
     <section
       aria-label="Registro en vivo"

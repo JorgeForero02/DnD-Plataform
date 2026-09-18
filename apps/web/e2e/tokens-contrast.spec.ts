@@ -1207,19 +1207,17 @@ for (const theme of ["dark", "light", "reading"] as const) {
     expect(iniciada.ok()).toBe(true);
 
     await page.goto(`/campaigns/${campaignId}/sesion`);
-    // Revisión #7 (2026-09-17): el botón ya no dice «Plegar»/«Desplegar el registro» — su nombre
-    // accesible es siempre «Registro» (más el contador si hay líneas nuevas); lo que cambia entre
-    // los dos estados es la punta que dibuja, no el texto.
-    const registro = page.getByRole("button", { name: "Registro" });
-    await expect(registro).toBeVisible();
+    const plegar = page.getByRole("button", { name: "Plegar el registro" });
+    await expect(plegar).toBeVisible();
     {
-      const { color, bg } = await effectiveTextColours(registro);
+      const { color, bg } = await effectiveTextColours(plegar);
       record(theme, "cajón del registro: botón plegado texto", contrastRatio(color, bg), 4.5);
     }
-    await registro.click();
-    await expect(registro).toBeVisible();
+    await plegar.click();
+    const desplegar = page.getByRole("button", { name: "Desplegar el registro" });
+    await expect(desplegar).toBeVisible();
     {
-      const { color, bg } = await effectiveTextColours(registro);
+      const { color, bg } = await effectiveTextColours(desplegar);
       record(theme, "cajón del registro: botón desplegado texto", contrastRatio(color, bg), 4.5);
     }
   });

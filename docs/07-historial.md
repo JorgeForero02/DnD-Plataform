@@ -106,6 +106,29 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Auditoría de interfaz sobre el prototipo navegable (2026-09-19) — archivada, cruzada y con plan
+
+Qué — se capturó **el DOM real de producción** (campaña demo, dos roles, 120 estados, con un combate
+jugado para ello en la demo) en un solo HTML navegable (`prototipo-dnd.html` en la carpeta `Mine`, fuera del repo),
+y sobre él se hizo una auditoría de interfaz de ~95 hallazgos. El mismo día se cruzó contra
+`decisiones.md` y `04-convenciones.md`: **17 correcciones chocan con una decisión tomada y cinco
+describen cosas que ya existían** (objetivo del ataque, CA en el resultado, daño pendiente, «Hay algo
+nuevo abajo», Revelar/Ocultar). La auditoría va **entera** a
+[`_archivo/auditoria-interfaz-2026-09-19.md`](./_archivo/auditoria-interfaz-2026-09-19.md); el cruce
+en cuatro cubos —en el plan, tamaño medio, chocan (para el autor, con lo que sí cabe), 3B— en
+[`06-pendientes.md`](./06-pendientes.md) § «Dejado por la auditoría de interfaz»; y **lo aplicable sin
+funcionalidad nueva** —textos, rótulos en primera persona, cabeceras dobles, sellos apagados, bordes a
+3:1, foco, cuatro reordenes— en el plan
+[`superpowers/plans/2026-09-19-correcciones-de-interfaz.md`](./superpowers/plans/2026-09-19-correcciones-de-interfaz.md),
+14 tareas. Sin código todavía.
+
+Por qué — la beta se juega y solo entran errores (D-CF-161); una auditoría trae los errores mezclados
+con rediseños, y sin el cruce se habrían reabierto quince decisiones sin querer.
+
+Revertir — borrar el plan y la sección del 06; devolver el archivo a `docs/`. Nada de código.
+
+---
+
 ## 3A.3 · La barra de acciones y la mesa converge al prototipo (2026-09-18), rama `3a3/la-barra-de-acciones` — cerrada, pendiente de fusionar
 
 Qué — el cierre del bloque A del paso 3 ([plan](./superpowers/plans/2026-09-18-3a3-la-barra-de-acciones.md),

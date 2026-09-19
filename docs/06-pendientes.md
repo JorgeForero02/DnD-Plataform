@@ -29,6 +29,110 @@ y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
 
+## Dejado por la auditoría de interfaz (2026-09-19)
+
+La auditoría ([archivada](./_archivo/auditoria-interfaz-2026-09-19.md), ~95 hallazgos sobre el
+prototipo navegable de 120 estados) se cruzó contra `decisiones.md` y `04-convenciones.md` el mismo
+día. Salen cuatro cubos. **Solo el primero tiene plan**:
+[`superpowers/plans/2026-09-19-correcciones-de-interfaz.md`](./superpowers/plans/2026-09-19-correcciones-de-interfaz.md)
+— correcciones menores y gráficas, sin funcionalidad nueva, para estos días (modo «solo errores»,
+D-CF-161). Los números son los de la auditoría.
+
+### A · Fichas abiertas — en el plan (correcciones menores y gráficas)
+
+- **Textos que mienten o se repiten** (plan, Tasks 1–4): 3.1 «y» repetida · 3.4 tres números en la
+  iniciativa tirada · 3.5 contador «N de M» también al jugador · 3.6 «Su turno» en preparación
+  (`ColumnaElenco.tsx:99`) · 5.1 «sus 1 asalto» (`TiraDeIniciativa.tsx:338`) · 5.3/16.3 statblock →
+  criatura del bestiario, XP/experiencia → **PX** · 6.2 «Recibo daño»/«Me curo» en la hoja que el DM
+  también abre (`PuntosDeGolpe.tsx:222`) · 10.1/10.2 «tú» en las audiencias de tirada
+  (`rolls/vocabulario.ts:119,127`) · 2.5 «Solo el DM» → «Solo lo ve el DM» · 10.5 «Dice» → «Resultado»
+  (`features/sessions/hilo/tirada.ts:93`) · 2.3 «Texto» / «Daño o curación» en las filas de la barra (tipo de mecánica
+  del motor, `dominio/acciones.ts:102`) · 4.1 **solo el texto**: «Sin puntos de golpe en la hoja» al
+  jugador sobre un PNJ con PG ocultos (`FichaDePnj.tsx:49`) · 17.4 «· Nota:» huérfano — es la viñeta
+  del borrador de la crónica (`ControlesDeSesion.tsx:221`), no un separador.
+- **Hoja** (Task 5): 8.1 el avatar toma «[» de «[demo]» (`FichaDeElenco.tsx:484`) · 8.2 Iniciativa y
+  Competencia sin signo (`Cabecera.tsx:118,142`) · 8.6 el párrafo que explica dónde está
+  «Anulaciones del DM» (`AvisoDeDm.tsx:49`) pasa a ser el botón.
+- **Condiciones** (Task 6): 12.1 «Las quince del manual» con 17 (Te ayudan y En furia son de la mesa)
+  · 12.2 `<p>` haciendo de leyenda.
+- **Números y fechas** (Task 7): 17.2/9.4/8.7 «3.5 kg» con punto (`PanelCarga.tsx:50`) — ojo, el
+  espacio fino de miles («2 700 PX») **es la convención** (04) y no se toca; 17.3 fechas con y sin año.
+- **Cajones con dos cabeceras** (Task 8): 21.10 = 10.3 Pedir tirada · 13.1 Consulta del mundo · 15.1
+  Sacar criatura · 15.2 Tablas · 15.3 Tu bolsa. Regla nueva: **un `Dialog`, un `h2`**.
+- **Reordenes** (Task 9): 15.4 «PG temporales» fuera de «Sacar criatura», al menú de la criatura ·
+  16.1 «Qué pasa» del reloj antes de los botones · 13.4 la nota del motor de reglas a la cabecera ·
+  13.3 `title` duplicado en «Ejecutar».
+- **Lo que la regla de casa ya exigía** (Tasks 10–11): 1.5 los seis sellos van `aria-disabled` sin
+  texto — viola «el botón de enviar nunca se deshabilita» (04, E-PL-8); se arregla por la regla, **no
+  con el rediseño que propone la auditoría** · 4.4 «Goblin 3 · Goblin 2 · Goblin 1» → «Goblins (3)»
+  (sin «×», glifo prohibido) · 4.3 chip de empate (el lápiz ya desempata, E-IB-14) · 3.2 el DM ve un
+  cartel de iniciativa por cada PJ ausente (`TiradasPendientes.tsx:145`; el servidor le lista todas
+  las peticiones, `roll-requests.service.ts:list`) → una caja compacta, y «Empezar igualmente» dice
+  que tira por los que faltan (D-OP-23).
+- **Accesibilidad y comodidad** (Tasks 12–13): 18.2 bordes `muted/30` a 1,5–1,8:1 → token `--borde`
+  ≥ 3:1 medido por `tokens-contrast.spec.ts` · 18.3 anillo de foco en la capa base (11 de 52
+  controles de la mesa lo llevan) · 10.6 `radiogroup` + `fieldset` duplicados · 19.1 el destello a
+  pantalla completa sobrevive a `prefers-reduced-motion` (`efectos.css:588`; mirar antes por qué
+  D-CF-116 lo dejó) · 4.5 «no es tu turno» se lee antes de abrir un menú · 4.9 botones −5/−10 de
+  movimiento · 9.3 chip «Todo» en los filtros de la bolsa · 11.3 filtros del registro a 28 px.
+- **Prototipo** (Task 14, fuera del repo): §20 — ataque resuelto, asalto 2, PJ a 0 PG, condiciones
+  activas, 390/768 px.
+
+### B · Fichas abiertas de tamaño medio — después de la tanda, sin plan todavía
+
+- **12.3/12.4** Un solo componente de condición (rejilla) y una sola lista de duraciones (la del
+  reloj) para la mesa y la hoja (`PonerCondicion.tsx` vs `features/character-sheet/Condiciones.tsx:416`).
+- **6.1/2.1/21.2** Un solo componente de cambio de PG: los ±5 de la tarjeta del jugador, el diálogo
+  del DM y el panel de seis controles de la hoja. Lo básico visible, lo avanzado plegado. No choca con
+  nada (D-POD-5 sigue: el absoluto no se recorta, el delta sí).
+- **6.3** «De qué tirada sale» lista ~20 tiradas sin quién ni cuándo → últimos 5 minutos de la mesa,
+  «11:14 · Sylas · Daño de la daga · 1d4+1 = 5», y sin campo si no hay ninguna.
+- **6.4** Dados de golpe desde dos sitios de Recursos · **6.5** PG como botón en la banda de la hoja.
+- **9.1** Cinco monedas con cinco «Aplicar» → lectura + un control (cantidad, moneda, signo).
+- **16.1 (segunda mitad)** «Pasa el tiempo» y «Viajáis» como dos solapas del cajón del reloj.
+- **1.6** Avisos «Alguien se ha sentado a tu mesa» ×4 sin nombre → agrupar y nombrar (el nombre tiene
+  que viajar en el aviso: toca API).
+- **18.6** Tema y ornamento en la cuenta, `localStorage` solo como caché.
+- **3.7/11.1** Dos sucesos por iniciativa tirada por el sistema → uno con sujeto y autor separados
+  (toca el `payload`; E-IB-17 solo aceptaba la línea de más en la carrera perdida).
+- **3.8/11.2** Bloque plegable «Iniciativa del asalto 1 — 6 tiradas» y separador entre encuentros en
+  el registro.
+- **8.4/21.9** La hoja de otro jugador como vista de lectura (20 campos apagados + el mismo aviso
+  cinco veces). No esconde nada —lo pinta como texto—, pero cambia el patrón: **que lo vea el autor**.
+- **4.11** Distintivo de concentración en la tira de turnos y aviso de salvación al recibir daño.
+
+### C · Chocan con una decisión tomada — para el autor, con lo que sí se podría mejorar
+
+| # | Propone | Choca con | Lo que sí cabe |
+|---|---|---|---|
+| 1.4 | Esconder Hoja/Bolsa al DM | D-CF-66, E-PL-7, rail permanente | La lista de Atajos podría decir «(sin personaje)» junto a N e I |
+| 1.5 | Un «Anotar» + chips | D-CF-149 (los seis sellos son el prototipo) | Ya en el plan por la regla: no apagarlos |
+| 2.2 | Quitar Ayudar de la tarjeta | E-08-8 (autor: en tu tarjeta) — pero la barra lo duplica desde 3A.3 | **Re-decidir**: uno de los dos sobra; D-CF-50 (las acciones son menús) apunta a dejar el de la barra |
+| 2.4 | Celda fija para la barra | D-CF-156: ya está en la fila `auto` del centro en los dos modos | Nada — falso positivo |
+| 4.2/21.5 | Economía = turno activo, y una línea «Tú» | D-CF-145 (el jugador ve la suya) | La línea del turno activo **además** es aditiva; el coste es una fila más en la franja |
+| 4.6/8.5 | Unificar a `disabled` | D-CF-121, E-14-4 | Nada |
+| 5.2/16.2 | No listar PNJ en Dar PX | «Nunca se esconde» (E-PE-12) | Ya en el plan: una nota, no cuatro |
+| 7.2/21.8 | Selector de objetivo en el popover | D-CF-155 («deliberadamente más simple»); la lista ya aparece al pulsar Atacar sin chip | Precargar el chip en un `<select>` visible es opcional; **decisión del autor** |
+| 7.5 | Ventaja/desventaja en la barra | D-CF-155 la quitó a propósito; D-2.5-6 la sugiere, no la impone | Reusar `SelectorDeVentaja` en `ControlDeAtaque` cuesta poco; **decisión del autor** |
+| 7.4 | «No permite tirar el daño» | Ya existe la bandeja (E-PE-3, D-CF-129) | Nada |
+| 7.6 | «Nada conecta con la CA» | Ya existe (E-PL-9, D-2.5-5) | Nada |
+| 11.4 | «Ir a lo último» | Ya existe («Hay algo nuevo abajo») | Nada |
+| 13.2 | Tres niveles de visibilidad | Modelo de datos, `canView`, D-2B-8, D-CF-10; los cinco glifos son excepción declarada en 04 | El `Badge` siempre con su palabra al lado — comprobar que ya lo hace |
+| 17.1/21.12 | Una sola política de unidades | D-2B-4 (kg en pantalla, pies para distancia, a propósito); alcances en metros por el SRD español (D-CF-92/115) | Un interruptor en Ajustes (imperial/métrico) formateando al vuelo — **decisión del autor** |
+| 18.4 | 15 px en la mesa | D-POD-9 | Nada sin el autor |
+| 18.5 | Cuadrados a 32 px | D-CF-149 (1,6 rem es el prototipo) | Nada sin el autor |
+| 1.1/1.2/7.3/21.1 | PNJ en la mesa fuera de combate | E-IB-9 los cruza con el encuentro a propósito; «nacen escondidos»; Revelar/Ocultar ya existe (D-CF-82) | Es 3B: pintar «En escena» con los PNJ bajados aunque no haya combate, respetando `canView`. **Sin** el interruptor nuevo |
+| 4.1/21.4 | PG del enemigo como estado (Herido…) | Revela información que `canView` niega (D-2B-8) | Ajuste por campaña «PG de los enemigos: ocultos / como estado / visibles» — **decisión del autor** |
+
+### D · Funcionalidad nueva — 3B (aplazada por el autor, D-CF-161)
+
+4.7/21.6 daño en área con salvación a mitad · 4.8 resistencias y vulnerabilidades al elegir tipo ·
+4.10/21.7 deshacer (choca además con el registro de solo añadir, D-OP-15: el inverso se anota, no se
+borra) · 5.4 aviso de fin de combate al jugador con resumen y PX · 9.2 conversión de monedas y
+total · 14.1/14.4/21.11 URL para los tres cajones (compatible con D-R-8/9) y reagrupar diez destinos
+en tres grupos · 19.2/19.3 pantalla de prueba de las 33 animaciones y preferencia global de efectos
+(Completos / Discretos / Ninguno).
+
 ## Dejado por 3A.3 (2026-09-18)
 
 Lo que la tanda de la barra de acciones y la convergencia al prototipo dejó fuera a propósito —

@@ -65,3 +65,4 @@ fechado no puede ser.
 
 **Los números de documento no se reciclan.** Archivar algo deja su hueco; renumerar rompería los
 enlaces de los specs y planes que ya lo citaban.
+| [`auditoria-interfaz-2026-09-19.md`](./auditoria-interfaz-2026-09-19.md) | **La auditoría de interfaz del 2026-09-19**, hecha sobre el prototipo navegable (copia visual de producción, 120 estados): 19 secciones, ~95 hallazgos con gravedad y corrección, 13 correcciones desarrolladas y un top-10. Se congela **con sus errores dentro**: cinco hallazgos describen cosas que ya existían (objetivo del ataque, CA en el resultado, daño pendiente, «Hay algo nuevo abajo», Revelar/Ocultar) y diecisiete proponen lo contrario de una decisión tomada; el cruce está en `06-pendientes.md` y lo aplicable en el plan `2026-09-19-correcciones-de-interfaz.md` | 2026-09-19 |

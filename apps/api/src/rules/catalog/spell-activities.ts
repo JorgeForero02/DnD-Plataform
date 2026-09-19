@@ -33,12 +33,20 @@ export function claveDeConjuro(spellKey: string, indice = 0): string {
  * El inverso de `claveDeConjuro`, y además reconoce la clave estable de un rasgo (`"second-wind"`,
  * `"rage"`): las que no llevan el prefijo `spell:` son actividades de clase, no de conjuro — el
  * mismo espacio de claves que ya usa `ActivitiesService.usar` para cualquier `actividadKey`.
+ *
+ * Ola post-revisión de 3A.3 (C1) — **también acepta `feature:<key>`**, que es como
+ * `GET …/actions` lista las aptitudes (`actions.service.ts`, un espacio de nombres para que la
+ * barra no confunda `rage` con `spell:rage` ni con `basic:rage`). Se devuelve la clave DESNUDA
+ * (`rage`) para que el catálogo (`actividadCatalogada`) y los sucesos (`ACTIVITY_USED`) sigan
+ * viendo un solo espacio de claves: quien reenvíe la clave tal cual la lista el servidor tiene
+ * que llegar a la misma actividad que quien manda la de la hoja. `basic:` NO se toca: ese
+ * prefijo sí lo entiende el catálogo.
  */
 export function parsearClaveDeActividad(
   key: string,
 ): { tipo: "spell"; spellKey: string; indice: number } | { tipo: "feature"; key: string } {
   const coincide = /^spell:([^@]+)(?:@(\d+))?$/.exec(key);
-  if (!coincide) return { tipo: "feature", key };
+  if (!coincide) return { tipo: "feature", key: key.replace(/^feature:/, "") };
   return { tipo: "spell", spellKey: coincide[1], indice: coincide[2] ? Number(coincide[2]) : 0 };
 }
 

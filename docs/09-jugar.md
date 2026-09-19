@@ -190,13 +190,15 @@ merece la pena contar.
   mismo, lo compone el servidor. Cada fila trae su coste, lo que gasta y por qué está en gris si
   lo está —el mismo motivo que te daría el botón si lo intentaras de todos modos—. **«Esquivar,
   ayudar…»** son las ocho básicas del combate del manual (Esquivar, Ayudar, Esconderse,
-  Desengancharse, Correr, Prepararse, Buscar, Usar un objeto); fuera de combate no tienen coste
+  Destrabarse, Correr, Preparar, Buscar, Usar un objeto); fuera de combate no tienen coste
   que gastar y siguen disponibles igual, salvo que necesiten un objetivo que solo existe en
   pelea. **Ayudar** abre el mismo selector de destino que ya tenías en tu tarjeta del elenco —no
   es una segunda mecánica—.
-  - **El chip de objetivo** («apuntas a…») es un atajo de mesa: pulsa la tarjeta de cualquiera
-    en «En la mesa» —la tuya, la de otro jugador, un PNJ— y la barra recuerda a quién estás
-    mirando hasta que pulses la X del chip o apuntes a otro. Con un conjuro o un ataque que
+  - **El chip de objetivo** («apuntas a…») es un atajo de mesa: pulsa el botón de la diana
+    («Apuntar a…») en la tarjeta de cualquiera en «En la mesa» —la tuya, la de otro jugador, un
+    PNJ— o el chip de su turno en la franja de combate, y la barra recuerda a quién estás
+    mirando hasta que pulses la X del chip, vuelvas a pulsar la diana, apuntes a otro o termine
+    el combate. Con un conjuro o un ataque que
     piden un solo objetivo, el chip dispara directo, sin volver a preguntar; sin chip, se abre
     la lista de siempre.
   - **Ataques** usa exactamente el mismo flujo que el dado de tu cuadro de ataques: con
@@ -204,7 +206,10 @@ merece la pena contar.
     tira suelto.
   - **Conjuros** abre el mismo panel «Lanzar» de tu hoja, con el objetivo ya puesto si tienes
     chip. **Objetos** bebe o usa la fila de tu inventario. **Aptitudes** usa la misma puerta que
-    tus rasgos y dones.
+    tus rasgos y dones (desde la ola post-revisión de 3A.3: antes la barra mandaba la clave con
+    un prefijo que el servidor no entendía y la pestaña entera parecía muerta).
+  - **Si el servidor dice que no** —ya gastaste la acción, el objetivo salió del combate, te
+    apuntabas a ti mismo—, la fila lo dice debajo del botón, en rojo. Nada falla en silencio.
 - **La economía del turno es estado que se gasta al actuar, no un botón que tú aprietas**
   (D-CF-145). En la franja de combate, al lado de los turnos, ves tu nombre y tres marcas
   —acción, adicional, reacción: punto lleno si está disponible, hueco y tachado si ya se gastó

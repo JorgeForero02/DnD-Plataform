@@ -67,8 +67,9 @@ describe("HiloDeSesion — un suceso sobre un PNJ nombra al PNJ, no a quien actu
     await waitFor(() => expect(lista.querySelector('[data-suceso="e1"]')).toBeTruthy());
 
     const li = lista.querySelector('[data-suceso="e1"]') as HTMLElement;
-    // La cabecera es el primer `<span>` de la línea de personaje (`MensajeDelHilo.tsx`).
-    const cabecera = li.querySelector("span");
+    // La cabecera es el primer `<span>` DEL PÁRRAFO de la línea de personaje
+    // (`MensajeDelHilo.tsx`); antes del párrafo va la hora y el autor en `sr-only` (M10).
+    const cabecera = li.querySelector("p span");
     expect(cabecera?.textContent).toBe("Klarg");
 
     // Y la frase no repite el nombre: la cabecera ya lo dijo.

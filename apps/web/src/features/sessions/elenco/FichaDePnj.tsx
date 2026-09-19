@@ -12,6 +12,7 @@ import { useAccionesDeMesa } from "./AccionesDeMesa";
 import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
 import { useObjetivoStore } from "../objetivo.store";
 import { alPulsarLaTarjeta } from "./apuntar";
+import { BotonDeApuntar } from "./BotonDeApuntar";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -159,9 +160,9 @@ export function FichaDePnj({
     combateEnMarcha,
   });
 
-  // Task 4 de 3A.3 (T22) — mismo gesto que `FichaDeElenco`: la tarjeta entera apunta. Un PNJ es
-  // precisamente el objetivo más habitual de un ataque o un conjuro, así que esto no es simetría
-  // por capricho — es el caso que más se va a usar.
+  // Task 4 de 3A.3 (T22) — mismo gesto que `FichaDeElenco`: la superficie apunta y el botón
+  // `BotonDeApuntar` de la cabecera lo anuncia (ola post-revisión, I3). Un PNJ es precisamente
+  // el objetivo más habitual de un ataque o un conjuro — es el caso que más se va a usar.
   const objetivo = useObjetivoStore((s) => s.objetivo);
   const apuntar = useObjetivoStore((s) => s.apuntar);
   const apuntado = objetivo?.id === pnj.id;
@@ -173,19 +174,11 @@ export function FichaDePnj({
     // D-CF-149 (Task 5b de 3A.3) — la misma tarjeta densa que `FichaDeElenco` (ver allí): voz en
     // el filete, «PNJ · Enemigo» donde el prototipo pone «Osgo · enemigo», PG con barra, CA y
     // velocidad solo para el DM (I-2), condiciones y, al pie, los mandos de quien puede manejarlo.
+    // Ola post-revisión de 3A.3 (I3) — la tarjeta ya no es `role="button"`: apuntar es el
+    // `BotonDeApuntar` de la cabecera (con `aria-pressed`), y la superficie solo conserva el
+    // gesto de ratón. Así el DOM anuncia la ficha como contenido, no como «Apuntar a X».
     <li
-      role="button"
-      tabIndex={0}
-      aria-pressed={apuntado}
-      aria-label={`Apuntar a ${pnj.name}`}
       onClick={(e) => alPulsarLaTarjeta(e, () => apuntar(pnj.id, pnj.name))}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        alPulsarLaTarjeta(e, () => {
-          e.preventDefault();
-          apuntar(pnj.id, pnj.name);
-        });
-      }}
       className={[
         "relative cursor-pointer rounded-radius-sm border border-l-[3px] border-l-current bg-bg/40 px-s3 py-s2 transition-colors hover:bg-muted/10",
         voz,
@@ -215,6 +208,7 @@ export function FichaDePnj({
               pnj.name
             )}
           </p>
+          <BotonDeApuntar id={pnj.id} nombre={pnj.name} />
           <p
             className={[
               "min-w-0 truncate whitespace-nowrap font-chrome text-chrome-xs",

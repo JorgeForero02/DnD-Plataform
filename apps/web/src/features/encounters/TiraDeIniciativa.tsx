@@ -88,6 +88,7 @@ export function TiraDeIniciativa({
   // D-CF-149 — pulsar un chip apunta (el mismo `objetivo.store` que las tarjetas del elenco).
   const objetivo = useObjetivoStore((s) => s.objetivo);
   const apuntar = useObjetivoStore((s) => s.apuntar);
+  const quitar = useObjetivoStore((s) => s.quitar);
 
   const nombreDe = (characterId: string) =>
     personajes.find((c) => c.id === characterId)?.name ??
@@ -169,6 +170,10 @@ export function TiraDeIniciativa({
             personajes.find((c) => c.id === primero) ?? pnjs.find((p) => p.id === primero) ?? null;
           const voz = quien ? vozDePersonaje(quien) : "text-muted";
           const apuntado = objetivo?.id === primero;
+          // Ola post-revisión de 3A.3 (M3) — en una posición agrupada («Goblin A · Goblin B») el
+          // chip apunta SOLO al primero (`primero`); el rótulo del botón dice a quién de verdad,
+          // no la fila entera. El nombre visible sigue siendo el grupo.
+          const nombreObjetivo = nombreDe(primero);
           return (
             <li
               key={posicion}
@@ -191,9 +196,11 @@ export function TiraDeIniciativa({
               <button
                 type="button"
                 aria-pressed={apuntado}
-                aria-label={`Apuntar a ${nombres}`}
-                title={apuntado ? `Dejar de apuntar a ${nombres}` : `Apuntar a ${nombres}`}
-                onClick={() => apuntar(primero, nombres)}
+                aria-label={`Apuntar a ${nombreObjetivo}`}
+                title={
+                  apuntado ? `Dejar de apuntar a ${nombreObjetivo}` : `Apuntar a ${nombreObjetivo}`
+                }
+                onClick={() => (apuntado ? quitar() : apuntar(primero, nombreObjetivo))}
                 className="flex items-center gap-s1 whitespace-nowrap"
               >
                 <span

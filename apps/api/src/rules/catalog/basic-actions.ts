@@ -12,8 +12,10 @@ import type { Actividad } from "@dnd/shared";
 // ocho como acción adicional: Ayudar consume la acción de quien ayuda igual que Esquivar consume
 // la de quien esquiva — lo que cambia es A QUIÉN beneficia, no lo que cuesta.
 //
-// Cada cita es literal del SRD 5.1, *Actions in Combat*
-// (<https://www.dndbeyond.com/sources/dnd/free-rules/playing-the-game#ActionsinCombat>).
+// Cada cita es literal del SRD 5.1, *Actions in Combat* (documento oficial, CC BY 4.0:
+// <https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1.pdf>, «Actions in Combat», p. 92-93;
+// ola post-revisión de 3A.3 — el enlace anterior apuntaba a las *free rules* de 2024, que no son
+// la fuente declarada del proyecto aunque el texto citado sí fuera el de 5.1).
 
 export const BASIC_ACTION_KEYS = [
   "dodge",

@@ -8,6 +8,7 @@ import * as sheetApi from "../../../character-sheet/api";
 import * as encountersApi from "../../../encounters/api";
 import type { Character } from "../../../characters/api";
 import { BANDOS } from "../../../../dominio/combate";
+import { useObjetivoStore } from "../../objetivo.store";
 
 // HP-1 — la hoja de verdad necesita router y media API; aquí solo se mide el **título del
 // cajón**, así que se sustituye por una marca. Lo que pinta la hoja lo prueban sus suites.
@@ -98,6 +99,7 @@ function montar(props: Partial<Parameters<typeof FichaDeElenco>[0]> = {}) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  useObjetivoStore.setState({ objetivo: null });
   vi.spyOn(sheetApi, "fetchSheet").mockResolvedValue(hoja());
   vi.spyOn(sheetApi, "fetchConditions").mockResolvedValue([]);
 });
@@ -320,5 +322,27 @@ describe("el nombre enlaza a la ficha del mundo (m3, E-PM-13)", () => {
 
     expect(await screen.findByText("Corvin Vhael")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Corvin Vhael" })).not.toBeInTheDocument();
+  });
+});
+
+// Ola post-revisión de 3A.3 (I3) — la tarjeta ya NO es un `role="button"` con `aria-label`:
+// eso convertía el nombre accesible de toda la ficha en «Apuntar a Corvin» y PG, CA y condiciones
+// dejaban de leerse como contenido (y un botón con botones dentro es contenido interactivo
+// anidado). Apuntar es ahora un botón propio, pequeño, con `aria-pressed`; la superficie de la
+// tarjeta conserva el gesto de ratón.
+describe("apuntar desde la tarjeta (I3): un botón propio, y la tarjeta vuelve a ser contenido", () => {
+  it("la tarjeta no lleva role=button ni aria-label; hay un botón «Apuntar a Corvin» con aria-pressed", async () => {
+    const { container } = montar();
+    const li = container.querySelector("li")!;
+    expect(li.getAttribute("role")).toBeNull();
+    expect(li.getAttribute("aria-label")).toBeNull();
+    const boton = await screen.findByRole("button", { name: "Apuntar a Corvin Vhael" });
+    expect(boton).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(boton);
+    expect(boton).toHaveAttribute("aria-pressed", "true");
+    expect(useObjetivoStore.getState().objetivo).toEqual({
+      id: "p-corvin",
+      nombre: "Corvin Vhael",
+    });
   });
 });

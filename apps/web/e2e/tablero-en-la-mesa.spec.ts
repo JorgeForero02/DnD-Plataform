@@ -194,32 +194,41 @@ test("con sala guardada, el marco ocupa el centro sin scroll de página y el reg
 // vivía DEBAJO del marco, en la misma columna central —a 390 px se apilaban, y el orden se medía
 // en `y`—. Ahora el registro es la columna LATERAL de 18rem, a la DERECHA del marco: sin ningún
 // punto de ruptura (el mismo defecto de siempre, D-CF-26), a 390 px las dos columnas siguen
-// intentando convivir lado a lado en vez de apilarse. Lo que esta prueba comprueba es que la
-// geometría sigue siendo esa —el registro cae a la derecha, no debajo—, no que la mesa quepa o se
-// lea a ese ancho.
-test("a 390 px el marco y el registro lateral quedan lado a lado, sin apilarse (la mesa a 390 sigue aplazada: D-CF-26)", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await registrarse(page);
-  await campanaConSesionYHiloLargo(page);
-  const campaignId = campaignIdDeLaMesa(page);
+// intentando convivir lado a lado en vez de apilarse.
+//
+// **Ola post-revisión de 3A.3 (M9): `test.fail`, con la medida BUENA.** Hasta la ola esta prueba
+// exigía en verde que el registro cayera a la DERECHA del marco a 390 px — es decir, consagraba la
+// geometría rota de D-CF-26 como «así debe ser», y un arreglo de la mesa en estrecho la habría
+// puesto en rojo. Ahora afirma lo que debería pasar (el registro APILADO debajo del marco) y se
+// declara `fail`, como ya hace `mesa-en-estrecho.spec.ts`: el día que la mesa se apile, Playwright
+// avisará de que «pasó inesperadamente» y se quita el `fail`. Sigue sin medir que la mesa quepa o
+// se lea a ese ancho.
+test.fail(
+  "a 390 px el registro lateral debería quedar DEBAJO del marco (la mesa a 390 sigue aplazada: D-CF-26)",
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await registrarse(page);
+    await campanaConSesionYHiloLargo(page);
+    const campaignId = campaignIdDeLaMesa(page);
 
-  await guardarSalaPropia(page, campaignId);
+    await guardarSalaPropia(page, campaignId);
 
-  await page.goto(`/campaigns/${campaignId}/sesion`);
-  const marcoLocator = page.locator("iframe[title='Sala del tablero']");
-  await expect(marcoLocator).toBeAttached();
-  await expect(
-    page.frameLocator("iframe[title='Sala del tablero']").getByRole("heading", { level: 1 }),
-  ).toBeVisible();
+    await page.goto(`/campaigns/${campaignId}/sesion`);
+    const marcoLocator = page.locator("iframe[title='Sala del tablero']");
+    await expect(marcoLocator).toBeAttached();
+    await expect(
+      page.frameLocator("iframe[title='Sala del tablero']").getByRole("heading", { level: 1 }),
+    ).toBeVisible();
 
-  // La mesa a 390 sigue aplazada (D-CF-26): aquí solo se comprueba que el registro lateral cae a
-  // la DERECHA del marco (columnas fijas sin ruptura), no que la columna tenga ancho útil.
-  await page.setViewportSize({ width: 390, height: 844 });
-  const marco = await marcoLocator.boundingBox();
-  const registro = await page.getByRole("region", { name: "Registro de la sesión" }).boundingBox();
-  expect(marco).not.toBeNull();
-  expect(registro).not.toBeNull();
-  expect(registro!.x).toBeGreaterThanOrEqual(marco!.x + marco!.width - 1);
-});
+    // La medida buena: apilado, el registro debajo del marco. Hoy falla (columnas fijas sin
+    // ruptura, D-CF-26) y por eso la prueba es `test.fail`.
+    await page.setViewportSize({ width: 390, height: 844 });
+    const marco = await marcoLocator.boundingBox();
+    const registro = await page
+      .getByRole("region", { name: "Registro de la sesión" })
+      .boundingBox();
+    expect(marco).not.toBeNull();
+    expect(registro).not.toBeNull();
+    expect(registro!.y).toBeGreaterThanOrEqual(marco!.y + marco!.height - 1);
+  },
+);

@@ -43,6 +43,13 @@ describe("claveDeConjuro / parsearClaveDeActividad", () => {
   it("una clave sin el prefijo spell: es un rasgo", () => {
     expect(parsearClaveDeActividad("second-wind")).toEqual({ tipo: "feature", key: "second-wind" });
   });
+  // Ola post-revisión de 3A.3 (C1): la clave tal cual la lista `GET …/actions` llega desnuda.
+  it("feature:<key> (como lo lista GET actions) es el mismo rasgo, con la clave desnuda", () => {
+    expect(parsearClaveDeActividad("feature:rage")).toEqual({ tipo: "feature", key: "rage" });
+  });
+  it("basic:<key> se conserva entero: ese prefijo sí lo entiende el catálogo", () => {
+    expect(parsearClaveDeActividad("basic:dodge")).toEqual({ tipo: "feature", key: "basic:dodge" });
+  });
 });
 
 describe("actividadDeLanzamiento", () => {

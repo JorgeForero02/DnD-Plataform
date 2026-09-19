@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
 import type { GameEventRow } from "../log-api";
 import { useStampNote } from "../hooks";
@@ -387,6 +387,10 @@ export function HiloDeSesion({
   // que un lector de pantalla diría «Todo, cada suceso del registro sin recortar» como si fuera
   // el ROTULO del botón, no su descripción. Sacándolo del botón, el nombre se queda en «Todo» y
   // la frase llega como DESCRIPCIÓN aparte — que es justo lo que pide el ruling.
+  // Ola post-revisión de 3A.3 (M4): `useId`, no un id estático — dos registros montados en la
+  // misma página (hoy no ocurre; mañana, quién sabe) duplicarían el id y `aria-describedby`
+  // apuntaría al primero.
+  const idBaseDeFiltros = useId();
   const filtros = onFiltroChange && (
     <div
       role="radiogroup"
@@ -396,7 +400,7 @@ export function HiloDeSesion({
       {(Object.keys(OPCIONES_DE_FILTRO) as FiltroDeRegistro[]).map((clave) => {
         const opcion = OPCIONES_DE_FILTRO[clave];
         const elegido = filtro === clave;
-        const idDeLaFrase = `filtro-registro-frase-${clave}`;
+        const idDeLaFrase = `${idBaseDeFiltros}-frase-${clave}`;
         return (
           <Fragment key={clave}>
             <button
@@ -563,14 +567,26 @@ export function HiloDeSesion({
           </label>
           {SELLOS_EN_ORDEN.map((kind) => {
             const Icono = ICONO_SELLO[kind];
+            // Ola post-revisión de 3A.3 (I4) — **`aria-disabled`, no `disabled`** (regla U9,
+            // cabecera de `ui/Button.tsx`): un `<button disabled>` sale del recorrido de teclado.
+            // El motivo va en el `title` para que apagado no sea mudo, y el `onClick` se ignora.
+            const apagado = sellar.isPending || !hayTexto;
+            const motivo = !hayTexto
+              ? " — escribe algo primero"
+              : sellar.isPending
+                ? " — enviando"
+                : "";
             return (
               <button
                 key={kind}
                 type="button"
-                title={NOMBRE_SELLO[kind]}
-                disabled={sellar.isPending || !hayTexto}
-                onClick={() => void poner(kind)}
-                className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-muted/40 text-muted transition-colors hover:border-copper hover:text-copper-text disabled:cursor-not-allowed disabled:opacity-40"
+                title={`${NOMBRE_SELLO[kind]}${motivo}`}
+                aria-disabled={apagado || undefined}
+                onClick={() => {
+                  if (apagado) return;
+                  void poner(kind);
+                }}
+                className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-muted/40 text-muted transition-colors hover:border-copper hover:text-copper-text aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
               >
                 <Icono className="h-3.5 w-3.5" />
                 <span className="sr-only">{NOMBRE_SELLO[kind]}</span>

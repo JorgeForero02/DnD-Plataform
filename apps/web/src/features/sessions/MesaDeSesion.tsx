@@ -26,6 +26,8 @@ import { TiradasPendientes } from "../roll-requests/TiradasPendientes";
 import { useAuthStore } from "../../store/auth.store";
 import { Button } from "../../ui/Button";
 import { BarraDeAcciones } from "../actions/BarraDeAcciones";
+import { useCurrentEncounter } from "../encounters/hooks";
+import { useLimpiarObjetivoDeLaMesa } from "./objetivo.store";
 
 // **La mesa. Un compositor, y nada más.**
 //
@@ -172,6 +174,13 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
   // CUÁL de las dos ramas está montada. Si no hay registro montado (el DM en su taller, sin
   // sesión), `campo` es `null` y no pasa nada — ni error, ni atajo a medias.
   const tienePersonaje = Boolean(miPersonaje);
+
+  // Ola post-revisión de 3A.3 (M2) — el chip de objetivo de la barra se limpia al terminar el
+  // combate y al cambiar de campaña. Misma consulta que ya sondea `CapaDeCombate`: cero
+  // peticiones nuevas. Ver `useLimpiarObjetivoDeLaMesa`.
+  const { data: encuentroActual } = useCurrentEncounter(campaignId, sesion?.id);
+  useLimpiarObjetivoDeLaMesa(campaignId, encuentroActual?.status ?? null);
+
   useEffect(() => {
     function alPulsar(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -279,14 +288,13 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
             ].join(" ")}
           >
             {/* **El rail vive al pie de la columna del elenco, y no en una fila propia.**
-                La maqueta lo pone en una fila a lo ancho, debajo de la rejilla — pero esa fila
-                lleva además `BarraDeAcciones`, **que en esta aplicación no existe** (la auditoría
-                del 2026-09-04 la marca ALTA: «ni el fichero»). Sin ella la fila es hueco muerto a
-                lo ancho de la pantalla, y el hilo se corta por encima de ella.
+                La maqueta de 2026-09-04 lo ponía en una fila a lo ancho, debajo de la rejilla,
+                junto a una `BarraDeAcciones` que entonces no existía. `BarraDeAcciones` existe
+                desde la Task 4 de 3A.3 (3aa6c0d) y **va bajo el marco, dentro de la columna
+                central** (más abajo en este mismo fichero; así lo pone el prototipo de la mesa
+                del 2026-09-18) — no en una fila a lo ancho, así que el rail se queda aquí.
                 `grid-rows-[1fr_auto]`: el elenco ocupa lo que hay y el rail se apoya abajo, así
-                que el hilo y las herramientas llegan al borde inferior. **Cuando exista
-                `BarraDeAcciones`, esto hay que volver a mirarlo**: con contenido, la fila de la
-                maqueta deja de ser hueco y vuelve a tener sentido. */}
+                que el hilo y las herramientas llegan al borde inferior. */}
             <div className="grid min-h-0 grid-rows-[1fr_auto] gap-s3">
               <ColumnaElenco
                 campaignId={campaignId}

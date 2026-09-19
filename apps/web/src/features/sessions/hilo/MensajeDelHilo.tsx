@@ -333,8 +333,15 @@ function LineaDelHilo({
       <Badge visibility={evento.visibility} />
     </span>
   ) : null;
+  // Ola post-revisión de 3A.3 (M10) — la firma va en `title` (D-CF-149), pero un `title` sobre
+  // un `<li>` no interactivo no lo leen la mayoría de lectores de pantalla: el autor se lee
+  // además en `sr-only`, pegado a la hora, para que «quién» no dependa del ratón.
   const tiempo = (
-    <time className="pt-[3px] font-data text-chrome-xs leading-none text-muted/70">{hora}</time>
+    <>
+      <time className="pt-[3px] font-data text-chrome-xs leading-none text-muted/70">{hora}</time>
+      {/* `sr-only` es `position:absolute`: no ocupa celda de la rejilla de dos columnas. */}
+      <span className="sr-only">{autor}</span>
+    </>
   );
 
   if (tipo === "sello") {

@@ -1019,10 +1019,12 @@ test("los paneles se abren encima, uno a la vez, y Escape devuelve el foco donde
 // aún no cabe se sacrifica primero el lugar (`hidden xl:inline`) y después la asistencia
 // (`hidden lg:inline`). Por debajo de 1024 sí puede partirse en dos.
 //
-// Se mide **sin asistencia declarada** («asistencia sin declarar», como en la primera prueba de
-// este fichero): con datos de asistencia, la línea «En la escena: …» se pinta a propósito en su
-// PROPIA fila (`w-full`, comentario de `BandaUnica.tsx`) — esa segunda fila es deliberada y no es
-// el defecto que este ruling corrige, así que medirla junto habría mezclado dos preguntas.
+// Se mide dos veces: **sin asistencia declarada** («asistencia sin declarar», como en la primera
+// prueba de este fichero) y, en la prueba siguiente, **con ella**. Hasta la ola post-revisión de
+// 3A.3 (I2) solo se medía sin, y el comentario decía que la línea «En la escena: …» iba «a
+// propósito en su propia fila» — pero con `lg:flex-nowrap` un `w-full` no baja de fila: se
+// encoge en la única fila y deja al título sin ancho. Como una sesión real declara asistencia
+// (es el caso normal), la medida sin asistencia no veía la banda que ven los jugadores.
 test("a 1280×800 la banda de la mesa cabe en una sola fila", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await registrarse(page);
@@ -1044,4 +1046,44 @@ test("a 1280×800 la banda de la mesa cabe en una sola fila", async ({ page }) =
   const caja = await banda.boundingBox();
   expect(caja).not.toBeNull();
   expect(caja!.height).toBeLessThanOrEqual(56);
+});
+
+// Ola post-revisión de 3A.3 (I2) — la misma cota, CON asistencia declarada: desde `lg` los
+// presentes van en la fila, truncados con `title`; solo por debajo de `lg` son su propia línea.
+test("a 1280×800 la banda sigue en una fila con asistencia declarada", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const cuenta = await registrarse(page);
+  await crearCampanaConSesion(page);
+  await crearPersonajeConHoja(page, "Borin Barbaférrea");
+
+  await page.getByRole("link", { name: "La mesa de prueba" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByLabel(cuenta.displayName).check();
+  await page
+    .getByLabel(`Personaje de ${cuenta.displayName}`)
+    .selectOption({ label: "Borin Barbaférrea" });
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await expect(banda).toBeVisible();
+  // La línea sigue en el DOM entera (se lee por `textContent`) y la lista completa va en `title`.
+  await expect(banda).toContainText("En la escena:");
+  await expect(banda).toContainText("Borin Barbaférrea");
+  await expect(banda.locator("p[title^='En la escena:']")).toHaveAttribute(
+    "title",
+    "En la escena: Borin Barbaférrea",
+  );
+
+  const caja = await banda.boundingBox();
+  expect(caja).not.toBeNull();
+  expect(caja!.height).toBeLessThanOrEqual(56);
+  // Y el título de la escena no se quedó sin ancho: sigue leyéndose.
+  const titulo = banda.getByRole("heading", { level: 1 });
+  const cajaTitulo = await titulo.boundingBox();
+  expect(cajaTitulo).not.toBeNull();
+  expect(cajaTitulo!.width).toBeGreaterThan(40);
 });

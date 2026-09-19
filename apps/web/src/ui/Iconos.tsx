@@ -183,6 +183,17 @@ export function IconoFlechaIzquierda({ className }: IconoProps) {
  * se quedan donde estaban, arriba, con el nombre con el que ya se importan.
  * ───────────────────────────────────────────────────────────────────────────── */
 
+/** Diana: apuntar, el objetivo de la barra de acciones (ola post-revisión de 3A.3, I3). */
+export function IconoDiana({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="diana">
+      <circle cx="12" cy="12" r="7" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+    </Marco>
+  );
+}
+
 /** Escudo: defensa, clase de armadura, lo que protege. */
 export function IconoEscudo({ className }: IconoProps) {
   return (

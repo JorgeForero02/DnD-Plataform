@@ -6,10 +6,10 @@
 // los elementos interactivos habituales del HTML es la guarda — la misma idea que ya usa
 // `PanelFlotante` para distinguir «dentro del panel» de «fuera», aplicada aquí a «dentro de un
 // control» frente a «en la superficie libre de la tarjeta».
-// **Sin `[role='button']`, a propósito**: la propia tarjeta lleva ese rol (ver `FichaDeElenco` y
-// `FichaDePnj`) para poder apuntarse con teclado, y `closest()` desde CUALQUIER hijo suyo
-// encontraría siempre la tarjeta misma primero — bloqueando el gesto que este fichero existe
-// para permitir. Solo cuentan los controles nativos que de verdad hacen otra cosa por su cuenta.
+// Ola post-revisión de 3A.3 (I3): la tarjeta ya NO lleva `role="button"` — el gesto de teclado
+// y el nombre accesible viven en `BotonDeApuntar`, dentro de la cabecera; este clic de superficie
+// es solo la comodidad de ratón. Solo cuentan los controles nativos que de verdad hacen otra
+// cosa por su cuenta (el propio `BotonDeApuntar` incluido: es un `<button>` y se ocupa de sí).
 const SELECTOR_INTERACTIVO = "button, a, input, select, label, textarea";
 
 /**

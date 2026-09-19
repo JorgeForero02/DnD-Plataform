@@ -120,7 +120,26 @@ describe("EconomiaDeAccion", () => {
 
     const casilla = screen.getByRole("checkbox", { name: "acción" });
     expect(casilla).toBeChecked();
-    expect(casilla).toBeDisabled();
+    // Ola post-revisión de 3A.3 (I4): `aria-disabled` con motivo, no `disabled` — sigue en el
+    // recorrido de teclado, dice por qué no se toca, y pulsarla no dispara ningún gasto.
+    expect(casilla).not.toBeDisabled();
+    expect(casilla).toHaveAttribute("aria-disabled", "true");
+    expect(casilla).toHaveAccessibleDescription("Ya gastada; no se deshace");
+  });
+
+  it("pulsar una casilla ya gastada no manda ningún gasto", () => {
+    const onGastar = vi.fn();
+    render(
+      <EconomiaDeAccion
+        economia={{ ...ECONOMIA_INICIAL, actionUsed: true }}
+        velocidad={30}
+        esDm
+        onGastar={onGastar}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Corregir" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "acción" }));
+    expect(onGastar).not.toHaveBeenCalled();
   });
 
   it("sin onGastar, los controles existen igual y no rompen al pulsarlos", () => {

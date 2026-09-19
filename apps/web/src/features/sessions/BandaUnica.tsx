@@ -265,6 +265,7 @@ export function BandaUnica({
             ["I", "Tu bolsa"],
             ["M", "Consulta del mundo"],
             ["D", "Los dados"],
+            ["/", "Escribir en el registro"],
             ["Esc", "Cerrar lo que esté abierto"],
           ].map(([tecla, que]) => (
             <div key={tecla} className="flex items-center gap-s3">
@@ -302,16 +303,27 @@ export function BandaUnica({
         <ThemeToggle variante="en-banda" />
       </div>
 
-      {/* Los presentes: solo con datos, y en su propia línea — el prototipo no le reserva sitio
-          en la fila principal, pero la información no desaparece. */}
+      {/* Los presentes: solo con datos — el prototipo no le reserva sitio en la fila principal,
+          pero la información no desaparece.
+
+          Ola post-revisión de 3A.3 (I2) — **por debajo de `lg` es su propia línea (`w-full`);
+          desde `lg` va EN la fila, truncada.** Con `lg:flex-nowrap` en el `<header>`, un `w-full`
+          no baja a una segunda fila: es un ítem más de la única fila, se encoge y le roba el ancho
+          al `<h1>` (`flex-1 min-w-0`, que se iba a cero). Aquí se hace `shrink-0` con un ancho
+          máximo y `truncate` (el `<p>` pasa a `block` para que la elipsis funcione: `flex` la
+          anula), y la lista completa va en `title`. Sigue en el DOM entera —las pruebas la leen
+          por `textContent`— y `sesion.spec.ts` la mide a 1280 CON asistencia declarada. */}
       {presentes.length > 0 && (
-        <p className="flex w-full flex-wrap items-center gap-x-s2 gap-y-s1 font-chrome text-chrome-xs text-muted">
-          <IconoLugar className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>En la escena:</span>
+        <p
+          className="flex w-full flex-wrap items-center gap-x-s2 gap-y-s1 font-chrome text-chrome-xs text-muted lg:block lg:w-auto lg:max-w-[10rem] lg:shrink-0 lg:truncate xl:max-w-[16rem]"
+          title={`En la escena: ${presentes.join(", ")}`}
+        >
+          <IconoLugar className="inline h-3.5 w-3.5 shrink-0 align-[-2px]" aria-hidden="true" />
+          <span> En la escena:</span>
           {presentes.map((nombre) => (
             <span
               key={nombre}
-              className="rounded-radius-sm border border-muted/40 px-s2 py-s1 text-text"
+              className="ml-s1 rounded-radius-sm border border-muted/40 px-s2 py-s1 text-text"
             >
               {nombre}
             </span>

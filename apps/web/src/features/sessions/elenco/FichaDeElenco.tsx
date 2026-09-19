@@ -7,6 +7,7 @@ import { vozDePersonaje } from "../../../dominio/voces";
 import { AyudarA } from "./AyudarA";
 import { useObjetivoStore } from "../objetivo.store";
 import { alPulsarLaTarjeta } from "./apuntar";
+import { BotonDeApuntar } from "./BotonDeApuntar";
 import {
   useCharacterSheet,
   useChangeHp,
@@ -192,11 +193,9 @@ export function FichaDeElenco({
     combateEnMarcha,
   });
 
-  // Task 4 de 3A.3 (T22) — apuntar desde el elenco. **La tarjeta entera es el gesto**, no un
-  // botón nuevo: `role="button"` + `tabIndex`/`onKeyDown` la hacen alcanzable por teclado sin
-  // tocar el orden de tabulación de sus mandos internos (siguen siendo los primeros, porque
-  // vienen antes en el DOM). `aria-pressed` es el propio de un botón conmutador (patrón WAI-ARIA
-  // "Button (Toggle)"): esta tarjeta es o no es el objetivo, exactamente ese binario.
+  // Task 4 de 3A.3 (T22) — apuntar desde el elenco. La Task 4 hizo de la tarjeta entera un
+  // `role="button"`; la ola post-revisión (I3) lo deshizo: el botón es `BotonDeApuntar` (con su
+  // `aria-pressed`) y aquí solo queda el clic de superficie y el anillo de peligro del apuntado.
   const objetivo = useObjetivoStore((s) => s.objetivo);
   const apuntar = useObjetivoStore((s) => s.apuntar);
   const apuntado = objetivo?.id === personaje.id;
@@ -215,19 +214,11 @@ export function FichaDeElenco({
     // lo dibuja y la voz ya va en el filete—; `Retrato` sigue exportado para la cabecera de la
     // hoja. El propio (`destacado`) lleva el borde de cobre atenuado (`.tuya`), el que actúa el
     // borde de cobre (`.actua`) más su palabra «Su turno», y el apuntado el anillo de peligro.
+    // Ola post-revisión de 3A.3 (I3) — la tarjeta ya no es `role="button"`: apuntar es el
+    // `BotonDeApuntar` de la cabecera (con `aria-pressed`), y la superficie solo conserva el
+    // gesto de ratón. Así el DOM anuncia la ficha como contenido, no como «Apuntar a X».
     <li
-      role="button"
-      tabIndex={0}
-      aria-pressed={apuntado}
-      aria-label={`Apuntar a ${personaje.name}`}
       onClick={(e) => alPulsarLaTarjeta(e, () => apuntar(personaje.id, personaje.name))}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        alPulsarLaTarjeta(e, () => {
-          e.preventDefault();
-          apuntar(personaje.id, personaje.name);
-        });
-      }}
       className={[
         "relative cursor-pointer rounded-radius-sm border border-l-[3px] border-l-current bg-bg/40 px-s3 py-s2 transition-colors hover:bg-muted/10",
         voz,
@@ -259,6 +250,7 @@ export function FichaDeElenco({
               personaje.name
             )}
           </p>
+          <BotonDeApuntar id={personaje.id} nombre={personaje.name} />
           <p
             className="min-w-0 truncate whitespace-nowrap font-chrome text-chrome-xs text-muted"
             title={[descriptor, `Nivel ${personaje.level}`].filter(Boolean).join(" · ")}
@@ -318,13 +310,20 @@ export function FichaDeElenco({
           // única forma de anotar un golpe sin abrir la hoja entera.
           <div className="mt-s2 flex items-center gap-s1">
             {[-5, 5].map((delta) => (
+              // Ola post-revisión de 3A.3 (I4) — `aria-disabled`, no `disabled` (regla U9): el
+              // botón sigue en el recorrido de teclado mientras el servidor responde; el
+              // `onClick` se ignora y el `title` dice por qué.
               <button
                 key={delta}
                 type="button"
-                disabled={cambiarPg.isPending}
-                onClick={() => cambiarPg.mutate({ delta })}
+                aria-disabled={cambiarPg.isPending || undefined}
+                title={cambiarPg.isPending ? "Enviando el cambio…" : undefined}
+                onClick={() => {
+                  if (cambiarPg.isPending) return;
+                  cambiarPg.mutate({ delta });
+                }}
                 aria-label={`${delta < 0 ? "Quitar" : "Dar"} ${Math.abs(delta)} puntos de golpe a ${personaje.name}`}
-                className="rounded-radius-sm border border-muted/40 px-s2 py-px font-data text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text disabled:opacity-50"
+                className="rounded-radius-sm border border-muted/40 px-s2 py-px font-data text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
               >
                 {delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`}
               </button>

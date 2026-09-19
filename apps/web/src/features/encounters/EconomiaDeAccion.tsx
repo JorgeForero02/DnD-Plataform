@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Coste, EconomiaDelTurno } from "@dnd/shared";
 
 // Paso 2, tarea A3 — **la mesa enseña lo que te queda del turno.**
@@ -167,6 +167,7 @@ export function EconomiaDeAccion({
 }: EconomiaDeAccionProps) {
   const [pies, setPies] = useState("5");
   const [corrigiendo, setCorrigiendo] = useState(false);
+  const idDescripcion = useId();
 
   const gastar = (coste: Coste, cantidad?: number) => onGastar?.({ coste, cantidad });
 
@@ -281,15 +282,29 @@ export function EconomiaDeAccion({
                 <label
                   key={coste}
                   className="flex items-center gap-s1 whitespace-nowrap font-chrome text-chrome-xs text-text"
+                  title={gastada ? "Ya gastada; no se deshace" : undefined}
                 >
+                  {/* Ola post-revisión de 3A.3 (I4) — `aria-disabled` + motivo, no `disabled`:
+                      la casilla ya gastada sigue en el recorrido de teclado y dice POR QUÉ no
+                      se toca (`aria-describedby`); el `onChange` la ignora. */}
                   <input
                     type="checkbox"
                     checked={gastada}
-                    disabled={gastada}
-                    onChange={() => gastar(coste)}
+                    aria-disabled={gastada || undefined}
+                    aria-describedby={gastada ? `${idDescripcion}-${coste}` : undefined}
+                    onChange={() => {
+                      if (gastada) return;
+                      gastar(coste);
+                    }}
                     aria-label={ETIQUETA_DE_COSTE[coste]}
+                    className="aria-disabled:cursor-not-allowed"
                   />
                   {ETIQUETA_DE_COSTE[coste]}
+                  {gastada && (
+                    <span id={`${idDescripcion}-${coste}`} className="sr-only">
+                      Ya gastada; no se deshace
+                    </span>
+                  )}
                 </label>
               ))}
             </div>

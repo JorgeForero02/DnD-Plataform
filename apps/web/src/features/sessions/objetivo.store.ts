@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { create } from "zustand";
 
 // Task 4 de 3A.3 (T22) — **a quién apunta la barra de acciones**, y solo eso.
@@ -32,3 +33,38 @@ export const useObjetivoStore = create<EstadoDeObjetivo>((set) => ({
   apuntar: (id, nombre) => set({ objetivo: { id, nombre } }),
   quitar: () => set({ objetivo: null }),
 }));
+
+/**
+ * Ola post-revisión de 3A.3 (M2) — **el chip no sobrevive a lo que lo hizo posible.** El store es
+ * global a la pestaña y nadie lo limpiaba: el objetivo seguía puesto tras terminar el combate, al
+ * cambiar de campaña en la misma pestaña, y la barra habría disparado contra alguien que ya no
+ * está en ningún encuentro (404 en la fila, ahora visible por I1 — pero mejor no llegar ahí).
+ *
+ * Lo monta `MesaDeSesion` una vez, con el estado del encuentro que ya sondea `CapaDeCombate`
+ * (misma consulta, cero peticiones nuevas). Dos limpiezas:
+ *  - **cambia la campaña** → se quita (el objetivo era de otra mesa).
+ *  - **el encuentro deja de estar `ACTIVE`** (termina, o desaparece) → se quita. Es una
+ *    TRANSICIÓN, no un estado: apuntar ANTES de que empiece el combate sigue valiendo (un
+ *    ataque suelto fuera de combate también usa el chip), así que un encuentro `null` de
+ *    entrada no borra nada; solo borra el paso de `ACTIVE` a otra cosa.
+ */
+export function useLimpiarObjetivoDeLaMesa(
+  campaignId: string,
+  estadoDelEncuentro: string | null | undefined,
+): void {
+  const quitar = useObjetivoStore((s) => s.quitar);
+  const campanaAnterior = useRef(campaignId);
+  const estadoAnterior = useRef(estadoDelEncuentro);
+
+  useEffect(() => {
+    if (campanaAnterior.current !== campaignId) {
+      campanaAnterior.current = campaignId;
+      quitar();
+    }
+  }, [campaignId, quitar]);
+
+  useEffect(() => {
+    if (estadoAnterior.current === "ACTIVE" && estadoDelEncuentro !== "ACTIVE") quitar();
+    estadoAnterior.current = estadoDelEncuentro;
+  }, [estadoDelEncuentro, quitar]);
+}

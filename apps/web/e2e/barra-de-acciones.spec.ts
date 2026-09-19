@@ -228,7 +228,8 @@ test("la barra de acciones: apuntar desde el elenco, lanzar contra el chip, la f
     expect(leToca).toBe(true);
   }).toPass({ timeout: 30_000 });
 
-  // --- La maga apunta al Goblin desde el elenco: clic en su tarjeta ---
+  // --- La maga apunta al Goblin desde el elenco: su botón «Apuntar a Goblin» (I3: la tarjeta
+  // ya no es un botón; el gesto tiene su propio mando con `aria-pressed`) ---
   await elencoMaga.getByRole("button", { name: "Apuntar a Goblin" }).click();
   await expect(barra.getByText("apuntas a Goblin")).toBeVisible({ timeout: 15_000 });
 

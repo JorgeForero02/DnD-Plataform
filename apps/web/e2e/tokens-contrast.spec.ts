@@ -1205,11 +1205,10 @@ for (const theme of ["dark", "light", "reading"] as const) {
     // Sin `boardRoomUrl`: el registro va al centro y no a la lateral, pero es el mismo
     // `ColumnaDelRegistro` con los mismos filtros — lo que se mide es el color, no la columna.
     await page.goto(`/campaigns/${campaignId}/sesion`);
-    // El «Todo» ELEGIDO por defecto: `label` en `border-accent bg-[color:var(--accent-tint)]`
-    // (`GrupoDeRadios.tsx`) — la misma clase de superficie que el botón plegado medía en
-    // `bg-accent`. Se mide el texto de la ETIQUETA («Todo»), no la frase de ayuda debajo: son dos
-    // tonos distintos (`text-text` contra `text-muted`) y mezclarlos en un solo nodo mediría un
-    // color que no existe en ningún píxel real.
+    // El «Todo» ELEGIDO por defecto: un `<button role="radio" aria-checked>` del segmento inline
+    // de la cabecera del registro (`HiloDeSesion.tsx`, D-CF-148; desde cf68768 ya no es el
+    // `GrupoDeRadios` con frase visible). Se mide el texto del BOTÓN («Todo»); su explicación va
+    // en `aria-describedby`/`title`, fuera del nodo, así que no se mezcla ningún tono.
     const todo = page.getByRole("radio", { name: /^Todo/ });
     await expect(todo).toBeVisible();
     await expect(todo).toBeChecked();

@@ -27,8 +27,9 @@ export const ORDEN_DE_GRUPOS: GrupoDeAccion[] = [
 ];
 
 /** El rótulo del botón que abre cada menú. «Esquivar, ayudar…» es el propio prototipo, no una
- *  paráfrasis: las ocho básicas del SRD (Esquivar, Ayudar, Esconderse, Desengancharse, Correr,
- *  Prepararse, Buscar, Usar un objeto) no caben en una sola palabra y esa es la que eligió. */
+ *  paráfrasis: las ocho básicas del SRD (Esquivar, Ayudar, Esconderse, Destrabarse, Correr,
+ *  Preparar, Buscar, Usar un objeto — los nombres los pone el servidor, `basic-actions.ts`)
+ *  no caben en una sola palabra y esa es la que eligió. */
 export const NOMBRE_GRUPO: Record<GrupoDeAccion, string> = {
   ATAQUES: "Ataques",
   CONJUROS: "Conjuros",

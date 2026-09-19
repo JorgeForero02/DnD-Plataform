@@ -372,3 +372,51 @@ describe("BarraDeAcciones — Básicas usa la misma puerta que la hoja", () => {
     );
   });
 });
+
+// Ola post-revisión de 3A.3 (C1) — la fila de APTITUDES viaja con el prefijo `feature:` que el
+// catálogo del servidor no entiende (`actividadCatalogada` busca `f.key === "feature:rage"` y no
+// lo encuentra → 404). La barra tiene que mandar la clave DESNUDA, como ya hace la hoja
+// (`Actividades.tsx` manda `actividad.key`) y como esta misma barra hace con `attack:`.
+describe("BarraDeAcciones — Aptitudes usa la misma puerta que la hoja", () => {
+  it('pulsar «Usar» sobre Furia llama a usarActividad con "rage", sin el prefijo feature:', async () => {
+    const usar = vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    montar(
+      acciones({
+        APTITUDES: [
+          {
+            key: "feature:rage",
+            grupo: "APTITUDES",
+            name: "Furia",
+            coste: "BONUS",
+            mecanica: { tipo: "utilidad" },
+            objetivos: "ninguno",
+            disponible: true,
+            motivos: [],
+          },
+        ],
+      }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /^Aptitudes: 1/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Usar" }));
+    await waitFor(() => expect(usar).toHaveBeenCalledWith("c1", "p-maga", "rage", undefined));
+  });
+});
+
+// Ola post-revisión de 3A.3 (I1) — la barra no pintaba ningún `isError`: un 400/404 del servidor
+// («No se puede atacar al propio personaje», actividad inexistente, objetivo que salió del
+// combate) se veía como «pulso y no pasa nada». Mismo patrón que `BandejaDeDano`: un
+// `role="alert"` en la fila con el mensaje del servidor.
+describe("BarraDeAcciones — un error del servidor se lee en la fila", () => {
+  it("si usarActividad falla, la fila enseña el mensaje como alerta", async () => {
+    vi.spyOn(characterSheetApi, "usarActividad").mockRejectedValue(
+      new Error("Ya has gastado la acción de este turno"),
+    );
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: /^Esquivar, ayudar…: 2/ }));
+    const filas = await screen.findAllByRole("button", { name: "Usar" });
+    fireEvent.click(filas.find((b) => b.getAttribute("aria-disabled") !== "true")!);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Ya has gastado la acción de este turno",
+    );
+  });
+});

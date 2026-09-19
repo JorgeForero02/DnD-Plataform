@@ -161,7 +161,7 @@ function BotonDeGrupo({
       : undefined;
 
   return (
-    <span className="inline-flex shrink-0">
+    <span className="inline-flex shrink-0 flex-col items-end">
       <Button
         ref={disparador}
         type="button"
@@ -287,6 +287,24 @@ function ControlDeFila({
 }
 
 /**
+ * Ola post-revisión de 3A.3 (I1) — **un error del servidor se lee en la fila.** La barra no
+ * pintaba ningún `isError` de sus mutaciones: un 400 («No se puede atacar al propio personaje»),
+ * un 404 (el objetivo salió del combate, una actividad que el catálogo no conoce — C1) o una
+ * fila `disponible` caducada entre sondeos se veían como «pulso y no pasa nada». La doctrina
+ * de la casa ya está escrita en `TiraDeIniciativa`: un botón que falla en silencio es peor que
+ * uno que no existe. Mismo patrón que `BandejaDeDano`: `role="alert"` con el mensaje tal cual
+ * lo manda el servidor (ya viene en español, es la frase de la excepción).
+ */
+function ErrorDeControl({ error }: { error: unknown }) {
+  if (!error) return null;
+  return (
+    <p role="alert" className="mt-1 max-w-[16rem] font-chrome text-chrome-xs text-danger-text">
+      {(error as Error).message}
+    </p>
+  );
+}
+
+/**
  * ATAQUES — **el mismo flujo que `TirarAtaqueBoton`**: con el chip puesto, resuelve directo
  * contra ese objetivo (`useResolveAttack`); sin chip y en combate, abre la lista de combatientes
  * (`useCombatientesDelEncuentro`, el mismo bando-contrario-primero); sin combate, tira suelta
@@ -407,6 +425,7 @@ function ControlDeAtaque({
           </ul>
         </PanelFlotante>
       )}
+      <ErrorDeControl error={resolver.error ?? tirar.error} />
     </span>
   );
 }
@@ -457,18 +476,28 @@ function ControlDeObjeto({
   const rowId = accion.key.replace(/^item:/, "");
   const consumir = useConsumeInventoryItem(campaignId, characterId);
   return (
-    <Button
-      type="button"
-      variant="primary"
-      disabled={consumir.isPending}
-      onClick={() => consumir.mutate({ rowId })}
-    >
-      Beber
-    </Button>
+    <span className="inline-flex flex-col items-end">
+      <Button
+        type="button"
+        variant="primary"
+        disabled={consumir.isPending}
+        onClick={() => consumir.mutate({ rowId })}
+      >
+        Beber
+      </Button>
+      <ErrorDeControl error={consumir.error} />
+    </span>
   );
 }
 
-/** APTITUDES — `useUsarActividad`, la misma puerta que `Actividades.tsx`. */
+/**
+ * APTITUDES — `useUsarActividad`, la misma puerta que `Actividades.tsx`. **La clave viaja
+ * desnuda** (`rage`, no `feature:rage`): el prefijo `feature:` es solo el espacio de nombres de
+ * la lista (`actions.service.ts`) y el catálogo del servidor (`actividadCatalogada`) busca la
+ * `feature.key` cruda — con el prefijo respondía 404 y, sin `isError` pintado, la pestaña entera
+ * parecía muerta (C1 de la revisión final de 3A.3). Mismo recorte que `ControlDeAtaque` hace
+ * con `attack:`; `basic:` NO se recorta porque ese prefijo sí lo entiende el catálogo.
+ */
 function ControlDeActividad({
   campaignId,
   characterId,
@@ -478,16 +507,20 @@ function ControlDeActividad({
   characterId: string;
   accion: AccionDisponible;
 }) {
+  const activityKey = accion.key.replace(/^feature:/, "");
   const usar = useUsarActividad(campaignId, characterId);
   return (
-    <Button
-      type="button"
-      variant="primary"
-      disabled={usar.isPending}
-      onClick={() => usar.mutate({ activityKey: accion.key })}
-    >
-      Usar
-    </Button>
+    <span className="inline-flex flex-col items-end">
+      <Button
+        type="button"
+        variant="primary"
+        disabled={usar.isPending}
+        onClick={() => usar.mutate({ activityKey })}
+      >
+        Usar
+      </Button>
+      <ErrorDeControl error={usar.error} />
+    </span>
   );
 }
 
@@ -518,13 +551,16 @@ function ControlDeBasica({
   }
 
   return (
-    <Button
-      type="button"
-      variant="primary"
-      disabled={usar.isPending}
-      onClick={() => usar.mutate({ activityKey: accion.key })}
-    >
-      Usar
-    </Button>
+    <span className="inline-flex flex-col items-end">
+      <Button
+        type="button"
+        variant="primary"
+        disabled={usar.isPending}
+        onClick={() => usar.mutate({ activityKey: accion.key })}
+      >
+        Usar
+      </Button>
+      <ErrorDeControl error={usar.error} />
+    </span>
   );
 }

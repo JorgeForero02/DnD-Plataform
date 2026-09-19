@@ -178,6 +178,9 @@ export class ActivitiesService {
     // de catálogo, o índice entre las que no son la de lanzar—, se rechaza con 400: es más honesto
     // que gastar un espacio por una actividad gratuita. La web solo manda `spell:<key>`.
     const claveParseada = parsearClaveDeActividad(actividadKey);
+    // C1 (ola de 3A.3): si llegó `feature:rage` (la clave de `GET …/actions`), de aquí en adelante
+    // es `rage` — el catálogo, la razón del gasto y el `ACTIVITY_USED` ven un solo espacio de claves.
+    if (claveParseada.tipo === "feature") actividadKey = claveParseada.key;
     if (claveParseada.tipo === "spell" && claveParseada.indice > 0) {
       throw new BadRequestException(
         "Las actividades secundarias de un conjuro (spell:<clave>@N) llegan en 3B.",

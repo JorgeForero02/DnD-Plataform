@@ -195,6 +195,35 @@ describe("La barra de acciones — GET …/actions (e2e)", () => {
     expect(mm.motivos).toEqual(["ACCION_GASTADA"]);
   });
 
+  // Ola post-revisión de 3A.3 (C1) — el contrato de la barra de punta a punta: la clave de una
+  // APTITUD **tal cual la lista `GET …/actions`** (`feature:<key>`) se reenvía a `POST …/use` y el
+  // servidor la encuentra. Antes respondía 404 («No existe la actividad "feature:arcane-recovery"»)
+  // y ninguna prueba lo ejercitaba: la RTL solo comprobaba que la clave no se imprimiera y el e2e
+  // de la barra usaba Conjuros y Esquivar. Recuperación arcana es `FREE` con un uso por descanso
+  // largo, así que no toca la economía del turno y la siguiente GET la marca `SIN_USOS`.
+  it("una APTITUD con la clave tal cual la lista GET actions: POST …/use → 201 y luego SIN_USOS", async () => {
+    const antes = await request(s()).get(actionsUrl()).set("Authorization", auth(tokenMago));
+    expect(antes.status).toBe(200);
+    const recuperacion = antes.body.grupos.APTITUDES.find(
+      (a: { key: string }) => a.key === "feature:arcane-recovery",
+    );
+    expect(recuperacion).toBeDefined();
+    expect(recuperacion.disponible).toBe(true);
+
+    const usar = await request(s())
+      .post(`/campaigns/${campaignId}/characters/${magoId}/activities/${recuperacion.key}/use`)
+      .set("Authorization", auth(tokenMago))
+      .send({});
+    expect(usar.status).toBe(201);
+
+    const despues = await request(s()).get(actionsUrl()).set("Authorization", auth(tokenMago));
+    const gastada = despues.body.grupos.APTITUDES.find(
+      (a: { key: string }) => a.key === "feature:arcane-recovery",
+    );
+    expect(gastada.disponible).toBe(false);
+    expect(gastada.motivos).toEqual(["SIN_USOS"]);
+  });
+
   it("el DM avanza el turno: la GET del mago marca NO_ES_TU_TURNO", async () => {
     const avanzar = await request(s())
       .post(encUrl(`/${encounterId}/advance-turn`))

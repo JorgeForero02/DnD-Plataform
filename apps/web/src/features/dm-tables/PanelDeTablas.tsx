@@ -57,29 +57,42 @@ interface FilaEnEdicion {
   entrega?: EntregaInput;
 }
 
-export function PanelDeTablas({ campaignId }: { campaignId: string }) {
+export function PanelDeTablas({
+  campaignId,
+  /**
+   * Tarea 8 (plan 2026-09-19) — a `"ninguna"` este panel no pinta su propia cabecera (el `h2` y
+   * la frase que no se negocia): el `Dialog` que lo monta ya lleva su `title`/`subtitulo`. Por
+   * defecto `"pagina"`, que es lo que montaba hasta ahora la pestaña «Tablas» de la campaña.
+   */
+  cabecera = "pagina",
+}: {
+  campaignId: string;
+  cabecera?: "pagina" | "ninguna";
+}) {
   const { role } = useMyRole(campaignId);
   const esDm = role === "DM";
   const tablas = useDmTables(campaignId);
 
   return (
     <section className="space-y-s5">
-      <header>
-        <p className="font-data text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
-          La mesa · Tablas del DM
-        </p>
-        <div className="mt-s2 flex items-center gap-s2">
-          <IconoTabla className="h-6 w-6 text-copper-text" />
-          <h2 className="font-title text-chrome-2xl leading-tight text-text">Tablas del DM</h2>
-        </div>
-        {/* La frase que no se negocia. Va arriba, sin adornos, y dice exactamente lo que hace el
-            servidor. */}
-        <p className="mt-s2 max-w-[70ch] font-chrome text-chrome-sm leading-snug text-muted">
-          El SRD no trae ninguna tabla de críticos ni de pifias. Lo único oficial es que un crítico
-          duplica los dados y no los modificadores. Estas tablas son una regla de la casa: las pone
-          esta mesa, no el manual.
-        </p>
-      </header>
+      {cabecera === "pagina" && (
+        <header>
+          <p className="font-data text-chrome-xs uppercase tracking-[0.16em] text-copper-text">
+            La mesa · Tablas del DM
+          </p>
+          <div className="mt-s2 flex items-center gap-s2">
+            <IconoTabla className="h-6 w-6 text-copper-text" />
+            <h2 className="font-title text-chrome-2xl leading-tight text-text">Tablas del DM</h2>
+          </div>
+          {/* La frase que no se negocia. Va arriba, sin adornos, y dice exactamente lo que hace el
+              servidor. */}
+          <p className="mt-s2 max-w-[70ch] font-chrome text-chrome-sm leading-snug text-muted">
+            El SRD no trae ninguna tabla de críticos ni de pifias. Lo único oficial es que un
+            crítico duplica los dados y no los modificadores. Estas tablas son una regla de la casa:
+            las pone esta mesa, no el manual.
+          </p>
+        </header>
+      )}
 
       {esDm && (
         <InterruptorDeLaCasa campaignId={campaignId} enabled={tablas.data?.houseTablesEnabled} />

@@ -2,10 +2,18 @@ import { useId, useState } from "react";
 import type { DamageType } from "@dnd/shared";
 import { HojaCalculada } from "../../character-sheet/HojaCalculada";
 import { SelectorDeTipoDeDano } from "../../character-sheet/AplicarDano";
-import { IconoAviso, IconoCorazon, IconoEspada, IconoMochila, IconoOjo } from "../../../ui/Iconos";
+import {
+  IconoAviso,
+  IconoCorazon,
+  IconoEscudo,
+  IconoEspada,
+  IconoMochila,
+  IconoOjo,
+} from "../../../ui/Iconos";
 import { Dialog } from "../../../ui/Dialog";
 import { MenuDeAcciones, type AccionDeMenu } from "../../../ui/MenuDeAcciones";
 import { DarObjeto } from "./DarObjeto";
+import { PgTemporales } from "./PgTemporales";
 import { PonerCondicion } from "./PonerCondicion";
 import { Curar, PonerDano } from "./PonerDano";
 
@@ -94,7 +102,9 @@ export function MandosDeCombatiente({
   /** Lo que dijo el servidor al rechazar revelar/ocultar/sacar, del mismo `useAccionesDeMesa`. */
   errorDeMesa?: string | null;
 }) {
-  const [panel, setPanel] = useState<"dano" | "curar" | "condicion" | "dar" | "hoja" | null>(null);
+  const [panel, setPanel] = useState<
+    "dano" | "curar" | "condicion" | "dar" | "hoja" | "temporales" | null
+  >(null);
   // **El tipo de daño vive aquí y no dentro del cajón**, porque el cajón se desmonta con el
   // `Dialog` cerrado y lo que hace falta es poder LIMPIARLO al cerrar: el estado que sobrevive a
   // un cierre es exactamente el que hizo que la hoja mandara una causa falsa (ver `PonerDano`).
@@ -141,6 +151,12 @@ export function MandosDeCombatiente({
               onSelect: () => setPanel("condicion"),
             },
             { id: "dar", rotulo: "Dar…", icono: <IconoMochila />, onSelect: () => setPanel("dar") },
+            {
+              id: "temporales",
+              rotulo: "PG temporales…",
+              icono: <IconoEscudo />,
+              onSelect: () => setPanel("temporales"),
+            },
             {
               id: "hoja",
               rotulo: "Su hoja",
@@ -219,6 +235,13 @@ export function MandosDeCombatiente({
         nombre={nombre}
         abierto={panel === "condicion"}
         enCombate={enCombate}
+        onCerrar={() => setPanel(null)}
+      />
+      <PgTemporales
+        campaignId={campaignId}
+        characterId={characterId}
+        nombre={nombre}
+        abierto={panel === "temporales"}
         onCerrar={() => setPanel(null)}
       />
       {/* HP-1 (2026-09-12, opción A del autor): el cajón se llama «Su hoja», simétrico con el

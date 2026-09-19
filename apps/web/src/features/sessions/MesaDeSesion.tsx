@@ -558,11 +558,17 @@ function PanelesSuperpuestos({
         title="Tu bolsa"
         size="xl"
       >
-        {personajeId && <PaginaDeInventario campaignId={campaignId} characterId={personajeId} />}
+        {personajeId && (
+          <PaginaDeInventario
+            campaignId={campaignId}
+            characterId={personajeId}
+            cabecera="ninguna"
+          />
+        )}
       </Dialog>
 
       <Dialog open={abierto === "mundo"} onClose={onCerrar} title="Consulta del mundo" size="lg">
-        <ConsultaDelMundo campaignId={campaignId} esDm={esDm} />
+        <ConsultaDelMundo campaignId={campaignId} esDm={esDm} cabecera="ninguna" />
       </Dialog>
     </>
   );

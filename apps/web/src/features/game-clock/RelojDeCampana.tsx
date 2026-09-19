@@ -168,10 +168,24 @@ export function RelojDeCampana({
 
         {esDm && (
           <>
+            {/* Tarea 9 (plan 2026-09-19) — «Qué pasa» sube justo debajo de la cabecera «El
+                reloj», antes de «Pasa el tiempo» y «O viajáis»: describe cualquiera de los dos
+                gestos de abajo y por eso va antes de los dos, no colgando debajo. */}
+            <div className="mt-s3">
+              <Field label="Qué pasa (opcional)" hint="«Cae la noche», «hasta la ciudad».">
+                <input
+                  type="text"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  maxLength={120}
+                  className={fieldControlClass}
+                />
+              </Field>
+            </div>
+
             {/* Anexo #16: «avanzar el tiempo» y «o viajáis» pasaban de apilados a compartir
                 fila cuando hay sitio — la misma media pantalla que antes ocupaba solo el
-                primero. El «Qué pasa» opcional se queda a todo lo ancho, debajo de los dos:
-                describe cualquiera de los dos gestos y no pertenece más a uno que a otro. */}
+                primero. */}
             <div className="mt-s3 md:grid md:grid-cols-2 md:gap-s4">
               <div>
                 <p className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">
@@ -266,18 +280,6 @@ export function RelojDeCampana({
                   </Button>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-s3">
-              <Field label="Qué pasa (opcional)" hint="«Cae la noche», «hasta la ciudad».">
-                <input
-                  type="text"
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  maxLength={120}
-                  className={fieldControlClass}
-                />
-              </Field>
             </div>
           </>
         )}

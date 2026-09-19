@@ -985,10 +985,11 @@ test("las cinco casillas de la tira miden lo mismo, con y sin temporales (anexo 
   await completarFichaDeGuerreroEnano(page);
 
   // **PG temporales, puestos por la API.** No hay ningún control en esta pantalla que escriba
-  // `tempHp` —solo `PATCH .../hp` lo acepta, y el único gesto que lo usa hoy es «Dar temporales»
-  // a un PNJ del bestiario, fuera de esta pantalla—, así que se pone por la misma vía que usaría
-  // cualquier otro cliente del endpoint: con el token que la sesión ya tiene en `localStorage`
-  // (mismo patrón que `inventario.spec.ts`).
+  // `tempHp` —solo `PATCH .../hp` lo acepta, y el gesto que lo usa hoy es «PG temporales…», en el
+  // menú «Más acciones» de un combatiente en la mesa (`MandosDeCombatiente.tsx`, tarea 9 del plan
+  // 2026-09-19), fuera de esta pantalla—, así que se pone por la misma vía que usaría cualquier
+  // otro cliente del endpoint: con el token que la sesión ya tiene en `localStorage` (mismo
+  // patrón que `inventario.spec.ts`).
   const ruta = new URL(page.url()).pathname;
   const [, campaignId, characterId] = ruta.match(/\/campaigns\/([^/]+)\/personajes\/([^/]+)/)!;
   const token = await page.evaluate(() => localStorage.getItem("dnd_token"));

@@ -21,7 +21,20 @@ import { Badge } from "../../../ui/Badge";
  * servidor ya filtró por `canView`, y solo puede quitar de la vista filas que quien mira ya tenía
  * derecho a ver.
  */
-export function ConsultaDelMundo({ campaignId, esDm }: { campaignId: string; esDm: boolean }) {
+export function ConsultaDelMundo({
+  campaignId,
+  esDm,
+  /**
+   * Tarea 8 (plan 2026-09-19) — a `"ninguna"` este panel no pinta su propio `h2`: el `Dialog`
+   * que lo monta ya lleva su `title`. Por defecto `"pagina"`, aunque hoy este componente solo se
+   * monta dentro de un `Dialog` (va en UN solo sitio, ver la nota de cabecera del fichero).
+   */
+  cabecera = "pagina",
+}: {
+  campaignId: string;
+  esDm: boolean;
+  cabecera?: "pagina" | "ninguna";
+}) {
   const { data: entidades } = useAllEntities(campaignId);
   const [busqueda, setBusqueda] = useState("");
   const encontradas = (entidades ?? []).filter((e) =>
@@ -30,11 +43,13 @@ export function ConsultaDelMundo({ campaignId, esDm }: { campaignId: string; esD
 
   return (
     <div className="flex min-h-0 flex-col gap-s3">
-      <h2 className="flex shrink-0 items-center gap-s2 font-title text-chrome-md text-text">
-        <IconoLupa className="h-4 w-4 text-copper-text" />
-        El mundo, sin salir
-        <span aria-hidden="true" className="h-px flex-1 bg-copper/40" />
-      </h2>
+      {cabecera === "pagina" && (
+        <h2 className="flex shrink-0 items-center gap-s2 font-title text-chrome-md text-text">
+          <IconoLupa className="h-4 w-4 text-copper-text" />
+          El mundo, sin salir
+          <span aria-hidden="true" className="h-px flex-1 bg-copper/40" />
+        </h2>
+      )}
 
       <input
         aria-label="Buscar en el mundo"

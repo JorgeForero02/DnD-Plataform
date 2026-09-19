@@ -47,7 +47,18 @@ function mensajeDeError(error: unknown): string {
   return "No se pudo pedir la tirada.";
 }
 
-export function PedirTirada({ campaignId }: { campaignId: string }) {
+export function PedirTirada({
+  campaignId,
+  /**
+   * Tarea 8 (plan 2026-09-19) — a `"ninguna"` este panel no pinta su propio `h3` ni la frase
+   * explicativa: el `Dialog` que lo monta ya lleva su `title`/`subtitulo`. Por defecto
+   * `"pagina"`, que es lo único que monta hoy este componente fuera del `Dialog` de la mesa.
+   */
+  cabecera = "pagina",
+}: {
+  campaignId: string;
+  cabecera?: "pagina" | "ninguna";
+}) {
   const idGuia = useId();
   const [elegidos, setElegidos] = useState<string[]>([]);
   const [clave, setClave] = useState<string>("skill.perception");
@@ -111,13 +122,15 @@ export function PedirTirada({ campaignId }: { campaignId: string }) {
   return (
     <Panel className="max-w-[40rem]">
       <div className="flex flex-col gap-s3">
-        <div>
-          <h3 className="font-title text-chrome-lg leading-tight text-text">Pedir una tirada</h3>
-          <p className="mt-1 font-chrome text-chrome-xs leading-snug text-muted">
-            Se pide un valor de la hoja, no una expresión: el modificador lo pone el servidor con la
-            hoja de quien tira, en el momento de tirar.
-          </p>
-        </div>
+        {cabecera === "pagina" && (
+          <div>
+            <h3 className="font-title text-chrome-lg leading-tight text-text">Pedir una tirada</h3>
+            <p className="mt-1 font-chrome text-chrome-xs leading-snug text-muted">
+              Se pide un valor de la hoja, no una expresión: el modificador lo pone el servidor con
+              la hoja de quien tira, en el momento de tirar.
+            </p>
+          </div>
+        )}
 
         <fieldset className="min-w-0" disabled={pedir.isPending}>
           <legend className="mb-1 font-chrome text-chrome-xs uppercase tracking-[0.14em] text-muted">

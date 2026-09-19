@@ -13,7 +13,6 @@ import { Button } from "../../ui/Button";
 import { fieldControlClass } from "../../ui/Field";
 import { EmptyState, FilterChip, Toolbar } from "../../ui/Collection";
 import { Panel } from "../../ui/Panel";
-import { DarTemporales } from "./DarTemporales";
 import { useMyRole } from "../campaigns/members";
 import { nombreCondicion } from "../character-sheet/vocabulario";
 import { SelectorDeFichaDelMundo } from "../entities/SelectorDeFichaDelMundo";
@@ -305,10 +304,6 @@ function EnLaMesa({ campaignId, npcs }: { campaignId: string; npcs: NpcEnLaMesa[
                 ) : null}
               </span>
             </span>
-            {/* **El gesto que faltaba** (ficha C6-4): `tempHp` se pintaba desde la auditoría §8.5 y
-                **nunca se había visto con datos**, porque ninguna pantalla los concedía. Va aquí,
-                en la fila del PNJ que está en la mesa, que es donde el DM se los daría. */}
-            <DarTemporales campaignId={campaignId} characterId={n.id} nombre={n.name} />
           </li>
         ))}
       </ul>
@@ -316,7 +311,19 @@ function EnLaMesa({ campaignId, npcs }: { campaignId: string; npcs: NpcEnLaMesa[
   );
 }
 
-export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
+export function PanelDeBestiario({
+  campaignId,
+  /**
+   * Tarea 8 (plan 2026-09-19) — a `"ninguna"` este panel no pinta su propio `h2` ni la frase
+   * explicativa: el `Dialog` que lo monta ya lleva su `title`/`subtitulo`, y con los dos a la vez
+   * un cajón abierto enseñaba dos titulares para lo mismo. Por defecto `"pagina"`, que es lo que
+   * montaba hasta ahora la pestaña «Bestiario» de la campaña, sin `Dialog` alrededor.
+   */
+  cabecera = "pagina",
+}: {
+  campaignId: string;
+  cabecera?: "pagina" | "ninguna";
+}) {
   const { role: rol } = useMyRole(campaignId);
   const esDM = rol === "DM";
   const { data, isLoading } = useStatblocks(campaignId);
@@ -362,12 +369,14 @@ export function PanelDeBestiario({ campaignId }: { campaignId: string }) {
   return (
     <Panel>
       <div className="space-y-s4">
-        <header className="space-y-1">
-          <h2 className="font-title text-chrome-xl text-text">Bestiario</h2>
-          <p className="font-chrome text-chrome-sm text-muted">
-            Como una ficha, pero para leerla de un vistazo en mitad de un turno.
-          </p>
-        </header>
+        {cabecera === "pagina" && (
+          <header className="space-y-1">
+            <h2 className="font-title text-chrome-xl text-text">Bestiario</h2>
+            <p className="font-chrome text-chrome-sm text-muted">
+              Como una ficha, pero para leerla de un vistazo en mitad de un turno.
+            </p>
+          </header>
+        )}
 
         <Toolbar
           search={

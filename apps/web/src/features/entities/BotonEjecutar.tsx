@@ -53,7 +53,6 @@ export function BotonEjecutar({ campaignId, entityId }: { campaignId: string; en
       <Button
         variant="secondary"
         disabled={escuchan === 0 || ejecutar.isPending}
-        title={frase}
         onClick={() => {
           setHecho(false);
           ejecutar.mutate(entityId, { onSuccess: () => setHecho(true) });
@@ -61,8 +60,11 @@ export function BotonEjecutar({ campaignId, entityId }: { campaignId: string; en
       >
         {ejecutar.isPending ? "Ejecutando…" : "Ejecutar"}
       </Button>
-      {/* La frase va escrita y no solo en el `title`: un `title` no lo lee quien navega con
-          teclado ni cabe en un móvil, y esta frase es la mitad de lo que hace honesto al botón. */}
+      {/* La frase va escrita, no en un `title`: un `title` no cabe en un móvil y depende de pasar
+          el ratón por encima, y esta frase es la mitad de lo que hace honesto al botón. Hasta la
+          tarea 9 del plan 2026-09-19 el botón llevaba los dos —el mismo texto en el `title` del
+          `Button` Y aquí debajo—, un tooltip nativo repitiendo sin motivo lo que ya está a la
+          vista. */}
       <span className="font-chrome text-chrome-xs text-muted">{frase}</span>
       {hecho && (
         <span role="status" className="font-chrome text-chrome-xs text-accent-text">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Dialog } from "../../../ui/Dialog";
 import { IconoLupa } from "../../../ui/Iconos";
 import { IconoD20, IconoMegafono, IconoRayo, IconoReloj } from "../../../ui/Iconos";
@@ -207,7 +208,7 @@ export function HerramientasDeNarracion({
         subtitulo="Se pide un valor de la hoja, no una expresión: la compone el servidor."
         size="lg"
       >
-        <PedirTirada campaignId={campaignId} />
+        <PedirTirada campaignId={campaignId} cabecera="ninguna" />
       </Dialog>
 
       <Dialog
@@ -227,14 +228,29 @@ export function HerramientasDeNarracion({
         subtitulo="Un PNJ en la mesa es una fila de Character: recibe daño y coge condiciones."
         size="xl"
       >
-        <PanelDeBestiario campaignId={campaignId} />
+        <PanelDeBestiario campaignId={campaignId} cabecera="ninguna" />
       </Dialog>
 
       <Dialog
         open={abierta === "reglas"}
         onClose={cerrar}
         title="Bloques de reglas"
-        subtitulo="Qué está escuchando el motor ahora mismo."
+        // Tarea 9 (plan 2026-09-19) — la nota «Componer, ensayar… siguen en la pestaña Reglas»,
+        // con su botón, sube aquí desde el pie de `ReglasEnLaMesa`: es la cabecera del cajón la
+        // que dice qué NO se hace desde la mesa, antes de que se lea la lista.
+        subtitulo={
+          <>
+            Qué está escuchando el motor ahora mismo. Componer, ensayar en seco y armar una regla
+            siguen en la pestaña «Reglas», que es donde el editor tiene sitio para sus tres
+            carriles.{" "}
+            <Link
+              to={`/campaigns/${campaignId}?seccion=rules`}
+              className="text-accent-text hover:underline"
+            >
+              Abrir el motor de reglas
+            </Link>
+          </>
+        }
         size="lg"
       >
         <ReglasEnLaMesa campaignId={campaignId} />
@@ -247,7 +263,7 @@ export function HerramientasDeNarracion({
         subtitulo="No son del manual: el SRD no trae tablas de críticos ni de pifias."
         size="xl"
       >
-        <PanelDeTablas campaignId={campaignId} />
+        <PanelDeTablas campaignId={campaignId} cabecera="ninguna" />
       </Dialog>
 
       <Dialog

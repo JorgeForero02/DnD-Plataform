@@ -44,6 +44,7 @@ export function PaginaDeInventario({
   characterId,
   disposicion = "mesa",
   puedeEditar = true,
+  cabecera = "pagina",
 }: {
   campaignId: string;
   characterId: string;
@@ -67,6 +68,12 @@ export function PaginaDeInventario({
    * Por defecto `true`, que es lo que los dos diálogos de la mesa montaban hasta ahora.
    */
   puedeEditar?: boolean;
+  /**
+   * Tarea 8 (plan 2026-09-19) — a `"ninguna"` esta página no pinta su propio `h2`: el `Dialog`
+   * que la monta («Tu bolsa», en la mesa) ya lleva su `title`. Por defecto `"pagina"`, que es lo
+   * que montaban hasta ahora la hoja de personaje y el resto de sitios sin `Dialog` alrededor.
+   */
+  cabecera?: "pagina" | "ninguna";
 }) {
   const inventario = useInventory(campaignId, characterId);
   // D-CF-15 — solo el DM identifica. Igual que en `RecursosYDescansos.tsx`: mientras el rol no
@@ -374,7 +381,9 @@ export function PaginaDeInventario({
       }
     >
       <div className="min-w-0 flex-1">
-        <h2 className="mb-s4 font-title text-chrome-lg text-text">Inventario</h2>
+        {cabecera === "pagina" && (
+          <h2 className="mb-s4 font-title text-chrome-lg text-text">Inventario</h2>
+        )}
         {aviso && <AvisoDeEquipar aviso={aviso} />}
         <SelectorDeObjeto campaignId={campaignId} characterId={characterId} esDM={esDM} />
 

@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useRules } from "../../rules/hooks";
 import { useMyRole } from "../../campaigns/members";
 import { useAllEntities } from "../../entities/hooks";
@@ -25,8 +24,9 @@ import { NOMBRE_ESTADO_REGLA, EXPLICACION_ESTADO_REGLA } from "../../rules/vocab
 //
 // Lo que sí se monta no depende de cómo salga esa medición, y tiene sentido por sí solo en mitad
 // de una partida: **decir qué reglas están escuchando ahora mismo**, leídas en voz alta con la
-// misma frase que compone el editor. Componer, ensayar y armar siguen en su pestaña, y el enlace
-// de abajo lo dice sin rodeos en vez de fingir que caben aquí.
+// misma frase que compone el editor. Componer, ensayar y armar siguen en su pestaña — la nota que
+// lo dice, con su enlace, vive en la cabecera del cajón (`HerramientasDeNarracion.tsx`, el
+// `subtitulo` del `Dialog` de «reglas»), no aquí abajo: tarea 9 del plan 2026-09-19.
 //
 // La lista viene de `useRules`, el mismo hook de la pestaña: no hay un segundo camino de lectura.
 // **El servidor es quien decide** — `requireDM` en `rules-engine.service.ts` responde 403 a
@@ -87,17 +87,6 @@ export function ReglasEnLaMesa({ campaignId }: { campaignId: string }) {
           </li>
         ))}
       </ul>
-
-      <p className="border-t border-muted pt-s2 font-chrome text-chrome-xs leading-snug text-muted">
-        Componer, ensayar en seco y armar una regla siguen en la pestaña «Reglas», que es donde el
-        editor tiene sitio para sus tres carriles.{" "}
-        <Link
-          to={`/campaigns/${campaignId}?seccion=rules`}
-          className="text-accent-text hover:underline"
-        >
-          Abrir el motor de reglas
-        </Link>
-      </p>
     </div>
   );
 }

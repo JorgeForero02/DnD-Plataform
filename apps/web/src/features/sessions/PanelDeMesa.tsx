@@ -41,7 +41,8 @@ export function PanelDeMesa({
     >
       {/* D-CF-149 (Task 5b de 3A.3): la cabecera del prototipo (`.reg-cab`) — el título en la
           tipografía de títulos, sin versalitas, y lo que la acompañe (los filtros) a la derecha. */}
-      <div className="flex shrink-0 items-center gap-s2 border-b border-muted/40 px-s3 py-s2">
+      {/* `border-muted` entero, no atenuado: `sesion.spec.ts` mide este filete a ≥ 3:1. */}
+      <div className="flex shrink-0 items-center gap-s2 border-b border-muted px-s3 py-s2">
         {icono && <span className="text-copper-text">{icono}</span>}
         <h2 className="min-w-0 flex-1 truncate font-title text-chrome-md text-text">{titulo}</h2>
         {accion}

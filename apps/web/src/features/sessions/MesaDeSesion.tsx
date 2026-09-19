@@ -213,7 +213,14 @@ export function MesaDeSesion({ campaignId }: { campaignId: string }) {
     // **Efectos de mesa** (2026-09-15): la clase sacude o apaga la raíz entera cuando le pegan a
     // MI personaje (`elenco/efectos/pantalla.store.ts`); el destello va encima de todo. Solo lo
     // recibe el jugador afectado — al DM no le dispara nada.
-    <div className={`flex h-screen flex-col overflow-hidden bg-bg text-text ${claseDePantalla}`}>
+    // `relative` (fix round 1 de la Task 5b): los rótulos `sr-only` son `position: absolute`, y
+    // sin un ancestro posicionado su bloque contenedor es el `<html>`: los de los mandos que
+    // quedaban fuera de los 390 px alargaban el `scrollWidth` del documento (17 px medidos en
+    // `iniciativa-en-vivo.spec.ts`) aunque la raíz los recortara a la vista. Posicionada, el
+    // `overflow-hidden` de la raíz recorta también lo absoluto.
+    <div
+      className={`relative flex h-screen flex-col overflow-hidden bg-bg text-text ${claseDePantalla}`}
+    >
       <EfectosDePantalla />
       <BandaUnica
         campaignId={campaignId}

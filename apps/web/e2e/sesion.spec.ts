@@ -436,7 +436,9 @@ test("una anotación hecha desde la mesa aparece con su chip de clase y con qui�
   // Quién lo puso, que es la mitad de para qué sirve un registro que se relee.
   // `.first()`: el sello y la anotación son **dos** sucesos, así que la firma aparece dos veces.
   // Que aparezca es lo que se comprueba; cuántas veces depende de cuántas cosas se anoten.
-  await expect(sucesos.getByText(new RegExp(`^${cuenta.displayName} ·`)).first()).toBeVisible();
+  // Desde D-CF-149 la línea compacta lleva la firma («quién · hora») en su `title`, no como
+  // texto debajo: se sigue diciendo quién la puso, y se sigue midiendo.
+  await expect(sucesos.getByTitle(new RegExp(`^${cuenta.displayName} ·`)).first()).toBeVisible();
 });
 
 test("contraste medido en la barra de sesión y en la mesa", async ({ page }) => {

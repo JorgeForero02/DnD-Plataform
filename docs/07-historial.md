@@ -1,5 +1,7 @@
 # Historial
 
+> **Beta 0.1.0 (2026-09-18, decisión del autor):** con 3A.2 (`5cc14a2`) y 3A.3 (`c94fb90`) en `main`, el sistema queda declarado beta 0.1.0 — etiqueta `v0.1.0-beta` sobre `c94fb90` (D-CF-160). Paso 4 y despliegue, del autor.
+
 Qué se entregó, por qué, y cómo revertirlo. Fechas absolutas. El detalle por tarea —commit,
 número de pruebas, resultado de la revisión— vive en el ledger
 `.superpowers/sdd/progress.md`; aquí van los hitos.

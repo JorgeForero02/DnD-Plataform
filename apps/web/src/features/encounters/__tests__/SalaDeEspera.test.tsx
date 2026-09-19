@@ -182,14 +182,13 @@ describe("la sala de espera: quién ha tirado y a quién se espera", () => {
     expect(await screen.findByRole("region", { name: "Preparando combate" })).toBeInTheDocument();
   });
 
-  it("un jugador ve el contador «N de M», pero no la lista de nombres de los demás (3.5)", async () => {
+  it("un jugador no ve la cuenta exacta ni los nombres de los demás: solo su propio estado", async () => {
     // El servidor solo le manda SUS peticiones (RollRequestsService.list): a Kevin no le llega
-    // la de Marta, así que su «N de M» sale de una cuenta más corta que la del DM — es la cifra
-    // que 3.5 decidió enseñarle de todas formas, y la lista de nombres sigue siendo solo del DM.
+    // la de Marta.
     montarSala({ esDm: false, quienSoy: "u-kevin", peticiones: [PETICION_KEVIN] });
 
     await screen.findByText(/todavía te falta tirar tu iniciativa/i);
-    expect(await screen.findByText("3 de 4")).toBeInTheDocument();
+    expect(screen.queryByText("2 de 4")).not.toBeInTheDocument();
     expect(screen.queryByText(/esperando a/i)).not.toBeInTheDocument();
   });
 

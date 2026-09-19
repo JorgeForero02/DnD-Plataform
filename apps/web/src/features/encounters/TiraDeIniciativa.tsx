@@ -634,12 +634,14 @@ function SalaDeEspera({
     );
   }
 
-  // **A los dos, DM y jugador — solo la lista de nombres («Esperando a…») sigue siendo del DM.**
-  // «N de M» no delata a quién le falta, así que no hace falta esconderlo del jugador (3.5).
-  // Y solo cuando la lista de pendientes ya resolvió: pintarlo mientras `peticionesQuery` está
-  // cargando o falló es exactamente el mismo fallo que `cuerpo` de arriba evita en la frase: una
-  // cifra calculada sobre un `[]` que no es «cero pendientes», es «todavía no lo sé».
-  const contadorListo = !peticionesQuery.isPending && !peticionesQuery.isError;
+  // **Solo el DM, y solo cuando la lista de pendientes ya resolvió.** Pintar «N de M» mientras
+  // `peticionesQuery` está cargando o falló es exactamente el mismo fallo que `cuerpo` de arriba
+  // evita en la frase: una cifra calculada sobre un `[]` que no es «cero pendientes», es «todavía
+  // no lo sé». **E-N-5 (docs/decisiones.md): esto NO se ensancha al jugador** — su
+  // `RollRequestsService.list` solo trae su propia petición, así que un «N de M» calculado con
+  // eso sería una cifra inventada, no la real (ronda de arreglo 1, 2026-09-06; ratificado sobre
+  // la correcciones de interfaz 2026-09-19, tarea 1, fix round 1).
+  const contadorListo = esDm && !peticionesQuery.isPending && !peticionesQuery.isError;
 
   return (
     <section

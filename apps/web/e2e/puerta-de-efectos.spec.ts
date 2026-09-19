@@ -24,7 +24,7 @@ import { test, expect, type Browser, type Page } from "@playwright/test";
 //     el DM ni quien tiene el PNJ— y al aplicar, los dos ven «Aplicado» y los PG del goblin bajan
 //     en el elenco.
 //  3. **El XP** (§5 bis, E-PE-8/E-PE-9/E-PE-10): con la mesa en modo «Por experiencia», la hoja
-//     de A dice «0 / 300 PX»; el DM da 300 desde «Dar XP» y, en el navegador de A —sin que A haya
+//     de A dice «0 / 300 PX»; el DM da 300 desde «Dar PX» y, en el navegador de A —sin que A haya
 //     pedido nada—, el marcador sube a «300 / 300 PX» con el aviso «Has alcanzado el XP del
 //     nivel 2»; el nivel se queda en 1, porque solo el DM lo sube.
 //
@@ -400,7 +400,7 @@ test("la bandeja de daño: el DM ve «Aplicar», A no; al aplicar, los dos ven �
 // Recorrido 4 — el XP
 // ---------------------------------------------------------------------------------------------
 
-test("XP: la hoja dice «0 / 300 PX», el DM da 300 desde «Dar XP» y A ve «300 / 300 PX» con el aviso de nivel — sin subir el nivel", async ({
+test("XP: la hoja dice «0 / 300 PX», el DM da 300 desde «Dar PX» y A ve «300 / 300 PX» con el aviso de nivel — sin subir el nivel", async ({
   browser,
 }: {
   browser: Browser;
@@ -429,11 +429,11 @@ test("XP: la hoja dice «0 / 300 PX», el DM da 300 desde «Dar XP» y A ve «30
   const marcador = jugador.getByRole("region", { name: "experiencia" });
   await expect(marcador).toContainText("0 / 300 PX");
 
-  // --- El DM da 300 PX desde «Dar XP», en las herramientas de la mesa. ---
+  // --- El DM da 300 PX desde «Dar PX», en las herramientas de la mesa. ---
   await empezarSesion(dm, "El primer encargo");
   await abrirLaMesa(dm, campaignId);
-  await dm.getByRole("button", { name: "Dar XP" }).click();
-  await expect(dm.getByRole("heading", { name: "Dar experiencia" })).toBeVisible();
+  await dm.getByRole("button", { name: "Dar PX" }).click();
+  await expect(dm.getByRole("heading", { name: "Dar PX" })).toBeVisible();
   await dm.getByRole("checkbox", { name: "Elora" }).check();
   // `getByLabel("Cantidad")` casa TAMBIÉN con las frases de los dos radios de reparto (ambas
   // dicen «La cantidad es…»): hace falta el rol para llegar solo al campo numérico.

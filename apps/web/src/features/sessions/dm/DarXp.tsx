@@ -8,7 +8,7 @@ import { useCharacters, charactersKey } from "../../characters/hooks";
 import { awardXp } from "../../characters/api";
 import { useNpcs } from "../../bestiario/hooks";
 
-// Puerta de efectos §5 bis (E-PE-8/E-PE-9, D-CF-68/D-CF-69, 2026-09-13) — «Dar XP», la séptima
+// Puerta de efectos §5 bis (E-PE-8/E-PE-9, D-CF-68/D-CF-69, 2026-09-13) — «Dar PX», la séptima
 // herramienta del DM.
 //
 // **Por qué un PNJ de statblock se enseña bloqueado, no oculto.** `docs/04-convenciones.md`: un
@@ -222,35 +222,35 @@ export function DarXp({
           {filas.map((personaje) => {
             const marcado = elegidos.includes(personaje.id);
             const bloqueado = Boolean(personaje.statblockRef);
-            const idDelMotivo = `${idMotivoDeBloqueo}-${personaje.id}`;
             return (
-              <div key={personaje.id} className="flex flex-col gap-0.5">
-                <label
-                  className={[
-                    "flex items-baseline gap-s2 rounded-radius-sm border px-s2 py-1 transition-colors",
-                    bloqueado ? "cursor-not-allowed opacity-60" : "cursor-pointer",
-                    marcado ? "border-accent bg-[color:var(--accent-tint)]" : "border-muted",
-                  ].join(" ")}
-                >
-                  <input
-                    type="checkbox"
-                    checked={marcado}
-                    disabled={bloqueado}
-                    aria-describedby={bloqueado ? idDelMotivo : undefined}
-                    onChange={() => alternar(personaje.id, personaje.statblockRef)}
-                    className="accent-[var(--accent)]"
-                  />
-                  <span className="font-chrome text-chrome-sm text-text">{personaje.name}</span>
-                </label>
-                {bloqueado && (
-                  <p id={idDelMotivo} className="font-chrome text-chrome-xs text-muted">
-                    Un PNJ de statblock no acumula XP
-                  </p>
-                )}
-              </div>
+              <label
+                key={personaje.id}
+                className={[
+                  "flex items-baseline gap-s2 rounded-radius-sm border px-s2 py-1 transition-colors",
+                  bloqueado ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+                  marcado ? "border-accent bg-[color:var(--accent-tint)]" : "border-muted",
+                ].join(" ")}
+              >
+                <input
+                  type="checkbox"
+                  checked={marcado}
+                  disabled={bloqueado}
+                  aria-describedby={bloqueado ? idMotivoDeBloqueo : undefined}
+                  onChange={() => alternar(personaje.id, personaje.statblockRef)}
+                  className="accent-[var(--accent)]"
+                />
+                <span className="font-chrome text-chrome-sm text-text">{personaje.name}</span>
+              </label>
             );
           })}
         </div>
+        {/* Nota única para todo el elenco bloqueado, no una por fila: la lista ya lo dice una vez
+            por casilla con `aria-describedby`; repetirla por fila era ruido, no información. */}
+        {filas.some((personaje) => personaje.statblockRef) && (
+          <p id={idMotivoDeBloqueo} className="mt-1 font-chrome text-chrome-xs text-muted">
+            Las criaturas del bestiario no acumulan PX.
+          </p>
+        )}
         {errorDePersonajes && (
           <p role="alert" className="mt-1 font-chrome text-chrome-xs text-danger-text">
             {errorDePersonajes}

@@ -77,10 +77,10 @@ describe("DarXp", () => {
 
     const casillaPnj = (await screen.findByLabelText("Klarg")) as HTMLInputElement;
     expect(casillaPnj).toBeDisabled();
-    const motivo = screen.getByText("Un PNJ de statblock no acumula XP");
+    const motivo = screen.getByText("Las criaturas del bestiario no acumulan PX.");
     expect(motivo).toBeInTheDocument();
     // a11y (Minor de la revisión): el motivo está asociado a la casilla, no suelto al lado.
-    expect(casillaPnj).toHaveAccessibleDescription("Un PNJ de statblock no acumula XP");
+    expect(casillaPnj).toHaveAccessibleDescription("Las criaturas del bestiario no acumulan PX.");
 
     const casillaJugador = screen.getByLabelText("Aria") as HTMLInputElement;
     expect(casillaJugador).not.toBeDisabled();

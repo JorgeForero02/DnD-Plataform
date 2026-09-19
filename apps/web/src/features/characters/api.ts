@@ -39,7 +39,7 @@ export interface Character {
    * **A qué statblock refiere, si este `Character` es un PNJ** (D-2D-2). `GET .../characters`
    * filtra `statblockRef: null` en el servidor —«quién se sienta a la mesa»—, así que en la
    * práctica esta lista nunca trae uno distinto de `null`; el campo es opcional en el tipo para
-   * no obligar a los mocks de otras pantallas a conocerlo, y para que «Dar XP» (Puerta de
+   * no obligar a los mocks de otras pantallas a conocerlo, y para que «Dar PX» (Puerta de
    * efectos §5 bis) pueda marcar como no seleccionable el elenco que sí lo traiga.
    */
   statblockRef?: string | null;
@@ -61,7 +61,7 @@ export function fetchCharacters(campaignId: string): Promise<Character[]> {
 
 // --- XP (Puerta de efectos §5 bis, D-CF-68/D-CF-69) ----------------------------------------
 //
-// `POST /campaigns/:campaignId/xp` (`XpController`) es la única puerta HTTP para «Dar XP»: solo
+// `POST /campaigns/:campaignId/xp` (`XpController`) es la única puerta HTTP para «Dar PX»: solo
 // el DM, y el servidor responde 400 si algún personaje es un PNJ de statblock — esta pantalla no
 // reimplementa esa regla, solo evita ofrecerla (checkbox `disabled` en `DarXp.tsx`).
 export function awardXp(

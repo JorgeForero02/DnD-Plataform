@@ -17,7 +17,7 @@ import { useCampaign } from "../../campaigns/hooks";
 import { reglasCompletas } from "../../campaigns/reglas";
 
 // **La columna del DM: las SEIS herramientas de narración de la maqueta —y las seis hacen algo—,
-// más la séptima («Dar XP») que solo aparece cuando la mesa progresa por experiencia (E-PE-8).**
+// más la séptima («Dar PX») que solo aparece cuando la mesa progresa por experiencia (E-PE-8).**
 //
 // La auditoría del 2026-09-04 lo midió: de las seis de la maqueta
 // (`prototipo/src/features/HerramientasDeNarracion.tsx:19-46`) en la mesa había **dos**, y
@@ -74,7 +74,7 @@ export const FRASE_DEL_DM =
 /**
  * Cuál de los cajones está abierto. `null` es «ninguno», que es el estado normal.
  *
- * `"xp"` se suma en la Puerta de efectos §5 bis (E-PE-8): la séptima herramienta, «Dar XP», solo
+ * `"xp"` se suma en la Puerta de efectos §5 bis (E-PE-8): la séptima herramienta, «Dar PX», solo
  * se ofrece con la mesa en modo `XP` (D-CF-53) — en `HITO` la hoja no cuenta experiencia y el
  * botón no tendría nada que hacer.
  */
@@ -168,7 +168,7 @@ export function HerramientasDeNarracion({
             esta no la sustituye, se suma. */}
         {enModoXp && (
           <BotonDeHerramienta icono={<IconoAscenso />} onClick={() => setAbierta("xp")}>
-            Dar XP
+            Dar PX
           </BotonDeHerramienta>
         )}
         <BotonDeHerramienta icono={<IconoRayo />} onClick={() => setAbierta("reglas")}>
@@ -253,7 +253,7 @@ export function HerramientasDeNarracion({
       <Dialog
         open={abierta === "xp"}
         onClose={cerrar}
-        title="Dar experiencia"
+        title="Dar PX"
         subtitulo="El servidor no sube el nivel: avisa en la hoja y lo pulsa el DM."
         size="lg"
       >

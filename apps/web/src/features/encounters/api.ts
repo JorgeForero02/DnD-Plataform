@@ -99,7 +99,7 @@ export function advanceTurn(
 /**
  * Puerta de efectos §5 bis (E-PE-9, D-CF-68) — **`xpPropuesto` solo llega en modo `XP`, y solo
  * si hubo algún `ENEMY` con statblock** (`EncountersService.end()`). Se PROPONE, no se aplica:
- * el DM la confirma —con o sin ediciones— en «Dar XP», que es la única puerta que escribe XP.
+ * el DM la confirma —con o sin ediciones— en «Dar PX», que es la única puerta que escribe XP.
  */
 export function endEncounter(
   campaignId: string,

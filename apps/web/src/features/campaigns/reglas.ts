@@ -85,7 +85,7 @@ export const NOMBRE_PROGRESION: Record<Progresion, { etiqueta: string; frase: st
  * **Acotado a las reglas de creación** (ola de arreglos 1 de la puerta de efectos). La frase
  * valía para todo el bloque y era falsa para «Progresión»: cambiarla mueve de inmediato la hoja
  * de TODOS los personajes (aparece o desaparece el marcador de PX), la columna del DM (el botón
- * «Dar XP») y lo que propone el final de un combate. Texto que explica una regla del servidor y
+ * «Dar PX») y lo que propone el final de un combate. Texto que explica una regla del servidor y
  * discrepa: miente el texto, así que cada aviso dice exactamente lo que alcanza.
  */
 export const AVISO_NO_RETROACTIVO =

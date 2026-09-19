@@ -6,7 +6,7 @@ import { HerramientasDeNarracion } from "../HerramientasDeNarracion";
 import * as campaignsApi from "../../../campaigns/api";
 import type { Campaign } from "../../../campaigns/api";
 
-// Puerta de efectos §5 bis (E-PE-8) — «Dar XP» solo aparece cuando la mesa juega en modo XP
+// Puerta de efectos §5 bis (E-PE-8) — «Dar PX» solo aparece cuando la mesa juega en modo XP
 // (D-CF-53, `tableRules.progresion`). En HITO, la hoja no cuenta experiencia y ofrecer el botón
 // sería ofrecer algo que no significa nada.
 
@@ -47,10 +47,10 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("HerramientasDeNarracion — «Dar XP»", () => {
-  it("con la campaña en modo XP hay un botón «Dar XP»", async () => {
+describe("HerramientasDeNarracion — «Dar PX»", () => {
+  it("con la campaña en modo XP hay un botón «Dar PX»", async () => {
     pintar("XP");
-    expect(await screen.findByRole("button", { name: /Dar XP/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Dar PX/ })).toBeInTheDocument();
   });
 
   it("con la campaña en modo HITO no lo hay", async () => {
@@ -61,6 +61,6 @@ describe("HerramientasDeNarracion — «Dar XP»", () => {
     await screen.findByText("Herramientas del DM");
     await waitFor(() => expect(fetchCampaign).toHaveBeenCalled());
     await waitFor(() => expect(qc.isFetching()).toBe(0));
-    expect(screen.queryByRole("button", { name: /Dar XP/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Dar PX/ })).not.toBeInTheDocument();
   });
 });

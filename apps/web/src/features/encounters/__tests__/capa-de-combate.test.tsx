@@ -502,7 +502,7 @@ describe("la propuesta de terminar y los caídos", () => {
 });
 
 // Puerta de efectos §5 bis (E-PE-9) — al terminar, si la respuesta trae `xpPropuesto` aparece
-// «Repartir la experiencia» con `DarXp` prellenado; sin él, no aparece nada nuevo.
+// «Repartir los PX» con `DarXp` prellenado; sin él, no aparece nada nuevo.
 //
 // **Se monta `CapaDeCombate`, no la tira sola** (ola de arreglos 1, Critical C1). La versión
 // anterior de estas pruebas montaba `TiraDeIniciativa` con un `encuentro` estático y nunca
@@ -554,7 +554,7 @@ describe("la propuesta de experiencia al terminar el combate", () => {
       .mockResolvedValue(null);
   });
 
-  it("con xpPropuesto, «Repartir la experiencia» SIGUE en la mesa cuando `current` ya devuelve null y la tira se ha ido", async () => {
+  it("con xpPropuesto, «Repartir los PX» SIGUE en la mesa cuando `current` ya devuelve null y la tira se ha ido", async () => {
     vi.spyOn(encountersApi, "endEncounter").mockResolvedValue({
       id: "e1",
       status: "ENDED",
@@ -568,7 +568,7 @@ describe("la propuesta de experiencia al terminar el combate", () => {
       expect(screen.queryByRole("region", { name: "Orden de turnos" })).not.toBeInTheDocument(),
     );
     // …y la propuesta se queda, con `DarXp` prellenado.
-    expect(screen.getByText("Repartir la experiencia")).toBeInTheDocument();
+    expect(screen.getByText("Repartir los PX")).toBeInTheDocument();
     expect(
       screen.getByText("Propuesto por el combate: 100 PX (2 Goblin · VD 1/4)"),
     ).toBeInTheDocument();
@@ -594,7 +594,7 @@ describe("la propuesta de experiencia al terminar el combate", () => {
       expect(dar).toHaveBeenCalledWith("c1", { characterIds: ["p-thora"], amount: 100 }),
     );
     expect(await screen.findByRole("status")).toHaveTextContent("Dados 100 PX a Thora Piedrahonda");
-    expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
+    expect(screen.queryByText("Repartir los PX")).not.toBeInTheDocument();
   });
 
   it("«Ahora no» retira el bloque sin dar nada", async () => {
@@ -608,7 +608,7 @@ describe("la propuesta de experiencia al terminar el combate", () => {
     await terminarElCombate();
 
     fireEvent.click(await screen.findByRole("button", { name: "Ahora no" }));
-    expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
+    expect(screen.queryByText("Repartir los PX")).not.toBeInTheDocument();
     expect(dar).not.toHaveBeenCalled();
   });
 
@@ -621,6 +621,6 @@ describe("la propuesta de experiencia al terminar el combate", () => {
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: "Orden de turnos" })).not.toBeInTheDocument(),
     );
-    expect(screen.queryByText("Repartir la experiencia")).not.toBeInTheDocument();
+    expect(screen.queryByText("Repartir los PX")).not.toBeInTheDocument();
   });
 });

@@ -87,10 +87,18 @@ cerrada el 2026-09-18 en la rama `3a2/elegir-lanzar-y-usar`** (nueve tareas sobr
 revisión final de la rama y una ola de arreglos de cinco commits; [07-historial.md](./07-historial.md),
 «3A.2 · Elegir, lanzar y usar»; D-CF-125..144): el libro de conjuros, lanzar a través de `usar()`,
 ataque de conjuro, daño extra al impactar (Furtivo, Castigo divino) y encantar (*Arma mágica*).
-**Fusionada a `main` en <se rellena al fusionar>**; hasta entonces, `main` sigue en `bcba19a` y
-producción en `334912b`. **Siguiente: 3A.3** ([plan](./superpowers/plans/2026-09-18-3a3-la-barra-de-acciones.md),
-escrito en `main`, D-CF-70/71: la barra de acciones que cierra el bloque A del paso 3) **→ Paso 4,
-la partida**.
+**Fusionada a `main` en `5cc14a2`** el 2026-09-18; producción sigue en `334912b`. **3A.3 «La barra
+de acciones y la mesa converge al prototipo» quedó cerrada el 2026-09-18 en la rama
+`3a3/la-barra-de-acciones`** (siete tareas sobre `90e3c0b`, revisión final de la rama —1C/5I/11m— y
+una ola; [07-historial.md](./07-historial.md), «3A.3 · La barra de acciones…»; D-CF-145..159): la
+lista única `GET …/actions`, la economía como estado, la banda única, la barra bajo el marco y la
+mesa como el HTML del prototipo. **Fusionada en <se rellena al fusionar>.** Lo abierto en
+[06-pendientes.md](./06-pendientes.md), «Dejado por 3A.3». **Siguiente: Paso 4 — la prueba de
+partida, que corre el autor**: escribir y correr el spec de Playwright `partida` (en `apps/web/e2e/`, aún no existe) siguiendo el
+[guion](./superpowers/notes/2026-09-18-paso-4-la-partida.md) (DM y dos jugadores en contextos
+distintos; cada paso mide el DOM real; se corre tres veces), después las suites enteras una vez
+—`pnpm verify`, `pnpm --filter @dnd/api test:e2e`, `WORKTREE_SLOT=1 pnpm --filter @dnd/web e2e`—
+con los totales al 07, y desplegar con el comando de [03-despliegue.md](./03-despliegue.md).
 
 **La tanda «reglas de la mesa» quedó cerrada el 2026-09-13 en la rama
 `reglas-de-la-mesa/antes-del-paso-3`** (15 commits sobre `27304e1`; [plan](./superpowers/plans/2026-09-13-reglas-de-la-mesa.md);

@@ -94,7 +94,7 @@ export function TiradaIncrustada({
           onClick={() => setAbierto((v) => !v)}
           aria-expanded={abierto}
           aria-controls={id}
-          className="inline-flex shrink-0 items-center gap-s1 rounded-radius-sm border border-muted/30 px-s2 py-s1 font-chrome text-chrome-xs text-muted hover:text-text"
+          className="inline-flex shrink-0 items-center gap-s1 rounded-radius-sm border border-borde px-s2 py-s1 font-chrome text-chrome-xs text-muted hover:text-text"
         >
           <IconoFlechaDerecha
             className={`h-3.5 w-3.5 transition-transform ${abierto ? "rotate-90" : ""}`}

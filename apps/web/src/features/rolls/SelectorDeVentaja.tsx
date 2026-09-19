@@ -36,12 +36,17 @@ export function SelectorDeVentaja({
   onChange,
   etiqueta,
   disabled = false,
+  descripcionId,
 }: {
   value: RollMode;
   onChange: (siguiente: RollMode) => void;
   /** Qué se va a tirar. Da nombre al grupo: «Cómo tirar Percepción». */
   etiqueta: string;
   disabled?: boolean;
+  /** Tarea 12, ítem 10.6 — id de un texto externo (el motivo de por qué está apagado, por
+   * ejemplo) que describe el grupo. Va en el propio `fieldset`, no en un contenedor que lo
+   * envuelva: `aria-describedby` solo cuenta en el elemento que lo lleva. */
+  descripcionId?: string;
 }) {
   // `useId` y no un nombre fijo: puede haber más de un panel abierto a la vez (una salvación y un
   // ataque), y dos grupos con el mismo `name` serían **un solo** grupo — elegir «Ventaja» en
@@ -53,7 +58,7 @@ export function SelectorDeVentaja({
     // nativo apagado desactiva TODOS sus controles descendientes, por debajo de cualquier
     // `aria-disabled` que se ponga en el radio — el candado real tiene que estar solo en el
     // input, para que el control siga en la secuencia de tabulación.
-    <fieldset className="min-w-0">
+    <fieldset className="min-w-0" aria-describedby={descripcionId}>
       <legend className="sr-only">Cómo tirar {etiqueta}</legend>
       <div className="flex flex-col gap-1">
         {MODOS_DE_TIRADA.map((m) => {

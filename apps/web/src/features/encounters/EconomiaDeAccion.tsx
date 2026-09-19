@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import type { Coste, EconomiaDelTurno } from "@dnd/shared";
 import { enumerar } from "../../dominio/listas";
+import { conSigno } from "../../dominio/numeros";
 
 // Paso 2, tarea A3 — **la mesa enseña lo que te queda del turno.**
 //
@@ -192,7 +193,7 @@ export function EconomiaDeAccion({
     <div
       role="status"
       aria-label="Economía del turno"
-      className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-s2 gap-y-s1 border-l border-muted/40 pl-s3"
+      className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-s2 gap-y-s1 border-l border-borde pl-s3"
     >
       {nombre && (
         <span className={`font-title text-chrome-base leading-none ${vozClase}`}>{nombre}</span>
@@ -243,12 +244,35 @@ export function EconomiaDeAccion({
             value={pies}
             onChange={(e) => setPies(e.target.value)}
             aria-label="Pies de movimiento a gastar"
-            className="w-11 rounded-radius-sm border border-muted/40 bg-bg px-s1 py-px font-data text-chrome-xs text-text"
+            className="w-11 rounded-radius-sm border border-borde bg-bg px-s1 py-px font-data text-chrome-xs text-text"
           />
+          {/* Tarea 13, ítem 4.9 (2026-09-19) — dos atajos de comodidad junto al campo: los pasos
+              de 5 pies son los que de verdad se gastan mesa tras mesa (un movimiento normal, o la
+              mitad de uno con terreno difícil), y escribirlos a mano en el campo antes de pulsar
+              «Mover» es el trámite que esto evita. El campo se queda: sigue haciendo falta para
+              cualquier otra cifra. `conSigno` da el signo menos tipográfico (U+2212), el mismo
+              convenio que ya usa el resto de la hoja para números — no dos botones-icono, es una
+              etiqueta numérica como cualquier modificador. */}
+          <button
+            type="button"
+            onClick={() => gastar("MOVEMENT", 5)}
+            aria-label="Gastar 5 pies de movimiento"
+            className="rounded-radius-sm border border-borde px-s2 py-px font-data text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text"
+          >
+            {conSigno(-5)}
+          </button>
+          <button
+            type="button"
+            onClick={() => gastar("MOVEMENT", 10)}
+            aria-label="Gastar 10 pies de movimiento"
+            className="rounded-radius-sm border border-borde px-s2 py-px font-data text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text"
+          >
+            {conSigno(-10)}
+          </button>
           <button
             type="button"
             onClick={() => gastar("MOVEMENT", Number(pies) || 0)}
-            className="rounded-radius-sm border border-muted/40 px-s2 py-px font-chrome text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text"
+            className="rounded-radius-sm border border-borde px-s2 py-px font-chrome text-chrome-xs text-muted transition-colors hover:border-copper hover:text-copper-text"
           >
             Mover
           </button>
@@ -260,7 +284,7 @@ export function EconomiaDeAccion({
           <button
             type="button"
             onClick={() => setCorrigiendo((v) => !v)}
-            className="rounded-radius-sm border border-transparent px-s2 py-px font-chrome text-chrome-sm text-muted transition-colors hover:border-muted/40 hover:text-text"
+            className="rounded-radius-sm border border-transparent px-s2 py-px font-chrome text-chrome-sm text-muted transition-colors hover:border-borde hover:text-text"
           >
             Corregir
           </button>

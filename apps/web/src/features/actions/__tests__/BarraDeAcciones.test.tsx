@@ -237,6 +237,32 @@ describe("BarraDeAcciones — los cinco botones", () => {
   });
 });
 
+describe("BarraDeAcciones — fuera de turno (tarea 13, 4.5)", () => {
+  it("con combate activo y sin turno propio, avisa quién juega y apaga la fila de botones", async () => {
+    vi.spyOn(sessionsApi, "fetchCurrentSession").mockResolvedValue(SESION);
+    vi.spyOn(encountersApi, "fetchCurrentEncounter").mockResolvedValue({
+      ...ENCUENTRO,
+      activePosition: 1, // Klarg (p-aliado), no la maga que ve la barra.
+    });
+
+    montar({ ...acciones(), esMiTurno: false });
+
+    const aviso = await screen.findByRole("status");
+    expect(aviso).toHaveTextContent("No es tu turno. Le toca a Klarg.");
+    // Texto neutro (regla vinculante): nunca «tú» en un componente que ven los dos roles.
+    expect(aviso.textContent).not.toMatch(/\bte toca\b/i);
+
+    const filaDeBotones = screen.getByRole("button", { name: /^Ataques: 0/ }).closest("div")!;
+    expect(filaDeBotones).toHaveClass("opacity-60");
+  });
+
+  it("sin combate activo, no avisa aunque esMiTurno sea null", async () => {
+    montar({ ...acciones(), esMiTurno: null });
+    await screen.findByRole("button", { name: /^Ataques: 0/ });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});
+
 describe("BarraDeAcciones — una fila apagada", () => {
   it("lleva aria-disabled con su motivo traducido, asociado por aria-describedby", async () => {
     montar();

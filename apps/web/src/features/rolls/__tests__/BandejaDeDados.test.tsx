@@ -35,12 +35,12 @@ describe("BandejaDeDados", () => {
     const { rerender } = render(
       <BandejaDeDados valor={{ dados: [20], modificador: 0 }} onChange={() => {}} />,
     );
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
 
     rerender(<BandejaDeDados valor={{ dados: [6], modificador: 0 }} onChange={() => {}} />);
     // Sigue montado — no desaparece — pero apagado, y con el motivo a la vista.
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe("BandejaDeDados", () => {
 
     // Controlado: se simula que el panel recibió el `onChange` y pasó la bandeja nueva.
     rerender(<BandejaDeDados valor={{ dados: [6, 20], modificador: 0 }} onChange={onChange} />);
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
   });
 
   // Round 1 (IMPORTANT #1, segunda mitad) — **con el texto al mando, el radio depende del
@@ -77,7 +77,7 @@ describe("BandejaDeDados", () => {
     fireEvent.click(screen.getByText("Modo avanzado"));
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d6+1d20" } });
     // Sigue montado, apagado — no desmontado: es justo lo que el anexo #8 exige.
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
 
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "1d20+3" } });
@@ -219,9 +219,9 @@ describe("BandejaDeDados", () => {
     const radio = screen.getByRole("radio", { name: "Ventaja" });
     expect(radio).not.toBeDisabled();
     expect(radio).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("radiogroup", { name: "Ventaja" })).toHaveAccessibleDescription(
-      "Solo con un d20 al principio de la tirada.",
-    );
+    expect(
+      screen.getByRole("group", { name: "Cómo tirar esta tirada" }),
+    ).toHaveAccessibleDescription("Solo con un d20 al principio de la tirada.");
     fireEvent.click(radio);
     expect(onModoChange).not.toHaveBeenCalled();
   });

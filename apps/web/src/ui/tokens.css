@@ -44,6 +44,10 @@
   --vellum-ch: 42 36 25;
   --text-ch: 220 227 230;
   --muted-ch: 139 153 161;
+  /* Tarea 12 (2026-09-19) — filete de componente, calibrado >= 3:1 contra --surface
+   * en este tema (e2e/tokens-contrast.spec.ts, caso "borde de componente"). Sustituye
+   * los `border-muted/30`/`/40` que aqui median 1,5-1,8:1. */
+  --borde-ch: 102 116 124;
   --accent-ch: 74 155 184;
   --accent-text-ch: 111 182 206;
   --copper-ch: 201 125 70;
@@ -89,6 +93,7 @@
   --vellum: rgb(var(--vellum-ch));
   --text: rgb(var(--text-ch));
   --muted: rgb(var(--muted-ch));
+  --borde: rgb(var(--borde-ch));
   --accent: rgb(var(--accent-ch));
   --accent-text: rgb(var(--accent-text-ch));
   --copper: rgb(var(--copper-ch));
@@ -324,6 +329,10 @@
     --vellum-ch: 234 223 199;
     --text-ch: 22 35 43;
     --muted-ch: 76 93 102;
+    /* Tarea 12 (2026-09-19) — filete de componente, calibrado >= 3:1 contra --surface
+   * en este tema (e2e/tokens-contrast.spec.ts, caso "borde de componente"). Sustituye
+   * los `border-muted/30`/`/40` que aqui median 1,5-1,8:1. */
+    --borde-ch: 135 128 113;
     --accent-ch: 31 92 115;
     --accent-text-ch: 31 92 115;
     --copper-ch: 143 82 40;
@@ -362,6 +371,10 @@
   --vellum-ch: 234 223 199;
   --text-ch: 22 35 43;
   --muted-ch: 76 93 102;
+  /* Tarea 12 (2026-09-19) — filete de componente, calibrado >= 3:1 contra --surface
+   * en este tema (e2e/tokens-contrast.spec.ts, caso "borde de componente"). Sustituye
+   * los `border-muted/30`/`/40` que aqui median 1,5-1,8:1. */
+  --borde-ch: 135 128 113;
   --accent-ch: 31 92 115;
   --accent-text-ch: 31 92 115;
   --copper-ch: 143 82 40;
@@ -396,6 +409,10 @@
   --vellum-ch: 42 36 25;
   --text-ch: 220 227 230;
   --muted-ch: 139 153 161;
+  /* Tarea 12 (2026-09-19) — filete de componente, calibrado >= 3:1 contra --surface
+   * en este tema (e2e/tokens-contrast.spec.ts, caso "borde de componente"). Sustituye
+   * los `border-muted/30`/`/40` que aqui median 1,5-1,8:1. */
+  --borde-ch: 102 116 124;
   --accent-ch: 74 155 184;
   --accent-text-ch: 111 182 206;
   --copper-ch: 201 125 70;
@@ -446,6 +463,10 @@
   --vellum-ch: 239 227 200;
   --text-ch: 236 225 201;
   --muted-ch: 179 166 133;
+  /* Tarea 12 (2026-09-19) — filete de componente, calibrado >= 3:1 contra --surface
+   * en este tema (e2e/tokens-contrast.spec.ts, caso "borde de componente"). Sustituye
+   * los `border-muted/30`/`/40` que aqui median 1,5-1,8:1. */
+  --borde-ch: 124 115 96;
   --accent-ch: 111 182 206;
   --accent-text-ch: 134 196 216;
   --copper-ch: 208 137 79;

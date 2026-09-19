@@ -147,4 +147,19 @@ describe("EconomiaDeAccion", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mover" }));
     expect(screen.getByText("30/30 pies")).toBeInTheDocument();
   });
+
+  // Tarea 13, ítem 4.9 (2026-09-19) — los dos atajos de 5 y 10 pies, junto al campo que se queda.
+  it("«−5» y «−10» gastan movimiento sin pasar por el campo de pies", () => {
+    const onGastar = vi.fn();
+    render(<EconomiaDeAccion economia={ECONOMIA_INICIAL} velocidad={30} onGastar={onGastar} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Gastar 5 pies de movimiento" }));
+    expect(onGastar).toHaveBeenCalledWith({ coste: "MOVEMENT", cantidad: 5 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Gastar 10 pies de movimiento" }));
+    expect(onGastar).toHaveBeenCalledWith({ coste: "MOVEMENT", cantidad: 10 });
+
+    // El campo sigue ahí, y los dos atajos no lo tocan.
+    expect(screen.getByRole("spinbutton", { name: "Pies de movimiento a gastar" })).toHaveValue(5);
+  });
 });

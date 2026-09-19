@@ -56,7 +56,7 @@ export function Actividades({
         return (
           <li
             key={actividad.key}
-            className="flex flex-wrap items-center gap-s3 rounded-radius-sm border border-muted/40 bg-surface px-s3 py-s2"
+            className="flex flex-wrap items-center gap-s3 rounded-radius-sm border border-borde bg-surface px-s3 py-s2"
           >
             <span className="font-chrome text-chrome-sm text-text">{actividad.name}</span>
             {recurso && (

@@ -100,7 +100,7 @@ function BotonDeHerramienta({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[2rem] min-w-0 items-center gap-s1 rounded-radius-sm border border-muted/40 px-s2 py-s1 text-left font-chrome text-chrome-xs leading-tight text-text transition-colors hover:border-copper hover:bg-muted/10"
+      className="flex min-h-[2rem] min-w-0 items-center gap-s1 rounded-radius-sm border border-borde px-s2 py-s1 text-left font-chrome text-chrome-xs leading-tight text-text transition-colors hover:border-copper hover:bg-muted/10"
     >
       <span className="shrink-0 text-copper-text [&>svg]:h-3.5 [&>svg]:w-3.5">{icono}</span>
       <span className="min-w-0">{children}</span>

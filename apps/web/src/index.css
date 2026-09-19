@@ -2,3 +2,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Tarea 12 (2026-09-19) — el anillo de foco global. Hasta hoy cada componente que quería un foco
+ * visible tenía que escribir su propio `focus-visible:outline…`, y el que no lo escribía se
+ * quedaba con el anillo por defecto del navegador (o sin ninguno, según el user-agent). Esta
+ * regla cubre TODO control interactivo con un solo anillo — `var(--accent)`, que ya está medido
+ * a 3:1 contra las tres superficies como filete/icono (ver tokens.css). Las utilidades
+ * `focus-visible:` que ya existen por componente NO se tocan en esta tarea: son más específicas
+ * y ganan sobre esta regla de base, así que conviven sin conflicto — limpiarlas es un cambio
+ * aparte, fuera de este bloque. */
+@layer base {
+  :where(
+    button,
+    a,
+    input,
+    select,
+    textarea,
+    [role="tab"],
+    [role="radio"],
+    [role="menuitem"]
+  ):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}

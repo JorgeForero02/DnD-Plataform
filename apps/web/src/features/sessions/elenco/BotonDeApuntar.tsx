@@ -30,7 +30,7 @@ export function BotonDeApuntar({ id, nombre }: { id: string; nombre: string }) {
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         apuntado
           ? "border-danger bg-danger/15 text-danger-text"
-          : "border-muted/40 text-muted hover:border-accent hover:text-accent-text",
+          : "border-borde text-muted hover:border-accent hover:text-accent-text",
       ].join(" ")}
     >
       <IconoDiana className="h-3.5 w-3.5" />

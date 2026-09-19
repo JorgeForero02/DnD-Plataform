@@ -63,7 +63,7 @@ export function ThemeToggle({ variante = "fija" }: { variante?: "fija" | "en-ban
       role="radiogroup"
       aria-label="Tema"
       className={[
-        "flex items-center justify-between rounded-radius-md border border-muted/30 bg-surface p-s1",
+        "flex items-center justify-between rounded-radius-md border border-borde bg-surface p-s1",
         variante === "fija" ? "fixed right-2 top-2 z-40 w-[6.5rem]" : "shrink-0 gap-s1",
       ].join(" ")}
     >

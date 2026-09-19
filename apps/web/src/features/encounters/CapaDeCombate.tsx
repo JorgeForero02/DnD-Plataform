@@ -120,7 +120,7 @@ export function CapaDeCombate({
     <>
       {/* D-CF-149 — la misma franja del prototipo, en reposo: «La mesa no está en combate.»
           seguido del gesto de entrar, a lo ancho y sin caja, entre la banda y el `main`. */}
-      <div className="flex min-h-[2.75rem] items-center gap-s3 border-b border-muted/40 bg-surface/50 px-s4 py-s2">
+      <div className="flex min-h-[2.75rem] items-center gap-s3 border-b border-borde bg-surface/50 px-s4 py-s2">
         <span className="font-chrome text-chrome-sm text-muted">La mesa no está en combate.</span>
         <EmpezarCombate
           campaignId={campaignId}

@@ -31,7 +31,7 @@ describe("PanelDeDadosDeLaMesa — el radio de ventaja no se desmonta al escribi
     pintar();
 
     // La bandeja empieza con un d20: el radio de ventaja ya está habilitado antes de tocar nada.
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
 
@@ -39,7 +39,7 @@ describe("PanelDeDadosDeLaMesa — el radio de ventaja no se desmonta al escribi
     fireEvent.change(screen.getByLabelText("Qué se tira"), { target: { value: "4d" } });
 
     // Sigue montado — apagado, con su motivo — y el botón sigue ahí: nada desaparece del cajón.
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();

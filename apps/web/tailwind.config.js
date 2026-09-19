@@ -29,6 +29,10 @@ export default {
         "vellum-border": "rgb(var(--vellum-border-ch) / <alpha-value>)",
         text: "rgb(var(--text-ch) / <alpha-value>)",
         muted: "rgb(var(--muted-ch) / <alpha-value>)",
+        // Tarea 12 (2026-09-19) — el filete de componente que `border-muted/30`/`/40` no podia
+        // dar (1,5-1,8:1 medido contra --surface, por debajo del 3:1 de 1.4.11). Canal propio,
+        // calibrado en los tres temas (ver tokens.css y e2e/tokens-contrast.spec.ts).
+        borde: "rgb(var(--borde-ch) / <alpha-value>)",
         accent: "rgb(var(--accent-ch) / <alpha-value>)",
         "accent-text": "rgb(var(--accent-text-ch) / <alpha-value>)",
         danger: "rgb(var(--danger-ch) / <alpha-value>)",

@@ -124,7 +124,7 @@ export function BandejaDeAvisos() {
           // vuelve a colgar del botón, que es donde tiene sentido y donde hay sitio.
           className="fixed inset-x-s2 top-16 z-40 overflow-hidden rounded-radius-md border border-copper bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+0.5rem)] sm:w-[22rem]"
         >
-          <div className="flex items-center justify-between gap-s2 border-b border-muted/30 px-s3 py-s2">
+          <div className="flex items-center justify-between gap-s2 border-b border-borde px-s3 py-s2">
             <h2 className="font-chrome text-chrome-sm font-semibold text-text">Avisos</h2>
             {sinLeer > 0 && (
               <button

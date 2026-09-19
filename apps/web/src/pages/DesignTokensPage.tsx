@@ -125,6 +125,19 @@ export function DesignTokensPage() {
         <hr className="border-t border-copper" data-token="copper-rule" />
       </section>
 
+      {/* Tarea 12 (2026-09-19) — `--borde`, el filete de componente que sustituye a
+          `border-muted/30`/`/40` (medían 1,5-1,8:1 contra --surface, por debajo del 3:1 de
+          1.4.11). Envuelto en un `bg-surface` propio para que el fondo contra el que se mide sea
+          `--surface` y no `--bg`, que es lo que esta caja pinta de verdad. */}
+      <section aria-label="borde de componente" className="mb-6 bg-surface p-3">
+        <div
+          className="rounded-radius-sm border border-borde px-3 py-2 text-chrome-sm"
+          data-token="borde"
+        >
+          border-borde sobre surface
+        </div>
+      </section>
+
       {/* Plan 05 (D3) — **las ocho voces**, aquí para que se midan de verdad. Cuatro reutilizan
           tokens que ya existían y cuatro son nuevas; el contraste se comprueba sobre `--bg` (esta
           sección) y sobre `--surface` (la de abajo), que son los dos fondos donde se pinta una voz.

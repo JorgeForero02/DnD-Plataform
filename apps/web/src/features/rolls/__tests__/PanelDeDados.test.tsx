@@ -206,7 +206,7 @@ describe("PanelDeDados — tirar", () => {
     pintar();
     fireEvent.click(screen.getByText("Modo avanzado"));
 
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();
 
@@ -215,7 +215,7 @@ describe("PanelDeDados — tirar", () => {
     // El elemento que se desmontaba con el defecto: el radiogroup de ventaja (`SelectorDeVentaja`
     // dentro de `BandejaDeDados.tsx`), condicionado antes a `ofreceVentaja &&`. Ahora se queda,
     // apagado y con su motivo — ni el radiogroup ni el botón «Tirar» salen del documento.
-    expect(screen.getByRole("radiogroup", { name: /ventaja/i })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /cómo tirar/i })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Normal" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("Solo con un d20 al principio de la tirada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tirar" })).toBeInTheDocument();

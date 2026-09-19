@@ -183,7 +183,7 @@ export function FichaDePnj({
       className={[
         "relative cursor-pointer rounded-radius-sm border border-l-[3px] border-l-current bg-bg/40 px-s3 py-s2 transition-colors hover:bg-muted/10",
         voz,
-        turnoActual ? "border-copper" : "border-muted/30",
+        turnoActual ? "border-copper" : "border-borde",
         apuntado ? "ring-1 ring-danger" : "",
         efectos.clase,
         // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.

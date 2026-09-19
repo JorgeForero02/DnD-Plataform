@@ -82,7 +82,7 @@ function Boton({
     >
       <span className="[&>svg]:h-[17px] [&>svg]:w-[17px]">{icono}</span>
       <span className="font-chrome text-chrome-xs leading-none">{etiqueta}</span>
-      <span className="rounded-radius-sm border border-muted/30 px-1 font-data text-chrome-xs leading-snug text-muted/80">
+      <span className="rounded-radius-sm border border-borde px-1 font-data text-chrome-xs leading-snug text-muted/80">
         {tecla}
       </span>
     </button>

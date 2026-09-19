@@ -174,7 +174,7 @@ export function TiraDeIniciativa({
       aria-label="Orden de turnos"
       // `flex-wrap lg:flex-nowrap`, como la banda: a lo ancho es UNA fila y los chips scrollean
       // (`.turnos{overflow-x:auto}` del prototipo); en estrecho se parte, que es lo único honesto.
-      className="flex min-h-[2.75rem] flex-wrap items-center gap-x-s3 gap-y-s1 border-b border-muted/40 bg-surface/50 px-s4 py-s2 lg:flex-nowrap"
+      className="flex min-h-[2.75rem] flex-wrap items-center gap-x-s3 gap-y-s1 border-b border-borde bg-surface/50 px-s4 py-s2 lg:flex-nowrap"
     >
       <span className="shrink-0 whitespace-nowrap font-data text-chrome-xs text-copper-text">
         Asalto {encuentro.round}

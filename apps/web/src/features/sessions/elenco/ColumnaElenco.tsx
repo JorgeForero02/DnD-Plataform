@@ -271,7 +271,7 @@ export function ColumnaElenco({
         </>
       )}
       {ausentes.length > 0 && (
-        <p className="mt-s1 border-t border-muted/40 pt-s2 font-chrome text-chrome-xs text-muted">
+        <p className="mt-s1 border-t border-borde pt-s2 font-chrome text-chrome-xs text-muted">
           No vinieron: {ausentes.map((m) => m.displayName).join(", ")}.
         </p>
       )}

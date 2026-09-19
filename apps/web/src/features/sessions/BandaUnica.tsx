@@ -218,7 +218,7 @@ export function BandaUnica({
         <div
           role="radiogroup"
           aria-label="Modo de la mesa"
-          className="flex shrink-0 items-center gap-s1 whitespace-nowrap rounded-radius-md border border-muted/30 bg-bg p-s1"
+          className="flex shrink-0 items-center gap-s1 whitespace-nowrap rounded-radius-md border border-borde bg-bg p-s1"
         >
           {(
             [
@@ -323,7 +323,7 @@ export function BandaUnica({
           {presentes.map((nombre) => (
             <span
               key={nombre}
-              className="ml-s1 rounded-radius-sm border border-muted/40 px-s2 py-s1 text-text"
+              className="ml-s1 rounded-radius-sm border border-borde px-s2 py-s1 text-text"
             >
               {nombre}
             </span>

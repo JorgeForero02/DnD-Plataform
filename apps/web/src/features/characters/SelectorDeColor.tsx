@@ -91,7 +91,7 @@ export function SelectorDeColor({
                 disabled={!puedeEditar || actualizar.isPending}
                 onClick={() => void onElegir(color)}
                 className={`flex items-center gap-s2 rounded-radius-sm border px-s2 py-s1 font-chrome text-chrome-sm ${
-                  activo ? "border-current" : "border-muted/40"
+                  activo ? "border-current" : "border-borde"
                 } ${vozDePersonaje({ id: character.id, color })} disabled:opacity-60`}
               >
                 {/* La muestra es un cuadrado de tinta, no un glifo: dibujado, y del mismo color

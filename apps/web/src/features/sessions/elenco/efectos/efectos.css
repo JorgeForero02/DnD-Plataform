@@ -591,9 +591,24 @@
   .fx-flotante {
     animation: fx-flotante-quieto 2.6s ease-out both;
   }
+  /* Tarea 13, ítem 19.1 (2026-09-19) — sin motivo escrito para la excepción de 0,25s que este
+   * bloque le daba al destello bajo movimiento reducido (`git log -S"fx-pantalla-destello"`
+   * solo encuentra el commit que lo introdujo, ffa12d4, y ni su mensaje ni D-CF-116 dicen por
+   * qué el destello se libraba de `animation: none` cuando todo lo demás en este `@media` sí lo
+   * lleva). El relleno de color se apaga del todo — deja de pintarse — y el suceso se marca con
+   * un filete sólido (`outline`, no `box-shadow`: no interpola) que aparece y desaparece de
+   * golpe con `steps(1, end)`, sin ningún fotograma intermedio que anime nada. */
   .fx-destello,
   .fx-pantalla-destello {
-    animation-duration: 0.25s;
+    background: transparent;
+    outline: 2px solid var(--fx-color);
+    outline-offset: -2px;
+    animation: fx-destello-quieto 0.5s steps(1, end) both;
+  }
+  @keyframes fx-destello-quieto {
+    to {
+      outline-color: transparent;
+    }
   }
   @keyframes fx-flotante-quieto {
     0% {

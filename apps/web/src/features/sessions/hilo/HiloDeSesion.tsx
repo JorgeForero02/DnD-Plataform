@@ -396,7 +396,7 @@ export function HiloDeSesion({
     <div
       role="radiogroup"
       aria-label="Qué se ve"
-      className="flex shrink-0 items-center gap-0.5 rounded-radius-sm border border-muted/30 bg-bg p-0.5"
+      className="flex shrink-0 items-center gap-0.5 rounded-radius-sm border border-borde bg-bg p-0.5"
     >
       {(Object.keys(OPCIONES_DE_FILTRO) as FiltroDeRegistro[]).map((clave) => {
         const opcion = OPCIONES_DE_FILTRO[clave];
@@ -412,7 +412,11 @@ export function HiloDeSesion({
               title={opcion.frase}
               onClick={() => onFiltroChange(clave)}
               className={[
-                "rounded-radius-sm px-s2 py-0.5 font-chrome text-chrome-xs transition-colors",
+                // Tarea 13, ítem 11.3 (2026-09-19) — `min-h-[28px]`, no 32: el prototipo del
+                // autor lleva estos radios así de finos, y 28 es el compromiso medido con el DM
+                // en la captura de la auditoría (área de toque suficiente sin engordar la
+                // cabecera del registro).
+                "min-h-[28px] rounded-radius-sm px-s2 py-s1 font-chrome text-chrome-xs transition-colors",
                 elegido
                   ? "bg-[color:var(--accent-tint)] text-accent-text"
                   : "text-muted hover:bg-muted/20 hover:text-text",
@@ -549,7 +553,7 @@ export function HiloDeSesion({
           1.6 rem con su icono, su palabra leída (`sr-only`) y en `title` — los mismos nombres
           accesibles («Combate», «PNJ», …) que tenían como botones con texto. */}
       <form
-        className="shrink-0 border-t border-muted/40 px-s3 py-s2"
+        className="shrink-0 border-t border-borde px-s3 py-s2"
         onSubmit={(e) => e.preventDefault()}
       >
         <div className="flex items-center gap-s2">
@@ -561,7 +565,7 @@ export function HiloDeSesion({
             rows={1}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            className="scroll-quiet max-h-28 min-h-[2rem] min-w-0 flex-1 resize-none rounded-radius-sm border border-muted/40 bg-bg px-s2 py-s1 font-world text-world-sm text-text placeholder:text-muted focus:border-copper"
+            className="scroll-quiet max-h-28 min-h-[2rem] min-w-0 flex-1 resize-none rounded-radius-sm border border-borde bg-bg px-s2 py-s1 font-world text-world-sm text-text placeholder:text-muted focus:border-copper"
           />
         </div>
         <div className="mt-s1 flex flex-wrap items-center gap-s1">
@@ -599,7 +603,7 @@ export function HiloDeSesion({
                   }
                   void poner(kind);
                 }}
-                className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-muted/40 text-muted transition-colors hover:border-copper hover:text-copper-text aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
+                className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-borde text-muted transition-colors hover:border-copper hover:text-copper-text aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
               >
                 <Icono className="h-3.5 w-3.5" />
                 <span className="sr-only">{NOMBRE_SELLO[kind]}</span>

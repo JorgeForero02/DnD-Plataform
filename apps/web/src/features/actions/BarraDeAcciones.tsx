@@ -2,6 +2,9 @@ import { useId, useRef, useState, type ComponentType } from "react";
 import type { AccionDisponible, GrupoDeAccion } from "@dnd/shared";
 import { useAcciones } from "./hooks";
 import { useObjetivoStore } from "../sessions/objetivo.store";
+import { useCurrentSession } from "../sessions/hooks";
+import { useCurrentEncounter } from "../encounters/hooks";
+import { useNpcs } from "../bestiario/hooks";
 import {
   NOMBRE_COSTE,
   NOMBRE_GRUPO,
@@ -57,6 +60,27 @@ export function BarraDeAcciones({
   const objetivo = useObjetivoStore((s) => s.objetivo);
   const quitarObjetivo = useObjetivoStore((s) => s.quitar);
 
+  // Tarea 13, ítem 4.5 (2026-09-19) — **de quién es el turno, para avisar cuando no es del mío.**
+  // Mismo patrón que `ColumnaElenco.tsx` ya documenta: el encuentro no llega por prop desde
+  // `MesaDeSesion.tsx` (es de otro carril y no se toca), así que se pide aquí con los mismos
+  // ganchos (`useCurrentSession` + `useCurrentEncounter`) — React Query comparte la clave, no es
+  // una petición nueva. `data.esMiTurno` (del propio `useAcciones`) ya dice SI me toca; lo que
+  // falta es A QUIÉN, y eso solo lo tiene el encuentro (`activePosition` + `combatants`).
+  const { data: sesion } = useCurrentSession(campaignId);
+  const { data: encuentro } = useCurrentEncounter(campaignId, sesion?.id);
+  const { data: personajes } = useCharacters(campaignId);
+  const combateActivo = encuentro?.status === "ACTIVE";
+  const { data: pnjs } = useNpcs(campaignId, { enabled: combateActivo });
+  const noEsMiTurno = combateActivo && data?.esMiTurno === false;
+  const combatienteActivo =
+    noEsMiTurno && encuentro.activePosition !== null
+      ? encuentro.combatants.find((c) => c.position === encuentro.activePosition)
+      : undefined;
+  const nombreActivo = combatienteActivo
+    ? ((personajes ?? []).find((p) => p.id === combatienteActivo.characterId)?.name ??
+      (pnjs ?? []).find((p) => p.id === combatienteActivo.characterId)?.name)
+    : undefined;
+
   // Mientras no haya respuesta, no hay nada honesto que pintar — igual que el resto de la mesa,
   // que prefiere no mostrar nada a mostrar cinco botones con contadores en cero inventados.
   if (!data) return null;
@@ -72,9 +96,21 @@ export function BarraDeAcciones({
         {data.esMiTurno === true && <span className="font-normal text-muted"> · le toca</span>}
       </p>
 
+      {/* Tarea 13, ítem 4.5 — texto neutro (nunca «tú»/«te toca a ti»): esta barra la ve la
+          persona dueña del personaje, pero la regla de voz vale igual para todo componente que
+          los dos roles pueden ver. Los menús se dejan abrir igual (D-CF-120 y familia: se apaga
+          con su motivo, nunca se esconde) — solo la fila entera baja al 60% de opacidad. */}
+      {noEsMiTurno && nombreActivo && (
+        <p role="status" className="w-full font-chrome text-chrome-xs text-muted">
+          No es tu turno. Le toca a {nombreActivo}.
+        </p>
+      )}
+
       <ChipDeObjetivo objetivo={objetivo} onQuitar={quitarObjetivo} />
 
-      <div className="flex flex-1 flex-wrap items-center gap-s2">
+      <div
+        className={`flex flex-1 flex-wrap items-center gap-s2 ${noEsMiTurno ? "opacity-60" : ""}`}
+      >
         {ORDEN_DE_GRUPOS.map((grupo) => (
           <BotonDeGrupo
             key={grupo}
@@ -237,7 +273,7 @@ function FilaDeAccion({
     // `min-w-0` se salía del panel sobre el registro (captura del autor, 2026-09-18). La fila
     // envuelve y el formulario ocupa su propia línea (`basis-full`); los demás controles siguen
     // a la derecha sin encoger.
-    <li className="flex flex-wrap items-center justify-between gap-s2 border-b border-muted/30 py-s2 last:border-b-0">
+    <li className="flex flex-wrap items-center justify-between gap-s2 border-b border-borde py-s2 last:border-b-0">
       <div className="min-w-0 flex-1">
         <p className="truncate font-chrome text-chrome-sm text-text">{accion.name}</p>
         <p className="truncate font-chrome text-chrome-xs text-muted">{detalle}</p>

@@ -238,6 +238,15 @@ for (const theme of ["dark", "light", "reading"] as const) {
       record(theme, "cobre como filete", contrastRatio(border, ruleBg), 3);
     }
 
+    // --- Tarea 12 (2026-09-19): --borde, el filete de componente que sustituye a
+    // `border-muted/30`/`/40` (1,5-1,8:1 medido contra --surface antes de este token, por
+    // debajo del 3:1 de 1.4.11). Medido contra --surface, que es el fondo que la caja de
+    // DesignTokensPage pinta de verdad. ---
+    {
+      const { border, bg } = await borderColourAgainstBg(page.locator('[data-token="borde"]'));
+      record(theme, "borde de componente", contrastRatio(border, bg), 3);
+    }
+
     // --- Plan 05 (D3): las OCHO voces de personaje, en los dos fondos donde se pintan. Una voz
     // es texto normal, así que 4.5:1, y se mide sobre --bg (el hilo cuando va a sangre) y sobre
     // --surface (el panel del hilo y la columna del elenco). **Ninguna voz nueva se acepta sin su

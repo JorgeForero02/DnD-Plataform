@@ -107,7 +107,7 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## Correcciones de interfaz de la auditoría (2026-09-19), rama `interfaz/correcciones-2026-09-19` — cerrada en local
+## Correcciones de interfaz de la auditoría (2026-09-19), rama `interfaz/correcciones-2026-09-19` — fusionada a `main` (`894f2ad`) y empujada, sin desplegar
 
 Qué — las 13 tareas del plan [`2026-09-19-correcciones-de-interfaz.md`](./superpowers/plans/2026-09-19-correcciones-de-interfaz.md)
 en 9 commits (`e84f2b2..b092882`), subagente por bloque con revisión ligera por bloque y una final

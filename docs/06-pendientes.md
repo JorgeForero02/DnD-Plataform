@@ -38,7 +38,7 @@ día. Salen cuatro cubos. **Solo el primero tiene plan**:
 — correcciones menores y gráficas, sin funcionalidad nueva, para estos días (modo «solo errores»,
 D-CF-161). Los números son los de la auditoría.
 
-### A · Fichas abiertas — en el plan (correcciones menores y gráficas) — **hechas el 2026-09-19 en la rama `interfaz/correcciones-2026-09-19`** (9 commits, `e84f2b2..b092882`); quedan cinco menores aplazados: `EscribirFicha.tsx:83` JSDoc «statblock», `PanelCarga.tsx:55,70,71` `toFixed(0)`, `Traza.tsx:314,317` menos ASCII, `fechaCorta` sin consumidor, «Tu iniciativa» cuando el DM tira por otro desde la caja compacta
+### A · Fichas abiertas — en el plan (correcciones menores y gráficas) — **hechas el 2026-09-19, fusionadas a `main` en `894f2ad`** (9 commits de código, `e84f2b2..b092882`; sin desplegar); quedan cinco menores aplazados: `EscribirFicha.tsx:83` JSDoc «statblock», `PanelCarga.tsx:55,70,71` `toFixed(0)`, `Traza.tsx:314,317` menos ASCII, `fechaCorta` sin consumidor, «Tu iniciativa» cuando el DM tira por otro desde la caja compacta
 
 - **Textos que mienten o se repiten** (plan, Tasks 1–4): 3.1 «y» repetida · 3.4 tres números en la
   iniciativa tirada · 3.6 «Su turno» en preparación

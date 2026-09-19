@@ -193,7 +193,7 @@ test("el combate entero desde la mesa: entrar, ver el orden, pasar turno y salir
   // primera versión de esta prueba los encadenaba y se quedaba en el asalto 1 — que es
   // exactamente lo que vería un jugador impaciente. Se espera a que el botón vuelva a estar
   // disponible, que es el mecanismo de verdad y no un texto que lo aproxime.
-  const pasarTurno = page.getByRole("button", { name: "Pasar turno" });
+  const pasarTurno = page.getByRole("button", { name: "Siguiente turno" });
   await pasarTurno.click();
   await expect(tira.getByRole("alert")).toHaveCount(0);
   await expect(pasarTurno).toBeEnabled({ timeout: 10_000 });

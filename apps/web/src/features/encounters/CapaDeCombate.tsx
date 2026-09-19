@@ -55,7 +55,7 @@ export function CapaDeCombate({
   // mesa sin darla, se queda escrita en el registro del combate, no perdida — nada aquí impide
   // abrir «Dar XP» más tarde.
   const bloqueDeXp = propuestaXp ? (
-    <div className="mt-s3 rounded-radius-md border border-copper bg-surface p-s3">
+    <div className="mx-s3 mt-s3 rounded-radius-md border border-copper bg-surface p-s3">
       <div className="mb-s2 flex items-center gap-s2">
         <h3 className="font-title text-chrome-md text-text">Repartir la experiencia</h3>
         <span className="h-px flex-1 bg-copper/30" />
@@ -86,7 +86,7 @@ export function CapaDeCombate({
   ) : repartido ? (
     <p
       role="status"
-      className="mt-s3 flex items-center gap-s2 rounded-radius-sm border border-copper/40 bg-copper/10 px-s3 py-s1 font-chrome text-chrome-xs text-copper-text"
+      className="mx-s3 mt-s3 flex items-center gap-s2 rounded-radius-sm border border-copper/40 bg-copper/10 px-s3 py-s1 font-chrome text-chrome-xs text-copper-text"
     >
       <span className="flex-1">{repartido}</span>
       <button
@@ -118,8 +118,10 @@ export function CapaDeCombate({
   if (!esDm) return null;
   return (
     <>
-      <div className="flex items-center gap-s3 rounded-radius-sm border border-muted bg-surface px-s3 py-s2">
-        <span className="font-chrome text-chrome-xs text-muted">La mesa no está en combate.</span>
+      {/* D-CF-149 — la misma franja del prototipo, en reposo: «La mesa no está en combate.»
+          seguido del gesto de entrar, a lo ancho y sin caja, entre la banda y el `main`. */}
+      <div className="flex min-h-[2.75rem] items-center gap-s3 border-b border-muted/40 bg-surface/50 px-s4 py-s2">
+        <span className="font-chrome text-chrome-sm text-muted">La mesa no está en combate.</span>
         <EmpezarCombate
           campaignId={campaignId}
           sessionId={sessionId}

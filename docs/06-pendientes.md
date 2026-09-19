@@ -29,6 +29,72 @@ y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
 
+## Dejado por 3A.3 (2026-09-18)
+
+Lo que la tanda de la barra de acciones y la convergencia al prototipo dejó fuera a propósito —
+plan (§ self-review), ledger y revisión final de `.superpowers/sdd/2026-09-18-3a3-la-barra-de-acciones/`—
+más los menores de la revisión que la ola (`945b8fa`) no cerró. **P-1 (el cajón del registro) ya no
+está aquí**: la cerró la Task 5 por absorción (D-CF-147), comprobado en este cierre.
+
+### Del prototipo, sin entrar
+
+- **Tiradores redimensionables** entre las tres columnas de la mesa — el HTML los tiene; la rejilla
+  es `grid-cols-[17rem_minmax(0,1fr)_18rem]` fija (`MesaDeSesion.tsx`).
+- **Atajos 1–5 (los cinco menús de la barra), R, Z y Espacio** — los `<kbd>` del HTML no se pintan
+  (D-CF-149) porque prometerían teclas que no existen; existen N · I · M · D · `/` · Esc
+  (`MesaDeSesion.tsx`, «Atajos» de `BandaUnica.tsx`).
+- **«Repetir» y «Deshacer»** en la barra — el servidor no tiene deshacer (fuera del alcance de la
+  primera parte, `decisiones.md`).
+- **La barra a 390 px como hoja inferior** — hoy los menús son `PanelFlotante` anclados al botón;
+  en estrecho no entran (pre-flight del ledger, «T4 a 390»). Va con P2 (la mesa a 390).
+- **«Lo que el motor está siguiendo»** (la caja del prototipo con concentración, condiciones con
+  duración, temporales) — no hay componente; las condiciones se ven en cada tarjeta.
+- **Bandeja lateral del DM** para el daño pendiente — la tarjeta/línea del hilo con «Aplicar» hace
+  de bandeja (self-review del plan); rehacerla como panel lateral es tanda propia.
+- **La tarjeta del DM mide 148 px frente a los 92 del prototipo** (medido en `mesa-prototipo`): los
+  mandos «Daño · Curar · …» y las condiciones ocupan una fila más que en el HTML.
+- **El PNJ del jugador dice «Sin puntos de golpe en la hoja»** en el elenco: `FichaDePnj` solo
+  lee la hoja para el DM (I-2, como la CA) y un jugador no ve sus PG. Decidir si el PNJ jugable de
+  un jugador (`Character` con `statblockRef`) los enseña a su dueño.
+
+### Del servidor
+
+- **Ataque Adicional marca `excedido`** (D-CF-146, revisión M11): el segundo ataque legal de un
+  guerrero de nivel 5+ cuenta como acción de más; el aviso es honesto pero ruidoso. Modelar «ataques
+  por acción» es 3B/T23.
+- **`usar()` no expone `excedido`**: gasta por `gastarSiEnCombate` y descarta el resultado desde la
+  tarea A2 (`activities.service.ts`); `resolveAttack` sí lo devuelve.
+- **`GET …/actions` deriva la hoja dos veces por llamada** (revisión M6): `getSheet` en `list()` y
+  otra vez dentro de `SpellbookService.modificadorDeLanzamiento` (`spellbook.service.ts:~506`), más
+  cinco `requireVisibleCharacter` repetidos — ~30-40 consultas por jugador y suceso en vivo (el canal
+  invalida todo). Aceptable para cinco jugadores; medir antes de tocar.
+- **`mecanica` de conjuros y aptitudes solo trae `{ tipo }`** (D-CF-152): la fila no enseña los
+  dados. Si hace falta, derivar la actividad con contexto al listar.
+- **Un ataque desde la barra es una reacción a veces** (ataque de oportunidad fuera de turno) y
+  `resolveAttack` gasta `ACTION` igual (M11, ya declarado ruido en D-CF-146).
+
+### Del tablero
+
+- **Integración fina con Just Another VTT** (D-CF-150): ficha ↔ token, PG del token que respeten
+  `canView`, y la sesión compartida entre la mesa y el VTT. Hoy `boardRoomUrl` solo enmarca la
+  sala. (La ficha del 3A.2 «El tablero: Just Another VTT», arriba, es la misma; se cierra allí
+  cuando se cierre aquí.)
+
+### Menores de la revisión final que la ola no cerró (con fichero:línea)
+
+- **M4b — la franja «desde aquí te perdiste» no se pinta si el primer suceso no visto cae fuera del
+  filtro** — `HiloDeSesion.tsx`, se recorre `enOrdenFiltrado`; con «Números» elegido y un sello sin
+  leer, la franja no aparece. (La otra mitad, el id estático, se cerró con `useId`.)
+- **M7 — sin unitaria para `fraseDeMotivos`/`fraseDeRecurso`/`fraseDeMecanica`**
+  (`apps/web/src/dominio/acciones.ts`, lógica pura) ni para `packages/shared/src/actions.schema.ts`;
+  el plan (§File Structure) las prometía. Hoy las cubren las RTL de `BarraDeAcciones` de rebote.
+- **I2, mitad no medida** — la banda con asistencia declarada se mide a 1280 (`sesion.spec.ts`);
+  entre `lg` (1024) y 1280 los presentes truncan a `max-w-[10rem]` y el título puede quedarse sin
+  ancho en la fila del DM. Medir en captura si alguien juega a 1024.
+- **`FichaDeElenco`/`FichaDePnj` conservan el clic de superficie para apuntar** (D-CF-155): es
+  comodidad de ratón sin anuncio en el DOM; si molesta (apuntar sin querer al leer la tarjeta), es
+  quitar el `onClick` del `<li>` y dejar solo `BotonDeApuntar`.
+
 ## Dejado por 3A.2 (2026-09-18)
 
 Fichas que dejaron la revisión final de la rama (`review-final-api.md`, `review-final-web.md`) y
@@ -453,7 +519,6 @@ citas de una nota fechada, con coste nulo si envejecen mal— se dice con su mot
 | Área | Qué | Dónde |
 |---|---|---|
 | Hoja | El desnivel de Rasgos, Recursos y Estado queda sin ejercitar por construcción: con el contenido de hoy (guerrero nivel 1, sin conjuros) esas pestañas casi nunca tienen dos tarjetas comparables en la misma columna — `espacios.spec.ts` lo declara como cláusula honesta, no lo mide | `apps/web/e2e/espacios.spec.ts` (leer la cláusula antes de tocar) |
-| Mesa / tablero | Cajón del registro: `min-h-[14rem]` y `max-h-[32vh]` se contradicen por debajo de ~700 px de alto de ventana — sin ejercitar. P-1: pendiente de decidir por el autor (2026-09-17) | `apps/web/src/features/sessions/tablero/CajonDelRegistro.tsx` |
 | Mundo (árbol) | El anillo de vecinos se solapa con 9 o más vecinos a la vez — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/AnilloDeVecinos.tsx` |
 | Mundo (árbol) | «Leer más» se muestra siempre, incluso cuando el cuerpo ya cabe sin recortar — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DetalleDeFicha.tsx` |
 | Mundo (árbol) | El chip «Sin hilos» se solapa con el buscador en pantallas estrechas — **P-2 (2026-09-17)**: se juzga usándolo; se mira cuando el árbol se vuelva a tocar | `apps/web/src/features/sessions/taller/mundo/DesgloseDelMundo.tsx` |

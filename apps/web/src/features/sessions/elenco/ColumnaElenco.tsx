@@ -1,5 +1,3 @@
-import { IconoElenco } from "../iconos";
-import { PanelDeMesa } from "../PanelDeMesa";
 import { FichaDeElenco } from "./FichaDeElenco";
 import { FichaDePnj } from "./FichaDePnj";
 import { useMembers } from "../../campaigns/members";
@@ -134,16 +132,26 @@ export function ColumnaElenco({
 
   const nadaEnLaMesa = enMesa.length === 0 && combatientesPnj.length === 0;
 
+  // D-CF-149 (Task 5b de 3A.3) — **el elenco del prototipo (`.elenco`)**: una caja sin cabecera
+  // —el HTML no le pone título— con los grupos como rótulos de una línea y su cuenta a la
+  // derecha («El grupo 3», «En escena 2»), y las tarjetas densas de `FichaDeElenco`. La sección
+  // conserva su nombre accesible «En la mesa», que es como la localizan las pruebas.
+  const rotulo = (texto: string, cuantos: number, primero = false) => (
+    <h4
+      className={`flex items-baseline justify-between font-chrome text-chrome-sm text-muted ${primero ? "" : "mt-s2"}`}
+    >
+      <span>{texto}</span>
+      <span className="font-data text-chrome-xs">{cuantos}</span>
+    </h4>
+  );
+
   return (
-    <PanelDeMesa
-      etiqueta="En la mesa"
-      titulo="Elenco"
-      icono={<IconoElenco className="h-4 w-4" />}
-      // La columna scrollea por dentro: la mesa entera ya no scrollea.
-      cuerpoClassName="scroll-quiet overflow-y-auto p-s3"
+    <section
+      aria-label="En la mesa"
+      className="scroll-quiet flex min-h-0 min-w-0 flex-col gap-s2 overflow-y-auto rounded-radius-sm border border-muted bg-surface p-s3"
     >
       {!asistencia && (
-        <p className="mb-s2 font-chrome text-chrome-xs text-muted">
+        <p className="font-chrome text-chrome-xs text-muted">
           Nadie declaró quién vino al empezar la sesión.
         </p>
       )}
@@ -162,9 +170,7 @@ export function ColumnaElenco({
         // decoración: el servidor lo garantiza de verdad (`requireEditable`), pero enseñar un
         // mando que va a dar 403 es prometer algo falso.
         <>
-          <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
-            {mios.length === 1 ? "Tu personaje" : "Tus personajes"}
-          </h4>
+          {rotulo(mios.length === 1 ? "Tu personaje" : "Tus personajes", mios.length, true)}
           <ul className="flex flex-col gap-s2">
             {mios.map((p) => (
               <FichaDeElenco
@@ -182,9 +188,8 @@ export function ColumnaElenco({
           </ul>
           {otros.length > 0 && (
             <>
-              <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-muted">
-                El resto del grupo
-              </h4>
+              {/* «En la mesa», como el prototipo llama al resto del grupo en la vista del jugador. */}
+              {rotulo("En la mesa", otros.length)}
               <ul className="flex flex-col gap-s2">
                 {otros.map((p) => (
                   <FichaDeElenco
@@ -208,11 +213,8 @@ export function ColumnaElenco({
         // no tiene ningún personaje en esta mesa — y ese jugador **no lleva mandos**, porque el
         // rol lo dice el servidor y él no es DM.
         <>
-          {/* El rótulo de la maqueta sobre la parrilla (`prototipo/.../ColumnaElenco.tsx:57-59`).
-              Dice qué es esta lista cuando no hay ningún «Tu personaje» que la encabece. */}
-          <h4 className="mb-s2 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
-            Grupo
-          </h4>
+          {/* «El grupo», el rótulo del prototipo sobre la lista del DM. */}
+          {rotulo("El grupo", enMesa.length, true)}
           <ul className="flex flex-col gap-s2">
             {enMesa.map((p) => (
               <FichaDeElenco
@@ -241,13 +243,9 @@ export function ColumnaElenco({
         // El DM sí los lleva, porque de eso trataba el encargo: hasta hoy no había manera de
         // quitarles vida ni ponerles condiciones desde aquí.
         <>
-          {/* **El mismo tono que los otros dos encabezados de la columna** (m-5, ronda de
-              arreglo 1): iba en `text-warning-text`, así que un PNJ ALIADO se leía bajo un
-              rótulo de amenaza — el ámbar aquí no describe a nadie en concreto, describe la
-              SECCIÓN, y la sección no es «enemigos». */}
-          <h4 className="mb-s2 mt-s4 font-chrome text-chrome-xs uppercase tracking-widest text-accent-text">
-            PNJ en combate
-          </h4>
+          {/* «En escena» (prototipo), antes «PNJ en combate». El mismo tono apagado que los
+              otros rótulos: la sección no es «enemigos», y un PNJ aliado también cae aquí. */}
+          {rotulo("En escena", combatientesPnj.length, enMesa.length === 0)}
           <ul className="flex flex-col gap-s2">
             {combatientesPnj.map(({ combatant, pnj }) => (
               <FichaDePnj
@@ -269,10 +267,10 @@ export function ColumnaElenco({
         </>
       )}
       {ausentes.length > 0 && (
-        <p className="mt-s3 border-t border-muted pt-s2 font-chrome text-chrome-xs text-muted">
+        <p className="mt-s1 border-t border-muted/40 pt-s2 font-chrome text-chrome-xs text-muted">
           No vinieron: {ausentes.map((m) => m.displayName).join(", ")}.
         </p>
       )}
-    </PanelDeMesa>
+    </section>
   );
 }

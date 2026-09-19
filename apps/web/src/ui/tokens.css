@@ -198,10 +198,9 @@
    * being instrument labels. 15px is the printed manual's footnote size and it is what these
    * lines want. Added, never replacing: nothing that used --text-world-base changes.
    *
-   * There is no `world-sm` key in tailwind.config.js and this task's file boundary does not
-   * include it, so callers reach this through an arbitrary value —
-   * `text-[length:var(--text-world-sm)]`. That is ugly and it is written down as debt rather
-   * than hidden: when the boundary allows it, this becomes a `world-sm` font-size key. */
+   * Since D-CF-149 (3A.3, Task 5b) this IS a `world-sm` font-size key in tailwind.config.js
+   * (`text-world-sm`): the compact log lines of the table needed it. Older callers that reached
+   * it through `text-[length:var(--text-world-sm)]` keep working. */
   --text-world-sm: 0.9375rem;
 
   /* Spacing scale, 4px base unit. Exposed under "s1".."s8" — bare numeric keys would replace

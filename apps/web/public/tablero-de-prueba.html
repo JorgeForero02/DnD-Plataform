@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tablero de prueba</title>
+    <!--
+      Task 6 de 3A.3 — la «sala del tablero» que `apps/web/e2e/mesa-prototipo.spec.ts` guarda en
+      la campaña para fotografiar la mesa CON marco. Es un fichero estático servido por Vite
+      (mismo origen), no el tablero de verdad: lo único que se mide es que el marco lo carga en
+      el hueco del centro y que la barra de acciones queda debajo. Sin dependencias, sin
+      tipografías externas, sin JavaScript — cuanto menos haga, menos puede cambiar la foto.
+    -->
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        background:
+          repeating-linear-gradient(0deg, transparent 0 39px, rgb(255 255 255 / 0.05) 39px 40px),
+          repeating-linear-gradient(90deg, transparent 0 39px, rgb(255 255 255 / 0.05) 39px 40px),
+          rgb(11 17 21);
+        color: rgb(220 227 230);
+        font:
+          1rem Georgia,
+          serif;
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.4rem;
+        font-weight: normal;
+        font-size: 1.5rem;
+      }
+      p {
+        margin: 0;
+        color: rgb(139 153 161);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>Tablero de prueba</h1>
+      <p>Aquí iría el tablero en vivo.</p>
+    </div>
+  </body>
+</html>

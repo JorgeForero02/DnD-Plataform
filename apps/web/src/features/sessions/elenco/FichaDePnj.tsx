@@ -3,13 +3,16 @@ import { Link } from "react-router-dom";
 import type { CombatantSide } from "@dnd/shared";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import { useCharacterSheet, useConditions } from "../../character-sheet/hooks";
-import { IconoEscudo } from "../../../ui/Iconos";
 import { NOMBRE_BANDO } from "../../../dominio/combate";
-import { Retrato, BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
+import { BarraDePuntosDeGolpe, Condiciones } from "./FichaDeElenco";
+import { vozDePersonaje } from "../../../dominio/voces";
 import { MandosDeCombatiente } from "./MandosDeCombatiente";
 import { useAccionesDeBando } from "./accionesDeBando";
 import { useAccionesDeMesa } from "./AccionesDeMesa";
 import { useEfectosDeFicha } from "./efectos/useEfectosDeFicha";
+import { useObjetivoStore } from "../objetivo.store";
+import { alPulsarLaTarjeta } from "./apuntar";
+import { BotonDeApuntar } from "./BotonDeApuntar";
 
 /**
  * Un PNJ combatiente en el elenco (tarea 9b, 2026-09-06 — «no veo cómo quitarles vida»).
@@ -157,11 +160,30 @@ export function FichaDePnj({
     combateEnMarcha,
   });
 
+  // Task 4 de 3A.3 (T22) — mismo gesto que `FichaDeElenco`: la superficie apunta y el botón
+  // `BotonDeApuntar` de la cabecera lo anuncia (ola post-revisión, I3). Un PNJ es precisamente
+  // el objetivo más habitual de un ataque o un conjuro — es el caso que más se va a usar.
+  const objetivo = useObjetivoStore((s) => s.objetivo);
+  const apuntar = useObjetivoStore((s) => s.apuntar);
+  const apuntado = objetivo?.id === pnj.id;
+
+  const voz = vozDePersonaje(pnj);
+  const velocidad = esDm ? (hoja?.effectiveSpeeds?.walk?.total ?? null) : null;
+
   return (
+    // D-CF-149 (Task 5b de 3A.3) — la misma tarjeta densa que `FichaDeElenco` (ver allí): voz en
+    // el filete, «PNJ · Enemigo» donde el prototipo pone «Osgo · enemigo», PG con barra, CA y
+    // velocidad solo para el DM (I-2), condiciones y, al pie, los mandos de quien puede manejarlo.
+    // Ola post-revisión de 3A.3 (I3) — la tarjeta ya no es `role="button"`: apuntar es el
+    // `BotonDeApuntar` de la cabecera (con `aria-pressed`), y la superficie solo conserva el
+    // gesto de ratón. Así el DOM anuncia la ficha como contenido, no como «Apuntar a X».
     <li
+      onClick={(e) => alPulsarLaTarjeta(e, () => apuntar(pnj.id, pnj.name))}
       className={[
-        "relative rounded-radius-md border border-muted bg-bg p-s2",
-        turnoActual ? "ring-2 ring-warning" : "",
+        "relative cursor-pointer rounded-radius-sm border border-l-[3px] border-l-current bg-bg/40 px-s3 py-s2 transition-colors hover:bg-muted/10",
+        voz,
+        turnoActual ? "border-copper" : "border-muted/30",
+        apuntado ? "ring-1 ring-danger" : "",
         efectos.clase,
         // Gris mientras esté a 0: es estado leído del dato, no el rastro de una animación.
         actual === 0 ? "fx-tarjeta-caido" : "",
@@ -169,15 +191,9 @@ export function FichaDePnj({
       onAnimationEnd={efectos.alTerminarAnimacion}
     >
       {efectos.capa}
-      {turnoActual && (
-        <span className="absolute -top-2 left-s3 rounded-radius-sm bg-warning px-1.5 py-px font-chrome text-chrome-xs font-semibold text-bg">
-          Su turno
-        </span>
-      )}
-      <div className="flex items-center gap-s2">
-        <Retrato personaje={pnj} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-title text-chrome-md leading-tight text-text">
+      <div className="text-text">
+        <div className="flex items-baseline justify-between gap-s2">
+          <p className={`shrink-0 truncate font-title text-chrome-base leading-tight ${voz}`}>
             {/* **E-PM-12**: el nombre enlaza a la ficha del mundo cuando el servidor manda
                 `entityId` —ya redactado por `entityIdsVisibleFor` (E-PM-10): si no llega, quien
                 mira no puede ver esa ficha y el nombre se queda como texto plano. */}
@@ -192,47 +208,58 @@ export function FichaDePnj({
               pnj.name
             )}
           </p>
+          <BotonDeApuntar id={pnj.id} nombre={pnj.name} />
           <p
             className={[
-              "truncate font-chrome text-chrome-xs",
+              "min-w-0 truncate whitespace-nowrap font-chrome text-chrome-xs",
               bando === "ENEMY" ? "text-warning-text" : "text-muted",
             ].join(" ")}
           >
+            {turnoActual && <span className="mr-s1 text-copper-text">Su turno ·</span>}
             PNJ · {NOMBRE_BANDO[bando]}
           </p>
         </div>
-        {ca !== null && (
-          <span className="flex shrink-0 items-center gap-1 font-data text-chrome-xs text-muted">
-            <IconoEscudo className="h-3.5 w-3.5" />
-            <span className="sr-only">Clase de armadura </span>
-            {ca}
-          </span>
+
+        <BarraDePuntosDeGolpe nombre={pnj.name} actual={actual} maximo={maximo} />
+
+        {(ca !== null || velocidad !== null) && (
+          <p className="mt-s1 flex flex-wrap gap-x-s3 font-chrome text-chrome-xs text-muted">
+            {ca !== null && (
+              <span>
+                CA <strong className="font-data font-medium text-text">{ca}</strong>
+                <span className="sr-only"> de clase de armadura</span>
+              </span>
+            )}
+            {velocidad !== null && (
+              <span>
+                Vel. <strong className="font-data font-medium text-text">{velocidad}</strong>
+              </span>
+            )}
+          </p>
+        )}
+
+        <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
+
+        {puedeManejarlo && (
+          <MandosDeCombatiente
+            campaignId={campaignId}
+            characterId={pnj.id}
+            nombre={pnj.name}
+            enCombate={enCombate}
+            // **`soyDm`, no `puedeManejarlo`** (arreglo de vuelta 1 sobre B4): el jugador dueño de
+            // un PNJ cedido maneja este panel sin ser el DM, y con `puedeManejarlo` —o peor, con un
+            // `true` fijo— ese jugador vería «Dar» con todo el elenco como destinatarios.
+            soyDm={esDm}
+            // **El bando, dentro del menú y no como fila aparte** (tarea 8 del pulido): sigue
+            // siendo solo del DM (`esDm`, no `puedeManejarlo`) — la misma puerta más estrecha que
+            // ya tenía `<CorregirBando />` cuando vivía aparte.
+            accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
+            errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
+            accionesDeMesa={accionesDeMesa}
+            errorDeMesa={errorDeMesa}
+          />
         )}
       </div>
-
-      <BarraDePuntosDeGolpe nombre={pnj.name} actual={actual} maximo={maximo} />
-
-      <Condiciones campaignId={campaignId} condiciones={condiciones ?? []} />
-
-      {puedeManejarlo && (
-        <MandosDeCombatiente
-          campaignId={campaignId}
-          characterId={pnj.id}
-          nombre={pnj.name}
-          enCombate={enCombate}
-          // **`soyDm`, no `puedeManejarlo`** (arreglo de vuelta 1 sobre B4): el jugador dueño de
-          // un PNJ cedido maneja este panel sin ser el DM, y con `puedeManejarlo` —o peor, con un
-          // `true` fijo— ese jugador vería «Dar» con todo el elenco como destinatarios.
-          soyDm={esDm}
-          // **El bando, dentro del menú y no como fila aparte** (tarea 8 del pulido): sigue
-          // siendo solo del DM (`esDm`, no `puedeManejarlo`) — la misma puerta más estrecha que
-          // ya tenía `<CorregirBando />` cuando vivía aparte.
-          accionesDeBando={hayBandoQueCorregir ? accionesDeBando : []}
-          errorDeBando={hayBandoQueCorregir ? errorDeBando : null}
-          accionesDeMesa={accionesDeMesa}
-          errorDeMesa={errorDeMesa}
-        />
-      )}
     </li>
   );
 }

@@ -764,7 +764,9 @@ test("desde las crónicas se elige una y se entra a la mesa de un clic", async (
     .getByRole("region", { name: /El Puerto de las Mil Velas/ })
     .getByRole("link", { name: "Entrar a la mesa" })
     .click();
-  await expect(page.getByRole("region", { name: "La escena" })).toBeVisible();
+  // Task 3 (3A.3): `CabeceraDeEscena` (`<section aria-label="La escena">`) se fundió en la banda
+  // única; el `<header aria-label="Estado de la mesa">` sigue siendo la señal de llegada.
+  await expect(page.getByRole("banner", { name: "Estado de la mesa" })).toBeVisible();
   expect(page.url()).toContain("/sesion");
 });
 

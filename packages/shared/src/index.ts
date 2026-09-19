@@ -33,3 +33,4 @@ export * from "./xp";
 export * from "./catalog.schema";
 export * from "./dice-limits";
 export * from "./spellbook.schema";
+export * from "./actions.schema";

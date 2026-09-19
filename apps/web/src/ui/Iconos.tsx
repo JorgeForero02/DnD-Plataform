@@ -183,6 +183,17 @@ export function IconoFlechaIzquierda({ className }: IconoProps) {
  * se quedan donde estaban, arriba, con el nombre con el que ya se importan.
  * ───────────────────────────────────────────────────────────────────────────── */
 
+/** Diana: apuntar, el objetivo de la barra de acciones (ola post-revisión de 3A.3, I3). */
+export function IconoDiana({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="diana">
+      <circle cx="12" cy="12" r="7" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+    </Marco>
+  );
+}
+
 /** Escudo: defensa, clase de armadura, lo que protege. */
 export function IconoEscudo({ className }: IconoProps) {
   return (
@@ -527,6 +538,44 @@ export function IconoMenu({ className }: IconoProps) {
       <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
       <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </Marco>
+  );
+}
+
+/**
+ * Task 4 de 3A.3 (T22) — los dos que faltaban para los cinco botones de la barra de acciones.
+ * Ataques reutiliza `IconoD20` (tirar es lo que hace un ataque), Conjuros ya tiene su estrella
+ * (`IconoConjuro`) y Objetos su frasco (`IconoPocion`) — **APTITUDES** y **BASICAS** («Esquivar,
+ * ayudar…») no tenían ningún dibujo que les sentara, así que son los dos nuevos de esta tarea.
+ */
+
+/** Aptitud: el destello de un rasgo especial — ni la estrella de un conjuro ni la espada de un
+ *  ataque, un rombo partido en cuatro puntas para no repetir la silueta de `IconoConjuro`. */
+export function IconoAptitud({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="aptitud">
+      <path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" />
+    </Marco>
+  );
+}
+
+/** Básicas («Esquivar, ayudar…»): las huellas del gesto de mesa que no es ni ataque ni conjuro. */
+export function IconoBasica({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="basica">
+      <ellipse cx="9" cy="8.5" rx="2" ry="2.7" />
+      <ellipse cx="15.5" cy="13" rx="2" ry="2.7" />
+      <path d="M9 11.2v2M15.5 15.7v2" />
+    </Marco>
+  );
+}
+
+/** Lápiz: corregir un número a mano (la iniciativa de un turno en la franja, D-CF-149). */
+export function IconoLapiz({ className }: IconoProps) {
+  return (
+    <Marco className={className} data-icono="lapiz">
+      <path d="M4 20l4-1 10-10-3-3L5 16l-1 4z" />
+      <path d="M13 8l3 3" />
     </Marco>
   );
 }

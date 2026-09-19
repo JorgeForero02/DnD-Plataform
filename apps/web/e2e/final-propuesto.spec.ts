@@ -160,7 +160,7 @@ test("el último enemigo cae: la mesa lo propone y el combate NO se cierra solo"
   // intermitencia, que es peor que un fallo: se aprende a ignorarla.
   const casillaDeGorm = tira.locator("li").filter({ hasText: "Gorm" }).first();
   for (let i = 0; i < 4 && (await casillaDeGorm.getByText("Le toca").count()) > 0; i += 1) {
-    await page.getByRole("button", { name: "Pasar turno" }).click();
+    await page.getByRole("button", { name: "Siguiente turno" }).click();
     await expect(casillaDeGorm.getByText("Le toca")).toHaveCount(0, { timeout: 10_000 });
   }
   await expect(casillaDeGorm.getByText("Le toca")).toHaveCount(0);

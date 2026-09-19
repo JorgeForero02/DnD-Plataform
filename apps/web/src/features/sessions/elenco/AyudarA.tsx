@@ -44,6 +44,11 @@ export function AyudarA({
   );
   if (candidatos.length === 0) return null;
 
+  // D-CF-149 (Task 5b de 3A.3) — **una fila, y la explicación plegada.** La tarjeta del prototipo
+  // es densa (`.ficha`), y este mando no está en su HTML: se conserva (decisión del autor) en
+  // una sola fila —«Ayudar a [quién] [Ayudar]»— y la frase que explica la regla del servidor
+  // sigue existiendo, dentro de un `<details>` con «¿Qué hace?»: no se pierde, no ocupa cuatro
+  // líneas de la columna de 17 rem.
   return (
     <div className="mt-s2 flex flex-col gap-s1">
       <div className="flex flex-wrap items-center gap-s1">
@@ -52,7 +57,7 @@ export function AyudarA({
         </label>
         <select
           id={`ayudar-${personaje.id}`}
-          className={fieldControlClass + " min-w-0 flex-1"}
+          className={fieldControlClass + " min-w-0 flex-1 py-px text-chrome-xs"}
           value={destino}
           onChange={(e) => setDestino(e.target.value)}
         >
@@ -66,18 +71,23 @@ export function AyudarA({
         <Button
           type="button"
           variant="secondary"
-          className="px-2 py-0.5 text-chrome-xs"
+          className="px-2 py-px text-chrome-xs"
           disabled={destino === "" || ayudar.isPending}
           onClick={() => ayudar.mutate({ targetCharacterId: destino })}
         >
           {ayudar.isPending ? "Ayudando…" : "Ayudar"}
         </Button>
       </div>
-      <p className="font-chrome text-chrome-xs text-muted">
-        Su <strong>primer ataque</strong> va con ventaja, y solo ese. Caduca al empezar tu turno
-        siguiente. <strong>La cercanía la juzgas tú</strong>: el enemigo tiene que estar a cinco
-        pies de ti y eso el servidor no lo sabe.
-      </p>
+      <details className="font-chrome text-chrome-xs text-muted">
+        <summary className="cursor-pointer select-none underline-offset-2 hover:text-text">
+          ¿Qué hace?
+        </summary>
+        <p className="mt-s1">
+          Su <strong>primer ataque</strong> va con ventaja, y solo ese. Caduca al empezar tu turno
+          siguiente. <strong>La cercanía la juzgas tú</strong>: el enemigo tiene que estar a cinco
+          pies de ti y eso el servidor no lo sabe.
+        </p>
+      </details>
       {ayudar.isError && (
         <p role="alert" className="font-chrome text-chrome-xs text-danger-text">
           {(ayudar.error as Error).message}

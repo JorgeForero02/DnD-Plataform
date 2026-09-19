@@ -101,8 +101,14 @@ describe("Iconos — la regla de que los iconos se dibujan", () => {
     // menos** del modificador (revisión final de la rama, 2026-09-13: el «−» de fuente que el
     // barrido no había visto), más **la punta** (#7, 2026-09-17: una sola silueta para «esto se
     // abre/se cierra», que sustituye a `Punta.tsx` y a la `IconoFlechaIzquierda` rotada del cajón
-    // del registro). `IconoDado` no cuenta aquí porque no entra en este bucle (ver arriba).
-    expect(TODOS).toHaveLength(32);
+    // del registro), más **aptitud** y **básica** (Task 4 de 3A.3, T22: los dos dibujos que
+    // faltaban para los cinco botones de la barra de acciones — Ataques, Conjuros y Objetos ya
+    // tenían el suyo), más **el lápiz** (Task 5b de 3A.3, D-CF-149: «corregir la iniciativa» pasa
+    // de palabra a icono en la franja de combate, con el mismo nombre accesible), más **la diana**
+    // (ola post-revisión de 3A.3, I3: «Apuntar a X» deja de ser la tarjeta entera y pasa a un
+    // botón propio con icono). `IconoDado` no cuenta aquí porque no entra en este bucle (ver
+    // arriba).
+    expect(TODOS).toHaveLength(36);
   });
 
   it("IconoDado dibuja una forma distinta por dado y el d100 comparte la del d10", () => {

@@ -36,10 +36,13 @@ export function BandejaDeDano({
   campaignId,
   rollEventId,
   pendingDamage,
+  compacta = false,
 }: {
   campaignId: string;
   rollEventId: string;
   pendingDamage: PendingDamage;
+  /** D-CF-149: en la línea del registro de la mesa, una sola fila con «Aplicar» pequeño. */
+  compacta?: boolean;
 }): JSX.Element | null {
   // `enabled` cuelga de `pendingDamage.targetCharacterId` y no de una constante: sin objetivo no
   // hay nada que previsualizar, y el llamador ya garantiza que solo se monta este componente con
@@ -65,7 +68,11 @@ export function BandejaDeDano({
   // enseñar aquí» — la misma frase que antes decía el 404. `DanoExtra` es quien sí pinta algo con
   // esa forma reducida.
   if (preview.isError || !preview.data || !("target" in preview.data)) {
-    return (
+    return compacta ? (
+      <span className="ml-s2 font-chrome text-chrome-xs uppercase tracking-wide text-muted">
+        {yaAplicado ? "Aplicado" : "Daño pendiente"}
+      </span>
+    ) : (
       <p className="my-s2 border-y border-copper/25 py-s2 font-chrome text-chrome-sm text-muted">
         {yaAplicado ? "Aplicado" : "Daño pendiente"}
       </p>
@@ -81,6 +88,38 @@ export function BandejaDeDano({
   const { modifier, reason, taken } = p.resulting!;
   const nombreModificador = modifier ? NOMBRE_MODIFICADOR_DE_DANO[modifier] : null;
   const aplicado = yaAplicado || !p.canApply;
+
+  if (compacta) {
+    return (
+      <span className="mt-px flex flex-wrap items-center gap-x-s2 gap-y-px font-chrome text-chrome-xs text-muted">
+        <span>
+          {`${target.name}: ${p.amount} ${nombreTipoDano(p.damageType!)} → `}
+          <span className="font-data text-text">{taken}</span>
+          {nombreModificador && ` · ${nombreModificador}`}
+          {nombreModificador && reason && ` (${reason})`}
+        </span>
+        {!aplicado ? (
+          <Button
+            variant="secondary"
+            className="px-s2 py-px text-chrome-xs"
+            aria-label={`Aplicar el daño a ${target.name}`}
+            disabled={aplicar.isPending}
+            onClick={() => aplicar.mutate({ rollEventId, targetCharacterId: target.id })}
+          >
+            Aplicar
+          </Button>
+        ) : (
+          <span className="uppercase tracking-wide">Aplicado</span>
+        )}
+        {aplicar.isError && (
+          <span role="alert" className="text-danger-text">
+            <IconoAviso className="mr-1 inline h-3.5 w-3.5" />
+            {(aplicar.error as Error).message}
+          </span>
+        )}
+      </span>
+    );
+  }
 
   return (
     <div className="my-s2 flex flex-col gap-s2 border-y border-copper/25 py-s2">

@@ -53,6 +53,8 @@ async function registrarse(page: Page) {
  * contenido del que cabe, así que se sellan bastantes anotaciones para desbordar el panel a
  * propósito.
  */
+const ANOTACIONES = 30;
+
 async function campanaConSesionYHiloLargo(page: Page) {
   await page.getByRole("button", { name: "Nueva campaña" }).first().click();
   await page.getByLabel("Nombre").fill("La mesa medida");
@@ -71,7 +73,7 @@ async function campanaConSesionYHiloLargo(page: Page) {
   const barra = page.getByRole("status", { name: "Sesión en curso" });
   await expect(barra).toBeVisible({ timeout: 10_000 });
 
-  // Doce anotaciones desde la barra, que es el gesto que existe desde cualquier pantalla.
+  // Las anotaciones desde la barra, que es el gesto que existe desde cualquier pantalla.
   //
   // **«Anotar» es un ALTERNADOR, no un botón de abrir**, y esta prueba lo aprendió por las malas:
   // pulsándolo dentro del bucle, la segunda vuelta cerraba el panel que la primera había abierto y
@@ -80,7 +82,9 @@ async function campanaConSesionYHiloLargo(page: Page) {
   await page.getByRole("button", { name: "Anotar" }).click();
   const campo = page.getByLabel("Qué anotar");
   const sellarCombate = page.getByRole("button", { name: /Combate/ }).first();
-  for (let i = 0; i < 12; i++) {
+  // Treinta, no doce (fix round 1 de la Task 5b): con las líneas compactas del registro
+  // (D-CF-149) doce anotaciones cabían en 1080 px de alto sin scroll y la medida 2 no medía nada.
+  for (let i = 0; i < ANOTACIONES; i++) {
     // **Se espera a que el campo esté vacío ANTES de escribir, y ahí está la carrera que costó
     // dos tandas.** El compositor limpia el texto en el `onSuccess` de la mutación anterior, así
     // que si se escribe sin esperar, ese limpiado llega tarde y **borra lo recién escrito**: el
@@ -102,7 +106,9 @@ async function campanaConSesionYHiloLargo(page: Page) {
   // El hilo tiene que haber cargado sus líneas antes de medir nada: medir un panel vacío da un
   // verde que no significa nada.
   await expect(
-    page.getByRole("list", { name: "Sucesos de la sesión" }).getByText(/la línea número 12/),
+    page
+      .getByRole("list", { name: "Sucesos de la sesión" })
+      .getByText(new RegExp(`la línea número ${ANOTACIONES} del almacén`)),
   ).toBeVisible({ timeout: 15_000 });
 }
 

@@ -77,6 +77,9 @@ export default {
         "chrome-lg": "var(--text-lg)",
         "chrome-xl": "var(--text-xl)",
         "chrome-2xl": "var(--text-2xl)",
+        // D-CF-149 (Task 5b de 3A.3): la deuda que anotaba tokens.css — la voz del mundo en
+        // pequeño (15 px), la de las líneas del registro compacto y las notas al pie.
+        "world-sm": "var(--text-world-sm)",
         "world-base": "var(--text-world-base)",
         "world-lg": "var(--text-world-lg)",
         "world-xl": "var(--text-world-xl)",

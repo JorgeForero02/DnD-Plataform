@@ -103,24 +103,29 @@ export function MandosDeCombatiente({
 
   return (
     <>
+      {/* D-CF-149 (Task 5b de 3A.3) — **la fila de mandos, en pequeño.** El prototipo no dibuja
+          mandos en la tarjeta, y el autor pidió conservarlos («los de daño, las opciones del DM
+          por personaje…») adaptados a esa forma: tres cuadrados de 1.6 rem al pie —espada,
+          corazón, tres puntos— con su palabra en `title` y leída (`sr-only`), con los mismos
+          nombres accesibles de siempre («Daño a X», «Curar a X», «Más acciones sobre X»). */}
       <div className="mt-s2 flex items-center gap-s1">
         <button
           type="button"
           onClick={() => setPanel("dano")}
-          className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-danger px-1 py-1 font-chrome text-chrome-xs text-danger-text hover:bg-[color:var(--danger-tint)]"
+          title={`Daño a ${nombre}`}
+          className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-danger/50 text-danger-text transition-colors hover:bg-[color:var(--danger-tint)]"
         >
           <IconoEspada className="h-3.5 w-3.5" />
-          Daño
-          <span className="sr-only"> a {nombre}</span>
+          <span className="sr-only">Daño a {nombre}</span>
         </button>
         <button
           type="button"
           onClick={() => setPanel("curar")}
-          className="inline-flex flex-1 items-center justify-center gap-1 rounded-radius-sm border border-accent px-1 py-1 font-chrome text-chrome-xs text-accent-text hover:bg-[color:var(--accent-tint)]"
+          title={`Curar a ${nombre}`}
+          className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-accent/50 text-accent-text transition-colors hover:bg-[color:var(--accent-tint)]"
         >
           <IconoCorazon className="h-3.5 w-3.5" />
-          Curar
-          <span className="sr-only"> a {nombre}</span>
+          <span className="sr-only">Curar a {nombre}</span>
         </button>
         {/* **El resto va al menú** (tarea 8 del pulido): «Condición», «Dar…» y «Su hoja» son
             del mando de este combatiente; `accionesDeMesa` (revelar/ocultar/sacar del combate,

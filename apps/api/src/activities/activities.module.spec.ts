@@ -94,3 +94,12 @@ describe("el binding de ACTIVITY_CATALOG en el @Module (importante I1)", () => {
 interface ActivityCatalogParaLaPrueba {
   find(key: string): unknown;
 }
+
+// Ola post-revisión de 3A.3 (C1) — `GET …/actions` lista las aptitudes como `feature:<key>`; la
+// misma clave reenviada a `usar()` tiene que encontrar la misma actividad que la de la hoja.
+describe("actividadCatalogada — acepta la clave con el prefijo feature: de GET actions", () => {
+  it("feature:rage y rage son la misma Furia", () => {
+    expect(actividadCatalogada("feature:rage")).toEqual(actividadCatalogada("rage"));
+    expect(actividadCatalogada("feature:rage")).toBeDefined();
+  });
+});

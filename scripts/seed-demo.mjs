@@ -586,7 +586,16 @@ async function main() {
           { token: dm.token, body: { initiative: 10 + Math.floor(Math.random() * 10) } },
         ).catch(() => {});
       }
-      detalle("Encuentro empezado, con iniciativa tirada para cada uno.");
+      // El encuentro nace `PREPARING` cuando combate alguien que no es el DM (los jugadores tiran
+      // su iniciativa); con las iniciativas ya puestas a mano, se arranca sin esperar a nadie —
+      // `POST …/force-start` (`EncountersController`), solo DM— para que la mesa de demostración
+      // enseñe el orden de turnos y no la sala de espera (fix round 2 de la Task 5b, 3A.3).
+      await api(
+        "POST",
+        `/campaigns/${C}/sessions/${sesion.id}/encounters/${nuevo.id}/force-start`,
+        { token: dm.token },
+      ).catch((error) => detalle(`Arrancar el encuentro: ${error.message}`));
+      detalle("Encuentro empezado y en marcha, con iniciativa tirada para cada uno.");
     }
   } else {
     detalle("Ya había un encuentro en curso.");

@@ -256,6 +256,12 @@ export function useHelp(campaignId: string, helperCharacterId: string) {
     onSuccess: (_r, vars) => {
       void qc.invalidateQueries({ queryKey: conditionsKey(campaignId, vars.targetCharacterId) });
       void qc.invalidateQueries({ queryKey: sheetKey(campaignId, vars.targetCharacterId) });
+      // Task 4 de 3A.3 — Ayudar gasta la acción del ayudante (docs/09-jugar.md), y `basic:help`
+      // vive en `grupos.BASICAS` de la barra de ESE personaje, no del ayudado. Misma clave
+      // literal que el resto de este fichero — ver el comentario de `useUsarActividad`.
+      void qc.invalidateQueries({
+        queryKey: ["campaigns", campaignId, "characters", helperCharacterId, "actions"],
+      });
     },
   });
 }
@@ -380,6 +386,17 @@ export function useUsarActividad(campaignId: string, characterId: string) {
       if (vars.input?.itemId) {
         void qc.invalidateQueries({ queryKey: inventoryKey(campaignId, characterId) });
       }
+      // **Task 4 de 3A.3 (T22) — y la barra de acciones.** `usar()` es la puerta que gasta la
+      // economía del turno (`gastarActivacion`, más arriba) para CONJUROS, APTITUDES y BASICAS:
+      // sin esto, `GET …/actions` seguía diciendo «disponible» hasta el siguiente sondeo de
+      // `useAcciones` (`SONDEO_DE_MESA_MS`), la misma contradicción de pantalla que ya documenta
+      // `invalidarRegistro` para los PG. La clave se escribe literal, no importada de
+      // `features/actions/hooks.ts` (`actionsKey`): esa hoja ya importa `SONDEO_DE_MESA_MS` DE
+      // AQUÍ, y una importación de vuelta cerraría un ciclo entre los dos módulos — la forma es
+      // idéntica a la que declara `actionsKey`, y `hooks.test.tsx` («invalida la lista de
+      // acciones») lo comprueba con la clave literal (ola post-revisión de 3A.3: el comentario
+      // prometía esa prueba antes de que existiera).
+      void qc.invalidateQueries({ queryKey: accionesDelPersonaje(campaignId, characterId) });
     },
   });
 }
@@ -485,6 +502,14 @@ export function useCreateRoll(campaignId: string) {
   });
 }
 
+/**
+ * La clave de `GET …/actions`, escrita literal y no importada de `features/actions/hooks.ts`
+ * (`actionsKey`): esa hoja ya importa `SONDEO_DE_MESA_MS` de aquí y la importación de vuelta
+ * cerraría un ciclo. La forma es idéntica; `hooks.test.tsx` lo comprueba.
+ */
+const accionesDelPersonaje = (campaignId: string, characterId: string) =>
+  ["campaigns", campaignId, "characters", characterId, "actions"] as const;
+
 /** Tira con un arma del cuadro de ataques (carril B3). No invalida la hoja: tirar no cambia nada. */
 export function useRollAttack(campaignId: string, characterId: string) {
   return useMutation({
@@ -494,13 +519,23 @@ export function useRollAttack(campaignId: string, characterId: string) {
 }
 
 /**
- * Tarea 13 — tira un ataque contra un objetivo y trae el veredicto del servidor. Tampoco invalida
- * la hoja: resolver un ataque no cambia PG ni recursos por sí solo, el DM aplica el daño aparte.
+ * Tarea 13 — tira un ataque contra un objetivo y trae el veredicto del servidor. No invalida la
+ * hoja: resolver un ataque no cambia PG ni recursos por sí solo, el DM aplica el daño aparte.
+ *
+ * Ola post-revisión de 3A.3 (M1) — **sí invalida el encuentro y la lista de acciones**: desde
+ * la Task 4b (D-CF-146) `resolveAttack` gasta la ACCIÓN del turno en el servidor, y sin esto la
+ * franja seguía diciendo «acción: disponible» y la barra «Atacar» hasta que el canal en vivo o el
+ * sondeo de 60 s lo corrigieran. El mismo par que ya invalida `useUsarActividad`.
  */
 export function useResolveAttack(campaignId: string, characterId: string) {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (vars: { attackKey: string; input: ResolveAttackInput }) =>
       characterSheetApi.resolveAttack(campaignId, characterId, vars.attackKey, vars.input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: encountersKey(campaignId) });
+      void qc.invalidateQueries({ queryKey: accionesDelPersonaje(campaignId, characterId) });
+    },
   });
 }
 

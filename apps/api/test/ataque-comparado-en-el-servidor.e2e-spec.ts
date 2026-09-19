@@ -31,6 +31,9 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
   let characterId = "";
   let attackKey = "";
   let targetId = "";
+  // Task 4b (3A.3, D-CF-146) — el encuentro nace en `beforeAll` con `characterId` como
+  // combatiente ya `ACTIVE`; se guarda su id para comprobar `actionUsed` sin repetir el montaje.
+  let encounterId = "";
 
   const auth = (t: string) => `Bearer ${t}`;
   const sheetUrl = () => `/campaigns/${campaignId}/characters/${characterId}/sheet`;
@@ -122,6 +125,7 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
         sides: { [characterId]: "ALLY", [targetId]: "ENEMY" },
       });
     expect(encuentro.status).toBe(201);
+    encounterId = encuentro.body.id;
 
     // **Responder la iniciativa por el camino real** (tarea 3, 2026-09-05). `characterId` es del
     // jugador, no del DM que empieza el combate: desde la tarea 2 `start()` ya no tira por él, le
@@ -194,6 +198,32 @@ describe("El ataque, comparado en el servidor (e2e)", () => {
     // Y el nombre del PNJ tampoco: el atacante ve un suceso de SU tirada, no una revelación del
     // objetivo — es la misma fuga que ya se cerró en `character-sheet.service.ts`.
     expect(json).not.toContain("Plebeyo");
+  });
+
+  it("Task 4b (3A.3, D-CF-146) — un ataque con objetivo gasta la acción del turno del atacante", async () => {
+    const s = app.getHttpServer();
+
+    // Se resetea a mano lo que dejó gastado la prueba anterior de esta misma suite: lo que este
+    // caso prueba es la CAUSA (atacar) → EFECTO (`actionUsed`), no que ya estuviera gastada de
+    // antes. SRD 5.1, "Actions in Combat" → "Attack": *"The most common action to take in combat
+    // is the Attack action, whether you are swinging a sword, firing an arrow from a bow, or
+    // brawling with your fists."* — un ataque de arma ES esa acción.
+    await prisma.combatant.updateMany({
+      where: { encounterId, characterId },
+      data: { actionUsed: false },
+    });
+
+    const r = await request(s)
+      .post(resolveUrl())
+      .set("Authorization", auth(tokenPL))
+      .send({ targetCharacterId: targetId, mode: "NORMAL" });
+    expect(r.status).toBe(201);
+    expect(typeof r.body.excedido).toBe("boolean");
+
+    const combatiente = await prisma.combatant.findFirstOrThrow({
+      where: { encounterId, characterId },
+    });
+    expect(combatiente.actionUsed).toBe(true);
   });
 
   it("atacar a un objetivo que no existe en la campaña es 404, no una comparación silenciosa", async () => {

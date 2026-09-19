@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useUsarActividad } from "../hooks";
+import { useResolveAttack, useUsarActividad } from "../hooks";
 import { currentEncounterKey } from "../../encounters/hooks";
+import { actionsKey } from "../../actions/hooks";
 import * as characterSheetApi from "../api";
 
 // Ronda de arreglo 2 — importante 2. Borrar la invalidación de `encountersKey` en
@@ -43,5 +44,56 @@ describe("useUsarActividad — invalida el encuentro activo (importante 2, ronda
     await waitFor(() =>
       expect(qc.getQueryState(currentEncounterKey("c1", "s1"))?.isInvalidated).toBe(true),
     );
+  });
+});
+
+// Ola post-revisión de 3A.3 — la clave literal `["campaigns", c, "characters", ch, "actions"]`
+// que `hooks.ts` escribe a mano (para no cerrar un ciclo con `features/actions/hooks.ts`) es la
+// misma que declara `actionsKey`. Esta es la prueba que el comentario prometía.
+describe("la lista de acciones (`GET …/actions`) se invalida tras usar y tras atacar", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("usar una actividad invalida la lista de acciones con la clave literal de actionsKey", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(actionsKey("c1", "ch1"), { characterId: "ch1" });
+    vi.spyOn(characterSheetApi, "usarActividad").mockResolvedValue({});
+    const { result } = renderHook(() => useUsarActividad("c1", "ch1"), {
+      wrapper: makeWrapper(qc),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({ activityKey: "rage" });
+    });
+    await waitFor(() =>
+      expect(qc.getQueryState(actionsKey("c1", "ch1"))?.isInvalidated).toBe(true),
+    );
+  });
+
+  // M1: `resolveAttack` gasta la acción en el servidor (D-CF-146); la franja y la barra lo
+  // tienen que releer sin esperar al canal ni al sondeo.
+  it("resolver un ataque invalida el encuentro y la lista de acciones", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(currentEncounterKey("c1", "s1"), { id: "enc1" });
+    qc.setQueryData(actionsKey("c1", "ch1"), { characterId: "ch1" });
+    vi.spyOn(characterSheetApi, "resolveAttack").mockResolvedValue({} as never);
+    const { result } = renderHook(() => useResolveAttack("c1", "ch1"), {
+      wrapper: makeWrapper(qc),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        attackKey: "dagger",
+        input: {
+          targetCharacterId: "ch2",
+          mode: "NORMAL",
+          spendInspiration: false,
+          audience: "PUBLIC",
+        },
+      });
+    });
+    await waitFor(() => {
+      expect(qc.getQueryState(currentEncounterKey("c1", "s1"))?.isInvalidated).toBe(true);
+      expect(qc.getQueryState(actionsKey("c1", "ch1"))?.isInvalidated).toBe(true);
+    });
   });
 });

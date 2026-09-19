@@ -31,12 +31,29 @@ cuenta; no hace falta que nadie levante nada. Para probar en local, ver
    manual básico y admite las tuyas.
 5. **Pega la sala del tablero, si usáis mapa.** En Ajustes → «Sala del tablero», pega la
    dirección de vuestra partida en PlanarAlly (`https://tablero.supportive.pro/game/…`, la que
-   ves al abrir o crear vuestra partida allí). Con la dirección guardada, la mesa enmarca el
-   tablero en el centro y el registro en vivo pasa a un cajón inferior plegable, con un contador
-   de cuántas líneas nuevas llegaron mientras estaba plegado (D-CF-63). **Cada jugador inicia
-   sesión en PlanarAlly dentro de ese marco**, con su propia cuenta, una vez por navegador — el
-   marco lo dice siempre, debajo del mapa. Sin sala guardada, la mesa es la de siempre: el hilo
-   ocupa el centro y no hay marco.
+   ves al abrir o crear vuestra partida allí). Con la dirección guardada y el modo «Con tablero»
+   puesto en la banda de arriba, la mesa enmarca el tablero en el centro —con una cabecera propia
+   que dice dónde está la escena y un enlace para abrirlo aparte— y el registro se muda a una
+   columna lateral, con filtros («Todo · Relato · Números») para no perder de vista lo que importa
+   mientras se mira el mapa. **Cada jugador inicia sesión en PlanarAlly dentro de ese marco**, con
+   su propia cuenta, una vez por navegador — el marco lo dice siempre, debajo del mapa. Sin sala
+   guardada, o con el modo «Sin tablero» puesto, la mesa es la de siempre: el registro ocupa el
+   centro, con sus mismos filtros.
+6. **Dónde está cada cosa en la mesa** (desde el 2026-09-18 se ve como el HTML del prototipo,
+   D-CF-149). De arriba abajo: la **banda** (campaña, escena y lugar, duración, reloj, el
+   conmutador «Con tablero / Sin tablero», los atajos «?» y «Ver como»); la **franja de combate**,
+   una sola fila —«Asalto N», los turnos como chips con el actual en cobre, la economía de quien
+   actúa (acción · adicional · reacción · pies, con «Corregir» para ti), «Terminar el combate» y
+   **«Siguiente turno»**—, o «La mesa no está en combate · Entrar en combate» en reposo; y las
+   tres columnas: el **elenco** a la izquierda («El grupo N» y «En escena N», tarjetas densas con
+   PG, CA y velocidad; **Daño · Curar · …** son los tres cuadrados al pie de cada tarjeta, y
+   pulsar la tarjeta apunta), con el rail Hoja · Bolsa · Mundo · Dados debajo; el **centro** (el
+   marco del tablero con la barra de acciones debajo, o el registro si no hay tablero); y la
+   **lateral** con el **registro** (una línea por suceso: hora, quién y qué; «De dónde sale» al
+   lado de cada tirada; «Aplicar» en la misma línea del daño pendiente; la caja de anotar con
+   «Solo el DM» y los seis sellos como iconos) encima de las **herramientas** en rejilla de dos
+   columnas, con «Consultar el mundo» como octavo botón. Corregir la iniciativa de un turno es el
+   lápiz junto a su número en la franja.
 
 ## Los cinco niveles de visibilidad
 
@@ -167,6 +184,41 @@ merece la pena contar.
 - **Ayudar cuesta tu acción del turno.** Es la regla del manual —Ayudar es una acción— y desde el
   2026-09-07 la mesa la cobra: se descuenta y se anuncia. **Fuera de combate no cuesta nada**,
   porque sin turnos no hay economía que gastar.
+- **La barra de acciones**, bajo el marco de la mesa (con tablero o sin él, y solo si tienes
+  personaje propio en la campaña): cinco menús que suben desde ella —**Ataques**, **Conjuros**,
+  **Aptitudes**, **Objetos** y **Esquivar, ayudar…**— con lo que de verdad puedes hacer ahora
+  mismo, lo compone el servidor. Cada fila trae su coste, lo que gasta y por qué está en gris si
+  lo está —el mismo motivo que te daría el botón si lo intentaras de todos modos—. **«Esquivar,
+  ayudar…»** son las ocho básicas del combate del manual (Esquivar, Ayudar, Esconderse,
+  Destrabarse, Correr, Preparar, Buscar, Usar un objeto); fuera de combate no tienen coste
+  que gastar y siguen disponibles igual, salvo que necesiten un objetivo que solo existe en
+  pelea. **Ayudar** abre el mismo selector de destino que ya tenías en tu tarjeta del elenco —no
+  es una segunda mecánica—.
+  - **El chip de objetivo** («apuntas a…») es un atajo de mesa: pulsa el botón de la diana
+    («Apuntar a…») en la tarjeta de cualquiera en «En la mesa» —la tuya, la de otro jugador, un
+    PNJ— o el chip de su turno en la franja de combate, y la barra recuerda a quién estás
+    mirando hasta que pulses la X del chip, vuelvas a pulsar la diana, apuntes a otro o termine
+    el combate. Con un conjuro o un ataque que
+    piden un solo objetivo, el chip dispara directo, sin volver a preguntar; sin chip, se abre
+    la lista de siempre.
+  - **Ataques** usa exactamente el mismo flujo que el dado de tu cuadro de ataques: con
+    objetivo, resuelve contra su CA; sin objetivo y en combate, te deja elegir; fuera de combate,
+    tira suelto.
+  - **Conjuros** abre el mismo panel «Lanzar» de tu hoja, con el objetivo ya puesto si tienes
+    chip. **Objetos** bebe o usa la fila de tu inventario. **Aptitudes** usa la misma puerta que
+    tus rasgos y dones (desde la ola post-revisión de 3A.3: antes la barra mandaba la clave con
+    un prefijo que el servidor no entendía y la pestaña entera parecía muerta).
+  - **Si el servidor dice que no** —ya gastaste la acción, el objetivo salió del combate, te
+    apuntabas a ti mismo—, la fila lo dice debajo del botón, en rojo. Nada falla en silencio.
+- **La economía del turno es estado que se gasta al actuar, no un botón que tú aprietas**
+  (D-CF-145). En la franja de combate, al lado de los turnos, ves tu nombre y tres marcas
+  —acción, adicional, reacción: punto lleno si está disponible, hueco y tachado si ya se gastó
+  (la palabra la lee el lector de pantalla y la enseña el ratón)— y tus pies de movimiento;
+  atacar, lanzar un conjuro o usar una actividad las gasta solas, por la
+  misma puerta que resuelve la acción. **Tú ya no tienes «Usar mi…»**: si haces algo que no pasa
+  por ninguna de esas puertas —hablar, usar un objeto de la ficción—, se lo dices al DM, que es
+  quien conserva «Corregir» para marcarlo a mano. El campo de pies sigue siendo tuyo: el
+  movimiento no tiene puerta propia que lo gaste.
 - **Un modificador temporal lo pone el DM**, no tú. Ves los tuyos activos y puedes quitártelos.
   Lo que sí haces solo: **beberte una poción de tu inventario aplica sus efectos** sin pedirle
   nada a nadie.

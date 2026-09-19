@@ -87,6 +87,9 @@ número de pruebas, resultado de la revisión— vive en el ledger
 > | [`_archivo/historial-2026-09-13-revision-final-de-la-rama.md`](./_archivo/historial-2026-09-13-revision-final-de-la-rama.md) | **Revisión final de la rama pulido/antes-del-paso-3**, movida entera el 2026-09-13 al escribir el hito «Pulido antes del paso 3» (Tarea 15): las siete de este corte se movieron para dejar sitio al hito de la tanda entera. Su resumen se queda arriba |
 > | [`_archivo/historial-2026-09-13-pulido-antes-del-paso-3.md`](./_archivo/historial-2026-09-13-pulido-antes-del-paso-3.md) | **El hito «Pulido antes del paso 3»**, movido entero el 2026-09-14 al escribir el hito «La puerta de efectos», con el fichero en 1013 líneas |
 > | [`_archivo/historial-2026-09-14-paso-3-en-a-y-b.md`](./_archivo/historial-2026-09-14-paso-3-en-a-y-b.md) | **«El paso 3 se parte en A y B; puerta de efectos fusionada»**, movida entera el 2026-09-18 al insertar la entrada de la Task 3 de 3A.2 (`SpellbookService`): el fichero quedó en 1012 de 1000. Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-14-y-15-3a1-y-efectos-de-mesa.md`](./_archivo/historial-2026-09-14-y-15-3a1-y-efectos-de-mesa.md) | **3A.1 «El libro entra»** y **«Efectos de mesa»**, movidas enteras el 2026-09-18 al escribir la entrada de cierre de 3A.3: el fichero estaba en 996 de 1000 y eran las dos entradas completas más antiguas. Sus resúmenes se quedan arriba |
+> | [`_archivo/historial-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/historial-2026-09-17-cierre-antes-de-3a2.md) | **Cierre antes de 3A.2**, movida entera el 2026-09-18 en el mismo corte (el fichero seguía en 1035 de 1000 tras el archivado anterior). Su resumen se queda arriba |
+> | [`_archivo/historial-2026-09-18-3a2-elegir-lanzar-y-usar.md`](./_archivo/historial-2026-09-18-3a2-elegir-lanzar-y-usar.md) | **3A.2 · Elegir, lanzar y usar**, movida entera el 2026-09-18 en el mismo corte (el fichero seguía en 1014 de 1000 tras tres archivados). Su resumen se queda arriba |
 > | [`_archivo/historial-2026-09-14-pnj-del-mundo-y-la-mesa.md`](./_archivo/historial-2026-09-14-pnj-del-mundo-y-la-mesa.md) | **«El PNJ del mundo y la mesa»**, movida entera el 2026-09-18 en el mismo corte: el fichero seguía por encima de 1000 tras el archivado anterior. Su resumen se queda arriba |
 >
 > **El corte del 2026-09-05 se hizo por lo segundo**: el fichero estaba en 399 de 400 y no cabía
@@ -101,99 +104,100 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
-## 3A.2 · Elegir, lanzar y usar (2026-09-18/19), en rama `3a2/elegir-lanzar-y-usar`, sin fusionar
+## 3A.3 · La barra de acciones y la mesa converge al prototipo (2026-09-18), rama `3a3/la-barra-de-acciones` — cerrada, pendiente de fusionar
 
-Qué — spellbook, lanzar conjuros a través de `usar()`, ataque de conjuro, daño extra al impactar
-y encantar; nueve tareas sobre `bcba19a`, revisión final de la rama, una ola de arreglos (cinco
-rondas) y el cierre documental:
+Qué — el cierre del bloque A del paso 3 ([plan](./superpowers/plans/2026-09-18-3a3-la-barra-de-acciones.md),
+D-CF-70/71): la lista única de acciones del servidor, la economía del turno como estado, la banda
+única, la barra de acciones bajo el marco y la mesa entera adaptada al HTML del prototipo del autor
+(`prototipo/mesa/2026-09-18-prototipo-mesa.html`, D-CF-149). Siete tareas sobre `90e3c0b`, una
+revisión Opus de la rama entera y UNA ola:
 
-- **T1 — las tablas del SRD y el arranque por clase** (`831869d`): `spell-knowledge.ts`/
-  `spell-starters.ts` (catálogo puro): topes de preparados/trucos por clase y nivel,
-  `ARRANQUE_POR_CLASE` verificado contra las 319 claves generadas por 3A.1.
-- **T2 — `CharacterSpell`, esquema compartido y dos sucesos** (`2314937`, `1188842`): el modelo
-  (migración `character_spells`), `SpellbookEntry`/`SpellbookResponse` en `@dnd/shared`, y los
-  sucesos `ACTIVITY_USED`/`SPELLBOOK_CHANGED` (migración `activity_events`) con su línea en el
-  hilo.
-- **T3 — `SpellbookService`: listar, cambiar estado y sembrar** (`cf9ed68` + `135f400`, T10,
-  D-CF-125/126/127): `GET`/`PUT …/spellbook` (lista sin prosa; detalle por conjuro aparte, tras
-  encontrar que la lista con prosa llegaba a ~460 KB), `sembrarLibro` al fijar la primera clase.
-  Un defecto real arreglado en el camino: `getSheet` dentro de la transacción de `setEstado`
-  interbloqueaba el pool pequeño de pruebas (~19 s de cuelgue); movido fuera, dentro solo queda
-  aritmética.
-- **T4 — lanzar entra en `usar()`** (`2702777`, T18): espacio por nivel (el elegido, no el propio),
-  escalado por espacio, el daño directo sobre otro va a la bandeja del DM como `pendingDamage`
-  (una tirada, N tarjetas con los mismos dados, D-CF-128), `ACTIVITY_USED` siempre.
-- **T5 — ataque de conjuro contra la CA** (`d902e23`, T19): `resolverAtaqueContraCa` extraída de
-  `resolveAttack`, misma mecánica para un arma y para un conjuro; la CA sigue sin viajar por
-  ningún cuerpo.
-- **T6 — la pestaña «Conjuros»: elegir** (`d72d6c8`, T11 parte 1): `LibroDeConjuros.tsx` («Listos
-  para lanzar» + «Disponibles» con buscador y filtros), `FilaDeConjuro.tsx` compartida; ningún
-  botón se apaga por tope, el servidor cuenta y avisa.
-- **T7 — «Lanzar» y las aptitudes con nombre, texto y usos** (`b2256bb`+`0782ac3`+`417d3d5`+
-  `9dc5e88`+`d04a23d`+`2a71e06`, T11 parte 2): `LanzarConjuro.tsx` (objetivos, nivel de espacio,
-  avisos); `CharacterSheetActivity.name`/`textEs` para que las aptitudes dejen de llamarse por su
-  clave interna. Cuatro rondas de arreglo sobre el Playwright del orquestador (localizadores
-  exactos, fila que no envuelve su botón, nivel sembrado antes de fijar clase).
-- **T8 — daño extra al impactar** (`7d22b71`): Ataque furtivo y Castigo divino, marcados por el
-  jugador sobre su tirada pendiente y confirmados por el DM al aplicar (D-CF-129).
-- **T9 — encantar** (`d943122`+`1c4d8bb`, T15, migración `temporary_modifier_item`): *Arma mágica*
-  como `TemporaryModifier` con `inventoryItemId` sobre `item.weaponAttack`/`item.weaponDamage`,
-  leído por `efectosActivos` (D-CF-130).
+- **T1 — `GET …/characters/:id/actions`** (`c1fbd2e`, T21): `AccionesResponse` con cinco grupos
+  (Ataques · Conjuros · Aptitudes · Objetos · Básicas) compuestos desde lo que `characters`,
+  `spellbook` e `inventory` ya derivan, más las ocho básicas del SRD (`basic-actions.ts`, cableadas
+  en `ActivitiesModule` como `basic:<key>`; Ayudar va por su propia puerta); `disponible`/`motivos`
+  desde la economía del `Combatant`; solo dueño o DM (403). `acciones.e2e-spec.ts` contra combate real.
+- **T2 — la economía del turno como estado** (`9cabf64`, D-CF-145): tres marcas (punto lleno /
+  hueco tachado) y los pies en la franja; «Usar mi…» desaparece; el DM conserva «Corregir», que solo
+  marca hacia adelante (no hay des-gasto en el servidor).
+- **T3 — la banda única** (`1b9d9a0`): `BandaUnica.tsx` funde `BandaDeMesa` y `CabeceraDeEscena`
+  (escena, lugar, reloj, duración, asistencia, conmutador «Con tablero / Sin tablero» persistido,
+  atajos, «Ver como», tema).
+- **T4 — la barra de acciones** (`3aa6c0d` + `9b48c5d` + `fbd60d1` + `bd9339d`, T22):
+  `features/actions/BarraDeAcciones.tsx`, cinco menús en `PanelFlotante`, chip de objetivo
+  (`objetivo.store.ts`), cada fila reutiliza la puerta de siempre (`useResolveAttack`,
+  `LanzarConjuro`, `useUsarActividad`, `useConsumeInventoryItem`, `AyudarA`). Tres rondas sobre el
+  Playwright del orquestador: un bug real (un panel anidado cerraba al padre) y dos localizadores.
+- **T4b — atacar gasta la acción** (`47bc296`, D-CF-146): `resolveAttack` gasta `ACTION` por
+  `gastarSiEnCombate` (`TurnEconomyGateModule`, `ModuleRef` sin ciclo `characters ↔ encounters`),
+  probado en `AppModule` entero; Ataque Adicional queda como aviso hasta 3B.
+- **T5 — la mesa se recompone** (`6cd63a1` + `cf68768`, D-CF-147/148): el cajón del registro
+  desaparece; registro lateral (18rem) con filtros Todo · Relato · Números inline en su cabecera,
+  herramientas del DM debajo, marco con cabecera y «abrir aparte», rejilla de tres columnas; atajo
+  `/`; P-1 se cierra por absorción.
+- **T5b/T6 — fidelidad al HTML del prototipo** (`eaf3c59` + `746e3dc` + `edc0a93` + `8b1ae58`,
+  D-CF-149, decisión del autor: «aún no se ve como el prototipo»): franja de combate compacta con
+  la economía inline y «Siguiente turno», elenco denso con la voz en el filete y mandos de 1.6 rem,
+  registro en líneas compactas (`MensajeDelHilo variante="linea"`), sellos como iconos, rail sin
+  bordes; `mesa-prototipo.spec.ts` mide DM y jugador a 1280 y 390 con ocho capturas commiteadas;
+  tres rondas de arreglo (la de 390 eran los `sr-only` absolutos: la raíz pasa a `relative`).
+- **Ola post-revisión** (`945b8fa`): ver abajo.
 
-Revisión final (`bcba19a..1c4d8bb`): **0C/5I/13m** en API+shared, **0C/6I/11m** en web+docs. Ola
-de arreglos, cinco commits (`170d8e5`, `155b432`, `fc4b1d9`, `ba21347`, `da9d17f`): los 11
-importantes cerrados (tope de Castigo divino, la carrera aplicar↔marcar-extra, el espacio de
-Castigo en la misma transacción que su tirada, tarjetas de daño dentro de la transacción de
-`usar()`, `spell:<key>@N` rechazado hasta 3B, el nivel de espacio que se quedaba rancio, «Tú
-mismo» en combate salvo para un ataque, la vista reducida de `damagePreview`, `GrupoDeRadios` en
-vez de radios a mano, dos filas de `08-pruebas.md` que mentían), 12 menores cerrados y el resto
-fichado (`06-pendientes.md`, «Dejado por 3A.2»); re-revisión: **11/11 addressed**. Las tres
-últimas rondas achicaron la respuesta del `PUT …/spellbook/:key` (solo la entrada cambiada) y
-añadieron gzip a la API (`@fastify/compress`, D-CF-131) tras medir que las respuestas > 64 KB se
-cortaban intermitentemente en este PC (Norton sobre loopback, sospecha) — en producción nginx ya
-comprimía.
+Revisión final de la rama (`90e3c0b..8b1ae58`, 14 commits, 97 ficheros): **1C · 5I · 11m**. El
+crítico: **las Aptitudes de la barra no funcionaban nunca** — la fila viajaba como `feature:rage`,
+el catálogo buscaba `rage`, 404, y la barra no pintaba ningún `isError`, así que «pulso y no pasa
+nada»; ninguna prueba lo ejercitaba. La ola lo cierra por los dos lados (la web recorta el prefijo
+como ya hacía con `attack:`; `parsearClaveDeActividad` acepta `feature:<key>`) con RTL, unitaria y
+un e2e de API que reenvía la clave tal cual la lista `GET actions` (mutado: 404 sin el arreglo).
+Los cinco importantes: errores del servidor en línea en cada control de la barra (`ErrorDeControl`);
+la línea «En la escena» ya no rompe la fila única de la banda (inline truncada desde `lg`, medida
+con asistencia declarada en `sesion.spec`); la tarjeta del elenco vuelve a ser contenido y apuntar
+es un botón propio con `aria-pressed` (`BotonDeApuntar`, `IconoDiana`); `aria-disabled` con motivo
+en sellos, ±5 y la casilla gastada (U9); y las docs que mentían (01, 08, 09, D-CF-148, tres
+comentarios). Menores cerrados: M1 (atacar invalida encuentro y acciones), M2 (el chip se limpia al
+terminar el combate o cambiar de campaña), M3, M4 (`useId`), M5 (`/` en «Atajos»), M8 (enlace al
+SRD 5.1), M9 (`tablero-en-la-mesa` a 390 como `test.fail` con la medida buena), M10 (autor en
+`sr-only`). Fichados: M6, M7, M11 y la mitad de M4 («Dejado por 3A.3», `06-pendientes.md`).
 
-Playwright del orquestador, todos verdes: `conjuros`, `lanzar` (×3 tras el gzip), `hoja-pestanas`,
-`furia`, `combate`, `puerta-de-efectos`, `inventario`, `objeto-sin-identificar`, `tirada`.
+Playwright, corrido por el orquestador (el implementador no lo corre): `barra-de-acciones`,
+`desbordes` (fallaba ya en `main`: el seed demo dejaba el encuentro en `PREPARING`; arreglado en
+`8b1ae58`), `mesa-prototipo`, `mesa-mide`, `sesion`, `tablero-en-la-mesa`, `combate`,
+`iniciativa-en-vivo`, `tokens-contrast`, `furia`, `campana`, `color-de-personaje`,
+`arrastre-dentro-del-cajon` — todo verde salvo `mesa-en-estrecho`, que es `test.fail` a propósito
+(D-CF-26). Los specs que la ola toca (`sesion` —prueba nueva—, `tablero-en-la-mesa` —`test.fail`
+nuevo—, `barra-de-acciones`, `tokens-contrast` —solo un comentario—) los corre el orquestador antes
+de fusionar. `pnpm verify` en verde en cada commit (pre-commit).
 
-Tres migraciones, aditivas: `character_spells`, `activity_events` (T2), `temporary_modifier_item`
-(T9). Cierre documental (esta entrada): fusiona lo que T3 y T6 habían dejado suelto en este
-fichero; cierra P1 a `_archivo/pendientes-cerrados-2026-09-18-3a2.md`; D-CF-131..144 en
-`decisiones.md`; «Dejado por 3A.2» en `06-pendientes.md`.
+Por qué — «primero lo que hace jugable una partida» (D-CF-71): con el libro (3A.1) y lanzar
+(3A.2), lo que faltaba era que quien juega no tuviera que decidir *dónde* está cada cosa, y que la
+mesa se viera como el autor la dibujó. Proceso: rigor según pieza (T1/T2/T4 con TDD; T3/T5/T6
+visuales sin unitarias ni mutación por tarea, medidas en navegador y capturas; una revisión Opus y
+una ola). Decisiones D-CF-145..159 en [decisiones.md](./decisiones.md).
 
-Revertir — `git revert -m 1 <hash del merge>` una vez fusionada a `main`; las migraciones son
-aditivas. **Sin desplegar.**
+Revertir — `git revert -m 1 <hash del merge>` una vez fusionada a `main`; **sin migraciones**.
+Sin desplegar: producción sigue en `334912b`. Siguiente: **Paso 4, la prueba de partida**, que
+corre el autor ([como-seguir.md](./como-seguir.md) §0;
+[guion](./superpowers/notes/2026-09-18-paso-4-la-partida.md)).
 
 ---
 
-## Cierre antes de 3A.2 (2026-09-17/18) — rama `cierre/antes-de-3a2`, sin fusionar
+## 3A.2 · Elegir, lanzar y usar (2026-09-18), rama `3a2/elegir-lanzar-y-usar` — fusionada a `main` en `5cc14a2`, sin desplegar — archivada
 
-Qué — RM-2 entera; de las menores de la revisión del 13, las arregladas y las marcadas F (ya
-cerradas o falsas) y D (descartadas con motivo) en el §0 del plan — apuntar al §0 del plan
-[`2026-09-17-cierre-antes-de-3a2.md`](./superpowers/plans/2026-09-17-cierre-antes-de-3a2.md);
-`CharacterRow.entityId`; EM-1; y **el hallazgo real**: `dadosTirados` tachaba el dado equivocado
-con valores repetidos (D-CF-122). Commits (`git log --oneline main..HEAD`):
+**Movida entera** a [`_archivo/historial-2026-09-18-3a2-elegir-lanzar-y-usar.md`](./_archivo/historial-2026-09-18-3a2-elegir-lanzar-y-usar.md)
+el 2026-09-18, en el mismo corte que 3A.1, los efectos de mesa y el cierre antes de 3A.2 (el
+fichero seguía en 1014 de 1000). En una línea: el libro de conjuros (`CharacterSpell`,
+`SpellbookService`, pestaña «Conjuros»), lanzar a través de `usar()` (espacio por nivel, escalado,
+daño a la bandeja del DM), ataque de conjuro contra la CA, daño extra al impactar (Furtivo, Castigo
+divino) y encantar (*Arma mágica*); revisión 0C/11I/24m cerrada en una ola de cinco commits; gzip
+en la API (D-CF-131); tres migraciones aditivas; D-CF-125..144.
 
-```
-c80609d test(web): table effects — unit tests for the pure detector, e2e proves the floating text leaves the DOM
-d3ea708 test(web): sheet e2e selects boxes by data-casilla, asserts exactly five, cites the «Vel.» label
-4aeb712 fix(web): log drawer keeps its Plegar/Desplegar label
-c458da2 fix(web): one IconoPunta for every chevron; log drawer counts lines that arrive after folding
-0e40447 fix(web): space activates a menu item once, advantage radios stay reachable, temp-HP prompt resets
-6dfaf8b fix(web): table rules validate ranges in Spanish and reseed when idle; deleting a link refreshes both ends
-b0005d7 refactor(web): fold duplicates — IconoD20, normalizarTexto, audience summary, accionesDeBando
-3929214 fix(api): dice keep/drop flags come from the evaluator, not from value matching
-02dc6ad fix(shared): dice cap matches the evaluator (2000), stable tie-break documented
-d08029e fix(api): ability rolls — optional `of`, parsed list, reject attemptId outside DADOS, concurrency e2e
-21a0ca2 docs(plan): pre-3A.2 cleanup — triage of open tickets and task plan
-```
+## Cierre antes de 3A.2 (2026-09-17/18) — rama `cierre/antes-de-3a2`, fusionada a `main` en `86134b4` — archivada
 
-Por qué — deuda barata fuera antes de abrir 3A.2.
-Revertir — la rama entera; ningún cambio de datos ni migración.
-
-El autor entregó el prototipo de la mesa (D-CF-123).
-
-Ola final tras la revisión Opus (`review-final.md`): I-1..I-3 y cuatro menores; el resto, en 06.
+**Movida entera** a [`_archivo/historial-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/historial-2026-09-17-cierre-antes-de-3a2.md)
+el 2026-09-18, en el mismo corte que 3A.1 y los efectos de mesa (el fichero seguía en 1035 de 1000).
+En una línea: RM-2 entera, las menores de la revisión del 13 arregladas o descartadas con motivo,
+`CharacterRow.entityId`, EM-1, el prototipo de la mesa del autor, y el hallazgo real —`dadosTirados`
+tachaba el dado equivocado con valores repetidos (D-CF-122)—.
 
 ## Despliegue de `main` `334912b` (2026-09-15) — lo lanzó el autor
 
@@ -203,62 +207,21 @@ Comprobado en el servidor a los cuatro minutos: `api` y `web` corren la imagen `
 
 Revertir — redesplegar `b6bbeb0` desde Coolify; ninguna migración de por medio.
 
-## Efectos de mesa: la tarjeta y la pantalla reaccionan a lo que pasa (2026-09-15) — fusionada a `main` y desplegada (ver arriba)
+## Efectos de mesa: la tarjeta y la pantalla reaccionan a lo que pasa (2026-09-15) — fusionada y desplegada (`334912b`) — archivada
 
-Qué — a partir del laboratorio `rpg_fx_lab.html` del autor (GSAP, fuera del repositorio), la mesa
-anima lo que ya pinta: `features/sessions/elenco/efectos/` compara la lectura anterior de cada
-ficha con la nueva (`detectarEfectos.ts`, puro: PG, temporales, nivel, estado de muerte,
-condiciones) y de la diferencia saca un texto que flota en una columna («−7», «+12»,
-«Envenenado», «Cae», «En pie», «Nivel 5»), una animación de tarjeta —**una por condición del
-SRD** con las convenciones de color de los RPG, ámbar genérico para las personalizadas— y, **solo
-en la pantalla del jugador dueño**, un destello y una sacudida (`pantalla.store.ts`; el DM no
-recibe nada, decisión del autor). Caído a 0 PG = `filter`+`opacity` persistentes, sin transform,
-mismo tamaño. **Sin GSAP**: CSS `@keyframes` + tokens, `prefers-reduced-motion` respetado
-(D-CF-116). Se dispara por cambio de dato, no por aviso: sirve igual con SSE, sondeo o para quien
-aplica el golpe, y `canView` sigue mandando porque solo se anima lo que ya llegó.
+**Movida entera** a [`_archivo/historial-2026-09-14-y-15-3a1-y-efectos-de-mesa.md`](./_archivo/historial-2026-09-14-y-15-3a1-y-efectos-de-mesa.md)
+el 2026-09-18, al escribir la entrada de cierre de 3A.3 (el fichero estaba en 996 de 1000 y era una
+de las dos entradas completas más antiguas). En una línea: a partir del laboratorio GSAP del autor,
+la mesa anima lo que ya pinta (`detectarEfectos.ts` compara lecturas de la ficha; texto flotante,
+animación por condición del SRD, pantalla que reacciona) sin GSAP ni pruebas nuevas por decisión
+del autor; `Dialog` por portal. Quedan EM-1/EM-2 en `06-pendientes.md`.
 
-Tres arreglos que destapó probarlo en local:
+## 3A.1 «El libro entra» (2026-09-14) — cerrada y fusionada a `main` (`f628b50`) — archivada
 
-- **`ui/Dialog` sale por portal a `document.body`** (D-CF-117): era `fixed` dentro del `<li>` de
-  la ficha, y un antecesor con `filter`/`transform` se convierte en su contenedor — el cajón de
-  «Curar» de un caído se pintaba embutido y gris dentro de su tarjeta.
-- **«Iniciativa tirada» ya no se queda hasta recargar** (`TiradasPendientes.tsx`): `respondidas`
-  era estado local que nunca se vaciaba. Ahora se pinta solo mientras SU encuentro sigue en
-  `PREPARING` (derivado en el render, no un efecto que vacíe estado) y todo resultado lleva un
-  aspa para cerrarlo.
-- **Las condiciones vencidas se cuentan, no se listan** en la tarjeta del elenco («N vencidas»),
-  la misma regla que D-CF-43 fijó para la cabecera de la hoja: tras una sesión larga Brann llevaba
-  diez chips tachados.
-
-Por qué — el autor quiere sentir el golpe en la mesa sin abrir la hoja; y las tres cosas de arriba
-salieron al usarla de verdad, no de una suite.
-
-Cómo se probó — **sin pruebas nuevas, por decisión del autor** («no toca lógica; yo evalúo en
-local», 2026-09-15, D-CF-118): `tsc`, eslint y las 1720 unitarias existentes en verde, sonda
-Playwright desechable con las tres cuentas demo (0 errores de consola, 0 respuestas ≥ 400), y la
-evaluación del autor en local durante la sesión. Queda en `06` la ficha de cubrirlo cuando se
-toque de nuevo.
-
-Revertir — `git revert` de los commits de la rama; ninguna migración. Fusionada a `main`
-(`334912b`) y desplegada el mismo día por el autor (entrada de arriba).
-
-## 3A.1 «El libro entra» (2026-09-14) — cerrada y fusionada a `main`, sin desplegar
-
-Qué — la tanda entera (11 commits sobre `6478092`; [plan](./superpowers/plans/2026-09-14-3a1-el-libro-entra.md),
-[T0](./superpowers/specs/2026-09-14-3a1-tarea-0-prueba-de-fuego.md)): un conversor offline y re-ejecutable
-(`scripts/convertir-catalogo/`, 63 pruebas puras) lee el YAML de Foundry (estructura y números) y el texto
-del **SRD 5.1 en español oficial** (nombres y prosa; PDF de Wizards, CC-BY 4.0, fuera del repo), los casa
-por huella estructural (219 solos + 100 a mano), traduce cada `@` a `Origen` (dos formas nuevas:
-`nivelDeClase`, `ataqueDeConjuro`) y escribe ficheros dorados en `apps/api/src/rules/catalog/generado/`:
-**319 conjuros, 234 aptitudes, 26 rasgos, 22 escalas**, 0 sin nombre español (11 con traducción propia
-marcada), prosa española en 228/233 aptitudes. `SRD_CLASSES`/`SRD_RACES` se enriquecen por clave al cargar;
-la Furia a mano manda. Lo fuera de A (invocar, transformar, encantar; tres huecos de esquema) queda como
-texto y contado en `rechazos.md`. Proceso: rigor según riesgo (sin revisión por tarea), UNA revisión Opus
-que muestreó el dorado contra la fuente (nombres 38/38, mecánica 24/38 mal por cinco causas raíz) y UNA
-ola que las cerró; re-revisión 18/18; un residuo de cortador arreglado a petición del autor. Decisiones
-D-CF-92..115.
-Por qué — «primero lo que hace jugable una partida» (D-CF-71): el mago y el clérigo necesitan su libro.
-Revertir — `git revert -m 1` del merge; los JSON no tocan la base. **Sin desplegar.**
+**Movida entera** al mismo archivo, en el mismo corte. En una línea: un conversor offline lee el
+YAML de Foundry y el SRD 5.1 en español y escribe **319 conjuros, 234 aptitudes, 26 rasgos y 22
+escalas** dorados en `rules/catalog/generado/`; revisión Opus que muestreó el dorado contra la
+fuente y una ola que cerró cinco causas raíz; D-CF-92..115.
 
 ## 3A.1 «El libro entra» — ola de arreglos tras la revisión final (2026-09-14) — archivada
 

@@ -1,9 +1,9 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import type { GameEventPayload, SessionNoteKind } from "@dnd/shared";
 import type { GameEventRow } from "../log-api";
 import { useStampNote } from "../hooks";
 import { ICONO_SELLO, NOMBRE_SELLO, SELLOS_EN_ORDEN } from "../vocabulario";
-import { IconoBajarAlFondo, IconoRegistro } from "../iconos";
+import { IconoBajarAlFondo } from "../iconos";
 import { fraseDeLoPerdido, loQueTePerdiste, marcarVisto, ultimoVisto } from "../reincorporarse";
 import { PanelDeMesa } from "../PanelDeMesa";
 import { useMembers } from "../../campaigns/members";
@@ -12,12 +12,11 @@ import type { Character } from "../../characters/api";
 import type { NpcEnLaMesa } from "../../bestiario/api";
 import type { ConColor } from "../../../dominio/voces";
 import type { Member } from "../../campaigns/members";
-import { Button } from "../../../ui/Button";
 import { MensajeDelHilo } from "./MensajeDelHilo";
 import { IconoPluma } from "../../../ui/Iconos";
 import { lineaDeLog } from "../linea-de-log";
 import { nombresDelHilo } from "../nombres-del-hilo";
-import { tipoDeMensaje } from "./tipo-de-mensaje";
+import { grupoDeMensaje, tipoDeMensaje, type FiltroDeRegistro } from "./tipo-de-mensaje";
 
 // **El hilo de la sesión: los cinco tipos de mensaje de la maqueta, no una lista plana.**
 //
@@ -88,6 +87,32 @@ import { tipoDeMensaje } from "./tipo-de-mensaje";
  */
 const TOLERANCIA_FONDO = 80;
 
+/**
+ * Fix round 1 — **los tres filtros, como los ve la maqueta: chips de una palabra en la cabecera,
+ * no un bloque de radios con su frase debajo.** `ColumnaDelRegistro` los pintaba como
+ * `GrupoDeRadios` (radio + etiqueta + frase visible), ~200 px de alto — la medida a 1280×720 del
+ * orquestador lo marcó como el bloque que se comía el registro.
+ *
+ * **Por qué sigue siendo un `radiogroup`, y por qué eso no contradice «cabecera compacta».** La
+ * regla de `04-convenciones.md` («opción con significado → radios, con la frase que explica qué
+ * hace») no dice DÓNDE va esa frase, solo que exista. Aquí vive en `title` (para quien pasa el
+ * ratón) y en `aria-describedby` (para un lector de pantalla), exactamente como ya hace el
+ * conmutador «Con tablero / Sin tablero» de `BandaUnica.tsx` — un segmento de `role="radio"` con
+ * su nombre visible corto y nada más. Tres letras («Todo») visibles y una frase que no ocupa
+ * sitio son las dos mitades de la misma regla, no una excepción a ella.
+ */
+const OPCIONES_DE_FILTRO: Record<FiltroDeRegistro, { etiqueta: string; frase: string }> = {
+  TODO: { etiqueta: "Todo", frase: "Cada suceso del registro, sin recortar." },
+  RELATO: {
+    etiqueta: "Relato",
+    frase: "El mundo hablando: lo revelado, los hitos de la sesión, el andamiaje de la mesa.",
+  },
+  NUMEROS: {
+    etiqueta: "Números",
+    frase: "Tiradas, daño, condiciones, recursos: lo que le pasa a alguien de la mesa.",
+  },
+};
+
 /** Si al lector le queda menos que la tolerancia por debajo, está leyendo lo último. */
 function estaAlFondo(el: HTMLElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight < TOLERANCIA_FONDO;
@@ -107,6 +132,9 @@ export function HiloDeSesion({
   esDm,
   comoUsuario,
   pnjs = [],
+  filtro = "TODO",
+  onFiltroChange,
+  amplio = false,
 }: {
   campaignId: string;
   eventos: GameEventRow[];
@@ -118,6 +146,29 @@ export function HiloDeSesion({
    * aquí es lo que ya hace con `ColumnaElenco`, no una excepción para el hilo.
    */
   pnjs?: NpcEnLaMesa[];
+  /**
+   * Task 5 (3A.3). **Filtra lo que se PINTA, no lo que se sabe.** Todo lo demás —la marca de
+   * leído, la franja de «te perdiste», el anclaje al fondo, quién es quién— sigue mirando
+   * `eventos` entero: filtrar esas cuentas dejaría la marca de lectura desincronizada del
+   * registro real en cuanto alguien cambiara de pestaña con «Números» puesto. Solo la lista que
+   * se ve (`enOrden`) se recorta — es literalmente el mismo componente sin desmontarse, como pide
+   * el brief («sin desmontar la lista al filtrar»).
+   */
+  filtro?: FiltroDeRegistro;
+  /**
+   * Fix round 1 — **el segmento de filtros vive en la cabecera del propio panel**, no encima de
+   * él. `ColumnaDelRegistro` sigue siendo dueña del ESTADO (`useState`); esta prop es solo el
+   * cableado para que el cambio suba. Sin ella (nadie la pasa) el segmento no se pinta — es el
+   * caso de un `HiloDeSesion` montado suelto, si alguna vez lo hay, que no tiene nada de qué
+   * filtrar sin un padre que lleve la cuenta.
+   */
+  onFiltroChange?: (siguiente: FiltroDeRegistro) => void;
+  /**
+   * D-CF-149 — **modo crónica**: cuando el registro ocupa el centro («Sin tablero»), el
+   * prototipo lo lee más grande (`body[data-modo="cronica"] .linea .txt{font-size:1.0625rem}`)
+   * y con más aire entre líneas. En la lateral de 18 rem se queda en la medida compacta.
+   */
+  amplio?: boolean;
 }) {
   const { data: miembros } = useMembers(campaignId);
   const sellar = useStampNote(campaignId);
@@ -252,6 +303,15 @@ export function HiloDeSesion({
   // **Lo último abajo**: se pinta sobre una COPIA invertida. `eventos` no se toca nunca.
   const enOrden = [...eventos].reverse();
 
+  // Task 5 (3A.3) — el filtro se aplica AQUÍ, sobre la copia ya invertida y solo para lo que se
+  // pinta: la franja de «te perdiste» y el anclaje siguen mirando `eventos`/`enOrden` sin filtrar
+  // en el resto del fichero (ver el comentario de la prop `filtro`, arriba). Con «Todo» puesto no
+  // se crea un segundo array — es el mismo `enOrden` de siempre.
+  const enOrdenFiltrado =
+    filtro === "TODO"
+      ? enOrden
+      : enOrden.filter((e) => grupoDeMensaje(tipoDeMensaje(e.payload)) === filtro);
+
   // --- El anclaje al fondo ---
   //
   // `alFondo` vive en una referencia y no en un estado a propósito: se actualiza en cada píxel de
@@ -315,11 +375,67 @@ export function HiloDeSesion({
     }
   };
 
+  // El segmento solo se pinta con `onFiltroChange`: sin él no hay a quién avisar del cambio, y un
+  // filtro que no filtra nada sería un control muerto en la cabecera.
+  //
+  // **`button role="radio" aria-checked`, no `input type="radio"`** — el mismo patrón que el
+  // conmutador «Con tablero / Sin tablero» de `BandaUnica.tsx` («como ya hace el conmutador…»,
+  // ruling del orquestador). Y la frase va SIEMPRE fuera del botón, como hermana suya referenciada
+  // por `aria-describedby`, nunca dentro: un `<span>` con la frase DENTRO del botón sería
+  // invisible en pantalla pero seguiría formando parte del nombre accesible (el cálculo de
+  // «accessible name» incluye el texto de los descendientes aunque estén ocultos por CSS), así
+  // que un lector de pantalla diría «Todo, cada suceso del registro sin recortar» como si fuera
+  // el ROTULO del botón, no su descripción. Sacándolo del botón, el nombre se queda en «Todo» y
+  // la frase llega como DESCRIPCIÓN aparte — que es justo lo que pide el ruling.
+  // Ola post-revisión de 3A.3 (M4): `useId`, no un id estático — dos registros montados en la
+  // misma página (hoy no ocurre; mañana, quién sabe) duplicarían el id y `aria-describedby`
+  // apuntaría al primero.
+  const idBaseDeFiltros = useId();
+  const filtros = onFiltroChange && (
+    <div
+      role="radiogroup"
+      aria-label="Qué se ve"
+      className="flex shrink-0 items-center gap-0.5 rounded-radius-sm border border-muted/30 bg-bg p-0.5"
+    >
+      {(Object.keys(OPCIONES_DE_FILTRO) as FiltroDeRegistro[]).map((clave) => {
+        const opcion = OPCIONES_DE_FILTRO[clave];
+        const elegido = filtro === clave;
+        const idDeLaFrase = `${idBaseDeFiltros}-frase-${clave}`;
+        return (
+          <Fragment key={clave}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={elegido}
+              aria-describedby={idDeLaFrase}
+              title={opcion.frase}
+              onClick={() => onFiltroChange(clave)}
+              className={[
+                "rounded-radius-sm px-s2 py-0.5 font-chrome text-chrome-xs transition-colors",
+                elegido
+                  ? "bg-[color:var(--accent-tint)] text-accent-text"
+                  : "text-muted hover:bg-muted/20 hover:text-text",
+              ].join(" ")}
+            >
+              {opcion.etiqueta}
+            </button>
+            <span id={idDeLaFrase} className="sr-only">
+              {opcion.frase}
+            </span>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+
   return (
+    // D-CF-149 (Task 5b de 3A.3) — la caja del registro del prototipo: «Registro» en la cabecera
+    // con los filtros a la derecha, el hilo en líneas compactas (`MensajeDelHilo variante="linea"`)
+    // y, al pie, la caja de anotar de una fila con sus seis sellos como iconos pequeños.
     <PanelDeMesa
       etiqueta="Registro de la sesión"
-      titulo="Registro en vivo"
-      icono={<IconoRegistro className="h-4 w-4" />}
+      titulo="Registro"
+      accion={filtros}
       cuerpoClassName="flex min-h-0 flex-col"
     >
       {esDm && comoUsuario && (
@@ -337,18 +453,33 @@ export function HiloDeSesion({
           ancestro posicionado que NO sea el contenedor que scrollea —dentro se iría con el
           texto—. No lleva `aria-label` a propósito: no es una región, es una costura. */}
       <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* Fix round 2 de la ola de 3A.3 — **`relative` en la lista que scrollea, a propósito.**
+            Las líneas compactas llevan la firma del autor en `sr-only` (M10), que es
+            `position:absolute`: sin un ancestro posicionado DENTRO del scroll, esos spans se
+            posicionaban contra el `div` de arriba y se escapaban del recorte de la lista, con
+            lo que la región entera crecía en `scrollHeight` sin `overflow` propio — la medida 4
+            de `mesa-mide` («ningún panel cortado sin poder desplazarse») los detectó. El aviso
+            flotante sigue anclado al `div` exterior; esto solo contiene lo absoluto de dentro. */}
         <ol
           ref={listaRef}
           onScroll={alDesplazar}
           aria-label="Sucesos de la sesión"
-          className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-s5 py-s4"
+          className="scroll-quiet relative flex min-h-0 flex-1 flex-col overflow-y-auto px-s3 py-s2"
         >
           {enOrden.length === 0 && (
             <li className="font-chrome text-chrome-sm text-muted">
               Todavía no ha pasado nada en esta sesión.
             </li>
           )}
-          {enOrden.map((e) => {
+          {/* Distinto del vacío de arriba: aquí SÍ hay sucesos, pero ninguno cae en el filtro
+              puesto. No se nombra el filtro elegido — la enumeración no llega a la pantalla
+              (docs/04-convenciones.md); «con este filtro» basta para decir qué pasó. */}
+          {enOrden.length > 0 && enOrdenFiltrado.length === 0 && (
+            <li className="font-chrome text-chrome-sm text-muted">
+              Nada que enseñar con este filtro.
+            </li>
+          )}
+          {enOrdenFiltrado.map((e) => {
             // La franja va **encima** del primer suceso que no viste, así que se pinta antes de
             // su línea. Con el orden de conversación eso deja lo no leído **por debajo**, que es
             // exactamente lo que `loQueTePerdiste` decía querer y el orden viejo le negaba: su
@@ -385,6 +516,8 @@ export function HiloDeSesion({
                     sujetoEnCabecera: sujetoEnCabecera(e),
                     nombres,
                   })}
+                  variante="linea"
+                  amplio={amplio}
                 />
               </Fragment>
             );
@@ -408,22 +541,29 @@ export function HiloDeSesion({
       </div>
 
       {/* El compositor: **fuera del scroll**, siempre a la vista, y con la pluma delante como en
-          la maqueta. Los seis botones son el envío, uno por clase de sello. */}
+          la maqueta. Los seis botones son el envío, uno por clase de sello.
+
+          D-CF-149 (Task 5b de 3A.3) — **en dos filas cortas, como el `.decir` del prototipo**: la
+          caja de una línea con «Solo el DM» al lado, y debajo los seis sellos como cuadrados de
+          1.6 rem con su icono, su palabra leída (`sr-only`) y en `title` — los mismos nombres
+          accesibles («Combate», «PNJ», …) que tenían como botones con texto. */}
       <form
-        className="shrink-0 border-t border-muted px-s5 py-s3"
+        className="shrink-0 border-t border-muted/40 px-s3 py-s2"
         onSubmit={(e) => e.preventDefault()}
       >
-        <div className="flex items-end gap-s2">
-          <IconoPluma className="mb-s2 h-5 w-5 shrink-0 text-copper-text" />
+        <div className="flex items-center gap-s2">
+          <IconoPluma className="h-4 w-4 shrink-0 text-copper-text" />
           <textarea
             aria-label="Qué anotar"
             placeholder="…y en dos palabras, qué pasó"
             rows={1}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            className="scroll-quiet max-h-28 min-h-[2.4rem] min-w-0 flex-1 resize-none rounded-radius-sm border border-muted/30 bg-bg px-s3 py-s2 font-world text-world-base text-text placeholder:text-muted focus:border-accent"
+            className="scroll-quiet max-h-28 min-h-[2rem] min-w-0 flex-1 resize-none rounded-radius-sm border border-muted/40 bg-bg px-s2 py-s1 font-world text-world-sm text-text placeholder:text-muted focus:border-copper"
           />
-          <label className="mb-s2 flex shrink-0 items-center gap-1.5 font-chrome text-chrome-xs text-muted">
+        </div>
+        <div className="mt-s1 flex flex-wrap items-center gap-s1">
+          <label className="mr-auto flex shrink-0 items-center gap-1 whitespace-nowrap font-chrome text-chrome-xs text-muted">
             <input
               type="checkbox"
               checked={soloDm}
@@ -432,22 +572,32 @@ export function HiloDeSesion({
             />
             Solo el DM
           </label>
-        </div>
-        <div className="mt-s2 flex flex-wrap items-center gap-1.5">
           {SELLOS_EN_ORDEN.map((kind) => {
             const Icono = ICONO_SELLO[kind];
+            // Ola post-revisión de 3A.3 (I4) — **`aria-disabled`, no `disabled`** (regla U9,
+            // cabecera de `ui/Button.tsx`): un `<button disabled>` sale del recorrido de teclado.
+            // El motivo va en el `title` para que apagado no sea mudo, y el `onClick` se ignora.
+            const apagado = sellar.isPending || !hayTexto;
+            const motivo = !hayTexto
+              ? " — escribe algo primero"
+              : sellar.isPending
+                ? " — enviando"
+                : "";
             return (
-              <Button
+              <button
                 key={kind}
                 type="button"
-                variant="ghost"
-                className="flex items-center gap-1.5 px-2 py-1 text-chrome-xs"
-                disabled={sellar.isPending || !hayTexto}
-                onClick={() => void poner(kind)}
+                title={`${NOMBRE_SELLO[kind]}${motivo}`}
+                aria-disabled={apagado || undefined}
+                onClick={() => {
+                  if (apagado) return;
+                  void poner(kind);
+                }}
+                className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-muted/40 text-muted transition-colors hover:border-copper hover:text-copper-text aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
               >
-                <Icono className="h-4 w-4" />
-                {NOMBRE_SELLO[kind]}
-              </Button>
+                <Icono className="h-3.5 w-3.5" />
+                <span className="sr-only">{NOMBRE_SELLO[kind]}</span>
+              </button>
             );
           })}
         </div>

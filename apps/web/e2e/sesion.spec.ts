@@ -45,7 +45,11 @@ async function crearCampanaConSesion(page: Page) {
   await page.getByLabel("Nombre").fill("La mesa de prueba");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de prueba" }).click();
-  await expect(page.getByRole("heading", { name: "La mesa de prueba" })).toBeVisible();
+  // 15 s: la ficha de campaña enseña «Cargando…» como `h1` hasta que llega su `GET`, y con la
+  // suite entera detrás el servidor tardó más de los 5 s por defecto (fix round 2, Task 5b).
+  await expect(page.getByRole("heading", { name: "La mesa de prueba" })).toBeVisible({
+    timeout: 15_000,
+  });
 
   await page.getByRole("tab", { name: "Sesiones" }).click();
   await page.getByRole("button", { name: "Nueva sesión" }).click();
@@ -294,7 +298,7 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   // Constitución, así que el motor deriva 16 y un modificador de +3 — dado de golpe 10 + 3 = 13.
   // Esta prueba decía 12 porque olvidaba el bono racial; **la hoja tenía razón y la prueba no**,
   // que es justo la clase de fallo que sale al correrla contra la API de verdad.
-  await expect(elenco.getByText("13/13")).toBeVisible({ timeout: 15_000 });
+  await expect(elenco.getByText("13 / 13")).toBeVisible({ timeout: 15_000 });
   await expect(
     elenco.getByRole("img", { name: "Borin Barbaférrea: 13 de 13 puntos de golpe" }),
   ).toBeVisible();
@@ -315,7 +319,7 @@ test("el elenco de la mesa lee los PG de la hoja calculada, y «−5» los baja 
   await cajonDeDano.getByRole("button", { name: "Aplicar daño" }).click();
   // El cajón se cierra solo cuando el servidor responde: si sigue abierto, la mutación falló.
   await expect(cajonDeDano).toBeHidden({ timeout: 10_000 });
-  await expect(elenco.getByText("8/13")).toBeVisible({ timeout: 10_000 });
+  await expect(elenco.getByText("8 / 13")).toBeVisible({ timeout: 10_000 });
   await expect(
     elenco.getByRole("img", { name: "Borin Barbaférrea: 8 de 13 puntos de golpe" }),
   ).toBeVisible();
@@ -436,7 +440,9 @@ test("una anotación hecha desde la mesa aparece con su chip de clase y con qui�
   // Quién lo puso, que es la mitad de para qué sirve un registro que se relee.
   // `.first()`: el sello y la anotación son **dos** sucesos, así que la firma aparece dos veces.
   // Que aparezca es lo que se comprueba; cuántas veces depende de cuántas cosas se anoten.
-  await expect(sucesos.getByText(new RegExp(`^${cuenta.displayName} ·`)).first()).toBeVisible();
+  // Desde D-CF-149 la línea compacta lleva la firma («quién · hora») en su `title`, no como
+  // texto debajo: se sigue diciendo quién la puso, y se sigue midiendo.
+  await expect(sucesos.getByTitle(new RegExp(`^${cuenta.displayName} ·`)).first()).toBeVisible();
 });
 
 test("contraste medido en la barra de sesión y en la mesa", async ({ page }) => {
@@ -541,7 +547,9 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
         valor: ratio(sobre(getComputedStyle(tituloBanda).color, fondoBanda), fondoBanda),
         minimo: 4.5,
       });
-      const cifras = banda.querySelector("p") as HTMLElement;
+      // Fix round 2 de la Task 5b (3A.3): el título de la escena es ahora un `<h1>`, así que el
+      // primer `<p>` de la banda vuelve a ser el de duración y asistencia (las cifras).
+      const cifras = banda.querySelectorAll("p")[0] as HTMLElement;
       salida.push({
         que: "mesa: duración y asistencia (cifras)",
         valor: ratio(sobre(getComputedStyle(cifras).color, fondoBanda), fondoBanda),
@@ -628,14 +636,17 @@ test("se llega a la mesa desde la campaña sin sesión abierta, y no es un carte
   await expect(aLaMesa).toContainText("en reposo");
   await aLaMesa.click();
 
-  // La mesa en reposo **es uno de sus tres estados**, no su ausencia: la cabecera de escena está,
-  // con la hora del mundo, y el registro y la consulta siguen ahí.
-  const escena = page.getByRole("region", { name: "La escena" });
-  await expect(escena).toBeVisible();
-  await expect(escena).toContainText("La mesa, en reposo");
+  // La mesa en reposo **es uno de sus tres estados**, no su ausencia: la banda única está, con la
+  // hora del mundo, y el registro y la consulta siguen ahí.
+  // Task 3 (3A.3): `CabeceraDeEscena` (`<section aria-label="La escena">`) se fundió en la banda
+  // única; su eyebrow «Escena actual»/«La mesa, en reposo» se dejó caer (el prototipo no la
+  // trae), pero la frase «La mesa, en reposo» sigue diciéndose: ahora es el TÍTULO de la banda.
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await expect(banda).toBeVisible();
+  await expect(banda).toContainText("La mesa, en reposo");
   // El reloj de campaña, que llevaba semanas sondeando para nadie, por fin se pinta donde se juega.
-  await expect(escena).toContainText("Día 1");
-  await expect(escena).toContainText("00:00");
+  await expect(banda).toContainText("Día 1");
+  await expect(banda).toContainText("00:00");
   // **Y el DM empieza la sesión desde aquí** (B4), que es la otra mitad del mismo defecto: hasta
   // hoy el cartel del reposo te mandaba al taller, o sea que para empezar a jugar había que salir
   // del sitio donde se juega. Sin ninguna sesión planificada no se inventa una — se enlaza.
@@ -676,11 +687,19 @@ test("desde una mesa en reposo, el primer enlace de la banda lleva a la campaña
   );
 });
 
-// Y con sesión en curso la misma cabecera dice de qué sesión se trata y quién está. Es la mitad
-// que convierte una columna de texto en un sitio: *un hilo a secas es un tablón, no un escenario.*
-test("en sesión, la cabecera de escena nombra la sesión y a quien está en la mesa", async ({
-  page,
-}) => {
+// Y con sesión en curso la misma banda dice de qué sesión se trata. Es la mitad que convierte
+// una columna de texto en un sitio: *un hilo a secas es un tablón, no un escenario.*
+//
+// Task 3 (3A.3) — **este caso cambió de fondo, no solo de localizador.** `CabeceraDeEscena`
+// (`<section aria-label="La escena">`) y `BandaDeMesa` (`<header aria-label="Estado de la
+// mesa">`) eran dos superficies apiladas, y lo que esta prueba medía era que NO se solapaban —el
+// defecto de borde partido que la suite unitaria no puede ver. Fundidas en `BandaUnica`, las dos
+// son la MISMA superficie: ya no hay dos cajas que puedan solaparse, así que esa medida quedó sin
+// objeto. Lo que sigue midiendo, y es lo que de verdad depende de maquetación real: que la fila
+// entera —título, lugar, reloj, controles— **no desborda la ventana** al ancho normal, que es
+// justo la clase de defecto que una fila fundida con seis piezas dentro puede introducir y que
+// `jsdom` tampoco puede ver.
+test("en sesión, la banda nombra la sesión y no desborda la ventana", async ({ page }) => {
   await registrarse(page);
   await crearCampanaConSesion(page);
   await page.getByRole("button", { name: "Empezar" }).click();
@@ -688,25 +707,14 @@ test("en sesión, la cabecera de escena nombra la sesión y a quien está en la 
   const barra = page.getByRole("status", { name: "Sesión en curso" });
   await barra.getByRole("link", { name: "Ir a la mesa" }).click();
 
-  const escena = page.getByRole("region", { name: "La escena" });
-  await expect(escena).toBeVisible();
-  await expect(escena).toContainText("Escena actual");
-  await expect(escena).toContainText("El puerto en llamas");
-
-  // Y lo que solo se ve maquetado: la cabecera de escena **no se solapa** con la banda de estado
-  // que va justo encima. Las dos son del estrato permanente y viven pegadas; un solape aquí es
-  // exactamente el defecto de borde partido que la suite unitaria entera no puede ver.
   const banda = page.getByRole("banner", { name: "Estado de la mesa" });
-  const cajaBanda = await banda.boundingBox();
-  const cajaEscena = await escena.boundingBox();
-  expect(cajaBanda).not.toBeNull();
-  expect(cajaEscena).not.toBeNull();
-  expect(
-    cajaEscena!.y,
-    `banda=${JSON.stringify(cajaBanda)} escena=${JSON.stringify(cajaEscena)}`,
-  ).toBeGreaterThanOrEqual(cajaBanda!.y + cajaBanda!.height);
-  // Los dos ejes, como manda docs/08-pruebas.md: una cabecera de altura cero pasaría lo de arriba.
-  expect(cajaEscena!.height).toBeGreaterThan(40);
+  await expect(banda).toBeVisible();
+  await expect(banda).toContainText("El puerto en llamas");
+
+  const desborde = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(desborde).toBeLessThanOrEqual(1);
 });
 
 // B1.2 (2026-09-04) — **las dos disposiciones del elenco, y la regla que las separa.**
@@ -769,7 +777,9 @@ test("el jugador ve su personaje delante, y sobre el de otro NO hay mandos", asy
 
   // El suyo delante con su rótulo; el de otro, en segundo plano.
   await expect(elenco.getByText("Tu personaje")).toBeVisible();
-  await expect(elenco.getByText("El resto del grupo")).toBeVisible();
+  // «En la mesa» es el rótulo del prototipo para el resto del grupo (D-CF-149); se busca el
+  // encabezado, no la región del mismo nombre que envuelve a toda la columna.
+  await expect(elenco.getByRole("heading", { name: "En la mesa" })).toBeVisible();
 
   // **Y la regla que importa**: mandos sobre el suyo, ninguno sobre el de otro. No es que el
   // botón no funcione —el servidor ya lo rechaza con `requireEditable`—: es que enseñar un mando
@@ -918,7 +928,8 @@ test("el DM revela un lugar y la cabecera de escena pasa a decirlo, sin tocar la
     .click();
 
   // Todavía no: la ficha existe, pero no se ha revelado nada.
-  const escena = page.getByRole("region", { name: "La escena" });
+  // Task 3 (3A.3): `CabeceraDeEscena` se fundió en la banda única.
+  const escena = page.getByRole("banner", { name: "Estado de la mesa" });
   await expect(escena).toBeVisible();
   await expect(escena.getByRole("link", { name: "El Puerto Viejo" })).toHaveCount(0);
 
@@ -996,4 +1007,83 @@ test("los paneles se abren encima, uno a la vez, y Escape devuelve el foco donde
     () => document.activeElement?.textContent?.replace(/\s+/g, " ").trim() ?? "",
   );
   expect(focoTrasCerrar).toContain("Bolsa");
+});
+
+// Fix round 1 (2026-09-18, medido en captura a 1280×720 por el orquestador) — **la banda única
+// se partía en dos filas a 1280.** `jsdom` no maqueta: el defecto solo se ve pidiendo la altura
+// real de la banda en un navegador de verdad, la misma razón de ser que el resto de medidas de
+// este fichero.
+//
+// Ruling: a ≥1024 la banda es UNA fila — el título de la escena se encoge y trunca
+// (`min-w-0 truncate`, con `title` nativo), todo lo demás es `shrink-0 whitespace-nowrap`, y si
+// aún no cabe se sacrifica primero el lugar (`hidden xl:inline`) y después la asistencia
+// (`hidden lg:inline`). Por debajo de 1024 sí puede partirse en dos.
+//
+// Se mide dos veces: **sin asistencia declarada** («asistencia sin declarar», como en la primera
+// prueba de este fichero) y, en la prueba siguiente, **con ella**. Hasta la ola post-revisión de
+// 3A.3 (I2) solo se medía sin, y el comentario decía que la línea «En la escena: …» iba «a
+// propósito en su propia fila» — pero con `lg:flex-nowrap` un `w-full` no baja de fila: se
+// encoge en la única fila y deja al título sin ancho. Como una sesión real declara asistencia
+// (es el caso normal), la medida sin asistencia no veía la banda que ven los jugadores.
+test("a 1280×800 la banda de la mesa cabe en una sola fila", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await registrarse(page);
+  await crearCampanaConSesion(page);
+
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await expect(banda).toBeVisible();
+  await expect(banda).toContainText("asistencia sin declarar");
+
+  // Una fila de `font-chrome text-chrome-md` (título) con `py-s2` (8 px arriba y abajo) mide
+  // bastante menos de 56 px; dos filas apiladas superan esa cota con holgura. 56 px es el techo
+  // con margen, no la medida exacta — lo exacto se mide con capturas, como dijo el autor.
+  const caja = await banda.boundingBox();
+  expect(caja).not.toBeNull();
+  expect(caja!.height).toBeLessThanOrEqual(56);
+});
+
+// Ola post-revisión de 3A.3 (I2) — la misma cota, CON asistencia declarada: desde `lg` los
+// presentes van en la fila, truncados con `title`; solo por debajo de `lg` son su propia línea.
+test("a 1280×800 la banda sigue en una fila con asistencia declarada", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const cuenta = await registrarse(page);
+  await crearCampanaConSesion(page);
+  await crearPersonajeConHoja(page, "Borin Barbaférrea");
+
+  await page.getByRole("link", { name: "La mesa de prueba" }).click();
+  await page.getByRole("tab", { name: "Sesiones" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await page.getByLabel(cuenta.displayName).check();
+  await page
+    .getByLabel(`Personaje de ${cuenta.displayName}`)
+    .selectOption({ label: "Borin Barbaférrea" });
+  await page.getByRole("button", { name: "Empezar la sesión" }).click();
+  const barra = page.getByRole("status", { name: "Sesión en curso" });
+  await expect(barra).toBeVisible({ timeout: 10_000 });
+  await barra.getByRole("link", { name: "Ir a la mesa" }).click();
+
+  const banda = page.getByRole("banner", { name: "Estado de la mesa" });
+  await expect(banda).toBeVisible();
+  // La línea sigue en el DOM entera (se lee por `textContent`) y la lista completa va en `title`.
+  await expect(banda).toContainText("En la escena:");
+  await expect(banda).toContainText("Borin Barbaférrea");
+  await expect(banda.locator("p[title^='En la escena:']")).toHaveAttribute(
+    "title",
+    "En la escena: Borin Barbaférrea",
+  );
+
+  const caja = await banda.boundingBox();
+  expect(caja).not.toBeNull();
+  expect(caja!.height).toBeLessThanOrEqual(56);
+  // Y el título de la escena no se quedó sin ancho: sigue leyéndose.
+  const titulo = banda.getByRole("heading", { level: 1 });
+  const cajaTitulo = await titulo.boundingBox();
+  expect(cajaTitulo).not.toBeNull();
+  expect(cajaTitulo!.width).toBeGreaterThan(40);
 });

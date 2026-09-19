@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Siembra una campaña de demostración **completa y jugable**, para poder ver que todo funciona sin
-// construirla a mano cada vez. Encargo del autor (2026-09-05).
+// construirla a mano cada vez. Encargo del autor (2026-09-05; ampliada el 2026-09-18 para que
+// aproveche todo lo que la plataforma sabe hacer tras el paso 3A — beta 0.1.0).
 //
 // **Habla por HTTP, como una persona.** No toca la base de datos: se registra, inicia sesión y hace
 // las mismas peticiones que hace la aplicación, con su cabecera y su `canView`. Eso tiene tres
@@ -13,7 +14,8 @@
 //  · Lo malo: es más lenta y depende de que la API esté arriba. Merece la pena.
 //
 // **Es idempotente.** Correrlo dos veces no duplica nada: cada paso mira primero si su cosa ya
-// existe, por nombre. Lo que ya está se reutiliza; lo que falta se crea.
+// existe, por nombre (o por lo que ya hay en la última tirada). Lo que ya está se reutiliza; lo que
+// falta se crea.
 //
 // **Todo lo que siembra queda marcado como demostración** —los correos van a `@demo.invalid` y
 // todos los nombres empiezan por `[demo]`—, así que se puede encontrar y borrar de un tirón:
@@ -24,6 +26,7 @@
 // Uso:
 //   node scripts/seed-demo.mjs                        # contra http://localhost:3000
 //   node scripts/seed-demo.mjs --base https://dnd.supportive.pro/api
+//   node scripts/seed-demo.mjs --tablero https://ejemplo.com/sala   # opcional, ver más abajo
 //   node scripts/seed-demo.mjs --limpiar
 //
 // La contraseña sale de `SEED_DEMO_PASSWORD`. **Contra producción, pónla**: la de por defecto está
@@ -32,7 +35,7 @@
 // **Y cada cuenta puede traer la suya**, que es lo que permite sembrar con una cuenta de verdad
 // como DM y las de demostración como jugadores:
 //
-//   SEED_DEMO_DM_EMAIL / SEED_DEMO_DM_PASSWORD, y lo mismo con JUGADORA y JUGADOR.
+//   SEED_DEMO_DM_EMAIL / SEED_DEMO_DM_PASSWORD, y lo mismo con JUGADORA, JUGADOR, CLERIGO y PICARO.
 //
 // Una cuenta que **no** sea de `@demo.invalid` no se crea nunca desde aquí: si el correo es real,
 // lo que falta es su contraseña, no la cuenta.
@@ -46,12 +49,14 @@ const CLAVE = process.env.SEED_DEMO_PASSWORD ?? "demo-de-la-sala-2026";
  *
  * Sembrar con **una cuenta de verdad como DM** —la del autor— y las de demostración como
  * jugadores es justo lo que se quiere para mirar la mesa desde dentro, y con una sola clave para
- * las tres no se puede: o entras con la real o entras con las de mentira. Cada variable es
+ * las cinco no se puede: o entras con la real o entras con las de mentira. Cada variable es
  * opcional; sin ella se usa `SEED_DEMO_PASSWORD`, que es lo de siempre.
  *
  *   SEED_DEMO_DM_EMAIL / SEED_DEMO_DM_PASSWORD              — el DM
- *   SEED_DEMO_JUGADORA_EMAIL / SEED_DEMO_JUGADORA_PASSWORD  — la jugadora
- *   SEED_DEMO_JUGADOR_EMAIL / SEED_DEMO_JUGADOR_PASSWORD    — el jugador
+ *   SEED_DEMO_JUGADORA_EMAIL / SEED_DEMO_JUGADORA_PASSWORD  — la jugadora (Brann)
+ *   SEED_DEMO_JUGADOR_EMAIL / SEED_DEMO_JUGADOR_PASSWORD    — el jugador (Sylas)
+ *   SEED_DEMO_CLERIGO_EMAIL / SEED_DEMO_CLERIGO_PASSWORD    — la clériga (Mirela)
+ *   SEED_DEMO_PICARO_EMAIL / SEED_DEMO_PICARO_PASSWORD      — la pícara (Tessa)
  *
  * **Una cuenta real no se crea nunca desde aquí**: si el correo no es de `@demo.invalid` y no
  * existe, el script para en vez de registrar a nadie con una contraseña que él se ha inventado.
@@ -72,11 +77,21 @@ const CUENTAS = {
     password: process.env.SEED_DEMO_JUGADOR_PASSWORD ?? CLAVE,
     displayName: `${MARCA} Bruno`,
   },
+  clerigo: {
+    email: process.env.SEED_DEMO_CLERIGO_EMAIL ?? `demo-clerigo@${DOMINIO}`,
+    password: process.env.SEED_DEMO_CLERIGO_PASSWORD ?? CLAVE,
+    displayName: `${MARCA} Carla`,
+  },
+  picaro: {
+    email: process.env.SEED_DEMO_PICARO_EMAIL ?? `demo-picaro@${DOMINIO}`,
+    password: process.env.SEED_DEMO_PICARO_PASSWORD ?? CLAVE,
+    displayName: `${MARCA} Diego`,
+  },
 };
 
 const CAMPANA = `${MARCA} La mina perdida`;
 
-// --- Los argumentos, sin librería: son dos ---
+// --- Los argumentos, sin librería ---
 const args = process.argv.slice(2);
 const BASE = (() => {
   const i = args.indexOf("--base");
@@ -84,6 +99,12 @@ const BASE = (() => {
   return (valor ?? "http://localhost:3000").replace(/\/$/, "");
 })();
 const LIMPIAR = args.includes("--limpiar");
+// **Opcional.** Sin `--tablero` no se toca `boardRoomUrl`: una campaña que ya tiene su sala puesta
+// a mano no se la pisa un `node scripts/seed-demo.mjs` corrido sin pensar en el tablero.
+const TABLERO = (() => {
+  const i = args.indexOf("--tablero");
+  return i >= 0 ? args[i + 1] : (process.env.SEED_DEMO_TABLERO ?? null);
+})();
 
 let pasos = 0;
 function paso(texto) {
@@ -103,7 +124,7 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 /**
  * **El 429 se espera, no se sortea.** Las rutas de autenticación están limitadas a cinco intentos
  * por minuto y por IP (`AUTH_RATE_LIMIT`, `apps/api/src/common/rate-limit.constants.ts`) para
- * frenar la fuerza bruta contra login, registro e invitaciones. Esta siembra hace tres entradas
+ * frenar la fuerza bruta contra login, registro e invitaciones. Esta siembra hace varias entradas
  * seguidas y, si se corre dos veces en el mismo minuto, se choca con su propio límite.
  *
  * Lo correcto es **esperar**: aflojar el límite en producción para que un script vaya más cómodo
@@ -187,6 +208,16 @@ function porNombre(lista, nombre) {
   return (lista ?? []).find((x) => x.name === nombre || x.title === nombre) ?? null;
 }
 
+/** Las filas de un inventario, sea cual sea la forma exacta que traiga esta versión de la API. */
+function filasDeInventario(inventario) {
+  return inventario.items ?? inventario.rows ?? inventario;
+}
+
+/** Busca una fila de inventario por la referencia de su objeto (`SRD:clave` o `CAMPAIGN:id`). */
+function filaPorRef(filas, ref) {
+  return (filas ?? []).find((f) => f.item?.ref === ref) ?? null;
+}
+
 async function limpiar(dm) {
   const campanas = await api("GET", "/campaigns", { token: dm.token });
   const suyas = (campanas ?? []).filter((c) => c.name.startsWith(MARCA));
@@ -207,13 +238,16 @@ async function limpiar(dm) {
 async function main() {
   console.log(`Sembrando la demostración contra ${BASE}\n`);
 
-  paso("Las tres cuentas");
+  paso("Las cinco cuentas");
   const dm = await entrarOCrear(CUENTAS.dm);
   const jugadora = await entrarOCrear(CUENTAS.jugadora);
   const jugador = await entrarOCrear(CUENTAS.jugador);
+  const clerigo = await entrarOCrear(CUENTAS.clerigo);
+  const picaro = await entrarOCrear(CUENTAS.picaro);
   detalle(
     `DM ${dm.nueva ? "creada" : "ya existía"}, jugadora ${jugadora.nueva ? "creada" : "ya existía"}, ` +
-      `jugador ${jugador.nueva ? "creado" : "ya existía"}.`,
+      `jugador ${jugador.nueva ? "creado" : "ya existía"}, clériga ${clerigo.nueva ? "creada" : "ya existía"}, ` +
+      `pícara ${picaro.nueva ? "creada" : "ya existía"}.`,
   );
 
   if (LIMPIAR) {
@@ -242,11 +276,34 @@ async function main() {
   }
   const C = campana.id;
 
-  paso("Los dos jugadores se sientan a la mesa");
+  paso("Reglas de la mesa: progresión por XP (para que aparezca «Dar XP»)");
+  if ((campana.tableRules?.progresion ?? "HITO") !== "XP") {
+    campana = await api("PATCH", `/campaigns/${C}`, {
+      token: dm.token,
+      body: { tableRules: { progresion: "XP" } },
+    });
+    detalle("Progresión puesta en XP.");
+  } else {
+    detalle("La progresión ya estaba en XP.");
+  }
+
+  if (TABLERO) {
+    paso(`El tablero: ${TABLERO}`);
+    if (campana.boardRoomUrl === TABLERO) {
+      detalle("La sala ya era esa.");
+    } else {
+      await api("PATCH", `/campaigns/${C}`, { token: dm.token, body: { boardRoomUrl: TABLERO } });
+      detalle("Sala de PlanarAlly enlazada a la campaña.");
+    }
+  }
+
+  paso("Los cuatro jugadores se sientan a la mesa");
   const miembros = await api("GET", `/campaigns/${C}/members`, { token: dm.token });
   for (const [quien, cuenta] of [
     ["la jugadora", jugadora],
     ["el jugador", jugador],
+    ["la clériga", clerigo],
+    ["la pícara", picaro],
   ]) {
     if (miembros.some((m) => m.userId === cuenta.user.id)) {
       detalle(`${quien} ya estaba dentro.`);
@@ -341,9 +398,12 @@ async function main() {
     detalle("Ya había comentarios.");
   }
 
-  paso("Dos personajes, con su color y su hoja derivada");
+  paso("Cuatro personajes de nivel 3, con su color y su hoja derivada");
   const personajes = await api("GET", `/campaigns/${C}/characters`, { token: dm.token });
-  const FICHAS_DE_JUGADOR = [
+
+  // Brann y Sylas ya existían antes de esta ampliación: se crean (si hace falta) con su nivel
+  // desde el alta, porque el dueño de un personaje nuevo puede fijarlo al crearlo.
+  const FICHAS_ORIGINALES = [
     {
       nombre: `${MARCA} Brann`,
       color: "cobre",
@@ -362,7 +422,7 @@ async function main() {
     },
   ];
   const suyos = {};
-  for (const ficha of FICHAS_DE_JUGADOR) {
+  for (const ficha of FICHAS_ORIGINALES) {
     let personaje = porNombre(personajes, ficha.nombre);
     if (!personaje) {
       // **Lo crea su dueño**, no el DM: el dueño de un personaje es quien lo crea, y sembrarlo
@@ -393,7 +453,103 @@ async function main() {
   const brann = suyos[`${MARCA} Brann`];
   const sylas = suyos[`${MARCA} Sylas`];
 
-  paso("Un objeto propio del DM, inventario con ranuras y sintonización, y dinero");
+  // Mirela y Tessa son nuevas: el nivel lo fija la DM ANTES que la clase (D-CF-66 —la siembra de
+  // `CharacterResource`, dados de golpe y espacios de conjuro, ocurre al fijar la clase—, mismo
+  // orden que reproduce `dano-extra.e2e-spec.ts`).
+  const FICHAS_NUEVAS = [
+    {
+      nombre: `${MARCA} Mirela`,
+      color: "salvia",
+      duena: clerigo,
+      race: { source: "SRD", key: "human" },
+      class: { source: "SRD", key: "cleric" },
+      abilities: { str: 10, dex: 10, con: 14, int: 10, wis: 16, cha: 12 },
+      choices: { "cleric-skills": ["insight", "religion"] },
+    },
+    {
+      nombre: `${MARCA} Tessa`,
+      color: "ciruela",
+      duena: picaro,
+      race: { source: "SRD", key: "halfling" },
+      class: { source: "SRD", key: "rogue" },
+      abilities: { str: 8, dex: 16, con: 12, int: 10, wis: 10, cha: 14 },
+      choices: {
+        "rogue-skills": ["stealth", "perception", "acrobatics", "deception"],
+      },
+    },
+  ];
+  for (const ficha of FICHAS_NUEVAS) {
+    let personaje = porNombre(personajes, ficha.nombre);
+    if (!personaje) {
+      personaje = await api("POST", `/campaigns/${C}/characters`, {
+        token: ficha.duena.token,
+        body: { name: ficha.nombre, visibility: "PLAYERS", color: ficha.color },
+      });
+      detalle(`«${ficha.nombre}» creado por su jugador (${ficha.color}).`);
+    } else {
+      detalle(`«${ficha.nombre}» ya existía.`);
+    }
+    suyos[ficha.nombre] = personaje;
+    // 1) El nivel, con la DM — antes que la clase.
+    await api("PATCH", `/campaigns/${C}/characters/${personaje.id}`, {
+      token: dm.token,
+      body: { level: 3 },
+    });
+    // 2) Ahora sí, raza, clase y puntuaciones: la hoja se deriva del motor.
+    await api("PATCH", `/campaigns/${C}/characters/${personaje.id}/sheet`, {
+      token: dm.token,
+      body: {
+        race: ficha.race,
+        class: ficha.class,
+        level: 3,
+        abilities: ficha.abilities,
+        choices: ficha.choices,
+      },
+    });
+  }
+  const mirela = suyos[`${MARCA} Mirela`];
+  const tessa = suyos[`${MARCA} Tessa`];
+
+  paso("El libro de conjuros de Sylas: proyectil mágico, escudo, manos ardientes y arma mágica");
+  // Sylas necesita `magic-weapon` PREPARADO para poder encantar la espada de Brann más abajo
+  // (paso «Arma mágica»): sin él en su libro, `usar()` respondería NO_ES_SUYO.
+  for (const [key, estado] of [
+    ["magic-missile", "PREPARADO"],
+    ["shield", "PREPARADO"],
+    ["burning-hands", "PREPARADO"],
+    ["magic-weapon", "PREPARADO"],
+    ["fire-bolt", "CONOCIDO"],
+    ["ray-of-frost", "CONOCIDO"],
+  ]) {
+    await api("PUT", `/campaigns/${C}/characters/${sylas.id}/spellbook/${key}`, {
+      token: jugador.token,
+      body: { estado },
+    });
+  }
+  detalle(
+    "Proyectil mágico, Escudo, Manos ardientes y Arma mágica preparados; dos trucos conocidos.",
+  );
+
+  paso("El libro de conjuros de Mirela: curar heridas, fuego sagrado divino y bendición");
+  for (const [key, estado] of [
+    ["cure-wounds", "PREPARADO"],
+    ["guiding-bolt", "PREPARADO"],
+    ["bless", "PREPARADO"],
+    ["sacred-flame", "CONOCIDO"],
+    ["guidance", "CONOCIDO"],
+  ]) {
+    await api("PUT", `/campaigns/${C}/characters/${mirela.id}/spellbook/${key}`, {
+      token: clerigo.token,
+      body: { estado },
+    });
+  }
+  detalle("Curar heridas, Fuego sagrado divino y Bendición preparados; dos trucos conocidos.");
+
+  paso("Un objeto propio del DM (el hacha de siempre) y una poción de curación de la casa");
+  // El SRD 5.1 recortado del catálogo (`items-srd.ts`) **no trae ningún objeto mágico ni
+  // ninguna poción**: solo armas, armadura y una selección de equipo de aventura («Ningún objeto
+  // mágico», comentario de cabecera de ese fichero). Así que la poción de curación, igual que el
+  // hacha, es un objeto propio de esta campaña — el mismo camino, no un atajo.
   const objetos = await api("GET", `/campaigns/${C}/items`, { token: dm.token });
   const NOMBRE_OBJETO = `${MARCA} Hacha del primer turno`;
   let objeto = porNombre(objetos, NOMBRE_OBJETO);
@@ -423,32 +579,126 @@ async function main() {
     detalle("El objeto propio ya existía.");
   }
 
-  const inventario = await api("GET", `/campaigns/${C}/characters/${brann.id}/inventory`, {
-    token: jugadora.token,
-  });
-  const filas = inventario.rows ?? inventario.items ?? inventario;
-  if (!Array.isArray(filas) || filas.length === 0) {
-    const fila = await api("POST", `/campaigns/${C}/characters/${brann.id}/inventory`, {
-      token: jugadora.token,
-      body: { ref: { source: "CAMPAIGN", id: objeto.id }, quantity: 1, location: "CARRIED" },
+  const NOMBRE_POCION = `${MARCA} Poción de curación`;
+  let pocion = porNombre(objetos, NOMBRE_POCION);
+  if (!pocion) {
+    pocion = await api("POST", `/campaigns/${C}/items`, {
+      token: dm.token,
+      body: {
+        name: NOMBRE_POCION,
+        kind: "CONSUMABLE",
+        description:
+          "Un frasco de vidrio con un líquido carmesí; un trago cura 2d4+2 puntos de golpe.",
+        weightOz: 8,
+        visibility: "PLAYERS",
+      },
     });
-    const filaId = fila.id ?? fila.row?.id;
-    // Equipar **y** sintonizar: son dos hechos distintos y el SRD los cuenta aparte —tres
-    // objetos sintonizados como máximo (`MAX_ATTUNED_ITEMS`).
-    await api("PATCH", `/campaigns/${C}/characters/${brann.id}/inventory/${filaId}`, {
-      token: jugadora.token,
-      body: { location: "EQUIPPED", slot: "MAIN_HAND", attuned: true },
-    });
-    detalle("Hacha en la mano de Brann, equipada y sintonizada.");
+    detalle(`Poción de curación creada (${pocion.id}).`);
   } else {
-    detalle("Brann ya llevaba algo encima.");
+    detalle("La poción de curación ya existía.");
+  }
+
+  paso("Inventario de Brann: el hacha propia y la espada larga (la que Sylas va a encantar)");
+  {
+    const inventario = await api("GET", `/campaigns/${C}/characters/${brann.id}/inventory`, {
+      token: jugadora.token,
+    });
+    let filas = filasDeInventario(inventario);
+
+    let filaHacha = filaPorRef(filas, `CAMPAIGN:${objeto.id}`);
+    if (!filaHacha) {
+      const fila = await api("POST", `/campaigns/${C}/characters/${brann.id}/inventory`, {
+        token: jugadora.token,
+        body: { ref: { source: "CAMPAIGN", id: objeto.id }, quantity: 1, location: "CARRIED" },
+      });
+      filaHacha = { id: fila.id ?? fila.row?.id, location: "CARRIED", slot: null };
+      detalle("Hacha añadida a la mochila de Brann.");
+    } else {
+      detalle("Brann ya llevaba el hacha.");
+    }
+
+    let filaEspada = filaPorRef(filas, "SRD:long-sword");
+    if (!filaEspada) {
+      const fila = await api("POST", `/campaigns/${C}/characters/${brann.id}/inventory`, {
+        token: jugadora.token,
+        body: { ref: { source: "SRD", key: "long-sword" }, quantity: 1, location: "CARRIED" },
+      });
+      filaEspada = { id: fila.id ?? fila.row?.id, location: "CARRIED", slot: null };
+      detalle("Espada larga añadida a la mochila de Brann.");
+    } else {
+      detalle("Brann ya llevaba la espada larga.");
+    }
+
+    // Solo hay una MAIN_HAND: la espada la ocupa, porque es la que se va a encantar (el caso
+    // real, «encanto el arma de mi compañero»). El hacha, si estaba puesta, pasa a la mochila —
+    // sigue siendo suya, solo que no en la mano.
+    if (filaHacha.location === "EQUIPPED" && filaHacha.slot === "MAIN_HAND") {
+      await api("PATCH", `/campaigns/${C}/characters/${brann.id}/inventory/${filaHacha.id}`, {
+        token: jugadora.token,
+        body: { location: "CARRIED", slot: null },
+      });
+      detalle("El hacha vuelve a la mochila para dejar sitio a la espada.");
+    }
+    if (filaEspada.location !== "EQUIPPED" || filaEspada.slot !== "MAIN_HAND") {
+      await api("PATCH", `/campaigns/${C}/characters/${brann.id}/inventory/${filaEspada.id}`, {
+        token: jugadora.token,
+        body: { location: "EQUIPPED", slot: "MAIN_HAND" },
+      });
+      detalle("Espada larga equipada en la mano principal de Brann.");
+    } else {
+      detalle("La espada larga ya estaba equipada.");
+    }
   }
   await api("PATCH", `/campaigns/${C}/characters/${brann.id}/money`, {
     token: jugadora.token,
     body: { gp: 25, sp: 4 },
   }).catch((error) => detalle(`Dinero: ${error.message}`));
 
-  paso("Un statblock del DM y un PNJ jugable en la mesa");
+  paso("Tessa equipa su daga; Tessa y Mirela llevan cada una su poción de curación");
+  {
+    const inventario = await api("GET", `/campaigns/${C}/characters/${tessa.id}/inventory`, {
+      token: picaro.token,
+    });
+    const filas = filasDeInventario(inventario);
+    let filaDaga = filaPorRef(filas, "SRD:dagger");
+    if (!filaDaga) {
+      const fila = await api("POST", `/campaigns/${C}/characters/${tessa.id}/inventory`, {
+        token: picaro.token,
+        body: { ref: { source: "SRD", key: "dagger" }, quantity: 1, location: "CARRIED" },
+      });
+      filaDaga = { id: fila.id ?? fila.row?.id, location: "CARRIED", slot: null };
+      detalle("Daga añadida a la mochila de Tessa.");
+    }
+    if (filaDaga.location !== "EQUIPPED" || filaDaga.slot !== "MAIN_HAND") {
+      await api("PATCH", `/campaigns/${C}/characters/${tessa.id}/inventory/${filaDaga.id}`, {
+        token: picaro.token,
+        body: { location: "EQUIPPED", slot: "MAIN_HAND" },
+      });
+      detalle("Daga equipada en la mano de Tessa (furtivo sale del rasgo, no del arma).");
+    } else {
+      detalle("Tessa ya llevaba la daga equipada.");
+    }
+  }
+  for (const [nombre, personaje, token] of [
+    ["Tessa", tessa, picaro.token],
+    ["Mirela", mirela, clerigo.token],
+  ]) {
+    const inventario = await api("GET", `/campaigns/${C}/characters/${personaje.id}/inventory`, {
+      token,
+    });
+    const filas = filasDeInventario(inventario);
+    if (!filaPorRef(filas, `CAMPAIGN:${pocion.id}`)) {
+      await api("POST", `/campaigns/${C}/characters/${personaje.id}/inventory`, {
+        token,
+        body: { ref: { source: "CAMPAIGN", id: pocion.id }, quantity: 1, location: "CARRIED" },
+      });
+      detalle(`Poción de curación entregada a ${nombre}.`);
+    } else {
+      detalle(`${nombre} ya llevaba su poción.`);
+    }
+  }
+
+  paso("Un statblock del DM, y tres goblins más su jefe, revelados a la mesa");
   // La lista trae **dos catálogos**: los del SRD y los de la campaña. Aquí solo interesan los
   // propios del DM, que son los que esta siembra crea.
   const catalogos = await api("GET", `/campaigns/${C}/statblocks`, { token: dm.token });
@@ -501,6 +751,30 @@ async function main() {
   } else {
     detalle("El PNJ ya estaba en la mesa.");
   }
+
+  const goblins = [];
+  for (let i = 1; i <= 3; i++) {
+    const nombreGoblin = `${MARCA} Goblin ${i}`;
+    let goblin = porNombre(pnjs, nombreGoblin);
+    if (!goblin) {
+      const creado = await api("POST", `/campaigns/${C}/npcs`, {
+        token: dm.token,
+        body: { ref: "SRD:goblin", count: 1, name: nombreGoblin, hp: "AVERAGE" },
+      });
+      goblin = Array.isArray(creado) ? creado[0] : (creado.characters?.[0] ?? creado);
+      detalle(`«${nombreGoblin}» creado.`);
+    } else {
+      detalle(`«${nombreGoblin}» ya estaba en la mesa.`);
+    }
+    goblins.push(goblin);
+  }
+
+  // Revelar es idempotente (`NpcsService.reveal`): lo que ya se ve no se toca.
+  await api("POST", `/campaigns/${C}/characters/reveal-many`, {
+    token: dm.token,
+    body: { characterIds: [pnj.id, ...goblins.map((g) => g.id)].filter(Boolean) },
+  });
+  detalle("Klarg y los tres goblins, revelados a la mesa.");
 
   paso("Una sesión con su crónica, un encuentro con iniciativa y el reloj");
   const sesiones = await api("GET", `/campaigns/${C}/sessions`, { token: dm.token });
@@ -568,11 +842,26 @@ async function main() {
     token: dm.token,
   }).catch(() => null);
   if (!encuentro) {
+    const combatientesIds = [
+      brann.id,
+      sylas.id,
+      mirela.id,
+      tessa.id,
+      pnj.id,
+      ...goblins.map((g) => g.id),
+    ].filter(Boolean);
     const nuevo = await api("POST", `/campaigns/${C}/sessions/${sesion.id}/encounters`, {
       token: dm.token,
       body: {
-        characterIds: [brann.id, sylas.id, pnj.id].filter(Boolean),
-        sides: { [brann.id]: "ALLY", [sylas.id]: "ALLY", ...(pnj.id ? { [pnj.id]: "ENEMY" } : {}) },
+        characterIds: combatientesIds,
+        sides: {
+          [brann.id]: "ALLY",
+          [sylas.id]: "ALLY",
+          [mirela.id]: "ALLY",
+          [tessa.id]: "ALLY",
+          ...(pnj.id ? { [pnj.id]: "ENEMY" } : {}),
+          ...Object.fromEntries(goblins.map((g) => [g.id, "ENEMY"])),
+        },
       },
     }).catch((error) => {
       detalle(`Encuentro: ${error.message}`);
@@ -607,6 +896,121 @@ async function main() {
     body: { kind: "TIME", seconds: 6 },
   }).catch((error) => detalle(`Reloj: ${error.message}`));
 
+  paso("Una ronda de juego, jugada por la API: para que el registro y la bandeja tengan contenido");
+  {
+    // Idempotencia: si ya se lanzó un Proyectil mágico contra el primer goblin en esta campaña,
+    // la ronda ya se jugó — no se repite (no tiene sentido gastar espacios de conjuro dos veces
+    // por correr el script otra vez).
+    const eventos = await api("GET", `/campaigns/${C}/events?limit=100`, { token: dm.token });
+    const listaDeEventos = eventos.events ?? eventos;
+    const yaJugada =
+      goblins[0] &&
+      listaDeEventos.some(
+        (e) =>
+          e.type === "ACTIVITY_USED" &&
+          e.payload?.actividadKey === "spell:magic-missile" &&
+          (e.payload?.targetCharacterIds ?? []).includes(goblins[0].id),
+      );
+    if (yaJugada) {
+      detalle("La ronda ya se había jugado en una siembra anterior.");
+    } else {
+      // 1) Sylas lanza Proyectil mágico contra el primer goblin, y la DM aplica el daño.
+      if (goblins[0]) {
+        const lanzado = await api(
+          "POST",
+          `/campaigns/${C}/characters/${sylas.id}/activities/spell:magic-missile/use`,
+          { token: jugador.token, body: { objetivos: [goblins[0].id] } },
+        );
+        detalle("Sylas lanza Proyectil mágico contra el primer goblin.");
+        const rollId = lanzado.rollEventIds?.[0];
+        if (rollId) {
+          await api("POST", `/campaigns/${C}/rolls/${rollId}/apply-damage`, { token: dm.token });
+          detalle("La DM aplica el daño del proyectil mágico.");
+        }
+      }
+
+      // 2) Tessa ataca al segundo goblin con la daga; si impacta, tira el daño y marca su
+      // furtivo — y esa tarjeta se deja SIN aplicar, para que se vea la bandeja del DM.
+      const objetivoDeTessa = goblins[1] ?? goblins[0];
+      if (objetivoDeTessa) {
+        const hojaTessa = await api("GET", `/campaigns/${C}/characters/${tessa.id}/sheet`, {
+          token: picaro.token,
+        });
+        const ataqueDaga = (hojaTessa.attacks ?? []).find((a) => a.name === "Daga");
+        if (!ataqueDaga) {
+          detalle("Tessa no tiene la daga en su cuadro de ataques todavía; se omite su ataque.");
+        } else {
+          let resolucion;
+          for (let intento = 0; intento < 20; intento++) {
+            resolucion = await api(
+              "POST",
+              `/campaigns/${C}/characters/${tessa.id}/sheet/attacks/` +
+                `${encodeURIComponent(ataqueDaga.key)}/resolve`,
+              {
+                token: picaro.token,
+                body: {
+                  targetCharacterId: objetivoDeTessa.id,
+                  mode: "NORMAL",
+                  spendInspiration: false,
+                },
+              },
+            );
+            if (["HIT", "CRITICAL"].includes(resolucion.verdict)) break;
+          }
+          if (["HIT", "CRITICAL"].includes(resolucion.verdict)) {
+            const dano = await api(
+              "POST",
+              `/campaigns/${C}/characters/${tessa.id}/sheet/attacks/` +
+                `${encodeURIComponent(ataqueDaga.key)}/roll`,
+              {
+                token: picaro.token,
+                body: {
+                  part: "DAMAGE",
+                  spendInspiration: false,
+                  mode: "NORMAL",
+                  versatile: false,
+                  attackRollEventId: resolucion.roll.eventId,
+                },
+              },
+            );
+            detalle("Tessa impacta con la daga y tira su daño.");
+            await api("POST", `/campaigns/${C}/rolls/${dano.eventId}/damage-extra`, {
+              token: picaro.token,
+              body: { key: "sneak-attack" },
+            }).catch((error) => detalle(`Ataque furtivo: ${error.message}`));
+            detalle(
+              "Ataque furtivo marcado. La tarjeta se deja SIN aplicar: así se ve la bandeja del DM.",
+            );
+          } else {
+            detalle("Tessa no llegó a impactar en veinte intentos; mala suerte de la siembra.");
+          }
+        }
+      }
+
+      // 3) Mirela cura a Brann con Curar heridas.
+      const curacion = await api(
+        "POST",
+        `/campaigns/${C}/characters/${mirela.id}/activities/spell:cure-wounds/use`,
+        { token: clerigo.token, body: { objetivos: [brann.id] } },
+      ).catch((error) => {
+        detalle(`Curar heridas: ${error.message}`);
+        return null;
+      });
+      if (curacion) detalle("Mirela cura a Brann con Curar heridas.");
+
+      // 4) La DM sella una anotación de la ronda.
+      await api("POST", `/campaigns/${C}/sessions/notes`, {
+        token: dm.token,
+        body: {
+          kind: "NOTE",
+          text: "Ronda de la demo: Sylas y Tessa golpean, Mirela cura a Brann.",
+          visibility: "PLAYERS",
+        },
+      }).catch((error) => detalle(`Anotación: ${error.message}`));
+      detalle("Anotación de la DM sellada.");
+    }
+  }
+
   paso("Una regla del motor");
   const reglas = await api("GET", `/campaigns/${C}/rules`, { token: dm.token });
   const NOMBRE_REGLA = `${MARCA} Al entrar en Phandalin, se sabe`;
@@ -630,11 +1034,13 @@ async function main() {
   }
 
   console.log(`
-Listo. Entra con cualquiera de estas tres cuentas, cada una con su contraseña:
+Listo. Entra con cualquiera de estas cinco cuentas, cada una con su contraseña:
 
   ${CUENTAS.dm.email} — la DM
-  ${CUENTAS.jugadora.email} — jugadora, dueña de Brann
-  ${CUENTAS.jugador.email} — jugador, dueño de Sylas
+  ${CUENTAS.jugadora.email} — jugadora, dueña de Brann (guerrero)
+  ${CUENTAS.jugador.email} — jugador, dueño de Sylas (mago)
+  ${CUENTAS.clerigo.email} — jugadora, dueña de Mirela (clériga)
+  ${CUENTAS.picaro.email} — jugador, dueño de Tessa (pícara)
 
 Y para borrarlo todo:  node scripts/seed-demo.mjs --base ${BASE} --limpiar
 `);

@@ -79,27 +79,36 @@ La campaña de demostración:
 ```bash
 node scripts/seed-demo.mjs                                  # contra http://localhost:3000
 node scripts/seed-demo.mjs --base https://dnd.supportive.pro/api
+node scripts/seed-demo.mjs --tablero https://ejemplo.com/sala   # opcional: enlaza boardRoomUrl
 node scripts/seed-demo.mjs --limpiar                        # borra las campañas «[demo]»
 ```
 
-**Siembra una mesa completa y jugable** —tres cuentas, cinco niveles de visibilidad, dos
-personajes con hoja derivada, inventario con ranura y sintonización, un statblock propio y su PNJ,
-una sesión cerrada con crónica y otra en curso con su encuentro, una regla del motor y avisos— para
-poder mirar la aplicación con datos dentro sin construirlos a mano.
+**Siembra una mesa completa y jugable, con todo lo que sabe hacer la plataforma tras el paso 3A**
+(beta 0.1.0) —cinco cuentas, cinco niveles de visibilidad, progresión por XP, cuatro personajes de
+nivel 3 con hoja derivada (guerrero, mago, clériga y pícara, con su libro de conjuros preparado),
+una espada larga encantada con Arma mágica, una poción de curación propia de la casa, un statblock
+del DM con tres goblins y su jefe revelados, una sesión cerrada con crónica y otra en curso con su
+encuentro, **una ronda de combate jugada por la API** (proyectil mágico aplicado, un ataque con su
+extra de Ataque furtivo dejado A PROPÓSITO sin aplicar para que se vea la bandeja del DM, y una
+curación), una regla del motor y avisos— para poder mirar la aplicación con datos dentro, y para
+jugar, sin construirlos a mano.
 
 **Habla por HTTP, como una persona**: se registra, inicia sesión y usa las mismas rutas que la web,
 así que **no puede saltarse un permiso** y **se puede correr contra producción** sin credenciales de
-Postgres. Es **idempotente**: correrlo dos veces no duplica nada. Y todo lo que crea va marcado
-—correos en `@demo.invalid`, nombres con `[demo]` delante— para poder borrarlo de un tirón.
+Postgres. Es **idempotente**: correrlo dos veces no duplica nada, ni siquiera la ronda jugada (se
+detecta por si ya hay un `ACTIVITY_USED` de Proyectil mágico contra el primer goblin). Y todo lo
+que crea va marcado —correos en `@demo.invalid`, nombres con `[demo]` delante— para poder borrarlo
+de un tirón.
 
 Dos cosas que conviene saber antes de correrlo contra producción:
 
 - **Pon `SEED_DEMO_PASSWORD`.** La contraseña por defecto está escrita en el script, y un fichero
   del repositorio no es un secreto.
 - **Cada cuenta puede traer la suya** (`SEED_DEMO_DM_EMAIL` / `SEED_DEMO_DM_PASSWORD`, y lo mismo
-  con `JUGADORA` y `JUGADOR`), que es lo que permite sembrar con **una cuenta real como DM** y las
-  de demostración como jugadores. Una cuenta que no sea de `@demo.invalid` **no se crea nunca**
-  desde el script: si el correo es real, lo que falta es su contraseña, no la cuenta.
+  con `JUGADORA`, `JUGADOR`, `CLERIGO` y `PICARO`), que es lo que permite sembrar con **una cuenta
+  real como DM** y las de demostración como jugadores. Una cuenta que no sea de `@demo.invalid`
+  **no se crea nunca** desde el script: si el correo es real, lo que falta es su contraseña, no la
+  cuenta.
 - **Es idempotente con la MISMA contraseña.** Con otra, el login falla y el registro choca con la
   cuenta que ya existe: el script lo dice con esas palabras en vez de enseñar el 409 crudo.
 - **`--limpiar` borra las campañas, no las cuentas.** La API no tiene ruta para borrar un usuario y

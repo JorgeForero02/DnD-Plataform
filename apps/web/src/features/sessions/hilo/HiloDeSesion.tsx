@@ -453,11 +453,18 @@ export function HiloDeSesion({
           ancestro posicionado que NO sea el contenedor que scrollea —dentro se iría con el
           texto—. No lleva `aria-label` a propósito: no es una región, es una costura. */}
       <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* Fix round 2 de la ola de 3A.3 — **`relative` en la lista que scrollea, a propósito.**
+            Las líneas compactas llevan la firma del autor en `sr-only` (M10), que es
+            `position:absolute`: sin un ancestro posicionado DENTRO del scroll, esos spans se
+            posicionaban contra el `div` de arriba y se escapaban del recorte de la lista, con
+            lo que la región entera crecía en `scrollHeight` sin `overflow` propio — la medida 4
+            de `mesa-mide` («ningún panel cortado sin poder desplazarse») los detectó. El aviso
+            flotante sigue anclado al `div` exterior; esto solo contiene lo absoluto de dentro. */}
         <ol
           ref={listaRef}
           onScroll={alDesplazar}
           aria-label="Sucesos de la sesión"
-          className="scroll-quiet flex min-h-0 flex-1 flex-col overflow-y-auto px-s3 py-s2"
+          className="scroll-quiet relative flex min-h-0 flex-1 flex-col overflow-y-auto px-s3 py-s2"
         >
           {enOrden.length === 0 && (
             <li className="font-chrome text-chrome-sm text-muted">

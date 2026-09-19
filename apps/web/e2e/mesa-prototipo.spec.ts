@@ -58,8 +58,19 @@ async function crearCampana(page: Page, nombre: string) {
   await page.getByLabel("Nombre").fill(nombre);
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: nombre }).click();
-  await expect(page.getByRole("heading", { name: nombre })).toBeVisible();
+  await esperarLaCampana(page, nombre);
   return page.url().split("/campaigns/")[1].split(/[/?]/)[0];
+}
+
+/**
+ * Fix round 2 de la ola de 3A.3 — **la ficha de campaña enseña «Cargando…» como `h1` hasta que
+ * llega su `GET`**, y con la suite entera detrás tarda más de los 5 s por defecto (el mismo caso
+ * que `sesion.spec.ts` arregló en la Task 5b). Pulsar una pestaña o «Empezar» antes de que la
+ * ficha exista es esperar 5 min a un botón que nunca se monta. Se espera al heading de la
+ * campaña —15 s— en cada sitio donde se abre su ficha.
+ */
+async function esperarLaCampana(page: Page, nombre: string) {
+  await expect(page.getByRole("heading", { name: nombre })).toBeVisible({ timeout: 15_000 });
 }
 
 async function generarInvitacion(page: Page): Promise<string> {
@@ -83,6 +94,7 @@ async function unirseDesdeInvitacion(page: Page, enlace: string, prefijo: string
 async function guardarSalaDePrueba(page: Page, campaignId: string) {
   const sala = `${new URL(page.url()).origin}/tablero-de-prueba.html`;
   await page.goto(`/campaigns/${campaignId}?seccion=settings`);
+  await expect(page.getByRole("tab", { name: "Ajustes" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("tab", { name: "Ajustes" }).click();
   await page.getByLabel("Dirección de la sala").fill(sala);
   await page.getByRole("button", { name: "Guardar la sala" }).click();
@@ -95,6 +107,7 @@ async function empezarSesion(page: Page, titulo: string) {
   await page.getByLabel("Título").fill(titulo);
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("button", { name: "Guardar" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Empezar" })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Empezar" }).click();
   await page.getByRole("button", { name: "Empezar la sesión" }).click();
   await expect(page.getByRole("status", { name: "Sesión en curso" })).toBeVisible({
@@ -227,10 +240,11 @@ test("la mesa se ve como el prototipo: capturas DM/jugador a 1280 y 390, con y s
 
   // Una invitación por jugador: cada enlace es de un solo uso.
   await unirseDesdeInvitacion(sylas, await generarInvitacion(dm), "sylas");
-  await expect(sylas.getByRole("heading", { name: "La Costa de las Espadas" })).toBeVisible();
+  await esperarLaCampana(sylas, "La Costa de las Espadas");
   await dm.goto(`/campaigns/${campaignId}`);
+  await esperarLaCampana(dm, "La Costa de las Espadas");
   await unirseDesdeInvitacion(corvin, await generarInvitacion(dm), "corvin");
-  await expect(corvin.getByRole("heading", { name: "La Costa de las Espadas" })).toBeVisible();
+  await esperarLaCampana(corvin, "La Costa de las Espadas");
 
   await montarPersonaje(dm, sylas, campaignId, "Sylas", "wizard");
   await montarPersonaje(dm, corvin, campaignId, "Corvin", "fighter");
@@ -238,7 +252,7 @@ test("la mesa se ve como el prototipo: capturas DM/jugador a 1280 y 390, con y s
   await guardarSalaDePrueba(dm, campaignId);
 
   await dm.goto(`/campaigns/${campaignId}`);
-  await expect(dm.getByRole("heading", { name: "La Costa de las Espadas" })).toBeVisible();
+  await esperarLaCampana(dm, "La Costa de las Espadas");
   await empezarSesion(dm, "Los guardias del muelle");
 
   await abrirLaMesa(dm, campaignId);

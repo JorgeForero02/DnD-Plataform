@@ -434,6 +434,11 @@ cabeza de quien arregló el fallo se paga otra vez al mes siguiente.
   visibilidad **sin depender del color** — sustituirlos por SVG costaría esa alineación sin
   ganar nada.
 
+- **Un cajón (`Dialog`) tiene exactamente un `h2`: el suyo.** Un componente de página que se
+  reutiliza dentro de un cajón recibe su cabecera como propiedad (`cabecera="ninguna"`) en vez de
+  dibujarla él: con las dos, salían dos títulos y la explicación repetida (auditoría de interfaz
+  2026-09-19, §21.10: cinco cajones). Regla desde el 2026-09-19.
+
 - **Una opción con significado no se esconde en un desplegable.** Cuando las opciones son
   pocas y **cada una quiere decir algo distinto** —los cinco niveles de visibilidad—, van como
   radios, visibles a la vez, y **cada una lleva la frase que explica qué hace**. Práctica

@@ -38,10 +38,10 @@ día. Salen cuatro cubos. **Solo el primero tiene plan**:
 — correcciones menores y gráficas, sin funcionalidad nueva, para estos días (modo «solo errores»,
 D-CF-161). Los números son los de la auditoría.
 
-### A · Fichas abiertas — en el plan (correcciones menores y gráficas)
+### A · Fichas abiertas — en el plan (correcciones menores y gráficas) — **hechas el 2026-09-19 en la rama `interfaz/correcciones-2026-09-19`** (9 commits, `e84f2b2..b092882`); quedan cinco menores aplazados: `EscribirFicha.tsx:83` JSDoc «statblock», `PanelCarga.tsx:55,70,71` `toFixed(0)`, `Traza.tsx:314,317` menos ASCII, `fechaCorta` sin consumidor, «Tu iniciativa» cuando el DM tira por otro desde la caja compacta
 
 - **Textos que mienten o se repiten** (plan, Tasks 1–4): 3.1 «y» repetida · 3.4 tres números en la
-  iniciativa tirada · 3.5 contador «N de M» también al jugador · 3.6 «Su turno» en preparación
+  iniciativa tirada · 3.6 «Su turno» en preparación
   (`ColumnaElenco.tsx:99`) · 5.1 «sus 1 asalto» (`TiraDeIniciativa.tsx:338`) · 5.3/16.3 statblock →
   criatura del bestiario, XP/experiencia → **PX** · 6.2 «Recibo daño»/«Me curo» en la hoja que el DM
   también abre (`PuntosDeGolpe.tsx:222`) · 10.1/10.2 «tú» en las audiencias de tirada
@@ -75,8 +75,8 @@ D-CF-161). Los números son los de la auditoría.
   pantalla completa sobrevive a `prefers-reduced-motion` (`efectos.css:588`; mirar antes por qué
   D-CF-116 lo dejó) · 4.5 «no es tu turno» se lee antes de abrir un menú · 4.9 botones −5/−10 de
   movimiento · 9.3 chip «Todo» en los filtros de la bolsa · 11.3 filtros del registro a 28 px.
-- **Prototipo** (Task 14, fuera del repo): §20 — ataque resuelto, asalto 2, PJ a 0 PG, condiciones
-  activas, 390/768 px.
+- **Prototipo** (Task 14, fuera del repo): §20 — hecho el 2026-09-19 (133 estados: asalto 2, PJ a 0 PG,
+  condiciones, 390/768 px) **salvo 20.1, el ataque resuelto**: queda para la próxima pasada, tras desplegar.
 
 ### B · Fichas abiertas de tamaño medio — después de la tanda, sin plan todavía
 
@@ -105,6 +105,7 @@ D-CF-161). Los números son los de la auditoría.
 
 | # | Propone | Choca con | Lo que sí cabe |
 |---|---|---|---|
+| 3.5 | Contador «N de M» al jugador | **E-N-5** (autor, 2026-09-06): el jugador solo ve sus propias peticiones y el número saldría falso. Se aplicó y se revirtió el mismo día (`e84f2b2`) | Nada |
 | 1.4 | Esconder Hoja/Bolsa al DM | D-CF-66, E-PL-7, rail permanente | La lista de Atajos podría decir «(sin personaje)» junto a N e I |
 | 1.5 | Un «Anotar» + chips | D-CF-149 (los seis sellos son el prototipo) | Ya en el plan por la regla: no apagarlos |
 | 2.2 | Quitar Ayudar de la tarjeta | E-08-8 (autor: en tu tarjeta) — pero la barra lo duplica desde 3A.3 | **Re-decidir**: uno de los dos sobra; D-CF-50 (las acciones son menús) apunta a dejar el de la barra |

@@ -114,7 +114,7 @@ test("marcar la concentración desde la hoja hace que el daño pida la salvació
   // --- Y ahora el daño dispara la regla del servidor (los PG viven en «Recursos») ---
   await abrirPestana(page, "Recursos");
   await page.getByLabel("Cambio de puntos de golpe").fill("25");
-  await page.getByRole("button", { name: "Recibo daño" }).click();
+  await page.getByRole("button", { name: "Aplicar daño" }).click();
 
   // **La petición aparece donde el jugador la sondea**, que es «Dados» y la mesa — no la hoja.
   // Ese detalle es medio hallazgo: `TiradasPendientes` no se monta en la hoja de personaje, así

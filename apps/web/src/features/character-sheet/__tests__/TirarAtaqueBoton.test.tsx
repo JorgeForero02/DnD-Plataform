@@ -382,8 +382,8 @@ describe("audiencia de la tirada (Task 26)", () => {
     expect(await screen.findByRole("radio", { name: "Pública" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Privada del DM" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "A ciegas" })).toBeVisible();
-    expect(screen.getByText("La mesa entera ve el resultado.")).toBeVisible();
-    expect(screen.getByText("Solo el DM ve el resultado; tú no.")).toBeVisible();
+    expect(screen.getByText("La ve toda la mesa.")).toBeVisible();
+    expect(screen.getByText("Solo el DM ve el resultado.")).toBeVisible();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 

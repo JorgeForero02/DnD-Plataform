@@ -570,7 +570,7 @@ export function HiloDeSesion({
               onChange={(e) => setSoloDm(e.target.checked)}
               className="accent-[var(--accent)]"
             />
-            Solo el DM
+            Solo lo ve el DM
           </label>
           {SELLOS_EN_ORDEN.map((kind) => {
             const Icono = ICONO_SELLO[kind];

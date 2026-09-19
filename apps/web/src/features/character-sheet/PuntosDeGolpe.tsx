@@ -219,7 +219,7 @@ export function PuntosDeGolpe({
               onClick={() => aplicarDelta(-1)}
               disabled={!delta}
             >
-              Recibo daño
+              Aplicar daño
             </Button>
             <Button
               type="button"
@@ -227,7 +227,7 @@ export function PuntosDeGolpe({
               onClick={() => aplicarDelta(1)}
               disabled={!delta}
             >
-              Me curo
+              Curar
             </Button>
           </div>
 

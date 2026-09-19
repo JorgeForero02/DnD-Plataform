@@ -19,7 +19,7 @@ export function TiradaACiegas({ etiqueta, expresion }: { etiqueta: string; expre
       className="mt-1 rounded-radius-sm border border-muted bg-surface px-s2 py-1.5 text-left"
     >
       <p className="text-chrome-sm text-text">
-        Tirado a ciegas. <span className="text-muted">El DM ve el resultado; tú no.</span>
+        Tirado a ciegas. <span className="text-muted">Solo el DM ve el resultado.</span>
       </p>
       <p className="mt-0.5 font-data text-chrome-xs text-muted">
         {etiqueta} · {expresion}

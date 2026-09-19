@@ -110,13 +110,13 @@ export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
   {
     audiencia: "PUBLIC",
     etiqueta: "Pública",
-    frase: "La mesa entera ve el resultado.",
+    frase: "La ve toda la mesa.",
     resumen: "Para la mesa entera",
   },
   {
     audiencia: "DM_PRIVATE",
     etiqueta: "Privada del DM",
-    frase: "La ves tú y el DM; el resto de la mesa, no.",
+    frase: "Solo quien tira y el DM.",
     resumen: "Privada del DM",
   },
   {
@@ -124,7 +124,7 @@ export const AUDIENCIAS_DE_TIRADA: readonly AudienciaDeTirada[] = [
     // **No dice «solo el DM»** a secas: lo que la hace distinta de la privada es que quien tira
     // tampoco ve su propio resultado, y esa es la mitad que el proyecto tardó una fase en tener.
     etiqueta: "A ciegas",
-    frase: "Solo el DM ve el resultado; tú no.",
+    frase: "Solo el DM ve el resultado.",
     resumen: "A ciegas",
   },
 ];

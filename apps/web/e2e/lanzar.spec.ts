@@ -175,7 +175,7 @@ async function montarMaga(dm: Page, jugadora: Page, campaignId: string, nombre: 
  * («el DM aplica y los PG bajan») antes de lanzar Descarga de fuego. Overriding solo
  * `maxHp` no basta (`changeHpEnTransaccion` fija el candado en `character.currentHp`, que sigue
  * en 7; el override solo sube el TECHO): hace falta además un `changeHp` (delta positivo, la
- * misma ruta que usa «Recibo daño»/«Curar») que se aplica DESPUÉS de la anulación y clampa contra
+ * misma ruta que usa «Aplicar daño»/«Curar») que se aplica DESPUÉS de la anulación y clampa contra
  * el `maxHp` ya anulado — mismo criterio que ya deja escrito `character-sheet.service.ts` sobre
  * por qué una anulación de `maxHp` tiene que gobernar también la curación.
  *

@@ -216,7 +216,7 @@ test("la hoja carga con datos reales: completar ficha, ver la traza, tirar, y ca
     .map(Number);
 
   await page.getByLabel("Cambio de puntos de golpe").fill("5");
-  await page.getByRole("button", { name: "Recibo daño" }).click();
+  await page.getByRole("button", { name: "Aplicar daño" }).click();
 
   await expect(bloquePg).toContainText(`${actualAntes - 5} / ${maximo}`, { timeout: 10_000 });
 

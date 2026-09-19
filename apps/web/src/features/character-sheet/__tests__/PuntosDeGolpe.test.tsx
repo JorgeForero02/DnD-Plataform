@@ -43,7 +43,7 @@ describe("PuntosDeGolpe", () => {
     fireEvent.change(screen.getByLabelText("Cambio de puntos de golpe"), {
       target: { value: "5" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Recibo daño" }));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar daño" }));
 
     // `mutate()` dispara la ejecución de forma asíncrona (react-query la agenda, no la corre en
     // el mismo tick del clic), así que la aserción tiene que esperar a que ocurra.
@@ -63,7 +63,7 @@ describe("PuntosDeGolpe", () => {
     fireEvent.change(screen.getByLabelText("Cambio de puntos de golpe"), {
       target: { value: "3" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Me curo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Curar" }));
 
     await waitFor(() =>
       expect(characterSheetApi.changeHp).toHaveBeenCalledWith("c1", "ch1", { delta: 3 }),

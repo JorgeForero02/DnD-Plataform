@@ -9,7 +9,7 @@ import { test, expect, type Browser, type Page } from "@playwright/test";
 //
 // Arranque copiado de `apps/web/e2e/puerta-de-efectos.spec.ts` (registro, campaña, invitación,
 // personaje con hoja por la API, sesión abierta, dos contextos). El golpe se pone directamente
-// desde la hoja del personaje — el DM la abre y usa «Recibo daño» (`PuntosDeGolpe.tsx`), el
+// desde la hoja del personaje — el DM la abre y usa «Aplicar daño» (`PuntosDeGolpe.tsx`), el
 // mismo control que ya mide `condiciones-en-la-mesa.spec.ts` y `hoja.spec.ts` — mientras el
 // jugador se queda mirando la mesa con su propio personaje en el elenco («En la mesa»).
 
@@ -155,14 +155,14 @@ test("un golpe pinta «−7» en la ficha del elenco y el texto flotante desapar
   await expect(elencoJugador.getByText("Elora")).toBeVisible({ timeout: 15_000 });
 
   // El DM abre la hoja de Elora directamente (puede editarla porque es el DM) y le pone daño
-  // desde «Recibo daño» (`PuntosDeGolpe.tsx`) — el mismo control que mide `hoja.spec.ts`.
+  // desde «Aplicar daño» (`PuntosDeGolpe.tsx`) — el mismo control que mide `hoja.spec.ts`.
   await dm.getByRole("button", { name: "Personajes" }).click();
   await dm.getByRole("link", { name: /Elora/ }).click();
   await expect(dm.getByRole("heading", { name: "Elora" })).toBeVisible();
   await abrirPestana(dm, "Recursos");
   await dm.getByLabel("Cambio de puntos de golpe").fill("7");
-  await dm.getByRole("button", { name: "Recibo daño" }).click();
-  await expect(dm.getByRole("button", { name: "Recibo daño" })).toBeEnabled();
+  await dm.getByRole("button", { name: "Aplicar daño" }).click();
+  await expect(dm.getByRole("button", { name: "Aplicar daño" })).toBeEnabled();
 
   // --- El `expect` que mira al OTRO contexto: el jugador no ha tocado nada y su tarjeta del
   //     elenco anima el golpe que le acaba de poner el DM, por el canal en vivo o el sondeo. ---

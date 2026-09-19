@@ -258,9 +258,9 @@ describe("PanelDeDados — la audiencia es una decisión visible", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
 
     for (const [etiqueta, frase] of [
-      ["Pública", "La mesa entera ve el resultado."],
-      ["Privada del DM", "La ves tú y el DM; el resto de la mesa, no."],
-      ["A ciegas", "Solo el DM ve el resultado; tú no."],
+      ["Pública", "La ve toda la mesa."],
+      ["Privada del DM", "Solo quien tira y el DM."],
+      ["A ciegas", "Solo el DM ve el resultado."],
     ] as const) {
       const radio = screen.getByRole("radio", { name: etiqueta });
       expect(radio).toBeInTheDocument();

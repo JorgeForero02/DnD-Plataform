@@ -128,7 +128,8 @@ describe("la tira de iniciativa: el orden, y quién está actuando", () => {
     // Tres combatientes, **dos** turnos: los dos goblins actúan a la vez, que es lo que dice el
     // SRD de un grupo de criaturas idénticas. Contar filas daría tres y sería el error.
     expect(turnos).toHaveLength(2);
-    expect(turnos[1]).toHaveTextContent("Goblin · Goblin");
+    // Task 11 (4.4): dos «Goblin» comparten nombre base y se agrupan en un rótulo corto.
+    expect(turnos[1]).toHaveTextContent("Goblins (2)");
   });
 
   it("el turno actual se marca con un rótulo, no solo con un color", () => {
@@ -211,7 +212,7 @@ describe("quién puede tocar el combate", () => {
 
     // Se corrige el turno de los goblins: su combatiente es `cb2`, no `cb1`.
     fireEvent.click(
-      screen.getByRole("button", { name: "Corregir la iniciativa de Goblin · Goblin" }),
+      screen.getByRole("button", { name: "Corregir la iniciativa de Goblin y Goblin" }),
     );
     const dialogo = await screen.findByRole("dialog");
     const campo = within(dialogo).getByLabelText("Iniciativa");

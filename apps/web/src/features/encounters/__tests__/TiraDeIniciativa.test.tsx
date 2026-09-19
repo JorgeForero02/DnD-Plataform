@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,5 +81,97 @@ describe("terminar el combate: la frase del asalto (5.1)", () => {
     const dialogo = screen.getByRole("dialog");
     expect(dialogo).toHaveTextContent("queda con su asalto y su rastro en el registro.");
     expect(dialogo).not.toHaveTextContent(/sus 1 asalto/i);
+  });
+});
+
+// Task 11 (4.4) — el rótulo del grupo: «Goblins (3)» cuando los tres comparten nombre base
+// (`Goblin 1`, `Goblin 2`, `Goblin 3`), con el aria-label del apuntar diciendo el grupo entero.
+describe("la tira de turnos: el rótulo del grupo (4.4)", () => {
+  const GOBLIN_1: Character = { ...THORA, id: "g1", name: "Goblin 1", ownerId: "u-dm" };
+  const GOBLIN_2: Character = { ...GOBLIN_1, id: "g2", name: "Goblin 2" };
+  const GOBLIN_3: Character = { ...GOBLIN_1, id: "g3", name: "Goblin 3" };
+
+  const ENCUENTRO_GRUPO: Encounter = {
+    id: "e1",
+    sessionId: "s1",
+    status: "ACTIVE",
+    round: 1,
+    activePosition: 0,
+    finalPropuesto: false,
+    combatants: [
+      { id: "cb1", characterId: "g1", initiative: 15, position: 0, side: "ENEMY", ...EN_PIE },
+      { id: "cb2", characterId: "g2", initiative: 15, position: 0, side: "ENEMY", ...EN_PIE },
+      { id: "cb3", characterId: "g3", initiative: 15, position: 0, side: "ENEMY", ...EN_PIE },
+    ],
+  };
+
+  function montarConGoblins() {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <TiraDeIniciativa
+            campaignId="c1"
+            sessionId="s1"
+            encuentro={ENCUENTRO_GRUPO}
+            personajes={[GOBLIN_1, GOBLIN_2, GOBLIN_3]}
+            pnjs={[]}
+            esDm={true}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("tres «Goblin N» comparten base y se agrupan en «Goblins (3)»", () => {
+    montarConGoblins();
+
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    expect(tira).toHaveTextContent("Goblins (3)");
+    expect(
+      screen.getByRole("button", { name: "Apuntar al grupo de 3 goblins" }),
+    ).toBeInTheDocument();
+  });
+});
+
+// Task 11 (4.3) — dos turnos con la misma iniciativa llevan el chip «empate».
+describe("la tira de turnos: el chip de empate (4.3)", () => {
+  const THORA_2: Character = { ...THORA, id: "p-thora2", name: "Corvin" };
+
+  const ENCUENTRO_EMPATE: Encounter = {
+    id: "e1",
+    sessionId: "s1",
+    status: "ACTIVE",
+    round: 1,
+    activePosition: 0,
+    finalPropuesto: false,
+    combatants: [
+      { id: "cb1", characterId: "p-thora", initiative: 12, position: 0, side: "ALLY", ...EN_PIE },
+      { id: "cb2", characterId: "p-thora2", initiative: 12, position: 1, side: "ALLY", ...EN_PIE },
+    ],
+  };
+
+  it("dos turnos con la misma iniciativa llevan «empate» junto al número", () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <TiraDeIniciativa
+            campaignId="c1"
+            sessionId="s1"
+            encuentro={ENCUENTRO_EMPATE}
+            personajes={[THORA, THORA_2]}
+            pnjs={[]}
+            esDm={true}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const tira = screen.getByRole("region", { name: "Orden de turnos" });
+    const turnos = screen.getAllByRole("listitem");
+    expect(within(tira).getAllByText("empate")).toHaveLength(2);
+    expect(turnos[0]).toHaveTextContent("empate");
+    expect(turnos[1]).toHaveTextContent("empate");
   });
 });

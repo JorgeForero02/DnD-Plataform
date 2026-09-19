@@ -318,6 +318,7 @@ export function HiloDeSesion({
   // desplazamiento y volver a pintar el hilo entero por eso sería tirar la máquina. Lo que sí es
   // estado es el aviso, porque se ve.
   const listaRef = useRef<HTMLOListElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const alFondoRef = useRef(true);
   const [hayNuevoAbajo, setHayNuevoAbajo] = useState(false);
 
@@ -554,6 +555,7 @@ export function HiloDeSesion({
         <div className="flex items-center gap-s2">
           <IconoPluma className="h-4 w-4 shrink-0 text-copper-text" />
           <textarea
+            ref={textareaRef}
             aria-label="Qué anotar"
             placeholder="…y en dos palabras, qué pasó"
             rows={1}
@@ -574,15 +576,14 @@ export function HiloDeSesion({
           </label>
           {SELLOS_EN_ORDEN.map((kind) => {
             const Icono = ICONO_SELLO[kind];
-            // Ola post-revisión de 3A.3 (I4) — **`aria-disabled`, no `disabled`** (regla U9,
-            // cabecera de `ui/Button.tsx`): un `<button disabled>` sale del recorrido de teclado.
-            // El motivo va en el `title` para que apagado no sea mudo, y el `onClick` se ignora.
-            const apagado = sellar.isPending || !hayTexto;
-            const motivo = !hayTexto
-              ? " — escribe algo primero"
-              : sellar.isPending
-                ? " — enviando"
-                : "";
+            // Fix round 2 (Task 10) — **el sello NUNCA se apaga por falta de texto.** Era el
+            // mismo defecto que la regla prohíbe en el botón de guardar/enviar (U9): apagarlo sin
+            // texto lo saca del recorrido de teclado y no explica nada a quien lo pulsa a ciegas.
+            // Ahora solo `sellar.isPending` apaga (con motivo en `title`), y sin texto el `onClick`
+            // escribe el mismo error en línea que ya pinta el formulario y devuelve el foco a la
+            // caja — exactamente lo que hace pulsar «enviar» vacío en cualquier otro formulario.
+            const apagado = sellar.isPending;
+            const motivo = apagado ? " — enviando" : "";
             return (
               <button
                 key={kind}
@@ -591,6 +592,11 @@ export function HiloDeSesion({
                 aria-disabled={apagado || undefined}
                 onClick={() => {
                   if (apagado) return;
+                  if (!hayTexto) {
+                    setError("Escribe algo antes de sellar.");
+                    textareaRef.current?.focus();
+                    return;
+                  }
                   void poner(kind);
                 }}
                 className="grid h-[1.6rem] w-[1.6rem] place-items-center rounded-radius-sm border border-muted/40 text-muted transition-colors hover:border-copper hover:text-copper-text aria-disabled:cursor-not-allowed aria-disabled:opacity-40"

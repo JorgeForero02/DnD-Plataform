@@ -14,6 +14,9 @@ import { PanelDeIniciativa } from "./PanelDeIniciativa";
 import { IconoCerrar, IconoD20 } from "../../ui/Iconos";
 import { useCurrentSession } from "../sessions/hooks";
 import { useCurrentEncounter } from "../encounters/hooks";
+import { useMyRole } from "../campaigns/members";
+import { enumerar } from "../../dominio/listas";
+import { useAuthStore } from "../../store/auth.store";
 
 // Tarea 2C.5 — **lo que te han pedido.**
 //
@@ -105,6 +108,15 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   // Por petición, porque cada una es una decisión distinta.
   const [inspirados, setInspirados] = useState<Record<string, boolean>>({});
 
+  // Task 11 (3.2) — **el DM no ve un panel grande por cada jugador que falta.** `useMyRole` es
+  // el mismo hook que ya decide «DM o no» en toda la interfaz (`CLAUDE.md`: `canView` es el dueño
+  // único de QUÉ se ve; esto solo decide CÓMO se pinta lo que el servidor ya entregó). Una
+  // petición de encuentro sobre un personaje del DM sigue con su `PanelDeIniciativa` grande —es
+  // su propio turno, y ahí sí quiere el panel entero—; el resto se compacta.
+  const { role: miRol } = useMyRole(campaignId);
+  const esDm = miRol === "DM";
+  const miId = useAuthStore((s) => s.user?.id);
+
   // **Los resultados de iniciativa se van solos cuando dejan de servir** (2026-09-15).
   // `respondidas` es estado local y hasta hoy no se vaciaba nunca: la caja «Iniciativa tirada»
   // se quedaba encima de la mesa hasta recargar la página. Se pinta SOLO mientras SU encuentro
@@ -146,6 +158,14 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
   // exactamente `null`».
   const deEncuentro = pendientes.filter((p) => Boolean(p.encounterId));
   const normales = pendientes.filter((p) => !p.encounterId);
+  // Task 11 (3.2) — **de las de encuentro, el DM se queda su panel grande solo si el personaje es
+  // suyo**; las del resto de la mesa van a la caja compacta de abajo. Un jugador nunca entra por
+  // aquí: `esDm` es `false` y `deEncuentroPropias` se queda con la lista entera, que es justo el
+  // comportamiento de antes de esta tarea.
+  const esDePersonajePropio = (p: RollRequestRow) =>
+    personajes.data?.find((c) => c.id === p.characterId)?.ownerId === miId;
+  const deEncuentroPropias = esDm ? deEncuentro.filter(esDePersonajePropio) : deEncuentro;
+  const deEncuentroAjenas = esDm ? deEncuentro.filter((p) => !esDePersonajePropio(p)) : [];
   // I-6 — el resultado de una respondida vuelve a la caja de la que salió su petición, no a la
   // que quede montada. `respondidasDeEncuentro` tiene su propio sitio (ver más abajo); la caja
   // pequeña solo abre por `normales` o por `respondidasNormales`, nunca por las dos mezcladas.
@@ -222,7 +242,7 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
 
   return (
     <>
-      {deEncuentro.map((peticion) => (
+      {deEncuentroPropias.map((peticion) => (
         <PanelDeIniciativa
           key={peticion.id}
           peticion={peticion}
@@ -237,6 +257,48 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
           error={errores[peticion.id]}
         />
       ))}
+
+      {/* Task 11 (3.2) — **la mesa espera un combate, no cinco.** El DM conserva la puerta de
+          tirar por un ausente (D-OP-23), pero como una fila por persona dentro de UNA caja, no
+          un `PanelDeIniciativa` por jugador apilado sobre la mesa. */}
+      {deEncuentroAjenas.length > 0 && (
+        <section aria-label="Iniciativa de la mesa por tirar" className="mb-s5">
+          <Panel className="max-w-[24rem] border-warning">
+            <p className="font-chrome text-chrome-sm text-text">
+              Faltan por tirar:{" "}
+              {enumerar(deEncuentroAjenas.map((p) => nombreDelPersonaje(p) ?? "alguien"))}
+            </p>
+            <ul className="mt-s3 flex flex-col gap-s2">
+              {deEncuentroAjenas.map((peticion) => {
+                const nombre = nombreDelPersonaje(peticion) ?? "alguien";
+                const error = errores[peticion.id];
+                return (
+                  <li key={peticion.id} className="flex items-center justify-between gap-s2">
+                    <span className="font-chrome text-chrome-xs text-muted">{nombre}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="px-2 py-0.5 text-chrome-xs"
+                      onClick={() => alTirar(peticion)}
+                      disabled={tirandoEsta(peticion.id)}
+                    >
+                      Tirar por {nombre}
+                    </Button>
+                    {error && (
+                      <p
+                        role="alert"
+                        className="w-full font-chrome text-chrome-xs text-danger-text"
+                      >
+                        {error}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        </section>
+      )}
 
       {/* I-6 — el resultado de una iniciativa ya tirada, en su propio sitio. El panel grande de
           arriba desaparece en cuanto la petición deja de estar pendiente (se pinta a partir de

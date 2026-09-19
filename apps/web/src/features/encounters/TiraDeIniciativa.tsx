@@ -43,6 +43,20 @@ import { IconoLapiz } from "../../ui/Iconos";
 // últimos ya los pinta el elenco, que sigue debajo — repetirlos aquí sería una segunda ficha de
 // personaje con su segunda regla de visibilidad. Aquí va el ORDEN.
 
+/**
+ * Task 11 (correcciones de interfaz, 2026-09-19) — **el nombre base de un combatiente**, sin el
+ * número que el servidor añade para distinguir copias (`Goblin 1`, `Goblin 2`…). Si no hay número
+ * de por medio, el nombre entero es su propia base — «Sylas» sigue siendo «Sylas».
+ */
+function nombreBase(nombre: string): string {
+  return nombre.match(/^(.*?)(?:\s\d+)?$/)?.[1] ?? nombre;
+}
+
+/** Plural a mano (nunca `Intl`, ver `contexto-comun.md`): con «s» salvo que ya termine en «s». */
+function enPlural(base: string): string {
+  return base.endsWith("s") ? base : `${base}s`;
+}
+
 export function TiraDeIniciativa({
   campaignId,
   sessionId,
@@ -116,6 +130,15 @@ export function TiraDeIniciativa({
   }
   const turnos = [...porPosicion.entries()].sort((a, b) => a[0] - b[0]);
 
+  // Task 11 — **el empate se detecta entre TURNOS, no dentro de uno.** Un grupo ya comparte
+  // iniciativa por construcción (es la misma tirada); lo que el SRD deja «a criterio del DM» es
+  // que dos turnos DISTINTOS caigan en el mismo número, y ese es el chip.
+  const turnosPorIniciativa = new Map<number, number>();
+  for (const [, grupo] of turnos) {
+    const ini = grupo[0].initiative;
+    turnosPorIniciativa.set(ini, (turnosPorIniciativa.get(ini) ?? 0) + 1);
+  }
+
   // **Mientras se prepara, no hay orden que pintar.** El encuentro nace `PREPARING` en cuanto
   // alguien que no es el DM combate (tarea 2): sus combatientes ya existen, con posición 0 y una
   // iniciativa de relleno hasta que respondan, así que pintar la tira de arriba sobre un
@@ -160,7 +183,18 @@ export function TiraDeIniciativa({
       <ol className="scroll-quiet flex min-w-0 shrink items-center gap-s1 overflow-x-auto py-px">
         {turnos.map(([posicion, grupo]) => {
           const actual = posicion === encuentro.activePosition;
-          const nombres = grupo.map((c) => nombreDe(c.characterId)).join(" · ");
+          const nombresIndividuales = grupo.map((c) => nombreDe(c.characterId));
+          const nombresCompletos = enumerar(nombresIndividuales);
+          // Task 11 (4.4) — **«Goblin 1 · Goblin 2 · Goblin 3» era la fila que se comía la tira.**
+          // Si el grupo entero comparte nombre base, se pinta «Goblins (3)» y los tres nombres
+          // completos se quedan en `title`, a un vistazo de ratón. Si no comparten base —un grupo
+          // mixto, o uno solo—, se enumeran como pide la Task 1 («A», «A y B», «A, B y C»).
+          const esGrupoUniforme =
+            nombresIndividuales.length > 1 &&
+            nombresIndividuales.every((n) => nombreBase(n) === nombreBase(nombresIndividuales[0]));
+          const nombres = esGrupoUniforme
+            ? `${enPlural(nombreBase(nombresIndividuales[0]))} (${nombresIndividuales.length})`
+            : nombresCompletos;
           // **`every` y no `some`**: una posición puede llevar un grupo entero —dos goblins que
           // tiraron juntos— y apagar la casilla porque uno cayó diría que cayeron los dos.
           const caido = grupo.every((c) => c.derrotado);
@@ -171,10 +205,16 @@ export function TiraDeIniciativa({
             personajes.find((c) => c.id === primero) ?? pnjs.find((p) => p.id === primero) ?? null;
           const voz = quien ? vozDePersonaje(quien) : "text-muted";
           const apuntado = objetivo?.id === primero;
-          // Ola post-revisión de 3A.3 (M3) — en una posición agrupada («Goblin A · Goblin B») el
-          // chip apunta SOLO al primero (`primero`); el rótulo del botón dice a quién de verdad,
-          // no la fila entera. El nombre visible sigue siendo el grupo.
+          // Ola post-revisión de 3A.3 (M3) — en una posición agrupada el chip apunta SOLO al
+          // primero (`primero`); el rótulo del botón dice a quién de verdad, no la fila entera.
           const nombreObjetivo = nombreDe(primero);
+          // Task 11 — el `aria-label` del grupo dice «grupo de N X», no repite el rótulo corto
+          // visible (que ya lo dice a la vista) ni el nombre suelto del primero (que induciría a
+          // pensar que se apunta solo a uno cuando el rótulo visible habla de todos).
+          const etiquetaApuntar = esGrupoUniforme
+            ? `Apuntar al grupo de ${nombresIndividuales.length} ${enPlural(nombreBase(nombresIndividuales[0])).toLowerCase()}`
+            : `Apuntar a ${nombreObjetivo}`;
+          const empatada = (turnosPorIniciativa.get(grupo[0].initiative) ?? 0) > 1;
           return (
             <li
               key={posicion}
@@ -197,7 +237,7 @@ export function TiraDeIniciativa({
               <button
                 type="button"
                 aria-pressed={apuntado}
-                aria-label={`Apuntar a ${nombreObjetivo}`}
+                aria-label={apuntado ? `Dejar de apuntar a ${nombreObjetivo}` : etiquetaApuntar}
                 title={
                   apuntado ? `Dejar de apuntar a ${nombreObjetivo}` : `Apuntar a ${nombreObjetivo}`
                 }
@@ -210,6 +250,7 @@ export function TiraDeIniciativa({
                 />
                 <span
                   className={`font-chrome text-chrome-sm ${actual ? "text-text" : "text-text"}`}
+                  title={esGrupoUniforme ? nombresCompletos : undefined}
                 >
                   {nombres}
                 </span>
@@ -218,6 +259,12 @@ export function TiraDeIniciativa({
                 >
                   {grupo[0].initiative}
                 </span>
+                {empatada && (
+                  // Task 11 (4.3) — el SRD deja el empate a criterio del DM (E-IB-14); el lápiz de
+                  // «Corregir la iniciativa» de abajo YA es la puerta para deshacerlo, así que el
+                  // chip solo avisa, no añade una acción nueva.
+                  <span className="font-data text-chrome-xs text-warning-text">empate</span>
+                )}
               </button>
               {actual && <span className="sr-only">Le toca</span>}
               {caido && <span className="sr-only">Cayó</span>}
@@ -229,7 +276,7 @@ export function TiraDeIniciativa({
                     type="button"
                     onClick={() => revelar.mutate(ocultosDe(grupo).map((p) => p.id))}
                     disabled={revelar.isPending}
-                    aria-label={`Revelar a ${nombres}`}
+                    aria-label={`Revelar a ${nombresCompletos}`}
                     className="underline-offset-2 hover:text-copper-text hover:underline"
                   >
                     Revelar
@@ -240,8 +287,8 @@ export function TiraDeIniciativa({
                 <button
                   type="button"
                   onClick={() => setCorrigiendo(grupo[0].id)}
-                  aria-label={`Corregir la iniciativa de ${nombres}`}
-                  title={`Corregir la iniciativa de ${nombres}`}
+                  aria-label={`Corregir la iniciativa de ${nombresCompletos}`}
+                  title={`Corregir la iniciativa de ${nombresCompletos}`}
                   className="rounded-full p-px text-muted transition-colors hover:text-copper-text"
                 >
                   <IconoLapiz className="h-3 w-3" />
@@ -671,7 +718,11 @@ function SalaDeEspera({
               variant="ghost"
               className="px-2 py-0.5 text-chrome-xs"
               disabled={forceStart.isPending}
-              aria-describedby={forceStart.isPending ? "sala-espera-empezar-motivo" : undefined}
+              aria-describedby={
+                forceStart.isPending
+                  ? "sala-espera-empezar-motivo sala-espera-consecuencia"
+                  : "sala-espera-consecuencia"
+              }
               onClick={() => forceStart.mutate(encuentro.id)}
             >
               Empezar igualmente
@@ -692,6 +743,16 @@ function SalaDeEspera({
           </>
         )}
       </div>
+
+      {/* Task 11 (3.2) — **«Empezar igualmente» tiene consecuencia, y se dice sin esperar al
+          `title`.** Antes solo la sabía quien pasaba el ratón; ahora es una frase visible bajo el
+          contador, y el botón la lleva por `aria-describedby` para quien no lo ve. Solo el DM ve
+          el botón, así que solo el DM ve la frase. */}
+      {esDm && (
+        <p id="sala-espera-consecuencia" className="mb-s2 font-chrome text-chrome-xs text-muted">
+          El sistema tira la iniciativa por los que faltan.
+        </p>
+      )}
 
       {cuerpo}
 

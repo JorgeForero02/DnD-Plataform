@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TiradasPendientes } from "../TiradasPendientes";
@@ -7,6 +7,8 @@ import type { RollRequestRow } from "../api";
 import * as charactersApi from "../../characters/api";
 import type { Character } from "../../characters/api";
 import * as characterSheetApi from "../../character-sheet/api";
+import * as membersApi from "../../campaigns/members";
+import { useAuthStore } from "../../../store/auth.store";
 
 // Tarea 2C.5 — la mitad de quien recibe el recado. Se prueba **lo que puede romperse en
 // silencio**:
@@ -487,5 +489,93 @@ describe("TiradasPendientes", () => {
 
       expect(await screen.findByText("Aplicado: +9 PG (falló)")).toBeInTheDocument();
     });
+  });
+});
+
+// Task 11 (correcciones de interfaz 2026-09-19, 3.2) — el DM ya no ve un `PanelDeIniciativa`
+// grande por cada jugador que falta: las peticiones ajenas se compactan en UNA caja, con la
+// puerta de «tirar por un ausente» (D-OP-23) como botón por fila. Su propio personaje conserva
+// el panel grande, y un jugador (no DM) sigue viendo exactamente lo de siempre.
+describe("TiradasPendientes — la caja compacta de iniciativa del DM", () => {
+  const TESSA: Character = { ...BRANN, id: "ch-2", name: "Tessa", ownerId: "u2" };
+  const MIRELA: Character = { ...BRANN, id: "ch-3", name: "Mirela", ownerId: "u3" };
+  const PJ_DEL_DM: Character = { ...BRANN, id: "ch-dm", name: "Grommash", ownerId: "dm1" };
+
+  const PET_TESSA: RollRequestRow = { ...DE_ENCUENTRO, id: "req-t", characterId: "ch-2" };
+  const PET_MIRELA: RollRequestRow = { ...DE_ENCUENTRO, id: "req-m", characterId: "ch-3" };
+  const PET_DM: RollRequestRow = { ...DE_ENCUENTRO, id: "req-dm", characterId: "ch-dm" };
+
+  beforeEach(() => {
+    useAuthStore.setState({
+      user: { id: "dm1", email: "dm@mesa.test", displayName: "DM", isAdmin: false },
+    });
+    vi.spyOn(membersApi, "fetchMembers").mockResolvedValue([
+      { userId: "dm1", displayName: "DM", role: "DM" },
+      { userId: "u2", displayName: "La jugadora de Tessa", role: "PLAYER" },
+      { userId: "u3", displayName: "La jugadora de Mirela", role: "PLAYER" },
+    ]);
+  });
+
+  afterEach(() => {
+    useAuthStore.setState({ user: null });
+  });
+
+  it("el DM ve UNA caja compacta con las peticiones ajenas, no un panel grande por jugador", async () => {
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([TESSA, MIRELA, PJ_DEL_DM]);
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PET_TESSA, PET_MIRELA]);
+
+    pintar();
+
+    expect(await screen.findByText(/Faltan por tirar: Tessa y Mirela/)).toBeInTheDocument();
+    expect(screen.queryByText(/empieza el combate/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tirar por Tessa" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tirar por Mirela" })).toBeInTheDocument();
+  });
+
+  it("una petición sobre el personaje del propio DM sigue con su panel grande", async () => {
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([PJ_DEL_DM, TESSA]);
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PET_DM, PET_TESSA]);
+
+    pintar();
+
+    expect(await screen.findByText(/empieza el combate/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Faltan por tirar: Tessa/)).toBeInTheDocument();
+  });
+
+  it("«Tirar por Tessa» llama a la misma API que ya usa el panel grande", async () => {
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([TESSA]);
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PET_TESSA]);
+    const responder = vi.spyOn(rollRequestsApi, "answerRollRequest").mockResolvedValue({
+      revealed: true,
+      eventId: "ev-t",
+      expression: "1d20+2",
+      audience: "PUBLIC",
+      rolls: [10],
+      kept: [10],
+      dropped: [],
+      modifier: 2,
+      total: 12,
+      natural: "NONE",
+      outcome: "NO_DC",
+    });
+
+    pintar();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Tirar por Tessa" }));
+
+    await waitFor(() => expect(responder).toHaveBeenCalledWith(CAMPANA, "req-t", false));
+  });
+
+  it("un jugador (no DM) sigue viendo su propio panel grande, sin caja compacta", async () => {
+    useAuthStore.setState({
+      user: { id: "u2", email: "tessa@mesa.test", displayName: "Tessa", isAdmin: false },
+    });
+    vi.spyOn(charactersApi, "fetchCharacters").mockResolvedValue([TESSA]);
+    vi.spyOn(rollRequestsApi, "fetchRollRequests").mockResolvedValue([PET_TESSA]);
+
+    pintar();
+
+    expect(await screen.findByText(/empieza el combate/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Faltan por tirar/)).not.toBeInTheDocument();
   });
 });

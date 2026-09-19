@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HiloDeSesion } from "../HiloDeSesion";
 import type { GameEventRow } from "../../log-api";
 import * as charactersApi from "../../../characters/api";
 import * as membersApi from "../../../campaigns/members";
+import * as sessionsApi from "../../api";
 import type { NpcEnLaMesa } from "../../../bestiario/api";
 
 // Ronda de revisión (tarea 11, C4 #15). **El defecto que encontró el revisor**: la tabla que
@@ -75,5 +76,24 @@ describe("HiloDeSesion — un suceso sobre un PNJ nombra al PNJ, no a quien actu
     // Y la frase no repite el nombre: la cabecera ya lo dijo.
     const parrafo = li.querySelector("p");
     expect(parrafo?.textContent).toBe("Klarg pierde 5 PG (10 → 5)");
+  });
+});
+
+// Task 10 — **el sello nunca se apaga por falta de texto.** Pulsarlo sin escribir nada tiene que
+// avisar en línea y devolver el foco a la caja, no quedarse mudo fuera del recorrido de teclado
+// (esa era la trampa de `aria-disabled` sin motivo: U9 la prohíbe para guardar/enviar).
+describe("HiloDeSesion — un sello sin texto avisa en vez de apagarse", () => {
+  it("pulsar «Combate» sin escribir nada escribe el aviso en línea, enfoca la caja y no sella", async () => {
+    const stampSessionNote = vi.spyOn(sessionsApi, "stampSessionNote");
+    montar([]);
+
+    const boton = await screen.findByRole("button", { name: "Combate" });
+    expect(boton).not.toHaveAttribute("aria-disabled");
+
+    fireEvent.click(boton);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Escribe algo antes de sellar.");
+    expect(screen.getByRole("textbox", { name: "Qué anotar" })).toHaveFocus();
+    expect(stampSessionNote).not.toHaveBeenCalled();
   });
 });

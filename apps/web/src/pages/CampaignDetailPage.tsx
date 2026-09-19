@@ -1031,7 +1031,11 @@ function CajonesDelTaller({ campaignId }: { campaignId: string }) {
         title="Bestiario"
         size="xl"
       >
-        <PanelDeBestiario campaignId={campaignId} />
+        {/* Ruling del despacho (mismo espíritu que la Task 8): el `Dialog` ya pinta «Bestiario»
+            como título; sin `cabecera="ninguna"` el panel repetía su propia cabecera de página
+            debajo, dos rótulos para el mismo cajón. `CharactersTab` y `CampaignItemsCatalogPage`
+            —los otros dos cajones— no llevan esta prop: no se les añade aquí. */}
+        <PanelDeBestiario campaignId={campaignId} cabecera="ninguna" />
       </Dialog>
       <Dialog
         open={abierto === "items"}

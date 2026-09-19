@@ -232,7 +232,12 @@ function FilaDeAccion({
     .join(" · ");
 
   return (
-    <li className="flex items-center justify-between gap-s2 border-b border-muted/30 py-s2 last:border-b-0">
+    // Ayudar (`basic:help`) monta el formulario entero de `AyudarA` (selector + botón + «¿Qué
+    // hace?»): dentro de un menú de ~26rem no cabe a la derecha del nombre, y un ítem de flex sin
+    // `min-w-0` se salía del panel sobre el registro (captura del autor, 2026-09-18). La fila
+    // envuelve y el formulario ocupa su propia línea (`basis-full`); los demás controles siguen
+    // a la derecha sin encoger.
+    <li className="flex flex-wrap items-center justify-between gap-s2 border-b border-muted/30 py-s2 last:border-b-0">
       <div className="min-w-0 flex-1">
         <p className="truncate font-chrome text-chrome-sm text-text">{accion.name}</p>
         <p className="truncate font-chrome text-chrome-xs text-muted">{detalle}</p>
@@ -247,7 +252,7 @@ function FilaDeAccion({
           <p className="font-chrome text-chrome-xs text-muted">{fraseDeMotivos(accion.motivos)}</p>
         )}
       </div>
-      <div className="shrink-0">
+      <div className={accion.key === "basic:help" ? "min-w-0 basis-full" : "shrink-0"}>
         {!accion.disponible ? (
           <Button type="button" variant="ghost" disabled aria-describedby={idMotivo}>
             {VERBO_DE_GRUPO[accion.grupo]}

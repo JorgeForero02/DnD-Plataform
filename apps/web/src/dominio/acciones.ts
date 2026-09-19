@@ -4,7 +4,6 @@ import type {
   GrupoDeAccion,
   MotivoNoDisponible,
 } from "@dnd/shared";
-import { NOMBRE_MECANICA } from "./conjuros";
 import { nombreTipoDano } from "./dano";
 
 // Task 4 de 3A.3 (T22) — el vocabulario de la barra de acciones, **una sola vez**. `GrupoDeAccion`,
@@ -89,17 +88,16 @@ export function fraseDeMotivos(motivos: MotivoNoDisponible[]): string {
   return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }
 
-/** El resumen mecánico corto de una fila, cuando lo hay: «1d20+5 vs CA», «1d8+3 cortante», o solo
- *  el nombre del tipo de mecánica cuando no hay dados (conjuros y aptitudes, ruling de la Task 1:
- *  `mecanica` para esos dos grupos solo trae `{ tipo }`, nunca `dados`/`tipoDeDano` — **se pinta
- *  lo que hay, sin inventar una expresión que el servidor no mandó**). */
+/** El resumen mecánico corto de una fila, cuando lo hay: «1d20+5 vs CA», «1d8+3 cortante», o cadena
+ *  vacía cuando no hay dados (conjuros y aptitudes, ruling de la Task 1: `mecanica` para esos dos
+ *  grupos solo trae `{ tipo }`, nunca `dados`/`tipoDeDano`). `NOMBRE_MECANICA[tipo]` —«Texto»,
+ *  «Daño o curación»— es vocabulario del motor, no de la mesa: no se pinta. `FilaDeAccion` ya
+ *  filtra las partes vacías con `.filter(Boolean)`. */
 export function fraseDeMecanica(mecanica: NonNullable<AccionDisponible["mecanica"]>): string {
-  if (mecanica.dados) {
-    return mecanica.tipoDeDano
-      ? `${mecanica.dados} ${nombreTipoDano(mecanica.tipoDeDano)}`
-      : mecanica.dados;
-  }
-  return NOMBRE_MECANICA[mecanica.tipo];
+  if (!mecanica.dados) return "";
+  return mecanica.tipoDeDano
+    ? `${mecanica.dados} ${nombreTipoDano(mecanica.tipoDeDano)}`
+    : mecanica.dados;
 }
 
 /**

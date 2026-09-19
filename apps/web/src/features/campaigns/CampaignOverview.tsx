@@ -14,6 +14,7 @@ import { Badge } from "../../ui/Badge";
 import { EmptyState } from "../../ui/Collection";
 import { resumenDeCuerpo, ETIQUETA_DE_TIPO, ROTULO_PLURAL } from "../entities/resumen";
 import { IconoDeTipo } from "../entities/iconos";
+import { fechaLarga } from "../../dominio/fechas";
 
 // **El resumen es un tablero, adoptado de la maqueta (2026-09-02).**
 //
@@ -36,13 +37,11 @@ import { IconoDeTipo } from "../entities/iconos";
 // lo que existe. El «8 lugares» de un jugador son ocho que él puede ver, que es la cifra
 // honesta que enseñarle, y nada de esto rederiva la matriz de visibilidad para averiguarlo.
 
-function fechaLarga(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
+// Task 7 (2026-09-19) — `fechaLarga` se mudó a `dominio/fechas.ts`: este fichero tenía su propia
+// copia local, sin año, mientras `SessionDetailPage.tsx` tenía la suya, con año — la misma fecha
+// habría podido decir dos cosas distintas según la pantalla. La versión compartida sí lleva año
+// (`día de la semana, día de mes de año`); esta pantalla no lo echaba en falta a propósito, solo
+// porque nadie se lo había pedido.
 
 // `Session.notes` es `Json?` en el esquema y `unknown` en el cliente (api.ts lo dice ahí
 // mismo): esta pantalla solo escribe texto plano, pero nada garantiza que lo que vuelva lo

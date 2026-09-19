@@ -77,6 +77,18 @@ describe("el menú del PNJ ofrece revelar/ocultar según su visibilidad", () => 
   });
 });
 
+describe("los PG del PNJ, según quién mira (I-2)", () => {
+  it("el DM ve la cifra; un jugador ve «PG ocultos», no «Sin puntos de golpe en la hoja»", async () => {
+    montar({ esDm: false });
+
+    expect(await screen.findByText("PG ocultos")).toBeInTheDocument();
+    expect(screen.queryByText("Sin puntos de golpe en la hoja.")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Goblin capataz: puntos de golpe ocultos" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("el nombre enlaza a la ficha del mundo (E-PM-12)", () => {
   it("con `entityId` el nombre es un enlace a su ficha", async () => {
     montar({ pnj: { ...GOBLIN, entityId: "ent-1" } });

@@ -117,6 +117,7 @@ export function Cabecera({
               etiqueta="Inic."
               etiquetaLarga="Iniciativa"
               valor={sheet.derived.initiative}
+              signo
             />
             {/* Ronda de arreglo (2026-09-12): «Vel. (pies)» partía línea a 4,75rem (el ancho de
               casilla que se abandonó por eso); 6rem es la corrección, no el problema. La unidad
@@ -141,6 +142,7 @@ export function Cabecera({
                 etiqueta="Comp."
                 etiquetaLarga="Competencia"
                 valor={sheet.derived.proficiencyBonus}
+                signo
               />
             )}
           </div>

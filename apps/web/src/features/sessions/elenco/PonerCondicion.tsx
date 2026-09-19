@@ -6,6 +6,7 @@ import { fieldControlClass } from "../../../ui/Field";
 import { useApplyCondition } from "../../character-sheet/hooks";
 import { efectoCondicion } from "../../character-sheet/Condiciones";
 import {
+  DEL_MANUAL,
   NOMBRE_CONDICION,
   PREFIJO_CONCENTRACION,
   claveDeConcentracion,
@@ -32,7 +33,12 @@ import {
 // el servidor calcula el vencimiento sumándolos a SU reloj. No hay ningún temporizador local, ni
 // puede haberlo: la mesa está en varios navegadores y el único reloj que comparten es el suyo.
 
-const CLAVES_SRD = Object.keys(NOMBRE_CONDICION);
+// Task 6 (2026-09-19) — la leyenda cuenta sola: «Te ayudan» y «En furia» comparten tabla con las
+// quince del SRD (`NOMBRE_CONDICION`) porque las tres pintan la misma pantalla, pero no son del
+// manual, y hasta hoy salían mezcladas bajo «Las quince del manual», que dejaba de ser cierto en
+// cuanto una de las dos estaba puesta. `DEL_MANUAL` es la marca por clave; aquí solo se filtra.
+const CLAVES_DEL_MANUAL = Object.keys(NOMBRE_CONDICION).filter((k) => DEL_MANUAL[k]);
+const CLAVES_DE_LA_MESA = Object.keys(NOMBRE_CONDICION).filter((k) => !DEL_MANUAL[k]);
 
 /** Un asalto son seis segundos del reloj de campaña. La escala de la maqueta, en su unidad. */
 const SEGUNDOS_POR_ASALTO = 6;
@@ -163,10 +169,10 @@ export function PonerCondicion({
     >
       <fieldset className="border-0 p-0">
         <legend className="mb-s2 font-chrome text-chrome-xs uppercase tracking-wide text-muted">
-          Las quince del manual
+          Las del manual ({CLAVES_DEL_MANUAL.length})
         </legend>
         <div className="flex flex-wrap gap-s1">
-          {CLAVES_SRD.map((k) => (
+          {CLAVES_DEL_MANUAL.map((k) => (
             <Chip
               key={k}
               activo={elegida === k}
@@ -186,11 +192,23 @@ export function PonerCondicion({
           La maqueta pone aquí un campo libre («una de la mesa»); aquí ese campo es el conjuro,
           porque una clave inventada saldría en pantalla como «Sin traducir: …» y eso es
           justamente lo que prohíbe la regla de enumeraciones. */}
-      <div className="mt-s4">
-        <p className="mb-s2 font-chrome text-chrome-xs uppercase tracking-wide text-muted">
+      <fieldset className="mt-s4 border-0 p-0">
+        <legend className="mb-s2 font-chrome text-chrome-xs uppercase tracking-wide text-muted">
           De la mesa, no del manual
-        </p>
+        </legend>
         <div className="flex flex-wrap items-center gap-s2">
+          {CLAVES_DE_LA_MESA.map((k) => (
+            <Chip
+              key={k}
+              activo={elegida === k}
+              onClick={() => {
+                setElegida(k);
+                setConjuro("");
+              }}
+            >
+              {nombreCondicion(k)}
+            </Chip>
+          ))}
           <Chip
             activo={esConcentracion}
             onClick={() => {
@@ -211,7 +229,7 @@ export function PonerCondicion({
             />
           )}
         </div>
-      </div>
+      </fieldset>
 
       {esAgotamiento && (
         <div className="mt-s4 flex items-center gap-s2">

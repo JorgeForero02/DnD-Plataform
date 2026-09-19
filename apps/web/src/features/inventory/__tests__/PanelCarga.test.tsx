@@ -50,9 +50,10 @@ describe("PanelCarga — variante de sobrecarga (BAJA-1: el servidor decide, el 
     render(
       <PanelCarga totalWeightOz={1000} carryCapacityOz={CAPACIDAD_OZ} encumbrance={sinCargar} />,
     );
-    // 1200 oz = 75 lb = 34.0 kg; 2400 oz = 150 lb = 68.0 kg.
-    expect(screen.getByText(/34\.0 kg/)).toBeInTheDocument();
-    expect(screen.getByText(/68\.0 kg/)).toBeInTheDocument();
+    // 1200 oz = 75 lb = 34.0 kg; 2400 oz = 150 lb = 68.0 kg. Task 7 — coma decimal en es-ES, no
+    // el punto de `toFixed` a secas.
+    expect(screen.getByText(/34,0 kg/)).toBeInTheDocument();
+    expect(screen.getByText(/68,0 kg/)).toBeInTheDocument();
   });
 
   it("el estado manda incluso sin capacidad de carga conocida (no depende de carryCapacityOz)", () => {

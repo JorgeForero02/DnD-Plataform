@@ -43,6 +43,7 @@ import {
   TIPOS_DE_DANO,
   TIPOS_DE_OBJETO,
   cpAPo,
+  decimalesComoMaximo,
 } from "./vocabulario";
 
 // Carril B2 — el formulario de crear/editar un objeto de la campaña. Calcado del molde de
@@ -74,12 +75,10 @@ export function CampaignItemEditor({
   const [kind, setKind] = useState<ItemKind>(item?.kind ?? "GEAR");
   const [description, setDescription] = useState(item?.description ?? "");
   const [weightKg, setWeightKg] = useState(
-    item ? ozAKg(item.weightOz).toLocaleString("es-ES", { maximumFractionDigits: 3 }) : "0",
+    item ? decimalesComoMaximo(ozAKg(item.weightOz), 3) : "0",
   );
   const [costPo, setCostPo] = useState(
-    item?.costCp != null
-      ? cpAPo(item.costCp).toLocaleString("es-ES", { maximumFractionDigits: 2 })
-      : "",
+    item?.costCp != null ? decimalesComoMaximo(cpAPo(item.costCp), 2) : "",
   );
   const [requiresAttunement, setRequiresAttunement] = useState(item?.requiresAttunement ?? false);
   const [slot, setSlot] = useState<EquipSlot | "">(item?.slot ?? "");

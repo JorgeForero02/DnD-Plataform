@@ -45,9 +45,10 @@ import { BotonDeApuntar } from "./BotonDeApuntar";
  * en pantallas del DM), y la CA exacta de un enemigo es precisamente el oráculo que D-OP-11
  * decidió no dar. Que `useCharacterSheet` los entregue igual —el servidor no distingue rol para
  * ESTE endpoint— no convierte enseñarlos en una decisión tomada: se colaron porque la ficha los
- * leía sin mirar quién pregunta. Con `!esDm` no se pasa el máximo —`BarraDePuntosDeGolpe`
- * degrada sola a «Sin puntos de golpe en la hoja.» cuando falta— ni se pinta la CA; el DM sigue
- * viendo los dos.
+ * leía sin mirar quién pregunta. Con `!esDm` no se pasa el máximo, y `ocultos={!esDm}` hace que
+ * `BarraDePuntosDeGolpe` pinte «PG ocultos» en vez de «Sin puntos de golpe en la hoja.» (Task 4,
+ * 2026-09-19: ese mensaje mentía —sí hay PG, este espectador solo no puede verlos—); tampoco se
+ * pinta la CA. El DM sigue viendo los dos.
  *
  * **El bando también se corrige aquí (C-1, misma ronda).** El caso principal del bando es el
  * enemigo, y el enemigo casi siempre es un PNJ: sin este mando, el DM podía convertir a un
@@ -220,7 +221,7 @@ export function FichaDePnj({
           </p>
         </div>
 
-        <BarraDePuntosDeGolpe nombre={pnj.name} actual={actual} maximo={maximo} />
+        <BarraDePuntosDeGolpe nombre={pnj.name} actual={actual} maximo={maximo} ocultos={!esDm} />
 
         {(ca !== null || velocidad !== null) && (
           <p className="mt-s1 flex flex-wrap gap-x-s3 font-chrome text-chrome-xs text-muted">

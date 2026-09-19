@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { AbilityKey, DerivedValue, TraceStep } from "@dnd/shared";
 import { NOMBRE_CARACTERISTICA, NOMBRE_OPERACION_TRAZA, traducirLabelKey } from "./vocabulario";
 import { formulaDeUnaLinea } from "./formula";
+import { conSigno } from "../../dominio/numeros";
 import { CAJA_DE_HOJA, ROTULO_DE_CASILLA } from "./Tarjeta";
 import { Casilla } from "./Casilla";
 
@@ -266,6 +267,12 @@ export interface ValorDerivadoProps {
    * `"compacta"`**; las demás la ignoran porque no pasan por `Casilla`.
    */
   nota?: ReactNode;
+  /**
+   * Task 5 (2026-09-19) — este valor es un MODIFICADOR, no una cifra absoluta como la CA o la
+   * velocidad: se pinta con `conSigno` en vez del `valor.total` desnudo. Solo lo mira la variante
+   * `"compacta"`; las demás (`"linea"` incluida) ya llevan su propio signo a mano.
+   */
+  signo?: boolean;
 }
 
 /**
@@ -279,6 +286,7 @@ export function ValorDerivado({
   accion,
   variante = "casilla",
   nota,
+  signo = false,
 }: ValorDerivadoProps) {
   const [abierta, setAbierta] = useState(false);
   const listId = useId();
@@ -337,7 +345,7 @@ export function ValorDerivado({
           aria-controls={listId}
           className="w-full hover:text-accent-text"
         >
-          {valor.total}
+          {signo ? conSigno(valor.total) : valor.total}
         </button>
       </Casilla>
     );

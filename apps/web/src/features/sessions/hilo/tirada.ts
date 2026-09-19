@@ -90,7 +90,7 @@ export function datosDeTirada(
         desglose: [
           { origen: "Dado", valor: `d${p.die}` },
           { origen: "Sale", valor: String(p.roll) },
-          { origen: "Dice", valor: p.text },
+          { origen: "Resultado", valor: p.text },
         ],
       };
 

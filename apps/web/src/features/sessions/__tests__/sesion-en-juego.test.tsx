@@ -201,8 +201,8 @@ describe("empezar y cerrar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
 
     const area = await screen.findByLabelText("Qué pasó");
-    await waitFor(() => expect((area as HTMLTextAreaElement).value).toContain("· Combate"));
-    expect((area as HTMLTextAreaElement).value).toContain("· PNJ: Maestre Kellan");
+    await waitFor(() => expect((area as HTMLTextAreaElement).value).toContain("— Combate"));
+    expect((area as HTMLTextAreaElement).value).toContain("— PNJ: Maestre Kellan");
   });
 
   it("**el DM elige quién puede leer la crónica, y esa elección viaja al servidor**", async () => {

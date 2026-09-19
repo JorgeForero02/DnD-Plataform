@@ -4,6 +4,7 @@ import type { CombatantSide } from "@dnd/shared";
 import type { Character } from "../../characters/api";
 import { descriptorDePersonaje } from "../../characters/descriptor";
 import { vozDePersonaje } from "../../../dominio/voces";
+import { inicialDe } from "../../../dominio/nombres";
 import { AyudarA } from "./AyudarA";
 import { useObjetivoStore } from "../objetivo.store";
 import { alPulsarLaTarjeta } from "./apuntar";
@@ -481,7 +482,7 @@ export function Retrato({
       aria-hidden="true"
       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-radius-sm border border-current bg-surface font-title text-chrome-md ${voz}`}
     >
-      {personaje.name.trim().charAt(0).toUpperCase()}
+      {inicialDe(personaje.name)}
     </span>
   );
 }
@@ -522,11 +523,27 @@ export function BarraDePuntosDeGolpe({
   nombre,
   actual,
   maximo,
+  ocultos,
 }: {
   nombre: string;
   actual: number | null;
   maximo: number | null;
+  /** El máximo se le negó a este espectador a propósito (`FichaDePnj`, `!esDm`), no es que la
+   *  hoja no tenga PG: se pinta la barra sin cifras en vez del mensaje de «no hay dato». */
+  ocultos?: boolean;
 }) {
+  if (ocultos) {
+    return (
+      <div className="mt-s1">
+        <p className="font-data text-chrome-xs text-muted">PG ocultos</p>
+        <div
+          role="img"
+          aria-label={`${nombre}: puntos de golpe ocultos`}
+          className="mt-px h-1 w-full overflow-hidden rounded-full bg-muted/20"
+        />
+      </div>
+    );
+  }
   if (actual === null || maximo === null || maximo <= 0) {
     return (
       <p className="mt-s1 font-chrome text-chrome-xs text-muted">Sin puntos de golpe en la hoja.</p>

@@ -1,4 +1,5 @@
 import { CLAVE_AYUDA, CLAVE_MUY_CARGADO, damageTypeSchema } from "@dnd/shared";
+import { conEspacioFino } from "../../dominio/numeros";
 import type {
   AbilityKey,
   AttackVerdict,
@@ -210,6 +211,32 @@ export const NOMBRE_CONDICION: Record<string, string> = {
   // enseñaría «Sin traducir: raging» delante del jugador — exactamente el fallo que esta tabla
   // existe para no cometer.
   raging: "En furia",
+};
+
+/**
+ * Task 6 (2026-09-19) — **qué claves de `NOMBRE_CONDICION` son de verdad las quince del SRD**,
+ * marcado por clave y no por una segunda lista escrita a mano en `PonerCondicion.tsx` que podría
+ * desincronizarse de esta tabla. `false` para las dos marcas de mesa que comparten tabla —y por
+ * tanto pantalla— con las quince (`CLAVE_AYUDA`, «raging»): el manual no las define, la mesa sí.
+ */
+export const DEL_MANUAL: Record<string, boolean> = {
+  blinded: true,
+  charmed: true,
+  deafened: true,
+  frightened: true,
+  grappled: true,
+  incapacitated: true,
+  invisible: true,
+  paralyzed: true,
+  petrified: true,
+  poisoned: true,
+  prone: true,
+  restrained: true,
+  stunned: true,
+  unconscious: true,
+  exhaustion: true,
+  [CLAVE_AYUDA]: false,
+  raging: false,
 };
 
 /**
@@ -868,22 +895,10 @@ export function nombreAnulable(target: string): string {
 
 // --- XP (Puerta de efectos §5 bis, E-PE-10, D-CF-68) ----------------------------------------
 
-/**
- * **Números en es-ES con espacio fino de miles** (docs/04-convenciones.md): «1 250», no «1.250»
- * ni «1250».
- *
- * **No usa `toLocaleString("es-ES")`.** El Node de este proyecto se compila con el ICU pequeño
- * («small-icu», solo en-US con datos completos): `(1250).toLocaleString("es-ES")` devuelve
- * `"1250"`, sin agrupar nada, y la unitaria de esta función lo cazó en el primer intento. Se
- * agrupa a mano — de tres en tres desde la derecha — para no depender de qué ICU trae el Node
- * que ejecute esto.
- */
-function conEspacioFino(n: number): string {
-  const negativo = n < 0;
-  const digitos = String(Math.trunc(Math.abs(n)));
-  const agrupado = digitos.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return negativo ? `-${agrupado}` : agrupado;
-}
+// Task 7 (2026-09-19) — `conEspacioFino` se mudó a `dominio/numeros.ts`: el marcador de PX ya
+// no es su único consumidor (`PanelCarga.tsx`, `campaign-items/vocabulario.ts` también lo
+// necesitan para pesos y precios con decimales), y una copia local aquí habría sido la segunda
+// fuente de la misma regla.
 
 /**
  * El marcador de la cabecera y el aviso de nivel disponible, a partir de `sheet.xp` (solo llega

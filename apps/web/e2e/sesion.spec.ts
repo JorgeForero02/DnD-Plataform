@@ -174,7 +174,7 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
   await page.getByRole("tab", { name: "Sesiones" }).click();
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   const cronica = page.getByLabel("Qué pasó");
-  await expect(cronica).toHaveValue(/· Combate: los guardias del muelle/, { timeout: 10_000 });
+  await expect(cronica).toHaveValue(/— Combate: los guardias del muelle/, { timeout: 10_000 });
 
   // **Quién puede leer la crónica se elige aquí, y es una decisión aparte de quién ve la sesión.**
   // El servidor respeta `recapVisibility` desde el plan 02; hasta entonces publicaba el suceso con
@@ -200,7 +200,7 @@ test("la sesión entera: empezar, sellar, verlo en la mesa, y cerrar con la cró
   // pintaba la descripción de la campaña y una frase que prometía esto mismo.
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Dónde se quedó" }).first()).toBeVisible();
-  await expect(page.getByText(/· Combate: los guardias del muelle/).first()).toBeVisible({
+  await expect(page.getByText(/— Combate: los guardias del muelle/).first()).toBeVisible({
     timeout: 15_000,
   });
 });

@@ -13,6 +13,7 @@ import type {
   WeaponRange,
 } from "@dnd/shared";
 import { nombreTipoDano } from "../../dominio/dano";
+import { decimales } from "../../dominio/numeros";
 import {
   armorCategorySchema,
   damageTypeSchema,
@@ -457,8 +458,17 @@ export function kgAOz(kg: number): number {
   return Math.round((kg / KG_PER_LB) * OZ_PER_LB);
 }
 
+/**
+ * Task 7 (2026-09-19) — `decimales` fuerza siempre dos cifras; aquí se quieren como MÁXIMO,
+ * igual que hacía `toLocaleString(..., { maximumFractionDigits: 2 })`: «25 po», no «25,00 po».
+ * Se recortan los ceros de sobra y, si no queda decimal, la coma que los separaba.
+ */
+export function decimalesComoMaximo(n: number, cifras: number): string {
+  return decimales(n, cifras).replace(/,?0+$/, "");
+}
+
 export function formatearPeso(oz: number): string {
-  return `${ozAKg(oz).toLocaleString("es-ES", { maximumFractionDigits: 2 })} kg`;
+  return `${decimalesComoMaximo(ozAKg(oz), 2)} kg`;
 }
 
 export function cpAPo(cp: number): number {
@@ -472,5 +482,5 @@ export function poACp(po: number): number {
 
 export function formatearPrecio(cp: number | null | undefined): string {
   if (cp === null || cp === undefined) return "Sin precio";
-  return `${cpAPo(cp).toLocaleString("es-ES", { maximumFractionDigits: 2 })} po`;
+  return `${decimalesComoMaximo(cpAPo(cp), 2)} po`;
 }

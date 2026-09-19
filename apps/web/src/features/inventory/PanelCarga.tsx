@@ -1,6 +1,7 @@
 import type { EncumbranceInfo } from "@dnd/shared";
 import { IconoCarga } from "./iconos";
 import { ozAKg } from "./peso";
+import { decimales } from "../../dominio/numeros";
 
 // Carril B1 — "Carga: cifra grande + barra sobria + Sin sobrecarga" (pantalla 20 del prototipo).
 //
@@ -47,7 +48,7 @@ export function PanelCarga({
         Carga
       </h2>
       <p className="font-data text-chrome-2xl leading-none text-text">
-        {totalKg.toFixed(1)}
+        {decimales(totalKg, 1)}
         <span className="ml-1 text-chrome-md text-muted">kg</span>
       </p>
       {capacidadKg != null && (
@@ -75,8 +76,8 @@ export function PanelCarga({
             Variante de sobrecarga
           </p>
           <p className="mt-1 font-chrome text-chrome-xs text-muted">
-            Cargado desde {ozAKg(encumbrance.encumberedAtOz).toFixed(1)} kg · muy cargado desde{" "}
-            {ozAKg(encumbrance.heavilyAtOz).toFixed(1)} kg
+            Cargado desde {decimales(ozAKg(encumbrance.encumberedAtOz), 1)} kg · muy cargado desde{" "}
+            {decimales(ozAKg(encumbrance.heavilyAtOz), 1)} kg
           </p>
           <p
             role={encumbrance.state === "heavily" ? "alert" : undefined}

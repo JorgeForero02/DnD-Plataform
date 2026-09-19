@@ -218,7 +218,7 @@ function DialogoDeCierre({
         kind: keyof typeof NOMBRE_SELLO;
         text?: string;
       };
-      return `· ${NOMBRE_SELLO[p.kind]}${p.text ? `: ${p.text}` : ""}`;
+      return `— ${NOMBRE_SELLO[p.kind]}${p.text ? `: ${p.text}` : ""}`;
     })
     .join("\n");
 

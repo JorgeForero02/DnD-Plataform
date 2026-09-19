@@ -7,6 +7,7 @@ import { Markdown } from "../features/entities/Markdown";
 import { useCampaign } from "../features/campaigns/hooks";
 import { useSession } from "../features/sessions/hooks";
 import { useAuthStore } from "../store/auth.store";
+import { fechaLarga } from "../dominio/fechas";
 
 // Ficha U1 (plan 14) — **una sesión se puede LEER.**
 //
@@ -24,15 +25,8 @@ const ROTULO_DE_ESTADO: Record<"PLANNED" | "IN_PROGRESS" | "CLOSED", string> = {
   CLOSED: "Cerrada",
 };
 
-function fechaLarga(iso: string | null): string | null {
-  if (!iso) return null;
-  return new Date(iso).toLocaleDateString("es", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+// Task 7 (2026-09-19) — `fechaLarga` se mudó a `dominio/fechas.ts`: ver el comentario de cabecera
+// de `CampaignOverview.tsx`, que tenía la misma función con una forma ligeramente distinta.
 
 export function SessionDetailPage() {
   const { id = "", sessionId = "" } = useParams();
@@ -67,7 +61,8 @@ export function SessionDetailPage() {
     );
   }
 
-  const cuando = fechaLarga(sesion.scheduledAt ?? sesion.startedAt);
+  const fechaSesion = sesion.scheduledAt ?? sesion.startedAt;
+  const cuando = fechaSesion ? fechaLarga(fechaSesion) : null;
   const cronica = sesion.recap?.trim();
 
   return (

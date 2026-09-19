@@ -218,7 +218,7 @@ describe("las otras dos tiradas", () => {
     expect(datos?.resultado).toBe(73);
     expect(datos?.desglose).toContainEqual({ origen: "Dado", valor: "d100" });
     expect(datos?.desglose).toContainEqual({
-      origen: "Dice",
+      origen: "Resultado",
       valor: "Una llave de latón sin cerradura conocida",
     });
   });

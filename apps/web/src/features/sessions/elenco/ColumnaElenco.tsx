@@ -96,8 +96,12 @@ export function ColumnaElenco({
   // rechaza con 409 fuera de `ACTIVE` (spec §3.3) — un encuentro `PREPARING` se cancela, no se
   // vacía.
   const combateEnMarcha = encuentro?.status === "ACTIVE";
+  // **3.6 — «Su turno» solo con el combate ya `ACTIVE`.** En `PREPARING` `activePosition` suele
+  // valer 0 igual que la posición de todo el mundo (nadie ha tirado iniciativa, así que no hay
+  // orden que fijar todavía), y sin este filtro la sala de espera enseñaba a TODOS los
+  // combatientes con el anillo de «Su turno» antes de que el combate empezara.
   const deQuienEsElTurno = new Set(
-    encuentro && encuentro.activePosition !== null
+    encuentro && encuentro.status === "ACTIVE" && encuentro.activePosition !== null
       ? encuentro.combatants
           .filter((c) => c.position === encuentro.activePosition)
           .map((c) => c.characterId)

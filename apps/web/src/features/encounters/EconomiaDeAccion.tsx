@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { Coste, EconomiaDelTurno } from "@dnd/shared";
+import { enumerar } from "../../dominio/listas";
 
 // Paso 2, tarea A3 — **la mesa enseña lo que te queda del turno.**
 //
@@ -148,11 +149,7 @@ function fraseDeExceso(recursos: Record<Exclude<Coste, "FREE">, boolean>): strin
   if (partes.length === 0) {
     return "Te has pasado de lo que te quedaba. El DM decide qué pasa con eso.";
   }
-  const lista =
-    partes.length === 1
-      ? partes[0]
-      : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
-  return `Ya has usado ${lista}. El DM decide qué pasa con eso — el servidor no impide nada.`;
+  return `Ya has usado ${enumerar(partes)}. El DM decide qué pasa con eso — el servidor no impide nada.`;
 }
 
 export function EconomiaDeAccion({

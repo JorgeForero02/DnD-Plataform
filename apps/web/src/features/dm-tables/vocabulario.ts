@@ -1,5 +1,6 @@
 import type { EntregaInput, TableTrigger } from "@dnd/shared";
 import { COIN_KEYS } from "@dnd/shared";
+import { enumerar } from "../../dominio/listas";
 
 // Tarea 2C.6 — el vocabulario de una tabla del DM.
 //
@@ -90,5 +91,5 @@ export function resumenDeEntrega(entrega: EntregaInput | undefined): string {
   // Una entrega presente pero sin nada dentro no debería existir —el `.refine` del esquema la
   // rechaza— pero si llegara de la base escrita por otra vía, se dice en vez de pintar un botón
   // que promete algo y no lo tiene.
-  return trozos.length === 0 ? "no entrega nada" : trozos.join(" y ");
+  return trozos.length === 0 ? "no entrega nada" : enumerar(trozos);
 }

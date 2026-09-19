@@ -251,9 +251,8 @@ export function TiradasPendientes({ campaignId }: { campaignId: string }) {
             </h3>
             {r.resultado.revealed ? (
               <div className="mt-s2">
-                <p className="text-center font-data text-chrome-xl text-text">
-                  {r.resultado.total}
-                </p>
+                {/* 3.4 — `ResultadoDeTirada` ya pinta el total y el desglose: el `<p>` de aquí
+                    encima repetía el mismo número dos veces en la misma tarjeta. */}
                 <ResultadoDeTirada resultado={r.resultado} etiqueta={r.etiqueta} />
               </div>
             ) : (

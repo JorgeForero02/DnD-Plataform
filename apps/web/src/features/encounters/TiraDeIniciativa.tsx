@@ -18,6 +18,7 @@ import { useMembers } from "../campaigns/members";
 import { useRollRequests } from "../roll-requests/hooks";
 import { useCharacterSheet } from "../character-sheet/hooks";
 import { NOMBRE_ESTADO_DE_COMBATE } from "../../dominio/combate";
+import { enumerar } from "../../dominio/listas";
 import { useAuthStore } from "../../store/auth.store";
 import { vozDePersonaje } from "../../dominio/voces";
 import { useObjetivoStore } from "../sessions/objetivo.store";
@@ -333,11 +334,11 @@ export function TiraDeIniciativa({
       {terminando && (
         <Dialog open onClose={() => setTerminando(false)} title="Terminar el combate">
           <p className="font-chrome text-chrome-sm text-text">
-            {/* **Con la cifra**, que es lo que faltaba: sin ella salía «queda con sus asalto»,
-                que en castellano no es una frase, y la rama singular/plural no servía de nada. */}
-            El orden de turnos desaparece de la mesa. El encuentro no se borra: queda con sus{" "}
-            {encuentro.round} {encuentro.round === 1 ? "asalto" : "asaltos"} y su rastro en el
-            registro.
+            {/* **«su asalto» singular, sin cifra** — poner el número delante también en el
+                singular daba «queda con su 1 asalto», que tampoco es una frase en castellano. */}
+            El orden de turnos desaparece de la mesa. El encuentro no se borra: queda con{" "}
+            {encuentro.round === 1 ? "su asalto" : `sus ${encuentro.round} asaltos`} y su rastro en
+            el registro.
           </p>
           <div className="mt-s4 flex justify-end gap-s3">
             <Button type="button" variant="ghost" onClick={() => setTerminando(false)}>
@@ -580,12 +581,12 @@ function SalaDeEspera({
     return { nombre: pnj?.name ?? "alguien", esJugador: false };
   };
 
-  const textoDeEspera = pendientes
-    .map((p) => {
+  const textoDeEspera = enumerar(
+    pendientes.map((p) => {
       const { nombre, esJugador } = quienEs(p.characterId);
       return esJugador ? nombre : `${nombre} (no se sabe qué jugador lo lleva)`;
-    })
-    .join(" y ");
+    }),
+  );
 
   // **El cuerpo de la pantalla, en el orden en que de verdad se decide.**
   //
@@ -633,11 +634,12 @@ function SalaDeEspera({
     );
   }
 
-  // **Solo el DM, y solo cuando la lista de pendientes ya resolvió.** Pintar «N de M» mientras
-  // `peticionesQuery` está cargando o falló es exactamente el mismo fallo que `cuerpo` de arriba
-  // evita en la frase: una cifra calculada sobre un `[]` que no es «cero pendientes», es «todavía
-  // no lo sé».
-  const contadorListo = esDm && !peticionesQuery.isPending && !peticionesQuery.isError;
+  // **A los dos, DM y jugador — solo la lista de nombres («Esperando a…») sigue siendo del DM.**
+  // «N de M» no delata a quién le falta, así que no hace falta esconderlo del jugador (3.5).
+  // Y solo cuando la lista de pendientes ya resolvió: pintarlo mientras `peticionesQuery` está
+  // cargando o falló es exactamente el mismo fallo que `cuerpo` de arriba evita en la frase: una
+  // cifra calculada sobre un `[]` que no es «cero pendientes», es «todavía no lo sé».
+  const contadorListo = !peticionesQuery.isPending && !peticionesQuery.isError;
 
   return (
     <section

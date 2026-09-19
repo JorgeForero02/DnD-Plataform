@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TiradasPendientes } from "../TiradasPendientes";
 import * as rollRequestsApi from "../api";
@@ -225,8 +225,10 @@ describe("TiradasPendientes", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Tirar iniciativa/i }));
 
-    expect(await screen.findByText("16")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Tu iniciativa" })).toBeInTheDocument();
+    // 3.4 — el total ya no se repite en un `<p>` aparte: solo lo pinta `ResultadoDeTirada`, con
+    // su desglose.
+    const region = await screen.findByRole("region", { name: "Tu iniciativa" });
+    expect(within(region).getByText("16 = 14 dado +2 iniciativa")).toBeInTheDocument();
     // El panel grande ya se fue (la petición dejó de estar pendiente) y la caja pequeña de
     // siempre nunca llegó a abrirse: no había ninguna petición normal ni respuesta normal que la
     // justificara.

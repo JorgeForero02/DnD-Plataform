@@ -32,6 +32,17 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 
 ## Qué sigue, en este orden
 
+> **Decisión del autor, 2026-09-18 (madrugada, al cerrar la noche):** *«con esta beta se puede
+> jugar; aplazaré 3B por un buen tiempo y solo pediré solucionar errores».* Así que **lo que
+> sigue es JUGAR con la beta 0.1.0** (`v0.1.0-beta`, producción en `a0020a6` con la demo nueva
+> sembrada, DM = la cuenta del autor) y **arreglar lo que salga**: cada fallo es una ficha en
+> [06-pendientes.md](./06-pendientes.md) con su medida, y se cierra con los cuatro pasos de
+> `04-convenciones.md`. **3B queda aplazada sin fecha** (bloques en
+> [Paso 3 en dos partes](./superpowers/plans/2026-09-14-paso-3-en-cinco-tandas.md) § Parte B). El
+> Paso 4 (`partida.spec.ts`, guion en
+> [2026-09-18-paso-4-la-partida.md](./superpowers/notes/2026-09-18-paso-4-la-partida.md)) sigue
+> disponible como prueba de regresión si algún día se quiere; no bloquea nada. D-CF-161.
+
 ### 0 · La hoja a página completa — **fusionada a `main` y desplegada el 2026-09-12 (`6d2b2ca` en producción, comprobado en el servidor)**
 
 Las once tareas del [plan](./superpowers/plans/2026-09-11-la-hoja-a-pagina-completa.md) de la

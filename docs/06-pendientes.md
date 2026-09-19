@@ -192,6 +192,13 @@ Decisión del autor de la madrugada del 2026-09-18: **el tablero oficial es Just
 considerando (ficha «Tablero: sandbox del iframe», arriba). Queda pendiente la integración fina:
 ficha ↔ token, y que los PG del token respeten `canView` igual que el resto de la mesa.
 
+## Modo de trabajo desde el 2026-09-18: solo errores (decisión del autor, D-CF-161)
+
+Con la beta 0.1.0 en producción (`a0020a6`, demo sembrada), **3B queda aplazada sin fecha** y
+este documento pasa a recibir **fallos vistos jugando**, uno por ficha, con lo que se vio, dónde
+y cómo reproducirlo. Lo funcional que 3A dejó fuera está en «Dejado por 3A.2» y «Dejado por
+3A.3» y en la Parte B del plan del 14; no se retoma hasta que el autor lo pida.
+
 ## Menores dejados por la revisión final de `cierre/antes-de-3a2` (revisión final 2026-09-18)
 
 La ola de arreglos tras `review-final.md` cerró los tres importantes y cuatro menores baratos con

@@ -92,7 +92,7 @@ de acciones y la mesa converge al prototipo» quedó cerrada el 2026-09-18 en la
 `3a3/la-barra-de-acciones`** (siete tareas sobre `90e3c0b`, revisión final de la rama —1C/5I/11m— y
 una ola; [07-historial.md](./07-historial.md), «3A.3 · La barra de acciones…»; D-CF-145..159): la
 lista única `GET …/actions`, la economía como estado, la banda única, la barra bajo el marco y la
-mesa como el HTML del prototipo. **Fusionada a `main` en `c94fb90` (2026-09-18) y etiquetada `v0.1.0-beta`: el autor declaró la versión beta 0.1.0 al cerrar 3A.** Producción sigue en `334912b` hasta que él despliegue. Lo abierto en
+mesa como el HTML del prototipo. **Fusionada a `main` en `c94fb90` (2026-09-18) y etiquetada `v0.1.0-beta`: el autor declaró la versión beta 0.1.0 al cerrar 3A.** Producción sirve `a0020a6` (comprobado con `SOURCE_COMMIT` el 2026-09-18) — el autor desplegó la beta y borró las campañas de prueba de producción. Lo abierto en
 [06-pendientes.md](./06-pendientes.md), «Dejado por 3A.3». **Siguiente: Paso 4 — la prueba de
 partida, que corre el autor**: escribir y correr el spec de Playwright `partida` (en `apps/web/e2e/`, aún no existe) siguiendo el
 [guion](./superpowers/notes/2026-09-18-paso-4-la-partida.md) (DM y dos jugadores en contextos

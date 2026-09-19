@@ -158,12 +158,14 @@ export function BandaUnica({
           reemplazo de lo que se pierde al truncar — pasar el ratón por encima dice el nombre
           entero sin abrir nada. */}
       <div className="flex min-w-0 flex-1 items-baseline gap-s2">
-        <p
-          className="min-w-0 truncate font-title text-chrome-md text-text"
+        {/* `<h1>` (fix round 2 de la Task 5b): la mesa es una página y este es su título —
+            la escena en curso, o «La mesa, en reposo»—; se ve igual que el `<p>` que era. */}
+        <h1
+          className="min-w-0 truncate font-title text-chrome-md font-normal text-text"
           title={sesion ? sesion.title : "La mesa, en reposo"}
         >
           {sesion ? sesion.title : "La mesa, en reposo"}
-        </p>
+        </h1>
         {lugar && (
           <Link
             to={`/campaigns/${campaignId}/entidades/${lugar.id}`}

@@ -108,7 +108,7 @@ async function campanaConSesionYHiloLargo(page: Page) {
   await expect(
     page
       .getByRole("list", { name: "Sucesos de la sesión" })
-      .getByText(new RegExp(`la línea número ${ANOTACIONES}$`)),
+      .getByText(new RegExp(`la línea número ${ANOTACIONES} del almacén`)),
   ).toBeVisible({ timeout: 15_000 });
 }
 

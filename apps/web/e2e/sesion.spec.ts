@@ -45,7 +45,11 @@ async function crearCampanaConSesion(page: Page) {
   await page.getByLabel("Nombre").fill("La mesa de prueba");
   await page.getByRole("button", { name: "Crear" }).click();
   await page.getByRole("link", { name: "La mesa de prueba" }).click();
-  await expect(page.getByRole("heading", { name: "La mesa de prueba" })).toBeVisible();
+  // 15 s: la ficha de campaña enseña «Cargando…» como `h1` hasta que llega su `GET`, y con la
+  // suite entera detrás el servidor tardó más de los 5 s por defecto (fix round 2, Task 5b).
+  await expect(page.getByRole("heading", { name: "La mesa de prueba" })).toBeVisible({
+    timeout: 15_000,
+  });
 
   await page.getByRole("tab", { name: "Sesiones" }).click();
   await page.getByRole("button", { name: "Nueva sesión" }).click();
@@ -543,9 +547,9 @@ test("contraste medido en la barra de sesión y en la mesa", async ({ page }) =>
         valor: ratio(sobre(getComputedStyle(tituloBanda).color, fondoBanda), fondoBanda),
         minimo: 4.5,
       });
-      // Task 3 (3A.3): la banda única antepone el título (su propio `<p>`) al de duración y
-      // asistencia, así que el segundo `<p>` —no el primero— es el que lleva las cifras.
-      const cifras = banda.querySelectorAll("p")[1] as HTMLElement;
+      // Fix round 2 de la Task 5b (3A.3): el título de la escena es ahora un `<h1>`, así que el
+      // primer `<p>` de la banda vuelve a ser el de duración y asistencia (las cifras).
+      const cifras = banda.querySelectorAll("p")[0] as HTMLElement;
       salida.push({
         que: "mesa: duración y asistencia (cifras)",
         valor: ratio(sobre(getComputedStyle(cifras).color, fondoBanda), fondoBanda),

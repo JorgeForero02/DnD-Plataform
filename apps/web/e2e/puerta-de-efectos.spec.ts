@@ -433,12 +433,15 @@ test("XP: la hoja dice «0 / 300 PX», el DM da 300 desde «Dar PX» y A ve «30
   await empezarSesion(dm, "El primer encargo");
   await abrirLaMesa(dm, campaignId);
   await dm.getByRole("button", { name: "Dar PX" }).click();
-  await expect(dm.getByRole("heading", { name: "Dar PX" })).toBeVisible();
-  await dm.getByRole("checkbox", { name: "Elora" }).check();
+  const cajonDeXp = dm.getByRole("dialog", { name: "Dar PX" });
+  await expect(cajonDeXp).toBeVisible();
+  await cajonDeXp.getByRole("checkbox", { name: "Elora" }).check();
   // `getByLabel("Cantidad")` casa TAMBIÉN con las frases de los dos radios de reparto (ambas
   // dicen «La cantidad es…»): hace falta el rol para llegar solo al campo numérico.
-  await dm.getByRole("spinbutton", { name: "Cantidad" }).fill("300");
-  await dm.getByRole("button", { name: "Dar experiencia" }).click();
+  await cajonDeXp.getByRole("spinbutton", { name: "Cantidad" }).fill("300");
+  // Dentro del cajón, y no `dm.getByRole` a secas: el botón que ABRE el cajón sigue montado
+  // detrás (fix round 1) y comparte el mismo nombre «Dar PX» que el de enviar.
+  await cajonDeXp.getByRole("button", { name: "Dar PX" }).click();
   await expect(dm.getByRole("alert")).toHaveCount(0);
 
   // --- El `expect` que mira al otro contexto: A no pidió nada y su marcador ya cambió. ---

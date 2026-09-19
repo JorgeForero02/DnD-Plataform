@@ -68,7 +68,7 @@ describe("reclasificar una ficha (I16)", () => {
     // Lo que se conserva, dicho: si no se dice, se supone lo peor y el gesto deja de usarse.
     expect(aviso).toHaveTextContent(/no se tocan/);
     // El caso que de verdad rompe, y solo cuando aplica.
-    expect(aviso).toHaveTextContent(/statblock/);
+    expect(aviso).toHaveTextContent(/criatura del bestiario/);
     // Que queda rastro, que es lo que lo hace reversible en la práctica.
     expect(aviso).toHaveTextContent(/registro de la campaña/);
 

@@ -294,7 +294,7 @@ export function DarXp({
 
       <div className="flex items-center gap-s2">
         <Button type="button" variant="primary" onClick={alDar}>
-          Dar experiencia
+          Dar PX
         </Button>
       </div>
 

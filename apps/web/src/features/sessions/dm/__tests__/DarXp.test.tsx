@@ -165,7 +165,7 @@ describe("DarXp", () => {
     fireEvent.change(screen.getByLabelText("Motivo (opcional)"), {
       target: { value: "El troll de la mina" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dar PX" }));
 
     await waitFor(() =>
       expect(dar).toHaveBeenCalledWith(CAMPANA, {
@@ -186,7 +186,7 @@ describe("DarXp", () => {
     fireEvent.click(screen.getByLabelText("Brann"));
     fireEvent.click(screen.getByRole("radio", { name: /A repartir entre los elegidos/ }));
     fireEvent.change(screen.getByLabelText("Cantidad"), { target: { value: "100" } });
-    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dar PX" }));
 
     await waitFor(() =>
       expect(dar).toHaveBeenCalledWith(
@@ -203,7 +203,7 @@ describe("DarXp", () => {
 
     fireEvent.click(screen.getByLabelText("Aria"));
     fireEvent.change(screen.getByLabelText("Cantidad"), { target: { value: "0" } });
-    const boton = screen.getByRole("button", { name: "Dar experiencia" });
+    const boton = screen.getByRole("button", { name: "Dar PX" });
     expect(boton).not.toBeDisabled();
     fireEvent.click(boton);
 
@@ -228,7 +228,7 @@ describe("DarXp", () => {
 
     fireEvent.click(screen.getByLabelText("Aria"));
     fireEvent.change(screen.getByLabelText("Cantidad"), { target: { value: "50" } });
-    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dar PX" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Dados 50 PX a Aria");
     expect(screen.getByLabelText("Aria")).not.toBeChecked();
@@ -243,7 +243,7 @@ describe("DarXp", () => {
 
     fireEvent.click(screen.getByLabelText("Aria"));
     fireEvent.change(screen.getByLabelText("Cantidad"), { target: { value: "300.7" } });
-    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dar PX" }));
 
     expect(await screen.findByText(/número entero/)).toBeInTheDocument();
     expect(dar).not.toHaveBeenCalled();
@@ -264,7 +264,7 @@ describe("DarXp", () => {
     fireEvent.click(screen.getByLabelText("Cora"));
     fireEvent.click(screen.getByRole("radio", { name: /A repartir entre los elegidos/ }));
     fireEvent.change(screen.getByLabelText("Cantidad"), { target: { value: "-100" } });
-    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dar PX" }));
 
     await waitFor(() =>
       expect(dar).toHaveBeenCalledWith(CAMPANA, expect.objectContaining({ amount: -33 })),

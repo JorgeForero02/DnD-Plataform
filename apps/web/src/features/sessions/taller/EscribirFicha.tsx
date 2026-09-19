@@ -384,7 +384,7 @@ export function EscribirFicha({
             quien la busque donde estaba no la va a encontrar. Su cuerpo, sus etiquetas, sus enlaces
             y sus comentarios <strong>no se tocan</strong>.
             {ficha.type === "NPC" &&
-              " Y si tenía un statblock asociado, deja de tener sentido: un Documento no pelea."}
+              " Y si tenía una criatura del bestiario asociada, deja de tener sentido: un Documento no pelea."}
           </p>
           <p className="font-chrome text-chrome-xs text-muted">
             Queda escrito en el registro de la campaña, así que se puede ver y deshacer.

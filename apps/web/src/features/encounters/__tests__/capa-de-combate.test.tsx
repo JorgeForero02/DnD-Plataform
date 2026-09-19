@@ -588,7 +588,7 @@ describe("la propuesta de experiencia al terminar el combate", () => {
     await terminarElCombate();
 
     expect(await screen.findByLabelText("Thora Piedrahonda")).toBeChecked();
-    fireEvent.click(screen.getByRole("button", { name: "Dar experiencia" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dar PX" }));
 
     await waitFor(() =>
       expect(dar).toHaveBeenCalledWith("c1", { characterIds: ["p-thora"], amount: 100 }),

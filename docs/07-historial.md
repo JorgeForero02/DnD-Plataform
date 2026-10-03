@@ -107,6 +107,28 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Cumplimiento legal: quince fichas contra el spec global (2026-09-26) — solo documentación, sin código
+
+Qué — se cruzó el árbol de `main` (`a4883f0`) con el spec global de cumplimiento y su addendum
+(**~/.claude/compliance/**, que se referencian y no se copian) y salió la sección «Cumplimiento
+legal» de [`06-pendientes.md`](./06-pendientes.md): perfiles del §2 (`ALL`, `ACCOUNTS`; `MARKETPLACE_UGC`
+y `MINORS` antes de SaaS; nada de comercio, marketing, analítica ni IA), rol de responsable (ROLE-01),
+y quince fichas `CL-1`…`CL-15` con su `fichero:línea`, marcadas **ya** o **antes de SaaS**. Lo más
+serio que encontró: el HTML se sirve sin ninguna cabecera de seguridad (`apps/web/nginx.conf:12-15`)
+mientras el token vive en `localStorage`; el registro está abierto a cualquiera y sin páginas
+legales ni borrado de cuenta; y las fuentes se piden a Google antes de iniciar sesión. Ya cumplía:
+Argon2id, límite de intentos, la atribución del SRD en una página pública, y el único arrastre con
+alternativa de teclado. `docs/compliance/` no se crea todavía: es la ficha CL-1.
+
+Por qué — el proyecto es herramienta propia hoy y SaaS después; separar lo que vale ya de lo que
+bloquea abrir a terceros evita tanto el incumplimiento como construir un SaaS antes de tiempo. Y la
+ficha CL-2 le pregunta al autor lo que decide el resto: si el registro sigue abierto.
+
+Revertir — quitar la sección «Cumplimiento legal» de `06-pendientes.md`, devolver su línea de
+«Última revisión» a la del 2026-09-13 y borrar esta entrada. Ningún código tocado.
+
+---
+
 ## Correcciones de interfaz de la auditoría (2026-09-19), rama `interfaz/correcciones-2026-09-19` — fusionada a `main` (`894f2ad`) y empujada, sin desplegar
 
 Qué — las 13 tareas del plan [`2026-09-19-correcciones-de-interfaz.md`](./superpowers/plans/2026-09-19-correcciones-de-interfaz.md)

@@ -29,6 +29,210 @@ y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
 
+## Cumplimiento legal (2026-09-26) — herramienta propia hoy, SaaS después
+
+**De dónde sale.** El spec global **~/.claude/compliance/cumplimiento-legal-spec.md** y su
+**addendum-2026-09-26.md** (misma carpeta). **Se referencian, no se copian**: aquí van solo las
+fichas, con el ID de este repositorio (`CL-n`) y, entre corchetes, los IDs del spec/addendum que
+cierran. El detalle vivirá en `docs/compliance/` (inventario y reporte, ficha CL-1), que **todavía no
+existe**. Descubrimiento hecho el 2026-09-26 leyendo el árbol de `main` (`a4883f0`); **sin tocar
+producción**: lo que solo se sabe en el servidor va marcado «medir en el servidor». No es asesoría
+jurídica: los textos legales salen como BORRADOR con marcadores (`{{RAZON_SOCIAL}}`, `{{NIT}}`,
+`{{EMAIL_PRIVACIDAD}}`) y los revisa un abogado.
+
+**Perfiles del §2 que aplican, y por qué:**
+
+| Perfil | ¿Aplica? | Por qué |
+|---|---|---|
+| `ALL` | Sí | Sitio público en `dnd.supportive.pro` |
+| `ACCOUNTS` | Sí | Registro e inicio de sesión (`auth/auth.controller.ts:29-39`) |
+| `MARKETPLACE_UGC` | Parcial, **antes de SaaS** | Los usuarios escriben contenido, pero **solo lo ven los miembros de su campaña**: `PUBLIC` = miembros (`common/visibility.ts:79-81`), no hay nada público en internet. Con terceros, la plataforma **aloja** contenido ajeno y le tocan las obligaciones básicas de alojamiento (denuncia, motivos) |
+| `MINORS` | Probable, **antes de SaaS** | D&D tiene público adolescente real y el registro no pregunta la edad |
+| `COMMERCE` / `SUBSCRIPTION` / `PAYMENTS` | No hoy | No se cobra. **Se reevalúan el día que haya precio**; no se fichan antes |
+| `MARKETING` | No | No hay servicio de correo (`packages/shared/src/auth.schema.ts:18-20`) |
+| `ADS_TRACKING` / `AI` / `MOBILE` / `SENSITIVE` | No | Sin analítica, sin IA (fase 5 sin plan), sin app de tienda; nada sensible se pide (el texto libre de una campaña puede contenerlo, y eso va en el inventario, no en un perfil) |
+
+**Rol (ROLE-01): responsable, no encargado.** El autor es el responsable de las cuentas y del
+contenido alojado; no hay cliente que contrate el servicio (B2C), así que **ROLE-02/03/04 no
+aplican**. Hoy es una persona natural sin razón social: `{{RAZON_SOCIAL}}` y `{{NIT}}` quedan como
+información pendiente. **Jurisdicciones:** hoy Colombia (el autor y su mesa); con SaaS en español,
+además UE/España (GDPR), México y Chile (Ley 21.719, fecha ⚠ VERIFICAR). El servidor está en
+Alemania según el addendum (INFRA-05, ⚠ VERIFICAR proveedor): transferencia que declarar (CO-06).
+
+**Prioridad y cuándo.** Se traduce la del spec a la de este tablero: **P0 → P1, P1 → P2, P2 → P3**.
+Aparte, cada ficha dice **cuándo**: **ya** (vale con la mesa del autor) o **antes de SaaS** (antes de
+abrir el registro a desconocidos o de cobrar). **CL-2 decide qué fichas pasan de un grupo al otro**:
+hoy el registro está abierto a cualquiera (`auth/auth.controller.ts:29-33`, sin invitación ni
+lista), y eso ya no es del todo «uso exclusivamente personal o doméstico», que es lo que dejaría
+fuera la Ley 1581 (art. 2) y el GDPR (art. 2.2.c).
+
+**Lo que no se ficha, con motivo:** SEC-11 (copias) — decidido por el autor, bloque «La copia de
+seguridad de esta base» de este documento, no se reabre. COOK-01…07 — no hay cookies ni analítica;
+el `localStorage` que se usa es técnico o de preferencia (sesión, tema, ornamento, modo de la mesa),
+así que no hace falta banner mientras siga así. **Lo común a todos los proyectos del servidor**
+(INFRA-01…06: cabeceras en Traefik, retención de logs, plan de incidentes común, subprocesadores)
+vive en `vps1new:/root/docs/06`, no aquí. **`dnd-infra` no es otro repositorio**: es un worktree de
+este (rama `1.27-prueba-local-pila`, ya fusionada a `main`), así que no tiene un 06 propio al que
+llevar nada.
+
+### CL-1 · Inventario y reporte de cumplimiento — P1, **ya** [§1, §9, ROLE-01, CO-04]
+
+**Estado:** no existen. **Qué hacer:** crear docs/compliance/inventario.md —cada dato con finalidad,
+base, dónde vive, retención y quién accede— y docs/compliance/REPORTE.md con la tabla del §9 (un ID
+por fila: cumple / parcial / no / no aplica, con `fichero:línea`). Lo que ya se midió para empezarlo:
+`User` guarda solo correo, nombre visible, hash, `isAdmin` y dos fechas
+(`apps/api/prisma/schema.prisma:204-215`); los ids de usuario viven **sin `@relation`** en doce
+columnas (`ownerId`, `userId`, `createdById`, `authorId`, `requestedById`) más
+`GameEvent.actorUserId` (`apps/api/prisma/schema.prisma:532`); `localStorage` guarda el token
+(`store/auth.store.ts:31`), tema, ornamento, modo de la mesa, punto de reincorporación e invitación
+pendiente; terceros: el proveedor del servidor, Google Fonts, Sentry si hay `SENTRY_DSN`, y la sala
+del tablero que el DM enmarca; logs de nginx y Traefik con IP. **Aceptación:** los dos ficheros
+existen, el inventario declara ROLE-01 y el reporte cubre todos los IDs de esta sección.
+
+### CL-2 · ¿Registro abierto o solo por invitación? — P1, **ya**, decide el autor [MIN-01, LEGAL-01, PRIV-01]
+
+**Estado:** cualquiera con la URL se registra (`auth/auth.controller.ts:29-33`,
+`pages/RegisterPage.tsx`); la mesa real son cinco amigos (D-CF-18). **Las dos salidas:** (a) cerrar el
+registro —solo quien trae invitación— y CL-6, CL-7 y CL-10 esperan a SaaS; (b) dejarlo abierto, y
+esas tres pasan a **ya**. **Aceptación:** la decisión, con su porqué, en `decisiones.md`. No es de un
+agente: cambia qué es el producto hoy.
+
+### CL-3 · Cabeceras de seguridad también en el HTML, no solo en `/api` — P1, **ya** [SEC-01, SEC-02, INFRA-02]
+
+**Estado:** `helmet` solo cubre la API, con la CSP apagada a propósito porque responde JSON
+(`configure-app.ts:84-97`); el HTML de la aplicación lo sirve nginx **sin ninguna cabecera**
+(`apps/web/nginx.conf:12-15`): ni CSP, ni `frame-ancestors`, ni `nosniff`. Si Traefik añade HSTS a
+este dominio se mide en el servidor (INFRA-02). Importa más que en otro proyecto porque **el token
+vive en `localStorage`** (CL-9): un XSS es robar la sesión, y la CSP es la barrera. **Qué hacer:**
+`add_header` en `nginx.conf` —CSP con el hash del script de tema en línea
+(`apps/web/index.html:35-50`), `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`,
+`Permissions-Policy`— y decidir `frame-src`: hoy la sala del tablero es **cualquier URL http(s)**
+(`packages/shared/src/campaign.schema.ts:15-22`). **Aceptación:** `curl -sI https://dnd.supportive.pro/`
+desde el servidor enseña las cabeceras, y un e2e comprueba que la mesa con tablero sigue cargando.
+
+### CL-4 · Sentry sin datos personales — P2, **ya** [MSG-03, LEGAL-06, CO-06]
+
+**Estado:** `Sentry.init({ dsn, tracesSampleRate: 0.1 })` sin `beforeSend` ni `sendDefaultPii`
+explícito (`main.ts:29`, `@sentry/node` 8.55). Qué viaja de una petición (la cabecera `Authorization`,
+el cuerpo de `/auth/login` con la contraseña) depende de los valores por defecto del SDK, **sin
+comprobar**; y si `SENTRY_DSN` está puesto en producción (`03-despliegue.md:294`, opcional) se mide
+en el servidor. **Qué hacer:** `sendDefaultPii: false` escrito, `beforeSend` que borre cuerpo,
+`authorization`, cookies y correo; región UE; declararlo como subprocesador. **Aceptación:** unitaria
+de `beforeSend` con un evento de ejemplo que lleva contraseña y Bearer, y salen limpios.
+
+### CL-5 · Atribución del SRD, de Foundry y de las fuentes — P1, **ya**, casi hecho [LIC-04, LIC-05]
+
+**Estado — cumple lo principal:** «Acerca de» es pública (`App.tsx:79-81`) con la atribución española
+literal y la nota de modificación (`pages/AcercaDePage.tsx:18-49`), el pie la lleva en toda pantalla
+con sesión (`ui/LegalNotice.tsx:47`, `ui/AppShell.tsx:273`) y [NOTICE.md](../NOTICE.md) delimita qué
+entra. **Huecos:** (1) el aviso MIT del sistema `dnd5e` de Foundry solo está en `NOTICE.md:12-36`, no en
+el producto, y el catálogo generado con su estructura lo sirve la API; (2) la copia de Foundry fuera del
+repo trae también material del **SRD 5.2** (su README, «Licenses»), y lo que lo deja fuera es la
+convención «carpetas sin sufijo 24» del conversor, sin una prueba que falle si entra; (3)
+`pages/AcercaDePage.tsx:21` marca `lang="en"` un texto en español, y el comentario de encima dice
+«en inglés» (A11Y-13); (4) las cuatro familias tipográficas (OFL) y los iconos no se listan.
+**Aceptación:** «Acerca de» añade el aviso de Foundry y las fuentes, el `lang` es `es`, y el conversor
+rechaza con prueba una fuente del 5.2.
+
+### CL-6 · Páginas legales y aviso en el registro — P1, **antes de SaaS** (ya, si CL-2 lo deja abierto) [LEGAL-01, LEGAL-02, LEGAL-03, LEGAL-05, LEGAL-06, CO-01, CO-02, CO-06, PRIV-01, PRIV-02, PRIV-03, AUTH-12]
+
+**Estado:** no hay `/privacidad`, `/terminos` ni `/aviso-legal` (la única página pública de este tipo
+es «Acerca de», `App.tsx:81`); el registro no enlaza a nada ni pide aceptar
+(`pages/RegisterPage.tsx:72`); el pie legal solo se monta con sesión (`ui/AppShell.tsx:273`), así que
+login y registro no enlazan a ninguna política. **Qué hacer:** plantillas BORRADOR con versión y fecha
+(política con el contenido del art. 13 del Decreto 1377, términos con normas de contenido y edad
+mínima, lista de subprocesadores con país), aviso corto de privacidad junto al formulario, casilla
+sin marcar, y **registro del consentimiento**: una tabla nueva de solo añadir, que es **migración** y
+va sola (04, § *cuatro pasos*). Canal de derechos: un correo dedicado mientras no haya formulario.
+**Aceptación:** e2e — las páginas dan 200 sin sesión y están enlazadas desde login y registro;
+registrarse sin la casilla da 400; queda una fila de consentimiento con la versión aceptada.
+
+### CL-7 · Borrar y exportar la cuenta — P1, **antes de SaaS** (ya, si CL-2 lo deja abierto) [AUTH-11, PRIV-04, PRIV-05, §7.3]
+
+**Estado:** no existe ni borrar ni exportar (ninguna ruta en `auth/auth.controller.ts` ni en
+`users/users.service.ts`). Y **no es un `DELETE` de una línea**: sin `@relation` a `User`, borrar la
+fila deja huérfanos en doce columnas; `GameEvent` es de solo añadir por decisión (D-OP-15), así que
+`actorUserId` se **anonimiza**, no se borra; y una campaña cuyo `ownerId` es la persona
+(`apps/api/prisma/schema.prisma:221`) necesita regla: pasar a otro DM o borrarse. **Mientras tanto:**
+procedimiento a mano documentado en docs/compliance (la petición llega por correo y la ejecuta el
+admin). **Aceptación:** prueba de integración — tras borrar, ninguna fila no exceptuada lleva el id;
+el export es JSON válido con todas las entidades de la persona; confirmación con la contraseña.
+
+### CL-8 · Contraseñas y enumeración de cuentas — P1, **antes de SaaS** [AUTH-02, AUTH-04, AUTH-08, SEC-10]
+
+**Estado — cumple:** Argon2id por defecto de `argon2` (`auth/auth.service.ts:30`), gestores y pegar
+permitidos (`pages/RegisterPage.tsx:77`, `pages/LoginPage.tsx:102`), login con mensaje único
+(`auth/auth.service.ts:37-39`) y 5 intentos por minuto e IP (`common/rate-limit.constants.ts:54`).
+**No cumple:** mínimo de 8 caracteres sin segundo factor (`packages/shared/src/auth.schema.ts:5`, `:23`,
+`:34`; NIST pide 15), sin lista de contraseñas filtradas, y **el registro delata qué correos existen**
+(`auth/auth.service.ts:29`, 409 «Email already registered»); sin límite por cuenta, solo por IP.
+**Qué hacer:** mínimo 15 (u 8 con MFA), consulta k-anonimato a HIBP, y para la enumeración —que sin
+correo (D-CF-18) no tiene arreglo limpio— riesgo aceptado por escrito, apoyado en el límite.
+**Aceptación:** unitarias de la política y del rechazo de una filtrada.
+
+### CL-9 · La sesión: token en `localStorage`, siete días, sin cierre en el servidor — P1, **antes de SaaS** [AUTH-10, COOK-08]
+
+**Estado:** el JWT se guarda en `localStorage` (`store/auth.store.ts:31`, `:35`), dura 7 días
+(`auth/auth.module.ts:26`) y «Salir» solo lo borra del navegador (`store/auth.store.ts:51-52`): un token
+robado vale hasta que caduca o hasta que la persona cambia la contraseña, que es la única revocación
+(`auth/jwt.strategy.ts:33-45`). **Qué hacer:** cookie `HttpOnly; Secure; SameSite=Lax` (con su defensa
+CSRF) o token corto con renovación, y un cierre que revoque en el servidor (columna de versión de
+token: **migración**, va sola). **Aceptación:** e2e — tras «Salir», el token viejo da 401.
+
+### CL-10 · Menores de edad — P1, **antes de SaaS** (ya, si CL-2 lo deja abierto) [MIN-01, MIN-03, MIN-04, MIN-05]
+
+**Estado:** el registro no pregunta la edad (`packages/shared/src/auth.schema.ts:3-7`) y `User` no la
+guarda. **Qué hacer:** decidir la edad mínima (18, o 14 con autorización del representante legal en
+Colombia, Decreto 1377 — **decisión del autor con abogado**), escribirla en los términos, y una
+pregunta de edad neutral en el registro. **Aceptación:** la decisión en `decisiones.md` y, si hay
+edad mínima, un e2e que rechaza a quien no la cumple.
+
+### CL-11 · Plan de incidentes y registro de acciones sensibles — P1, **antes de SaaS** [SEC-12, SEC-08, INFRA-04]
+
+**Estado:** no hay plan propio; el reinicio de contraseña por el admin no deja rastro
+(`auth/auth.service.ts:95-110`), y **el admin lo ve todo, en todas las campañas**
+(`common/visibility.ts:74`) — es la herramienta de soporte y de moderación, pero hay que decirlo en
+la política y dejarlo registrado. **Qué hacer:** docs/compliance/respuesta-incidentes.md que enlace al
+plan común del servidor (INFRA-04) con los plazos del §3.4.1; registro de accesos de admin, logins
+fallidos y exportaciones, sin contraseñas ni tokens. **Aceptación:** el documento existe y una acción
+de admin deja una fila de auditoría con prueba.
+
+### CL-12 · Las fuentes tipográficas se piden a Google en cada visita — P2, **ya** [PRIV-08, CO-06, LEGAL-06]
+
+**Estado:** `apps/web/index.html:20-25` carga Marcellus, Public Sans, EB Garamond e IBM Plex Mono de
+`fonts.googleapis.com`: la IP de cada visitante va a Google (EE. UU.) **antes de iniciar sesión**. En
+la UE hay precedente de sanción por esto (⚠ VERIFICAR la sentencia). **Qué hacer:** servirlas desde
+`apps/web/public` (son OFL), quitar los `preconnect` y ajustar la CSP de CL-3. **Aceptación:** e2e —
+cargar `/login` no hace ninguna petición a un dominio de terceros.
+
+### CL-13 · Cadena de suministro y licencias de dependencias — P2, **ya** [SEC-05, SEC-07, LIC-01]
+
+**Estado:** `pnpm audit --prod --audit-level=high` en CI (`.github/workflows/ci.yml:41`) — cumple en
+parte. No hay escaneo de secretos (gitleaks), ni Dependabot/Renovate, ni inventario de licencias.
+**Aceptación:** CI falla con un secreto o con una licencia no permitida.
+
+### CL-14 · Contenido de usuarios: denuncia, retirada y el marco del tablero — P2, **antes de SaaS** [UGC-01, UGC-02, UGC-06, UGC-07]
+
+**Estado:** no hay forma de denunciar contenido ni de explicar una retirada. Dos riesgos propios de
+esta plataforma: el DM puede meter **cualquier URL** en un `<iframe>` que ven sus jugadores, sin
+`sandbox` (`features/sessions/tablero/MarcoDelTablero.tsx:23-29`; ficha «Tablero: sandbox del iframe»,
+abajo) — con desconocidos, eso es una puerta a suplantar un login; y la línea de `NOTICE.md:103-108`
+(«lo que un DM teclee es uso privado suyo») deja de bastar cuando la plataforma **aloja** texto del
+manual que no es SRD. **Qué hacer:** normas de contenido en los términos, correo de denuncia con acuse,
+aviso con motivo y vía de reclamación al retirar, procedimiento de derechos de autor. **Aceptación:**
+páginas y correo existen; una retirada deja constancia del motivo.
+
+### CL-15 · Accesibilidad medida con una herramienta — P2, **antes de SaaS** [A11Y-01…17, §8]
+
+**Estado — cumple lo que se ha mirado:** el único arrastre del código tiene alternativa de botón
+(`features/rules/CajasDeRegla.tsx:28-31`, `:62`) — **A11Y-08 cumple**; el contraste lo mide
+`tokens-contrast.spec.ts`; movimiento reducido cerrado el 2026-09-19. El arrastre del tablero vive en
+el VTT externo dentro del marco: fuera de este código, pero hay que declararlo. Huecos ya fichados:
+`ui/Collection.tsx:80` y `TirarAtaqueBoton.tsx:342-358`. **No hay** `@axe-core/playwright` en
+`apps/web/package.json`. **Qué hacer:** axe en los recorridos de login, registro, cuenta y mesa;
+declaración de accesibilidad solo si aplica la EAA (una microempresa está exenta). **Aceptación:** el
+e2e falla con una violación `serious` o `critical`.
+
 ## Dejado por la auditoría de interfaz (2026-09-19)
 
 La auditoría ([archivada](./_archivo/auditoria-interfaz-2026-09-19.md), ~95 hallazgos sobre el
@@ -392,7 +596,8 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
+Última revisión: **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
 anexo del autor pasados uno a uno, las fichas menores que la revisión final dejó abiertas, y una

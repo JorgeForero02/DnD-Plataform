@@ -1,126 +1,89 @@
 # D&D Platform — instrucciones del proyecto
 
-**Qué es.** Plataforma para gestionar campañas de D&D 5.ª edición: mundo tipo wiki con entidades
-enlazadas entre sí, sesiones y personajes, y **cinco niveles de visibilidad** por objeto.
-Herramienta propia para la mesa del autor primero; SaaS después.
+Plataforma para gestionar campañas de D&D 5.ª edición: mundo tipo wiki con entidades enlazadas,
+sesiones, personajes y **cinco niveles de visibilidad** por objeto, con **motor de reglas** (hoja
+derivada con traza en `apps/api/src/rules/`, reglas suceso–condición–efecto en
+`apps/api/src/rules-engine/`). **pnpm · NestJS 11 + Fastify + Prisma 5 + PostgreSQL 16 · React 18 +
+Vite · Zod compartido (`@dnd/shared`) · Jest, Vitest, Playwright.** No es mapas, tiempo real ni 3D.
+En producción desde el 2026-09-02 (`dnd.supportive.pro`).
 
-**Tiene motor de reglas**: derivación de hoja de 5.ª edición con traza (`apps/api/src/rules/`) y
-reglas suceso–condición–efecto de vocabulario cerrado (`apps/api/src/rules-engine/`). Objetos con
-datos, dados, reloj de campaña, condiciones y PNJ con statblock — **un PNJ en la mesa es una fila
-de `Character`**.
+Este fichero es **corto a propósito** y **no dice en qué estado está el proyecto**: el estado se mide o
+lo escribe una máquina (bloque generado de `docs/00-INDEX.md`, `07`, `06`).
 
-**No es** mapas, tiempo real ni 3D.
+## Al empezar cualquier sesión (obligatorio)
 
-## Este fichero no dice en qué estado está el proyecto
+1. **[docs/00-INDEX.md](docs/00-INDEX.md)** — qué es, mapa de la documentación y el comando que mide producción.
+2. **[docs/06-pendientes.md](docs/06-pendientes.md)** — qué está abierto.
+3. Antes de escribir código, **[docs/04-convenciones.md](docs/04-convenciones.md)** — nivel, reglas de
+   código y de documentación, Git, seguridad y datos, excepciones.
 
-**Y es a propósito.** Qué fases están cerradas, qué imagen sirve producción, qué separa `main` del
-despliegue y cuántas pruebas hay **no se escribe aquí**: se lee de donde una máquina lo mantiene o
-se mide en el momento.
+**Después de leer, la respuesta de arranque son 5 líneas** —estado, qué hay abierto que importe, qué se
+propone— **y se espera la confirmación del autor antes de tocar nada.**
 
-| Lo que quieras saber | Dónde está, de verdad |
+| Necesito… | Voy a |
 |---|---|
-| Estado, rama, commit y conteos | El **bloque generado** de [docs/00-INDEX.md](docs/00-INDEX.md), que escribe `scripts/update-estado.mjs` y comprueba `pnpm check:estado` |
-| Qué se entregó y por qué | [docs/07-historial.md](docs/07-historial.md) |
-| Qué está abierto | [docs/06-pendientes.md](docs/06-pendientes.md) |
-| Qué se decidió y no se re-litiga | [docs/decisiones.md](docs/decisiones.md) |
-| Qué hay en `main` que no esté en producción | **Se mide**: `git diff --name-only <imagen desplegada>..HEAD`. Y qué imagen corre se comprueba en el servidor, no de memoria |
+| Por dónde entrar tras semanas fuera | [docs/como-seguir.md](docs/como-seguir.md) |
+| Saber si algo ya se decidió | [docs/decisiones.md](docs/decisiones.md) y [docs/adr/](docs/adr/README.md) |
+| Las reglas que no pueden romperse | [docs/11-invariantes.md](docs/11-invariantes.md) |
+| Arquitectura, capas y la dirección de dependencias | [docs/01-arquitectura.md](docs/01-arquitectura.md) |
+| Levantar el entorno, variables, trampas de Windows | [docs/02-entorno.md](docs/02-entorno.md) |
+| Desplegar, `TRUST_PROXY`, copias de seguridad | [docs/03-despliegue.md](docs/03-despliegue.md) |
+| Esquema, migraciones, visibilidad | [docs/05-datos.md](docs/05-datos.md) |
+| Qué prueba cada capa, la regla de Playwright, conteos de e2e | [docs/08-pruebas.md](docs/08-pruebas.md) |
+| Cómo se usa (DM y jugador) | [docs/09-jugar.md](docs/09-jugar.md) |
+| Medir un cambio del proceso (el banco lo lanza y lo puntúa el orquestador, no el autor) | [docs/10-banco-de-tareas.md](docs/10-banco-de-tareas.md) |
+| Prompts listos para pegar | [docs/prompts.md](docs/prompts.md) |
+| Auditorías anteriores | [docs/auditorias/README.md](docs/auditorias/README.md) |
+| Qué se entregó y cómo revertirlo | [docs/07-historial.md](docs/07-historial.md) |
+| El ledger de ejecución (local, no viaja con el clon) | `.superpowers/sdd/progress.md` |
 
-**Lo único de estado que sí vive aquí, porque es una regla y no un dato:** el despliegue **no se
-lanza sin que lo pida el autor**, y lo lanza él a mano.
+`docs/superpowers/` (specs y planes fechados) **no se relee entero**: se entra por `docs/decisiones.md`.
 
-## Lee esto antes de tocar código
-
-| Archivo | Qué contiene |
-|---|---|
-| `docs/00-INDEX.md` | Mapa de documentos, con el commit/rama/conteo de unitarias actuales en su bloque generado. **Empieza aquí.** |
-| `docs/06-pendientes.md` | Deuda conocida y decisiones abiertas. Léelo con el 00. |
-| `docs/como-seguir.md` | **Si no sabes por dónde entrar**: qué ya está puesto, qué sigue y qué no decide un agente. |
-| `docs/decisiones.md` | **Una línea por decisión tomada, con enlace a su razonamiento.** Sustituye a releer `docs/superpowers/`, que son la mayor parte de la documentación y están fuera del camino de lectura |
-| `docs/prompts.md` | **Prompts listos para pegar** que sirven cualquier día: arrancar sesión, correr el banco, encargar a un subagente. |
-| `docs/10-banco-de-tareas.md` | **Antes y después de cambiar una regla, este fichero o una skill**: cuatro tareas fijas que dicen si el cambio mejoró o empeoró. |
-| `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
-| `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, la regla de Playwright y qué demuestra cada suite.** Fuente única de los conteos. Léelo también antes de escribir un e2e nuevo — absorbió al antiguo mapa de e2e, que ya no existe como documento aparte |
-| `docs/01-arquitectura.md` | Monorepo, capas, módulos, dirección de dependencias |
-| `docs/02-entorno.md` | Cómo levantar todo, variables, gotchas de Windows |
-| `docs/05-datos.md` | Esquema, migraciones y semántica de la visibilidad |
-| `docs/superpowers/plans/` | Plan maestro por fases. **No se relee entero**: se entra por `docs/decisiones.md` |
-| `.superpowers/sdd/progress.md` | Ledger de ejecución, una línea por tarea. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |
-
-**Al terminar un cambio relevante, actualiza la documentación en el mismo commit**: estado
-en 01–05, deuda nueva en 06, una línea en 07. Documentación que miente es peor que ausente.
-
-## Reglas que no se negocian
-
-- **La autorización se comprueba en el servidor, siempre.** Esconder un botón no es control
-  de acceso. Las mutaciones exigen DM, creador o dueño; los listados filtran por `canView`.
-- **`canView` (`apps/api/src/common/visibility.ts`) es el dueño único de "quién ve qué".**
-  Nadie reimplementa la matriz de visibilidad por su cuenta.
-- **La validación de entrada es Zod desde `@dnd/shared`**, vía `ZodValidationPipe`. Ningún
-  DTO a mano.
-- **La forma de los datos vive una sola vez**, en `packages/shared/src`.
-- **Nada de secretos en el código.** Todo por variable de entorno, con `.env.example` al día.
-- **Ninguna tarea se marca completa sin prueba real en verde** y sin haber mirado la salida:
-  API unitaria + e2e, web RTL + `pnpm verify` limpio. **Si tocas una pantalla, abres el
-  navegador** (`pnpm --filter @dnd/web e2e`), y si la tarea toca una pantalla ya cubierta, su
-  brief lleva el e2e dentro. Ver `docs/08-pruebas.md`.
-- **Nunca** desactives una prueba, bajes un umbral, silencies una regla ni saltes el gancho de
-  pre-commit para que pase el build. Si el control molesta, se arregla el código o se cambia el control como decisión
-  declarada en `docs/04-convenciones.md`.
-- **Evidencia antes que afirmación.** Si algo falla, se dice que falla y se pega la salida.
-- **Un commit por tarea**, mensaje en inglés (Conventional Commits), ledger y memoria al día.
-- **Código en inglés, interfaz y documentación en español.** Y **ningún valor de enumeración
-  llega a la pantalla**: la forma legible se escribe una vez por dominio y todo lo demás la
-  importa. Ese fallo apareció tres veces en una sola mañana (`(LOCATION)`, `PUBLIC`,
-  `Nuevo LOCATION`).
-- **La interfaz tiene sus propias reglas vinculantes** desde el reseño del 2026-09-02, en
-  `docs/04-convenciones.md`: iconos dibujados y no glifos de fuente; opciones con significado
-  como radios con explicación y no en un desplegable; **si el texto explica una regla del
-  servidor y discrepan, miente el texto**; un valor guardado que un selector no ofrece se
-  muestra marcado y no seleccionable; y **lo que solo se ve maquetado se mide en el navegador**,
-  porque `jsdom` no maqueta y por eso un borde partido sobrevivió a la suite entera en verde.
-- **Está en producción desde el 2026-09-02**: `dnd.supportive.pro`, en `vps1new` tras
-  Coolify + Traefik, desde `docker-compose.prod.yml`. Ver `docs/03-despliegue.md`, y en
-  particular por qué `TRUST_PROXY` vale **2** (Traefik y nginx son **dos** proxies).
-  **Lo que de verdad protege el límite de intentos es que Traefik descarte el
-  `X-Forwarded-For` del cliente, no el número 2**: si cambia la topología, hay que recontar.
-
-## Comandos
-
-**Conteos de pruebas unitarias: los genera `scripts/update-estado.mjs` en el bloque de
-estado de [docs/00-INDEX.md](docs/00-INDEX.md)**, comprobado por `pnpm verify`; no se
-escriben a mano. **Conteos de e2e: solo en [docs/08-pruebas.md](docs/08-pruebas.md)**, que
-enlaza al bloque de arriba en vez de repetir las unitarias. Ninguno de los dos se copia en
-más sitios — es su fuente única declarada.
+## Comandos mínimos
 
 ```bash
-docker compose up -d                     # Postgres 16 en :5432 (los e2e lo necesitan)
-pnpm verify                              # build + lint + formato + check:docs + check:estado + check:historial + unitarias (lo exige el pre-commit)
+docker compose up -d && pnpm db:slot     # Postgres 16 en :5432 y migraciones (los e2e lo necesitan)
+pnpm verify                              # la comprobación completa antes de cada commit (nivel N1: tipos, lint, formato, documentación y pruebas unitarias); la lanza sola el gancho de pre-commit (.githooks/pre-commit)
 pnpm --filter @dnd/api test:e2e          # e2e de API contra Postgres real
 pnpm --filter @dnd/web e2e               # Playwright, Chromium
 pnpm dev:api                             # API en :3000
 pnpm dev:web                             # web en :5173
-pnpm format                              # aplica Prettier
 ```
 
----
+## Reglas duras (violarlas rompe cosas)
 
-## Por qué este fichero ya no narra el estado
+- **La autorización se comprueba en el servidor, siempre. Esconder un botón no es control de acceso.**
+  Las mutaciones exigen DM, creador o dueño; los listados filtran por `canView`
+  (`apps/api/src/common/visibility.ts`), **dueño único** de «quién ve qué»: nadie reimplementa la matriz
+  de visibilidad por su cuenta. La membresía es de `MembershipService`.
+- **La validación de entrada es Zod desde `@dnd/shared`**, vía `ZodValidationPipe`; la forma de los datos
+  vive una sola vez, en `packages/shared/src`.
+- **Nada de secretos en el código**; todo por variable de entorno, con `.env.example` al día.
+- **Ninguna tarea se da por completa sin prueba real en verde** y sin mirar la salida: API unitaria + e2e,
+  web con Testing Library (RTL) + `pnpm verify`. **Si tocas una pantalla, abres el navegador** (`jsdom`,
+  el navegador simulado de las pruebas unitarias, no maqueta). Si la tarea toca una pantalla que ya tiene
+  e2e, el encargo lleva ese e2e dentro.
+- **Nunca** desactives una prueba, bajes un umbral, silencies una regla ni saltes el gancho de
+  pre-commit. Si el control molesta, se arregla el código o se cambia el control como decisión declarada
+  en el `04`.
+- **Evidencia antes que afirmación.** Si algo falla, se dice y se pega la salida.
+- **Código en rama y `merge --no-ff`; solo documentación directo a `main`.** Un commit por tarea, en
+  inglés (Conventional Commits), con atribución veraz.
+- **Código en inglés, interfaz y documentación en español**, y ningún valor de enumeración llega a la
+  pantalla: la forma legible se escribe una vez por dominio y todo lo demás la importa. **Si un texto de
+  la interfaz explica una regla del servidor y los dos discrepan, el que miente es el texto.** Las demás
+  reglas de interfaz vinculantes están en el `04`, § *Reglas de interfaz que salieron del reseño*.
+- **El despliegue no se lanza sin que lo pida el autor**, y lo lanza él. `TRUST_PROXY` vale **2**
+  (Traefik y nginx) y llega a Fastify como función de saltos ([ADR 0001](docs/adr/0001-trust-proxy-por-saltos.md)).
+  Lo que de verdad protege el límite de intentos es que Traefik descarte el `X-Forwarded-For` del
+  cliente: si cambia la topología, se recuenta.
+- **Hay gente usando la plataforma (desde el 2026-10-03): antes de cualquier cambio en `vps1new` o en
+  producción se hace un volcado manual de la base** y se comprueba que se puede leer
+  ([03-despliegue.md](docs/03-despliegue.md), § *Copias de seguridad*). La copia automática diaria del
+  servidor ya incluye esta base; no se monta ninguna nueva.
 
-Lo narró hasta el 2026-09-06, y **caducó tres veces**. Los tres avisos se conservan **enteros y
-sin reescribir** —un registro fechado no se resume— porque son la razón de la regla de arriba:
+## Cierre de cada cambio (obligatorio)
 
-> **Hasta el 2026-09-05 este bloque decía que el reseño NO estaba desplegado y que «local va por
-> delante de `dnd.supportive.pro`».** Las dos frases caducaron con ese despliegue, y es el mismo
-> fallo de siempre: prosa de estado escrita a mano en el fichero que se manda leer primero.
-
-> **Hasta el 2026-09-06 este párrafo decía que lo único que separaba `main` de producción era
-> documentación.** Era cierto cuando se escribió y dejó de serlo con este plan — la misma
-> caducidad de la que ya avisa el bloque de arriba sobre el reseño de la mesa.
-
-> Hasta el 2026-09-02 esta línea decía «no es motor de reglas», y llevaba una fase entera siendo
-> falsa. [docs/00-INDEX.md](docs/00-INDEX.md) ya se había corregido y este fichero no, así que
-> **los dos que se mandan leer primero se contradecían**.
-
-**La regla que sale de ahí:** el estado se genera o se mide; en este fichero solo va lo que sigue
-siendo cierto mañana. Lo que una máquina puede escribir, lo escribe ella
-([04-convenciones.md](docs/04-convenciones.md), § *Nivel de verificación*).
+1. Estado que haya cambiado → `docs/01`–`05` y `08`.
+2. Entrada en `docs/07-historial.md`: qué · por qué · cómo revertir.
+3. `docs/06-pendientes.md`: cerrar lo hecho, dar de alta lo que quedó abierto.

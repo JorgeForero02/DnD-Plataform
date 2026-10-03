@@ -108,6 +108,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## `CLAUDE.md` corto y `AGENTS.md` con su línea (2026-10-03) — solo documentación
+
+Qué — `CLAUDE.md` pasa de 126 líneas y trece lecturas a la forma de la plantilla: qué es y stack, tres
+lecturas (`00`, `06`, `04`), arranque de cinco líneas con espera, tabla «Necesito… → Voy a» con el resto,
+comandos, reglas duras vigentes (con la del volcado manual antes de tocar producción) y cierre. El
+`CLAUDE.md` anterior se copió **entero** a `_archivo/claude-md-hasta-2026-10-03.md`, con su sección «Por
+qué este fichero ya no narra el estado». `AGENTS.md` gana la línea de qué es y el stack.
+Por qué — cada lectura obligatoria se paga en contexto en cada sesión.
+Revertir — `git revert <hash>`.
+
+---
+
 ## El `04` según la plantilla (2026-10-03) — solo documentación
 
 Qué — mapa de dónde está cada parte de la plantilla; A.1–A.4 (con la excepción del `06` hasta el triaje);

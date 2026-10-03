@@ -66,6 +66,7 @@ miente. En su lugar:
 | Documento | Contenido |
 |---|---|
 | [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las de mecánica de 2B, 2C, 2D y 2.5, las del reseño de la mesa (`D-R-*`), las veinticuatro del autor del 2026-09-04 (`D-OP-*`), las de la investigación del 2026-09-05, **las que la ejecución de esa noche obligó a tomar** (`E-*`, y varias van contra su propio plan) y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
+| [adr/](./adr/README.md) | **Decisiones difíciles de revertir**, una por fichero, con «Cuándo revisarse». Hoy, [0001 `TRUST_PROXY`](./adr/0001-trust-proxy-por-saltos.md) |
 | `superpowers/specs/` y `superpowers/plans/` | Los documentos completos, por si hace falta el razonamiento entero o saber qué se creía en una fecha |
 | `superpowers/notes/` | Los prompts de arranque de cada fase |
 | `.superpowers/sdd/progress.md` | **Ledger de ejecución** (fuera de `docs/`): una línea por tarea con commit, tests y resultado de la revisión. **Está en `.gitignore`: es local a esta máquina y no viaja con el clon** |

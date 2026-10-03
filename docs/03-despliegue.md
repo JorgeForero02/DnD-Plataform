@@ -324,7 +324,7 @@ esté `service_healthy` y no solo a que su contenedor exista.
 
 **6 · Auto-despliegue y comprobación**
 **El despliegue es manual y así se queda** (decisión del autor, 2026-09-02). Se lanza por la API
-de Coolify, con CI verde y **con un volcado previo siempre** (desde el 2026-10-03, hay gente usando la plataforma; § *Copias de seguridad*). Ver más abajo
+de Coolify, con CI verde y **con un volcado previo siempre** (desde el 2026-10-03; § *Copias de seguridad*). Ver más abajo
 por qué manual es lo correcto cuando las migraciones corren solas al arrancar. Entrar a
 `https://dnd.supportive.pro`, registrarse e iniciar sesión sobre HTTPS. Si `SENTRY_DSN` está
 puesta, provocar un error de prueba y confirmar que llega. Y hacer las tres comprobaciones de

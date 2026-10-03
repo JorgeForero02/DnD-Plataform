@@ -690,6 +690,20 @@ revisión), que quedan solo en el ledger.
 `fichero:línea`, pruebas con **su mutación obligatoria**, guía de revisión en casillas y las trampas
 conocidas. El índice lleva **la trazabilidad ficha → plan** contra la auditoría de la cola larga.
 
+## Adopción de la plantilla de agentes (2026-10-03) · [spec](./superpowers/specs/2026-10-03-adopcion-plantilla-design.md) · [plan](./superpowers/plans/2026-10-03-adopcion-plantilla.md)
+
+Decisiones del autor del 2026-10-03 y la que forzó el parche de dependencias.
+
+| | Decisión |
+|---|---|
+| D-AD-1 | **`TRUST_PROXY` es un contador de saltos y llega a Fastify como función** `(address, hop) => hop < N`, porque desde `fastify` 5.12.1 un número no confía en nada. En producción vale 2. Razonado en [ADR 0001](./adr/0001-trust-proxy-por-saltos.md) |
+| D-AD-2 | **Código en rama y `merge --no-ff`; solo documentación directo a `main`** ([04-convenciones.md](./04-convenciones.md), § *Git*) |
+| D-AD-3 | **Atribución a IA veraz** en los commits (`Co-Authored-By` con el modelo que lo hizo); sin `git-guard`, porque hay una sola identidad |
+| D-AD-4 | **Sin `deny` de secretos para los agentes y sin plantilla de PR**: un solo desarrollador ([04-convenciones.md](./04-convenciones.md), excepciones frente a la plantilla) |
+| D-AD-5 | **Los parches de seguridad van primero** y los despliega el autor en cuanto pasan `verify` y los e2e de API, aunque `e2e-browser` siga rojo (ficha AD-1) |
+| D-AD-6 | **Volcado manual de la base antes de cualquier cambio en producción**, porque desde el 2026-10-03 hay gente usando la plataforma. La copia automática diaria del servidor (04:00) ya incluye esta base (medido el 2026-10-03); **no se monta ninguna copia automática nueva**, y una restauración de esta base sigue sin probarse. Sustituye a la decisión del 2026-09-05 de no hacer copias ([06-pendientes.md](./06-pendientes.md), sección de la copia de seguridad) |
+| D-AD-7 | **El banco de tareas lo lanza y lo puntúa el orquestador**, como subagentes de contexto limpio, de uno en uno, con un máximo de 2 subagentes cada uno y de un solo nivel. El autor no abre las sesiones ni puntúa ([10-banco-de-tareas.md](./10-banco-de-tareas.md), «Cómo se corre») |
+
 ## Lo demás que hay en `superpowers/`
 
 Specs de estudio (mesas virtuales, formularios, identidad visual, cajas), planes por fase,

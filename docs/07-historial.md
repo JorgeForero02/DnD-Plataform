@@ -108,6 +108,17 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## ADR 0001: `TRUST_PROXY` por saltos (2026-10-03) — solo documentación
+
+Qué — primer ADR del repositorio, enlazado desde `decisiones.md`: el contador de saltos, por qué llega a
+Fastify como función desde `fastify` 5.12, las alternativas descartadas y cuándo revisarlo. Además, la
+sección «Adopción de la plantilla de agentes» de `decisiones.md` (D-AD-1 a D-AD-7, con D-AD-6 el volcado
+manual antes de tocar producción y D-AD-7 quién corre el banco) y `adr/README.md`.
+Por qué — es la decisión más cara de equivocar (el límite del login) y acaba de cambiar de forma.
+Revertir — borrar `docs/adr/` y la sección de `decisiones.md`.
+
+---
+
 ## Banco «antes» de adoptar la plantilla, y lo que destapó (2026-10-03) — solo documentación
 
 Qué — corrida «antes» del banco, lanzada y puntuada por el orquestador: T1 PASA con mancha, T2 PASA con
@@ -115,7 +126,7 @@ reservas, T3 PASA, T4 PASA (detalle en la tabla de `10-banco-de-tareas.md`). Lo 
 contradicción de `03-despliegue.md` sobre el volcado previo, ahora coherente con la regla «antes de
 cualquier cambio» (§ Copias de seguridad) y con la medida de que el trabajo de las 04:00 sí vuelca esta
 base; la remedida de P2 en `06` (la mesa a 390 px ha empeorado: 596 px y 24 px); una nota en AD-1 (un e2e
-de 1280 px rojo en local); AD-8 (el banco está a la vista del agente que se mide); y AD-9 (seguridad, a
+de 1280 px rojo en local); AD-8 (el banco está a la vista del agente que se mide); y AD-9 (sin arreglar) (seguridad, a
 decidir por el autor: los registros de tiradas y de sucesos devuelven la fila entera). Pulido de
 `prompts.md` sobre cómo se lanzan los subagentes.
 Por qué — la plantilla mide el proceso antes de cambiar reglas, y la corrida encontró defectos reales.

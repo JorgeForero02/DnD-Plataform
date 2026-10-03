@@ -107,6 +107,33 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Parche de dependencias: `fastify`, `fast-uri` y `@nestjs/platform-fastify` (2026-10-03) — rama `fix/fastify-trust-proxy`
+
+Qué — `pnpm audit --prod` daba 19 (9 high: `fastify` 5.11.3 ×4, `fast-uri` ×4, `@nestjs/platform-fastify`
+11.2.3 ×1) y el umbral `high` del CI salía con exit 1. `fast-uri` sube dentro de su rango (3.1.8 y 4.2.1);
+`@nestjs/platform-fastify` a `^11.2.7`; y como Nest 11 fija `fastify` con versión exacta (5.11.3 hasta su
+11.2.7), un `pnpm.overrides` en el `package.json` raíz lo lleva a 5.12.5. Queda 0 high y 4 moderate
+(React Router 7 y Sentry 10, versiones mayores, con su ficha). **El parche obligaba a tocar código:** desde
+`fastify` 5.12.1 un `trustProxy` numérico no confía en nada, así que `TRUST_PROXY=2` habría metido a
+todos los usuarios en el cubo de la IP del nginx. `buildAdapter()` pasa ahora la función
+`(address, hop) => hop < N`, que es lo que `fastify` 5.11 hacía con el número, con una prueba nueva para
+el valor de producción.
+
+Por qué — higiene y CI: las cuatro high de `fastify` (URL malformada hacia un not-found encapsulado,
+esquemas `false`, cabeceras sin normalizar, validación async) y la de Nest (middleware por ruta) **no
+constan como explotables aquí**: la API no usa `setNotFoundHandler`, ni esquemas de ruta de Fastify (valida
+con Zod), ni middleware de Nest. Eso se razonó leyendo el código; no se atacó la app en marcha.
+
+Verificado — `pnpm verify`; e2e de API completos contra Postgres (cifras en el ledger); instalación
+`pnpm install --frozen-lockfile` en un worktree limpio, como hacen los Dockerfiles. **No verificado:** la
+construcción real de las imágenes, el navegador (`e2e-browser` lleva rojo desde el 2026-09-07) y el humo en
+producción, que irá en una **entrada nueva** de este historial cuando el autor despliegue (esta no se
+reescribe).
+
+Revertir — `git revert -m 1 <hash del merge>`.
+
+---
+
 ## Cumplimiento legal: quince fichas contra el spec global (2026-09-26) — solo documentación, sin código
 
 Qué — se cruzó el árbol de `main` (`a4883f0`) con el spec global de cumplimiento y su addendum

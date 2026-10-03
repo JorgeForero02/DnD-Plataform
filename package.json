@@ -36,6 +36,9 @@
     "typescript-eslint": "^8.69.0"
   },
   "pnpm": {
+    "overrides": {
+      "fastify@<5.12.5": "^5.12.5"
+    },
     "onlyBuiltDependencies": [
       "esbuild",
       "@prisma/client",

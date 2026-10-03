@@ -126,8 +126,11 @@ de Traefik antes de dar el despliegue por bueno.
   fichero es correcto, no que la pila funcione en el servidor.
 - **La aritmética de `TRUST_PROXY`** (más abajo) está comprobada ejecutando el resolvedor
   real de Fastify —`@fastify/proxy-addr` 5.1.0 y `@fastify/forwarded` 3.0.2, las versiones
-  instaladas en este repositorio— sobre la cabecera exacta que produce esta cadena de
+  instaladas en este repositorio el 2026-09-02— sobre la cabecera exacta que produce esta cadena de
   proxies.
+  Desde el parche del 2026-10-03 la versión es `@fastify/proxy-addr` 5.1.1 y `TRUST_PROXY` llega a
+  Fastify como función de saltos; el resultado es el mismo, y lo fija `configure-app.spec.ts`, caso
+  `TRUST_PROXY=2`.
 - **CI en GitHub Actions verde** en cada push a `main` y en cada PR (`.github/workflows/ci.yml`),
   con dos trabajos: `test` (instala, genera Prisma, aplica migraciones contra un Postgres de
   servicio, y corre `pnpm lint`, `pnpm format:check`, `pnpm check:docs`, `pnpm check:estado`,

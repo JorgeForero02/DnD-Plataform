@@ -5,8 +5,9 @@ import { AppModule } from "../src/app.module";
 import { AUTH_RATE_LIMIT } from "../src/common/rate-limit.constants";
 import { buildAdapter } from "../src/configure-app";
 
-// Proves Critical 1 from fix round 1: with TRUST_PROXY=1 (production's setting, one hop of
-// trust for nginx), ThrottlerGuard must key on the RIGHTMOST X-Forwarded-For entry — the one
+// Proves Critical 1 from fix round 1: with TRUST_PROXY=1 (one hop of trust; production uses 2,
+// Traefik + nginx — configure-app.spec.ts covers that value), ThrottlerGuard must key on the
+// RIGHTMOST X-Forwarded-For entry — the one
 // nginx itself appended via proxy_add_x_forwarded_for (apps/web/nginx.conf) — and ignore
 // whatever a client puts to the left of it, even though nginx never strips that forged part.
 //

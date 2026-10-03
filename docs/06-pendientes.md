@@ -100,7 +100,7 @@ agente: cambia qué es el producto hoy.
 ### CL-3 · Cabeceras de seguridad también en el HTML, no solo en `/api` — P1, **ya** [SEC-01, SEC-02, INFRA-02]
 
 **Estado:** `helmet` solo cubre la API, con la CSP apagada a propósito porque responde JSON
-(`configure-app.ts:84-97`); el HTML de la aplicación lo sirve nginx **sin ninguna cabecera**
+(`configureApp()` en `apps/api/src/configure-app.ts`); el HTML de la aplicación lo sirve nginx **sin ninguna cabecera**
 (`apps/web/nginx.conf:12-15`): ni CSP, ni `frame-ancestors`, ni `nosniff`. Si Traefik añade HSTS a
 este dominio se mide en el servidor (INFRA-02). Importa más que en otro proyecto porque **el token
 vive en `localStorage`** (CL-9): un XSS es robar la sesión, y la CSP es la barrera. **Qué hacer:**
@@ -207,8 +207,13 @@ cargar `/login` no hace ninguna petición a un dominio de terceros.
 
 ### CL-13 · Cadena de suministro y licencias de dependencias — P2, **ya** [SEC-05, SEC-07, LIC-01]
 
-**Estado:** `pnpm audit --prod --audit-level=high` en CI (`.github/workflows/ci.yml:41`) — cumple en
+**Estado:** `pnpm audit --prod --audit-level=high` en CI (`.github/workflows/ci.yml`, paso `pnpm audit --prod --audit-level=high`) — cumple en
 parte. No hay escaneo de secretos (gitleaks), ni Dependabot/Renovate, ni inventario de licencias.
+
+**2026-10-03:** el audit daba 9 high (`fastify` fijado por `@nestjs/platform-fastify`, `fast-uri`)
+y el umbral del CI salía en rojo. Parcheado con un `override` de `fastify` y `fast-uri` dentro de su
+rango: 0 high y 4 moderate que piden versiones mayores (React Router 7, Sentry 10). Detalle y lo que
+no se verificó: [07-historial.md](./07-historial.md).
 **Aceptación:** CI falla con un secreto o con una licencia no permitida.
 
 ### CL-14 · Contenido de usuarios: denuncia, retirada y el marco del tablero — P2, **antes de SaaS** [UGC-01, UGC-02, UGC-06, UGC-07]
@@ -596,7 +601,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (CL-13: el parche de dependencias). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

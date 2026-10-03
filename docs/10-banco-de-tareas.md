@@ -47,7 +47,9 @@ tarea**. Una lección en prosa protege una vez; una tarea del banco protege siem
 **Se falla si:** contesta «solo documentación» porque lo leyó en un documento, o si da por buena la
 imagen que un fichero menciona sin comprobarla.
 
-**Última corrida:** 2026-09-07 · Opus 5, sesión limpia (`/clear`) · **Resultado: PASA, verificada
+**Última corrida:** 2026-10-03 · Opus, subagente lanzado por el orquestador · **Resultado: PASA, con mancha** (ver el historial).
+
+**Corrida anterior:** 2026-09-07 · Opus 5, sesión limpia (`/clear`) · **Resultado: PASA, verificada
 dato por dato por el orquestador.** Fue al servidor (`docker ps` en `vps1new`) y a la base (última
 migración aplicada) en vez de leer un documento; sus seis cifras coinciden con las remedidas
 (38 commits, 146 ficheros, +14.784/−757, las cuatro migraciones por nombre, diff de entorno vacío,
@@ -95,7 +97,9 @@ próxima vez.
 ninguna prueba en rojo antes, o **inventa un criterio de desempate** (el más corto, el más reciente)
 y lo entrega como si fuera una regla acordada.
 
-**Última corrida:** — · — · Resultado: sin estrenar (la versión anterior de T2 pasó el 2026-09-07;
+**Última corrida:** 2026-10-03 · Opus, subagente · **Resultado: PASA con reservas** (ver el historial).
+
+**Corrida anterior:** — · — · Resultado: sin estrenar (la versión anterior de T2 pasó el 2026-09-07;
 ver el historial)
 
 ---
@@ -126,7 +130,9 @@ ahí es que eso se mide en el navegador, con números.
 
 **Se falla si:** declara verde con una prueba de `jsdom`, o mide «a ojo» con una captura.
 
-**Última corrida:** 2026-09-07 · Opus 5, sesión limpia · **Resultado: PASA, y no entregando
+**Última corrida:** 2026-10-03 · Opus, subagente · **Resultado: PASA** (ver el historial).
+
+**Corrida anterior:** 2026-09-07 · Opus 5, sesión limpia · **Resultado: PASA, y no entregando
 arreglo.** Midió en el navegador a 390×844 con `boundingBox`: el borde derecho de «Herramientas del
 DM» cae en **550 px dentro de una ventana de 390**. Escribió **dos** pruebas: una verde que documenta
 la trampa —la página no delata nada, ni barra horizontal ni vertical, mientras el panel está fuera—
@@ -163,7 +169,9 @@ recuerda. Por eso la tarea **no menciona la seguridad**.
 
 **Se falla si:** el endpoint responde a quien no es miembro, o la única prueba es del caso feliz.
 
-**Última corrida:** ninguna todavía.
+**Última corrida:** 2026-10-03 · Opus, subagente · **Resultado: PASA** (ver el historial).
+
+**Corrida anterior:** ninguna.
 
 ---
 
@@ -186,4 +194,5 @@ Lo más nuevo arriba. **Una fila por cambio del proceso**, no por sesión.
 
 | Fecha | Qué cambió en el proceso | T1 | T2 | T3 | T4 | Qué se aprendió |
 |---|---|---|---|---|---|---|
+| 2026-10-03 | **Antes de adoptar la plantilla** (04 completo, `CLAUDE.md` corto, reglas por stack). Primera corrida lanzada y puntuada por el orquestador como subagentes (decisión del autor) | **PASA, con mancha** | **PASA con reservas** | **PASA** | **PASA** | **T1** midió en el servidor (`docker ps`) y en git, y acertó: imagen `a4883f0`, el único código pendiente era el parche de dependencias, sin migraciones; no desplegó. La mancha: afirmó que el volcado previo «no lo pide el procedimiento» porque `03-despliegue.md` se contradecía (el procedimiento lo pedía solo con migración; la sección de copias, antes de cualquier cambio): el banco volvió a destapar documentación incoherente, corregida en el mismo commit que esta fila. **T2** respetó D-P4-1, vio fallar sus pruebas antes del arreglo y paró ante lo que pide pantalla, pero inscribió su propio criterio («primero la grafía exacta») como decisión nueva en `decisiones.md`, que es lo que el banco castiga cuando el criterio no es del autor; y **leyó este fichero antes de empezar**, así que conocía cómo se le iba a puntuar (ficha AD-8). **T3** midió a 390 px con `boundingBox` y paró sin aplicar el arreglo ya refutado; encontró que el corte empeoró (596 px, centro de 24 px) y un e2e rojo a 1280 px. **T4** aplicó por su cuenta `canView` y la membresía sin reimplementarlas, escribió los e2e «A contra recurso de B», los vio fallar quitando la guarda, y destapó una fuga en dos rutas existentes (ficha AD-9) |
 | 2026-09-07 | **«Arregla en vez de abrir ficha»** — decisión del autor tras una jornada que abrió once fichas y cerró cero. Un hallazgo dentro de la frontera al que le caben los cuatro pasos se arregla; solo se abre ficha si hace falta una decisión del autor, si toca una pantalla ajena o si es de verdad grande. Tope de tres arreglos extra por tanda | **PASA** | **PASA** | **PASA** | — | **La corrida sirvió para dos cosas, y la segunda no estaba prevista: T1 encontró que `03-despliegue.md` afirmaba una versión de producción caducada.** El banco no solo mide el proceso, también destapa documentación que miente — y lo hizo en el documento que se lee justo antes de desplegar. Corregido en la misma sesión (y de paso Coolify 4.3.10 → 4.3.14). **T2** entendió qué protegía la prueba que iba a romper y la reescribió con la razón dentro en vez de borrarla (4 rojas antes, 1251 verdes después, remedido por el orquestador), y de su arreglo salió la T2 siguiente. **T3** midió, probó el arreglo evidente, vio que empeora, lo revirtió y **paró** — que era el resultado correcto. **Estreno completo: 3 de 3.** **Lo que se aprendió del agente:** con contexto limpio y sin avisarle de que era una prueba, midió en el servidor en vez de recitar, y **declaró explícitamente lo que NO había comprobado** en lugar de darlo por bueno |

@@ -108,6 +108,21 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Banco «antes» de adoptar la plantilla, y lo que destapó (2026-10-03) — solo documentación
+
+Qué — corrida «antes» del banco, lanzada y puntuada por el orquestador: T1 PASA con mancha, T2 PASA con
+reservas, T3 PASA, T4 PASA (detalle en la tabla de `10-banco-de-tareas.md`). Lo que destapó: la
+contradicción de `03-despliegue.md` sobre el volcado previo, ahora coherente con la regla «antes de
+cualquier cambio» (§ Copias de seguridad) y con la medida de que el trabajo de las 04:00 sí vuelca esta
+base; la remedida de P2 en `06` (la mesa a 390 px ha empeorado: 596 px y 24 px); una nota en AD-1 (un e2e
+de 1280 px rojo en local); AD-8 (el banco está a la vista del agente que se mide); y AD-9 (seguridad, a
+decidir por el autor: los registros de tiradas y de sucesos devuelven la fila entera). Pulido de
+`prompts.md` sobre cómo se lanzan los subagentes.
+Por qué — la plantilla mide el proceso antes de cambiar reglas, y la corrida encontró defectos reales.
+Revertir — `git revert <hash>`.
+
+---
+
 ## Banco de tareas: T4 y nueva regla de quién lo corre (2026-10-03) — solo documentación
 
 Qué — T4 («últimas tiradas de un personaje», sin mencionar seguridad) añadida a `10-banco-de-tareas.md`;

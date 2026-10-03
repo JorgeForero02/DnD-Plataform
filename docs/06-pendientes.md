@@ -254,6 +254,7 @@ en `failure`; la última verde es del 2026-09-07 (`7e7f92b`). En la de `a4883f0`
 **Qué hacer:** leer el registro de esa ejecución (pide sesión en GitHub) o reproducir la suite de
 navegador en local con `WORKTREE_SLOT=1`; arreglar la causa, no el síntoma. **Depende de:** nada.
 **Relacionada:** `03-despliegue.md` pide CI verde para desplegar, y hoy no puede cumplirse.
+**2026-10-03:** en local, `apps/web/e2e/tablero-en-la-mesa.spec.ts` (la prueba de 1280 px) falla: la cabecera del registro mide 51 px y el límite es 48. Puede ser parte de lo que tumba `e2e-browser`.
 
 ### AD-2 · `fastify` llega por un `override`, no por su rango
 
@@ -304,6 +305,27 @@ comparaciones del plan de adopción se hicieron en serie. **Qué hacer:** averig
 peticiones pesadas a la vez sobre la misma base) o un límite de tiempo del cliente de pruebas, y que la
 suite pase también en paralelo, o declarar `--runInBand` en el script `test:e2e` como decisión.
 **Depende de:** nada. **Relacionada:** AD-1 (el CI corre los e2e de API en paralelo).
+
+### AD-8 · El banco de tareas está a la vista del agente que se mide
+
+`docs/10-banco-de-tareas.md` vive en el mismo repositorio que el agente lee, con los enunciados y lo que
+tiene que pasar. En la corrida del 2026-10-03 la T2 lo leyó antes de empezar, así que conocía cómo se le
+iba a puntuar: la medida queda contaminada. **Qué hacer:** decidir si los criterios se sacan a un fichero
+fuera del repositorio (y aquí queda solo el enunciado), o se acepta y se declara. **Depende de:** nada.
+**Relacionada:** `10-banco-de-tareas.md`, «Cómo se corre».
+
+### AD-9 · SEG — Los registros de tiradas y de sucesos devuelven la fila entera
+
+`GET /campaigns/:campaignId/events` y `GET /campaigns/:campaignId/rolls` filtran cada suceso por `canView`
+(la visibilidad del **suceso**), pero devuelven la fila entera: `subjectId` (el personaje), `actorUserId`
+(quién tiró) y el `payload`, con `pendingDamage.targetCharacterId` en un ataque. A quien no es el DM solo se
+le quita `attackRef` (`GameEventsService.list`, en `apps/api/src/game-events/game-events.service.ts`). Así,
+una tirada pública puede revelar el identificador, y con él la existencia, de un personaje que solo ve el
+DM. Encontrado el 2026-10-03 por la T4 del banco y comprobado leyendo el código. **Gravedad media:** son
+identificadores opacos, no nombres ni hojas. **Qué hacer (decide el autor):** devolver a quien no es el DM
+solo los campos que pinta la pantalla, y quitar o anonimizar lo que apunte a un personaje que no puede
+ver. Cambia lo que reciben el panel de dados, la vista de sesión y el hilo, así que lleva sus e2e. **Depende
+de:** nada. **Relacionada:** `canView` en `apps/api/src/common/visibility.ts`.
 
 ## Dejado por la auditoría de interfaz (2026-09-19)
 
@@ -666,7 +688,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción, AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
@@ -1042,6 +1064,8 @@ Movida entera a
 
 **Lo vio el paseo de uso con dos anchos** —1280 y 390— la noche del 2026-09-05, y **no se arregló a
 propósito**: es trabajo de maquetación, no un fallo suelto que se cierre con una línea.
+
+**2026-10-03 (medido con Playwright a 390×844 en la corrida del banco):** el panel «Herramientas del DM» acaba en 596 px (eran 550) y el hilo del centro mide 24 px (eran 48): ha empeorado. Sigue aplazado por el autor (D-CF-26).
 
 A 390 px la mesa reparte sus **tres columnas a lo ancho** y las **«Herramientas del DM» quedan
 cortadas**. **No hay desbordamiento de la página** —la barra horizontal no aparece—, así que no lo

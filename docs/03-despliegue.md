@@ -324,7 +324,7 @@ esté `service_healthy` y no solo a que su contenedor exista.
 
 **6 · Auto-despliegue y comprobación**
 **El despliegue es manual y así se queda** (decisión del autor, 2026-09-02). Se lanza por la API
-de Coolify, con CI verde y **con un volcado previo si la tanda trae migración**. Ver más abajo
+de Coolify, con CI verde y **con un volcado previo siempre** (desde el 2026-10-03, hay gente usando la plataforma; § *Copias de seguridad*). Ver más abajo
 por qué manual es lo correcto cuando las migraciones corren solas al arrancar. Entrar a
 `https://dnd.supportive.pro`, registrarse e iniciar sesión sobre HTTPS. Si `SENTRY_DSN` está
 puesta, provocar un error de prueba y confirmar que llega. Y hacer las tres comprobaciones de
@@ -436,6 +436,7 @@ solas al arrancar el contenedor** (`prisma migrate deploy` en el `CMD` de la ima
 auto-despliegue, un `push` a `main` cambiaría el esquema de producción sin que nadie lo hubiera
 decidido y **sin volcado previo**. Manual convierte cada despliegue en una decisión con su copia
 de seguridad delante, que es exactamente como se hicieron los dos de hoy.
+Desde el 2026-10-03 cada despliegue lleva su volcado previo (§ *Copias de seguridad*).
 
 **Consecuencia práctica que hay que tener presente:** todo lo comiteado después del segundo
 despliegue —el motor de reglas y lo que venga— **está en `main` y no en producción** hasta que
@@ -472,6 +473,7 @@ de verdad porque hablan de perder datos:
    Hay que mirar `ssh vps1new "cat /root/docs/00-INDEX.md"` y su documento de copias: si la
    lista de contenedores es fija, **añadir este es parte del despliegue**, no un pendiente.
    Una copia que nadie ha verificado que cubra esta base es peor que saber que no la cubre.
+   **2026-10-03:** medido otra vez: las copias del 1, 2 y 3 de octubre llevan `dnd-pg.sql.gz` (unos 32 KB, 32 `CREATE TABLE`).
 2. **Una restauración de prueba en un contenedor desechable, comparando conteos de filas.**
    Hasta hacer eso, la copia es una hipótesis. Es como se validó el resto del servidor.
 3. **El consumo real de la pila** (`docker stats`) contra la holgura de la máquina, para

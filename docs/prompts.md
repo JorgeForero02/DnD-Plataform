@@ -27,8 +27,7 @@ Reglas de la sesión:
 
 ## 2 · Correr una tarea del banco
 
-**Subagente nuevo, contexto limpio, de uno en uno.** El orquestador lanza cada tarea como subagente y le pega **solo el enunciado** de la tarea y el límite de subagentes (como mucho 2, un solo nivel, y el encargo de cada hijo les prohíbe lanzar más), tal cual está en
-[10-banco-de-tareas.md](./10-banco-de-tareas.md):
+**Subagente nuevo, contexto limpio, de uno en uno.** El orquestador lanza cada tarea como subagente y le pega **solo el enunciado**, tal cual está en [10-banco-de-tareas.md](./10-banco-de-tareas.md), más el límite de subagentes: como mucho 2, un solo nivel, el encargo de cada hijo le prohíbe lanzar más y cada uno se justifica en el informe.
 
 ```text
 <el enunciado de T1, T2, T3 o T4, y nada más>
@@ -46,7 +45,7 @@ El hábito que hace que el banco sirva:
 
 ```text
 Voy a cambiar <la regla / CLAUDE.md / la skill / el modelo>.
-Antes de tocarlo: corro las cuatro tareas de docs/10-banco-de-tareas.md en sesiones limpias y
+Antes de tocarlo: corro las cuatro tareas de docs/10-banco-de-tareas.md en subagentes con contexto limpio y
 anoto el resultado. Después del cambio, las cuatro otra vez.
 Si algo empeoró, el sospechoso es el cambio, no el agente.
 ```

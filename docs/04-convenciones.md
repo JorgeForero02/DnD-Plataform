@@ -112,10 +112,12 @@ tope hasta el triaje (`wc -l docs/06-pendientes.md`).
   comas finales). `pnpm format` lo aplica.
   **El Markdown está excluido a propósito** (`.prettierignore`): la documentación se escribe a
   mano y sus saltos de línea y tablas son deliberados.
-- `pnpm check:docs` (`scripts/check-docs.mjs`) comprueba mecánicamente tres reglas de
-  documentación: rutas citadas entre comillas invertidas que no existen, `fichero:NN` con la
-  línea fuera de rango, y conteos de pruebas escritos fuera de su fuente única. Antes de
-  `test` a propósito: falla rápido y barato.
+- `pnpm check:docs` (`scripts/check-docs.mjs`) comprueba mecánicamente seis reglas de
+  documentación: conteos de pruebas escritos fuera de su fuente única (también si la cifra y la
+  palabra caen en dos líneas seguidas, desde el 2026-10-03), rutas citadas entre comillas invertidas
+  que no existen, `fichero:NN` con la línea fuera de rango, fechas en el futuro, fichas tachadas en
+  el `06` y una «Última revisión» del `06` más vieja que su fecha más nueva. Antes de `test` a
+  propósito: falla rápido y barato.
 - `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba **los dos bloques que
   ese script genera** y falla si alguien editó cualquiera a mano: los **conteos de unitarias**
   del bloque de estado de [00-INDEX.md](./00-INDEX.md), y desde el 2026-09-03 los **ficheros de

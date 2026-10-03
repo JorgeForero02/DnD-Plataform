@@ -1,14 +1,17 @@
 #!/usr/bin/env node
-// Doc-lint: makes three of this project's documentation rules mechanical instead of
+// Doc-lint: makes six of this project's documentation rules mechanical instead of
 // aspirational. Written after a session where seven documentation claims contradicted the
 // code, three of them in docs/00-INDEX.md — the file CLAUDE.md tells everyone to read first.
 //
 // A documentation rule a machine does not check is not a rule, it is an intention.
 //
 // Checks:
-//   1. Test counts outside their single source (docs/08-pruebas.md).
+//   1. Test counts outside their single source (docs/08-pruebas.md), also when the number and
+//      its word fall on two consecutive lines.
 //   2. Backticked file paths that do not exist.
 //   3. Backticked `file.ext:NN` references whose line number is past the end of the file.
+//   4-6. A date in the future; struck-through fichas in docs/06-pendientes.md; its "Última
+//      revisión" older than its newest date (see the second pass below).
 //
 // Deliberately conservative: a false positive here costs somebody an argument with a script,
 // so every check has an escape hatch documented below. It does depend on `git` now (see
@@ -84,6 +87,9 @@ const BASES = [
 // adjacent (at most one short word between) so "las 5 reglas de visibilidad" does not trip it.
 const COUNT_RE = /\b\d{1,5}\s+(?:\w+\s+)?(pruebas|unitarias|tests|recorridos|e2e|suites)\b/i;
 
+// A fenced-code delimiter line. Shared by the fence tracking below and the line-break check.
+const FENCE_RE = /^\s*```/;
+
 // Backticked paths: at least one slash, a plausible extension, optional :NN suffix.
 const PATH_RE = /`([\w./-]+\.[a-z]{1,5})(?::(\d{1,6}))?`/g;
 
@@ -149,16 +155,29 @@ for (const file of [...walk(docsDir), ...rootMdFiles]) {
 
   lines.forEach((line, i) => {
     const at = `${rel}:${i + 1}`;
-    if (/^\s*```/.test(line)) inFence = !inFence;
+    if (FENCE_RE.test(line)) inFence = !inFence;
     if (inFence || line.includes(IGNORE)) return;
 
-    // 1 — counts outside the single source
-    if (!COUNTS_EXEMPT.includes(rel) && COUNT_RE.test(line)) {
-      findings.push({
-        at,
-        rule: "conteo",
-        msg: `un conteo de pruebas vive fuera de ${COUNTS_SOURCE}: "${line.trim().slice(0, 90)}"`,
-      });
+    // 1 — counts outside the single source. Also across one line break (added 2026-10-03):
+    // a number at the end of a line and its word at the start of the next slipped past a
+    // line-by-line test (docs/01-arquitectura.md, `pnpm catalogo:test` count). The pair is
+    // reported on THIS line only when the number is here and the word on the next one; a count
+    // wholly inside the next line is reported when the loop gets there.
+    if (!COUNTS_EXEMPT.includes(rel)) {
+      const next = lines[i + 1] ?? "";
+      const pair =
+        next.includes(IGNORE) || FENCE_RE.test(next) ? null : `${line} ${next.trimStart()}`;
+      const split = pair ? pair.match(COUNT_RE) : null;
+      const crossesBreak =
+        split !== null && split.index < line.length && split.index + split[0].length > line.length;
+      if (COUNT_RE.test(line) || crossesBreak) {
+        const shown = (crossesBreak ? pair : line).trim().slice(0, 90);
+        findings.push({
+          at,
+          rule: "conteo",
+          msg: `un conteo de pruebas vive fuera de ${COUNTS_SOURCE}: "${shown}"`,
+        });
+      }
     }
 
     // 2 and 3 — paths and line references

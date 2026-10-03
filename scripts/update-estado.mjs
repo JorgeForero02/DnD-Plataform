@@ -25,7 +25,7 @@
 // suites here to print a number `test` is about to compute anyway would defeat that. What it
 // protects is real: nobody can hand-edit the number in 00-INDEX.md without --check catching
 // it. What it does NOT protect is the number matching the runner's, and pretending otherwise
-// was worse than the gap itself. Ficha I9 of docs/06-pendientes.md carries the fix.
+// was worse than the gap itself. Decision D-POD-4 (docs/decisiones.md) keeps it that way.
 //
 // docs/08-pruebas.md is where this project declares test counts belong (see
 // docs/04-convenciones.md and the root CLAUDE.md). For the unit counts specifically, this
@@ -196,8 +196,8 @@ const block = [
   ">   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no",
   ">   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número",
   ">   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice",
-  ">   `pnpm test`. Ver el comentario al principio del script, y la ficha I9 de",
-  ">   [06-pendientes.md](./06-pendientes.md). Los conteos de e2e están en",
+  ">   `pnpm test`. Ver el comentario al principio del script, y la decisión D-POD-4 de",
+  ">   [decisiones.md](./decisiones.md). Los conteos de e2e están en",
   ">   [08-pruebas.md](./08-pruebas.md).",
   END,
 ].join("\n");

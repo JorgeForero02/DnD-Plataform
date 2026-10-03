@@ -108,6 +108,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## `check-docs` ve una cifra partida en dos líneas (2026-10-03) — rama `chore/puerta-plantilla`
+
+Qué — la comprobación de conteos mira también el par «esta línea + la siguiente»; la cabecera del script y
+el `04` dicen las seis reglas que tiene (decían tres). El bloque generado del `00` deja de remitir a la
+ficha I9, que se cerró como decisión D-POD-4. **Visto fallar:** «hay 999 / pruebas» en `02-entorno.md` →
+`conteo`; lo mismo en el `07` → nada (exento); una ruta inexistente → `ruta`; `main.ts:99999` → `línea`.
+Por qué — `01-arquitectura.md` decía «47 / unitarias» con 63 reales y el control no lo veía (refutación de
+la auditoría de adopción).
+Revertir — `git revert <hash>`.
+
+---
+
 ## `CLAUDE.md` corto y `AGENTS.md` con su línea (2026-10-03) — solo documentación
 
 Qué — `CLAUDE.md` pasa de 126 líneas y trece lecturas a la forma de la plantilla: qué es y stack, tres

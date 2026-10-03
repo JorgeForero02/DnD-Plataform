@@ -108,6 +108,16 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Invariantes con dueño y prueba (2026-10-03) — solo documentación
+
+Qué — `11-invariantes.md`: visibilidad y sus cinco niveles, membresía, hoja derivada, PNJ = `Character`,
+reloj en segundos, un encuentro activo por sesión, ranuras y sintonizaciones, azar en el servidor; cada
+uno con su dueño y su prueba, o «Sin prueba». Y un glosario corto.
+Por qué — plantilla (D16): una prueba que contradice un cambio suele estar fijando un invariante.
+Revertir — borrar el fichero y su fila del `00`.
+
+---
+
 ## ADR 0001: `TRUST_PROXY` por saltos (2026-10-03) — solo documentación
 
 Qué — primer ADR del repositorio, enlazado desde `decisiones.md`: el contador de saltos, por qué llega a
@@ -126,7 +136,7 @@ reservas, T3 PASA, T4 PASA (detalle en la tabla de `10-banco-de-tareas.md`). Lo 
 contradicción de `03-despliegue.md` sobre el volcado previo, ahora coherente con la regla «antes de
 cualquier cambio» (§ Copias de seguridad) y con la medida de que el trabajo de las 04:00 sí vuelca esta
 base; la remedida de P2 en `06` (la mesa a 390 px ha empeorado: 596 px y 24 px); una nota en AD-1 (un e2e
-de 1280 px rojo en local); AD-8 (el banco está a la vista del agente que se mide); y AD-9 (sin arreglar) (seguridad, a
+de 1280 px rojo en local); AD-8 (el banco está a la vista del agente que se mide); y AD-9 (seguridad, sin arreglar; a
 decidir por el autor: los registros de tiradas y de sucesos devuelven la fila entera). Pulido de
 `prompts.md` sobre cómo se lanzan los subagentes.
 Por qué — la plantilla mide el proceso antes de cambiar reglas, y la corrida encontró defectos reales.

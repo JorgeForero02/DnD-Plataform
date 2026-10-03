@@ -46,6 +46,7 @@ Lo que tiene, por fases (capacidades, no estado de despliegue):
 | [08-pruebas.md](./08-pruebas.md) | **Pruebas, entero.** Qué prueba cada capa, qué NO cubre, la regla de Playwright, y **qué demuestra cada suite** —de API y de navegador— más lo que ningún recorrido cubre. Léelo antes de dar una tarea por terminada y antes de escribir un e2e nuevo. Es la **fuente única de los conteos**. Absorbió al antiguo mapa de e2e, que ya no existe como documento aparte |
 | [como-seguir.md](./como-seguir.md) | **Por dónde entrar**: qué andamiaje ya está puesto —para no volver a montarlo—, qué sigue y en qué orden, y qué no decide un agente |
 | [10-banco-de-tareas.md](./10-banco-de-tareas.md) | **Banco de tareas-tipo**: cuatro tareas fijas que miden si un cambio del proceso —`CLAUDE.md`, una regla, una skill, el modelo— mejora o empeora al agente. No se corre al cambiar una funcionalidad |
+| [11-invariantes.md](./11-invariantes.md) | **Las reglas de dominio que no pueden romperse**, con su dueño y la prueba que las fija, y el glosario |
 | [prompts.md](./prompts.md) | **Prompts que sirven cualquier día**: sesión normal, correr el banco, cambiar el proceso, encargar a un subagente, trabajar una ficha, ejecutar un plan. Los de un trabajo concreto siguen fechados en `superpowers/notes/` |
 | [_archivo/README.md](./_archivo/README.md) | **Documentos congelados.** El historial por tarea, los pendientes ya cerrados y el documento fuente original del producto. **Nada de ahí se edita, y nada de ahí describe el sistema de hoy** — el fuente original, en particular, propone Redis, WebSockets y una hoja de personaje almacenada, que es lo contrario de lo que se construyó |
 | [../NOTICE.md](../NOTICE.md) | **Atribución del SRD 5.1 (CC BY 4.0)** y la línea de qué contenido entra en el repositorio y qué no. Vive en la raíz, no aquí, porque la licencia lo pide en la obra distribuida |
@@ -65,7 +66,7 @@ miente. En su lugar:
 
 | Documento | Contenido |
 |---|---|
-| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las de mecánica de 2B, 2C, 2D y 2.5, las del reseño de la mesa (`D-R-*`), las veinticuatro del autor del 2026-09-04 (`D-OP-*`), las de la investigación del 2026-09-05, **las que la ejecución de esa noche obligó a tomar** (`E-*`, y varias van contra su propio plan) y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
+| [decisiones.md](./decisiones.md) | **Una línea por decisión tomada, con el enlace a dónde está razonada.** Las de mecánica de 2B, 2C, 2D y 2.5, las del reseño de la mesa (`D-R-*`), las de la adopción de la plantilla (`D-AD-*`), las veinticuatro del autor del 2026-09-04 (`D-OP-*`), las de la investigación del 2026-09-05, **las que la ejecución de esa noche obligó a tomar** (`E-*`, y varias van contra su propio plan) y las cuatro que la fase 3 tiene abiertas. **Empieza aquí y abre solo el documento que la fila enlaza** |
 | [adr/](./adr/README.md) | **Decisiones difíciles de revertir**, una por fichero, con «Cuándo revisarse». Hoy, [0001 `TRUST_PROXY`](./adr/0001-trust-proxy-por-saltos.md) |
 | `superpowers/specs/` y `superpowers/plans/` | Los documentos completos, por si hace falta el razonamiento entero o saber qué se creía en una fecha |
 | `superpowers/notes/` | Los prompts de arranque de cada fase |

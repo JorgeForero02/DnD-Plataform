@@ -1,5 +1,69 @@
 # Convenciones
 
+## Dónde está cada parte de la plantilla
+
+Este documento sigue el esqueleto de la plantilla de agentes (Partes A, B y C) sin renumerar lo que ya
+tenía. Si buscas una regla de la plantilla:
+
+| Plantilla | Aquí |
+|---|---|
+| A.1–A.3 ciclo, escritura, prohibiciones · A.4 tablero | § *A · Documentación* (en este mismo fichero) |
+| B.1–B.3 stack, dominio, flujo | `CLAUDE.md` («Reglas que no se negocian»), § *API*, § *Web*, § *Git* |
+| B.4 delegación | § *Trabajo con varios agentes a la vez* y su bloque literal |
+| B.5 seguridad y datos | § *B.5 · Seguridad y datos* |
+| B.6 antes de abrir una ficha | § *Antes de abrir una ficha* |
+| Parte C nivel y pasos | § *Nivel de verificación* |
+| Excepciones | § *Precedencia*, «Excepciones declaradas frente a la plantilla de agentes» |
+| Atribución de los commits | § *Git* |
+
+## A · Documentación
+
+### A.1 Ciclo por cambio
+
+**Antes** — leer [00-INDEX.md](./00-INDEX.md) y [06-pendientes.md](./06-pendientes.md). Funcionalidad
+nueva o refactor con diseño: primero spec, después plan (`superpowers/specs/AAAA-MM-DD-<slug>-design.md`
+→ `superpowers/plans/AAAA-MM-DD-<slug>.md`, una tarea = un commit). **Durante** — un cambio de riesgo a
+la vez, copia antes de sobrescribir, nada se da por bueno sin evidencia. **Después** — estado en `01`–`05`
+y `08` si cambió, entrada en [07-historial.md](./07-historial.md) (qué · por qué · cómo revertir), y el
+`06` al día.
+
+### A.2 Escritura
+
+Fechas absolutas · un fichero = un propósito (§ *Revisión*, «un fichero no mezcla tipos de documento») ·
+un dato vive en un solo sitio · **lo que una máquina puede medir no se escribe a mano**: se da el comando
+o el bloque generado.
+
+### A.3 Prohibiciones
+
+Estado de sesión o pendientes en `CLAUDE.md`/`AGENTS.md` · copiar el cuerpo de `CLAUDE.md` en
+`AGENTS.md` · enlazar documentos que no existen · editar `_archivo/` · cerrar un pendiente sin evidencia ·
+renumerar documentos.
+
+### A.4 Cómo se lleva el tablero (`06`)
+
+Las nueve reglas de la plantilla, **resumidas**; el texto completo está en el `04-convenciones.md` de la
+plantilla de agentes (carpeta *plantillas › docs*, fuera de este repositorio), §A.4 (refutación P19):
+
+1. **Por áreas.** Toda ficha pertenece a un área de la tabla «Resumen por área» del principio del `06`; no hay secciones por
+   origen ni viñetas sueltas: todo es una fila con ID.
+2. **ID = prefijo del área + número**; la prioridad nunca va dentro del ID; el número no se reutiliza;
+   no se renumera salvo en un triaje completo aprobado, con tabla de equivalencias y copia literal del
+   tablero viejo en `_archivo/`.
+3. **Una ficha por arreglo**; lo que se resuelve con el mismo cambio es una parte más de la misma ficha.
+4. **Columnas fijas:** ID · P · T · Tarea · Detalle (≤ 3 líneas, termina en **Depende de:** y **Relacionada:**).
+5. **La urgencia se marca, no ordena**; el orden lo dan las dependencias.
+6. **Cerrar exige evidencia** (commit, prueba o medición) y separa resuelta de descartada; la ficha sale
+   del `06` y el detalle va al `07`; si tiende a volver, una línea en «No re-abrir».
+7. **Los hallazgos de una auditoría viven en su informe** hasta que el usuario decide cuáles entran.
+8. **Triaje completo** cuando el usuario lo pida: agentes de solo lectura por bloques, evidencia por
+   ficha, las cerradas juntas a un fichero `pendientes-cerrados-<fecha>` de `_archivo/`.
+9. **Variante ligera** para tableros pequeños (menos de unas veinte fichas o hasta cuatro áreas).
+
+**Hoy el `06` no cumple A.4** (excepción declarada en § *Precedencia*): está repartido por origen y tiene
+IDs con prioridad dentro (`P1`…`P4`). Lo pone en regla el triaje, con su propio plan. **Las fichas nuevas
+ya nacen sin la prioridad dentro del ID**; su prefijo (`AD-n`, de la adopción) es provisional y el triaje lo
+cambia por el de su área.
+
 ## Nivel de verificación: **N1**
 
 El comando que define el nivel es:
@@ -8,6 +72,25 @@ El comando que define el nivel es:
 pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:docs
                   && pnpm check:estado && pnpm check:historial && pnpm test
 ```
+
+| Paso | Comando | Dónde corre | Estado (2026-10-03) |
+|---|---|---|---|
+| Type-check | `pnpm build` | `verify` (gancho y CI) | obligatorio, verde |
+| Lint, incluida la prueba de arquitectura | `pnpm lint` | `verify` | obligatorio, verde; la regla de dependencias entra con el plan de adopción |
+| Formato | `pnpm format:check` | `verify` | obligatorio, verde |
+| Documentación | `pnpm check:docs` | `verify` | obligatorio, verde |
+| Conteos generados | `pnpm check:estado` | `verify` | obligatorio; cuenta **declaraciones** (decisión D-POD-4) |
+| Tope del historial | `pnpm check:historial` | `verify` | obligatorio, verde |
+| Unitarias | `pnpm test` | `verify` | obligatorio, verde (una saltada) |
+| e2e de API | `pnpm --filter @dnd/api test:e2e` | CI (trabajo `test`) y a mano con Docker | obligatorio fuera de `verify`; en serie (`--runInBand`) en local; en paralelo dos suites fallan con ECONNRESET (ficha AD-7) |
+| e2e de navegador | `pnpm --filter @dnd/web e2e` | CI (trabajo `e2e-browser`) y a mano | obligatorio fuera de `verify`; **rojo en CI desde el 2026-09-07** (ficha AD-1) |
+| Dependencias | `pnpm audit --prod --audit-level=high` | CI | 0 high tras el parche del 2026-10-03; 4 moderate que piden mayores (AD-3) |
+| Cobertura con umbral | — | — | N2 no declarado, pendiente de decisión del autor |
+| Mutación | — | — | N3 no declarado |
+
+**El gancho corre `verify` entero porque es autocontenido**: ni Docker ni `.env` (medido el 2026-10-03 en
+una copia sin los dos). **Techos que solo bajan:** `01-arquitectura.md` 457 líneas (tope 150, ficha AD-5);
+`06-pendientes.md` 1.649 líneas hasta el triaje; los 4 avisos moderados de AD-3.
 
 - `pnpm build` compila los tres paquetes (`tsc` / `nest build` / `vite build`) y hace de
   **type-check**.
@@ -622,12 +705,18 @@ ejecución es idéntico. Ejemplo vivo: `src/features/campaigns/members.ts`.
 
 ## Git
 
-- **Un commit por tarea**, en `main`, con su prueba en verde antes de commitear.
+- **Código en rama y `git merge --no-ff`; un cambio que solo toca documentación va directo a `main`**
+  (decisión del usuario, 2026-10-03). La documentación que acompaña a un cambio de código va en su rama.
+- **Un commit por tarea**, con su prueba en verde antes de commitear (lo exige el gancho).
 - Mensajes en formato Conventional Commits, en inglés: `feat(web):`, `fix(api):`.
-- Tras cada tarea: ledger (`.superpowers/sdd/progress.md`) + memoria + push.
-- **Al terminar un cambio relevante, la documentación se actualiza en el mismo commit**:
-  estado en 01–05, deuda nueva en 06, una línea en 07. Una funcionalidad sin su
-  documentación al día no está terminada.
+- **Atribución veraz:** un commit hecho con un agente lleva `Co-Authored-By: <modelo que lo hizo>
+  <noreply@anthropic.com>`; si lo hizo un subagente de otro modelo, el suyo. Sin `git-guard`: hay una
+  sola identidad de git.
+- Tras cada tarea: ledger (`.superpowers/sdd/progress.md`) y memoria. **`git push` solo con permiso del
+  autor en la sesión.**
+- **Al terminar un cambio relevante, la documentación se actualiza en el mismo commit**: estado en
+  01–05, deuda nueva en 06, una línea en 07. Una funcionalidad sin su documentación al día no está
+  terminada.
 
 ## Revisión
 
@@ -668,6 +757,34 @@ afirman nada) con estado escrito a mano, y las afirmaciones se fueron acumulando
 enlaces sin que nadie las revisara como tal. La distinción viene de Diátaxis (tutorial / guía
 práctica / referencia / explicación) — se adopta la regla, no el framework completo: `01` a
 `05` ya están razonablemente bien formados y no se migran solo por esto.
+
+## B.5 · Seguridad y datos — las doce reglas de la plantilla, con su estado
+
+La referencia completa está en la skill `calidad-y-seguridad`; esto es el mínimo que no se negocia y
+cómo está hoy aquí. «Techo» = se sabe que falta, con su ficha.
+
+| # | Regla | Estado | Evidencia |
+|---|---|---|---|
+| 1 | Autorización en el servidor, por objeto, con prueba «A contra recurso de B» | ✅, con un techo: AD-9 | `MembershipService` y `canView` (`CLAUDE.md`); los e2e de API que comprueban 403/404 a quien no es miembro se cuentan con el primer comando de debajo de la tabla; techo: los registros de sucesos y de tiradas devuelven la fila entera a quien ve el suceso (ficha AD-9 de [06-pendientes.md](./06-pendientes.md)) |
+| 2 | La interfaz toma el permiso de la ruta que llama | regla declarada (`CLAUDE.md`), sin prueba transversal | § *Web* |
+| 3 | Entrada validada en el borde, lista blanca | ✅ | Zod desde `@dnd/shared` con `ZodValidationPipe` en los controladores |
+| 4 | Consultas parametrizadas | ✅ | solo `$queryRaw` de plantilla etiquetada; el segundo comando de debajo de la tabla sale vacío |
+| 5 | Secretos fuera del repo, de los logs y del frontend | ✅ | `.env` ignorado; `apps/api/src/common/jwt-secret.ts` exige 32 caracteres; nada en `VITE_*` |
+| 6 | Datos personales mínimos y fuera de los logs | techo | ficha CL-4 (Sentry sin datos personales) |
+| 7 | El esquema solo cambia por migración; ningún default que sincronice | ✅ | `prisma migrate deploy` en el `CMD` de `apps/api/Dockerfile`; ni `db push` ni sincronización |
+| 8 | Integridad en la base | ✅ | índices únicos parciales: un encuentro activo por sesión, una ranura un objeto ([11-invariantes.md](./11-invariantes.md)) |
+| 9 | Lo atómico en la misma transacción | ✅ | `PrismaService.transaction` ([01-arquitectura.md](./01-arquitectura.md), «Un `tx?` opcional») |
+| 10 | Falla cerrado | ✅ | `canView` niega a quien no es miembro (`apps/api/src/common/visibility.spec.ts`, «non-member … sees nothing»); el pipe de Zod rechaza con 400 |
+| 11 | Dependencias auditadas en CI con umbral | ✅ desde el 2026-10-03 | `.github/workflows/ci.yml`, `pnpm audit --prod --audit-level=high` |
+| 12 | Un patrón nuevo nombra su problema, y **la regla de dependencias del `01` se comprueba en `verify`** | techo hasta la prueba de arquitectura del plan de adopción | `eslint.config.mjs`, bloque «Regla de dependencias» |
+
+Los dos comandos de las filas 1 y 4 (con `-e` repetido no hace falta escapar ninguna barra, y se copian
+igual desde el fichero que desde GitHub):
+
+```bash
+grep -l -e 403 -e 404 -e no-miembro apps/api/test/*.e2e-spec.ts | wc -l   # e2e que prueban «A contra recurso de B»
+grep -rn -e queryRawUnsafe -e executeRawUnsafe apps/api/src                # tiene que salir vacío
+```
 
 ## Un control de seguridad que depende del entorno declara aquí por qué
 
@@ -803,11 +920,16 @@ Y esto es lo que NO haces, pase lo que pase:
 - No corres Playwright ni los e2e de API: los corre el orquestador, y uno a la vez.
 - No dejas un `dev:api` arrancado a mano cuando termines, ni compilas la API mientras
   corre una tanda.
-- No commiteas: la revisión va antes. No empujas. No lanzas más agentes.
+- No commiteas: la revisión va antes. No empujas. No lanzas subagentes, forks ni agentes en
+  segundo plano.
+- No usas `git stash`, `git checkout` ni `git switch`: borran o mueven el trabajo sin commitear
+  de otro.
 - No desactivas una prueba, ni bajas un umbral, ni silencias una regla, ni saltas el gancho.
 - No rediseñas lo ya decidido: si una decisión te parece mala, la cumples y la anotas.
 Si crees que necesitas salirte de esta frontera: repórtalo y para.
 ```
+
+A los dos o tres minutos de lanzar una tanda se comprueba que corren solo los agentes lanzados (plantilla, B.4).
 
 **Por rol, lo que de verdad necesita:**
 
@@ -876,6 +998,8 @@ este tablero ya pasa de mil líneas: cada ficha que sobra compite con las que du
 Regla del autor, hasta hoy solo escrita en los prompts de arranque. **Es del repositorio**, no de
 una sesión concreta.
 
+**Lo trivial va directo** (una errata, un texto, el formato, un renombrado o un cambio ya especificado). Para lo demás:
+
 1. **¿Hay un cambio rápido y duradero** que se alinee con el código que ya existe? Si la solución
    obliga a rehacerla en dos semanas, no es esta.
 2. **¿Cumple las reglas?** El SRD y el código que ya existe son verdades probadas. Alterar una
@@ -888,15 +1012,16 @@ una sesión concreta.
 
 **Y no se espera al autor:** si hay solución viable, se aplica.
 
-### Los cuatro casos en los que el paso 1 NO aplica
+### Los casos en los que el paso 1 NO aplica
 
 Sin esta frontera, «si hay solución viable la aplicas» empuja a arreglar en caliente justo lo que
-había que preguntar. En estos cuatro casos **se abre ficha directamente y no se toca**:
+había que preguntar. En estos casos **se abre ficha directamente y no se toca**:
 
 | Caso | Por qué |
 |---|---|
+| **Zona congelada** (`_archivo/`, specs y planes fechados de `superpowers/`, `prototipo/`) | No se edita: se corrige en el documento vivo |
 | **Una decisión que ya tomó el autor** | Cumplirla y anotar el desacuerdo, nunca rediseñarla por cuenta propia |
-| **Migración o cambio de datos** | Va sola, con su nombre, y no colgada de otro arreglo |
+| **Migración, permiso o cambio de datos** | Va sola, con su nombre, y no colgada de otro arreglo; un permiso mal puesto es un fallo de seguridad |
 | **Cambio de comportamiento sin una prueba que se le vea fallar antes** | Sin esa prueba no se sabe si el arreglo arregla |
 | **Lo que solo se juzga usándolo** | Una pantalla que no se explica no la caza ninguna suite: se anota y se mira con el navegador delante |
 
@@ -909,3 +1034,23 @@ cinco de siete no debían existir.
 Instrucción del usuario en la sesión > este documento y el `CLAUDE.md` del repositorio >
 `~/.claude/dev-rules.md` y `~/.claude/docs-protocol.md` > comportamiento por defecto.
 Toda contradicción con las reglas globales se declara **aquí**, no se deja implícita. Hoy **no hay ninguna**: el nivel N1 quedó completo el 2026-08-31.
+
+### Excepciones declaradas frente a la plantilla de agentes
+
+El párrafo anterior de esta sección, el de precedencia, es frente a las reglas globales del usuario (no hay
+ninguna excepción ahí). Esta tabla es frente a la **plantilla de agentes**, para que ningún agente vuelva a
+proponerlas:
+
+| Regla de la plantilla | Aquí | Motivo |
+|---|---|---|
+| Fichero de permisos de Claude Code del repositorio con `deny` de secretos | **No se bloquea** la lectura de `.env*` (y no se crea ese fichero) | Un solo desarrollador; los agentes los necesitan para correr y verificar (usuario, 2026-10-03) |
+| Plantilla de PR | **No hay** | Un solo desarrollador (usuario, 2026-10-03) |
+| Todo cambio en rama | **Solo el código**; la documentación va directo a `main` | Usuario, 2026-10-03 (§ *Git*) |
+| `git-guard` | No aplica | Una sola identidad de git |
+| `05-runbook.md` | `05` es **Datos**; los comandos y trampas viven en `02-entorno.md` y `03-despliegue.md` | A.3 prohíbe renumerar |
+| `06` por áreas (A.4) | **Hasta el triaje** el `06` sigue por origen; las fichas nuevas ya nacen con ID sin prioridad | El triaje es trabajo largo con plan propio |
+| Conteos del corredor (`check-conteos`) | `check:estado` cuenta **declaraciones**; los casos de e2e se anotan a mano en `08-pruebas.md` | Decisión D-POD-4: leer el informe de cuatro corredores haría caro el gancho |
+| Prueba de arquitectura con dependency-cruiser | **ESLint `no-restricted-imports`** en `eslint.config.mjs` | Ya corre en `pnpm lint`, sin dependencia nueva |
+| Validación con `ValidationPipe` (regla de NestJS) | **Zod desde `@dnd/shared`** con `ZodValidationPipe` | La forma de los datos vive una sola vez (`CLAUDE.md`) |
+| Desplegar con CI verde (`03-despliegue.md`) | El parche de seguridad del 2026-10-03 se despliega cuando pasan `verify` y los e2e de API, aunque `e2e-browser` siga rojo | Decisión del usuario: seguridad primero; ficha AD-1 |
+| `trustProxy` con direcciones de confianza | **Función de saltos** | [ADR 0001](./adr/0001-trust-proxy-por-saltos.md) |

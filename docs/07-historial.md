@@ -108,6 +108,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El `04` según la plantilla (2026-10-03) — solo documentación
+
+Qué — mapa de dónde está cada parte de la plantilla; A.1–A.4 (con la excepción del `06` hasta el triaje);
+Parte C con la tabla de pasos y su estado medido y los techos; B.5 con las doce reglas y su evidencia;
+B.4 con la prohibición de subagentes, `git stash`, `git checkout` y `git switch`; B.6 con los casos
+completos y «lo trivial va directo»; § *Git* con código en rama y docs en `main`, atribución veraz y push
+con permiso; y la tabla de excepciones frente a la plantilla.
+Por qué — la auditoría de adopción (D3–D9) y las decisiones del usuario del 2026-10-03.
+Revertir — `git revert <hash>`.
+
+---
+
 ## Registro de auditorías (2026-10-03) — solo documentación
 
 Qué — `docs/auditorias/README.md` con las cinco auditorías que había (interfaz del 2026-09-02, mesa de

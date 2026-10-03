@@ -20,7 +20,6 @@ vivía aquí hasta el 2026-10-03, y que caducó cinco veces, está entero en
 
 Lo que tiene, por fases (capacidades, no estado de despliegue):
 
-
 - **Motor de reglas con traza** desde 2A (`apps/api/src/rules/`) — y conviene decirlo porque esta
   frase decía lo contrario cuando ya existía: la hoja de 5.ª edición se **deriva**, no se guarda, y
   cada número enseña de dónde sale. Más las reglas suceso–condición–efecto de vocabulario cerrado

@@ -25,7 +25,7 @@ y **el anexo #16 de la bandeja compacta**, cerrado por la Task 10 del pulido, en
 [`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md),
 y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
 [`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md)
-y la sección «Desplegar `main`» que llevaba «hecho» en su título, en [`_archivo/pendientes-cerrados-2026-10-03-adopcion.md`](./_archivo/pendientes-cerrados-2026-10-03-adopcion.md).
+y la sección «Desplegar `main`» que llevaba «hecho» en su título, y la decisión de no hacer copias de seguridad que el autor sustituyó el 2026-10-03, en [`_archivo/pendientes-cerrados-2026-10-03-adopcion.md`](./_archivo/pendientes-cerrados-2026-10-03-adopcion.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -577,8 +577,7 @@ revisión («el resto son menores que pueden quedarse como ficha»).
 >   manual con el comando de [03-despliegue.md](./03-despliegue.md), § *Trampa del despliegue que
 >   muerde cada vez*, y comprobar que el fichero existe, no está vacío y `pg_restore --list` lo lee.
 >   Si no, no se sigue. Las lecturas (`docker ps`, `cat`) no necesitan copia.
-> - **La copia automática diaria no se activa todavía.** La decide el autor; no se monta ni se
->   propone como tarea.
+> - **Ya hay una copia automática diaria de esta base, y no se toca.** El trabajo de las 04:00 del servidor (el script backup-coolify.sh, en /root/scripts del servidor) la vuelca como `dnd-pg.sql.gz`: comprobado el 2026-10-03 en las copias del 1, 2 y 3 de octubre (unos 32 KB y 32 `CREATE TABLE` cada una), con 7 días en local y 30 en `gdrive:vps1new-backups`. La frase del autor «aún no activarás la automática» se cumple no montando ni proponiendo ninguna copia automática nueva. Como la de las 04:00 puede tener casi un día, no sustituye al volcado manual de antes de cada cambio.
 > - **Una restauración de esta base sigue sin probarse** (`03-despliegue.md`, § *Copias de
 >   seguridad*, punto 5). Hasta entonces, cada volcado es una copia que nadie ha restaurado.
 
@@ -1295,7 +1294,7 @@ recargar la página para cada acción es incómodo y eso es la fase 4. Lo que es
 que la base aguante.
 
 **2026-10-03: ese día llegó.** Hay gente usando la plataforma, y el autor pide un volcado manual
-antes de cada cambio en producción; la copia automática todavía no se activa. Está en la sección
+antes de cada cambio en producción, además de la copia automática diaria del servidor, que ya incluía esta base. Está en la sección
 «La copia de seguridad de esta base: copia manual antes de cada cambio en producción» de este
 documento. La cita del autor de arriba (2026-09-03) se conserva tal cual: era cierta cuando la dijo.
 

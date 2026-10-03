@@ -356,23 +356,9 @@ no están en ningún otro sitio.
 
 **Desde el 2026-10-03 hay gente usando la plataforma: antes de cualquier cambio en producción se hace
 un volcado manual** con el comando de § *Trampa del despliegue que muerde cada vez*, y se comprueba que
-el fichero existe, no está vacío y `pg_restore --list` lo lee. La copia automática todavía no se activa:
-lo decide el autor ([06-pendientes.md](./06-pendientes.md), sección de la copia de seguridad).
+el fichero existe, no está vacío y `pg_restore --list` lo lee. Este volcado se suma a la copia automática diaria del servidor, que ya incluye esta base (párrafo siguiente); no se monta ninguna copia automática nueva ([06-pendientes.md](./06-pendientes.md), sección de la copia de seguridad).
 
-**Lo primero, y no es una formalidad: la base de este proyecto vive DENTRO de una pila de
-Compose, así que NO es un recurso de base de datos de Coolify y no aparece en su pantalla de
-copias.** El servidor tiene su propio trabajo diario a las 04:00, con 7 días en local y 30 en
-`gdrive:vps1new-backups`, y con restauración ya probada — **pero no se ha comprobado si ese
-trabajo descubre contenedores de Postgres nuevos por sí solo o si lleva una lista escrita a
-mano**. Es lo primero que hay que mirar tras el despliegue:
-
-```bash
-ssh vps1new "cat /root/docs/00-INDEX.md"     # y desde ahí, el documento de copias
-```
-
-Si la lista es fija, **añadir este contenedor es parte del despliegue, no un pendiente para
-otro día**. Una copia que nadie ha verificado que cubra esta base es peor que saber que no la
-cubre.
+**La base vive DENTRO de una pila de Compose, así que no es un recurso de base de datos de Coolify ni aparece en su pantalla de copias; aun así, el trabajo diario de las 04:00 del servidor sí la vuelca.** El script backup-coolify.sh (en /root/scripts del servidor) deja `dnd-pg.sql.gz` en cada carpeta /data/backups/<fecha>_0400 (medido el 2026-10-03 en las del 1, 2 y 3 de octubre: unos 32 KB y 32 `CREATE TABLE` cada una), con 7 días en local y 30 en `gdrive:vps1new-backups`. Es SQL plano comprimido: se restaura con `gunzip -c … | psql`, no con `pg_restore`. **Una restauración de esta base no se ha probado nunca** (punto 5 de abajo): la restauración probada del servidor es la de las otras aplicaciones.
 
 **Qué exige de verdad una restauración** (no basta con "hay copias"):
 

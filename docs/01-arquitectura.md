@@ -36,7 +36,7 @@ Controlador → Servicio → Prisma
 - El **servicio** decide: quién puede ver qué, quién puede escribir, qué se filtra.
 - **Prisma** es el único que habla con la base. Ningún controlador la toca, **salvo uno a
   propósito**: `apps/api/src/health/health.controller.ts` hace `SELECT 1` para que el sondeo de
-  salud mida la cadena entera (ficha D3, 2026-09-05). La prueba de arquitectura lo exime por nombre.
+  salud mida la cadena entera (ficha D3, 2026-09-05). Hoy ninguna prueba comprueba esta regla.
 
 `MembershipService` (en `campaigns/`) es el dueño único de la pregunta *"¿este usuario
 pertenece a esta campaña y con qué rol?"*: `requireMember`, `requireDM`, `getMembership`.

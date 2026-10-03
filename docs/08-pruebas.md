@@ -518,8 +518,7 @@ Se dice aquí para que nadie lo dé por cubierto al leer la lista de arriba.
 - **La carga.** Nada mide qué pasa con doscientas fichas o con cincuenta tiradas por minuto.
 - **La recuperación ante desastre de la aplicación.** El servidor tiene su documento
   ([03-despliegue.md](./03-despliegue.md)), pero **restaurar la base de esta aplicación y seguir
-  jugando no está probado desde la propia aplicación**, y desde el 2026-10-03 se hace un volcado manual antes de cada cambio en producción, sin copia
-  automática todavía ([06-pendientes.md](./06-pendientes.md), sección de la copia de seguridad).
+  jugando no está probado desde la propia aplicación**: la copia automática diaria del servidor incluye esta base y desde el 2026-10-03 se hace además un volcado manual antes de cada cambio en producción, pero **ninguna restauración de esta base se ha probado** ([03-despliegue.md](./03-despliegue.md), § *Copias de seguridad*).
 
 ## Cómo se corren
 

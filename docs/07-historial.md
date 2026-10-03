@@ -124,10 +124,10 @@ comando. También: `01` declara la excepción de `health.controller.ts`; el cont
 el CI está en verde (rojo desde el 2026-09-07 por `e2e-browser`) ni que `pnpm build` falta en él; la
 cabecera del `06` dice que aún guarda secciones cerradas, y una de ellas se archivó. Y la decisión de no
 hacer copias de seguridad de la base (2026-09-05) se archivó entera: desde el 2026-10-03 hay gente
-usando la plataforma y el autor pide un volcado manual antes de cada cambio en producción; la copia
-automática todavía no se activa (`06` y `03`, § *Copias de seguridad*). De paso, en la nota fechada de
+usando la plataforma y el autor pide un volcado manual antes de cada cambio en producción; no se monta ninguna copia
+automática nueva; la diaria del servidor ya incluía esta base (medido el 2026-10-03) y su restauración no se ha probado (`06` y `03`, § *Copias de seguridad*; el párrafo de `03` que dudaba de ello se archivó entero). De paso, en la nota fechada de
 CL-13 del `06` se corrigió que solo `fastify` lleva `override` (`fast-uri` sube dentro de su rango) y se
-separó con una línea en blanco de su `Aceptación`, que quedaba pegada al párrafo.
+separó con una línea en blanco de su `Aceptación`, que quedaba pegada al párrafo. Una ronda de correcciones posterior retiró de los documentos vivos la afirmación de que esta base no tenía copia automática, quitó la mención de una prueba de arquitectura que aún no existe y nombró la decisión de copias en la cabecera del `06`.
 
 Por qué — la auditoría de adopción y su refutación lo midieron; un hash escrito a mano en el documento
 que se lee primero caducó cinco veces. Lo de las copias, porque lo pidió el autor el 2026-10-03.

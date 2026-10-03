@@ -1,6 +1,6 @@
 # Pendientes
 
-**Solo fichas abiertas.** Las cerradas se archivan: las de antes del 2026-09-02 en
+**Fichas abiertas, y todavía algunas cerradas que esperan al triaje del tablero** (medido el 2026-10-03: al menos siete secciones con «cerrada» o «hechas» en su título). Las cerradas se archivan: las de antes del 2026-09-02 en
 [`_archivo/pendientes-cerrados-hasta-2026-09-02.md`](./_archivo/pendientes-cerrados-hasta-2026-09-02.md)
 las que este documento seguía arrastrando tachadas en
 [`_archivo/pendientes-cerrados-hasta-2026-09-03.md`](./_archivo/pendientes-cerrados-hasta-2026-09-03.md),
@@ -24,7 +24,8 @@ y los **39 bloques de la poda del 2026-09-10** —falsas, tachadas y decididas�
 y **el anexo #16 de la bandeja compacta**, cerrado por la Task 10 del pulido, en
 [`_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md`](./_archivo/pendientes-cerrados-2026-09-12-bandeja-de-dados.md),
 y las fichas de la tanda «cierre antes de 3A.2» del 2026-09-17, en
-[`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md).
+[`_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md`](./_archivo/pendientes-cerrados-2026-09-17-cierre-antes-de-3a2.md)
+y la sección «Desplegar `main`» que llevaba «hecho» en su título, en [`_archivo/pendientes-cerrados-2026-10-03-adopcion.md`](./_archivo/pendientes-cerrados-2026-10-03-adopcion.md).
 **La regla es mecánica y no la decide nadie: lo tachado sale, lo abierto se queda.** Se archivan
 en vez de borrarse porque varias explican una afirmación que resultó ser falsa, y ese registro
 es lo que evita volver a creérsela.
@@ -211,9 +212,10 @@ cargar `/login` no hace ninguna petición a un dominio de terceros.
 parte. No hay escaneo de secretos (gitleaks), ni Dependabot/Renovate, ni inventario de licencias.
 
 **2026-10-03:** el audit daba 9 high (`fastify` fijado por `@nestjs/platform-fastify`, `fast-uri`)
-y el umbral del CI salía en rojo. Parcheado con un `override` de `fastify` y `fast-uri` dentro de su
+y el umbral del CI salía en rojo. Parcheado con un `override` de `fastify`, y `fast-uri` dentro de su
 rango: 0 high y 4 moderate que piden versiones mayores (React Router 7, Sentry 10). Detalle y lo que
 no se verificó: [07-historial.md](./07-historial.md).
+
 **Aceptación:** CI falla con un secreto o con una licencia no permitida.
 
 ### CL-14 · Contenido de usuarios: denuncia, retirada y el marco del tablero — P2, **antes de SaaS** [UGC-01, UGC-02, UGC-06, UGC-07]
@@ -247,7 +249,7 @@ día. Salen cuatro cubos. **Solo el primero tiene plan**:
 — correcciones menores y gráficas, sin funcionalidad nueva, para estos días (modo «solo errores»,
 D-CF-161). Los números son los de la auditoría.
 
-### A · Fichas abiertas — en el plan (correcciones menores y gráficas) — **hechas el 2026-09-19, fusionadas a `main` en `894f2ad`** (9 commits de código, `e84f2b2..b092882`; sin desplegar); quedan cinco menores aplazados: `EscribirFicha.tsx:83` JSDoc «statblock», `PanelCarga.tsx:55,70,71` `toFixed(0)`, `Traza.tsx:314,317` menos ASCII, `fechaCorta` sin consumidor, «Tu iniciativa» cuando el DM tira por otro desde la caja compacta
+### A · Fichas abiertas — en el plan (correcciones menores y gráficas) — **hechas el 2026-09-19, fusionadas a `main` en `894f2ad`** (9 commits de código, `e84f2b2..b092882`; desplegadas: ver la medición del 2026-10-03 en [07-historial.md](./07-historial.md)); quedan cinco menores aplazados: `EscribirFicha.tsx:83` JSDoc «statblock», `PanelCarga.tsx:55,70,71` `toFixed(0)`, `Traza.tsx:314,317` menos ASCII, `fechaCorta` sin consumidor, «Tu iniciativa» cuando el DM tira por otro desde la caja compacta
 
 - **Textos que mienten o se repiten** (plan, Tasks 1–4): 3.1 «y» repetida · 3.4 tres números en la
   iniciativa tirada · 3.6 «Su turno» en preparación
@@ -508,7 +510,7 @@ ficha ↔ token, y que los PG del token respeten `canView` igual que el resto de
 
 ## Modo de trabajo desde el 2026-09-18: solo errores (decisión del autor, D-CF-161)
 
-Con la beta 0.1.0 en producción (`a0020a6`, demo sembrada), **3B queda aplazada sin fecha** y
+Con la beta 0.1.0 desplegada el 2026-09-18 (`a0020a6`, demo sembrada), **3B queda aplazada sin fecha** y
 este documento pasa a recibir **fallos vistos jugando**, uno por ficha, con lo que se vio, dónde
 y cómo reproducirlo. Lo funcional que 3A dejó fuera está en «Dejado por 3A.2» y «Dejado por
 3A.3» y en la Parte B del plan del 14; no se retoma hasta que el autor lo pida.
@@ -559,27 +561,26 @@ revisión («el resto son menores que pueden quedarse como ficha»).
 > hace falta nombrar una sin ambigüedad, se dice **con su documento delante**: «la D3 del plan 15»,
 > no «D3».
 
-> ## La copia de seguridad de esta base: DECIDIDO QUE NO, y no se vuelve a plantear
+> ## La copia de seguridad de esta base: copia manual antes de cada cambio en producción (desde el 2026-10-03)
 >
-> **Decisión del autor, reafirmada el 2026-09-05, y SIN fecha de caducidad.** Sus palabras: *«no
-> quiero copia de seguridad de la base de datos de este proyecto. Sé que es importante, pero
-> estamos en una etapa muy verde de pruebas; las pruebas las hacen agentes y yo moviendo una o dos
-> cosas. **No hay usuarios, no hay campañas**, esto ni siquiera es para vender a corto plazo»*.
+> **Para qué sirve esta sección:** dice qué hay que hacer con la base de datos de producción antes de
+> tocar el servidor, y qué no se hace todavía.
 >
-> **No se propone, no se arregla y no se menciona** — ni antes de desplegar, ni antes de una
-> migración, ni como nota al margen de otra cosa. La premisa que hace importante una copia —que
-> haya algo que perder— **no se cumple**, y está evaluada, no ignorada.
+> **Decisión del autor del 2026-10-03:** *«ya hay gente usando la plataforma así que es importante que
+> cualquier cosa que hagas en vps1new o producción le hagas copia de seguridad (aún no activarás la
+> automática)»*. Sustituye a la decisión del 2026-09-05 («no se propone ni se menciona»), cuya
+> premisa era que no había usuarios; esa decisión decía ella misma que cambiaría el día que el autor
+> lo dijera. Está entera en
+> [`_archivo/pendientes-cerrados-2026-10-03-adopcion.md`](./_archivo/pendientes-cerrados-2026-10-03-adopcion.md).
 >
-> **Esta ficha llevaba escrita su propia caducidad** —*«antes de la primera partida real, esto tiene
-> que estar hecho y probado»*— y era ella la que resucitaba el asunto en cada lectura: el 2026-09-05
-> lo sacaron tres veces en una sola conversación, citándola. **La caducidad se retira**: quien lea
-> esto no tiene que avisar de nada. Cambia el día que haya usuarios o campañas de verdad, **y ese
-> día lo dice el autor**.
->
-> Lo medido en su momento sobre el script roto —`$POSTGRES_PASSWORD` sin comillas simples, 20 bytes
-> contra 6305— se conserva en
-> [`_archivo/pendientes-cerrados-hasta-2026-09-05.md`](./_archivo/pendientes-cerrados-hasta-2026-09-05.md).
-> Aquí no.
+> - **Antes de cualquier cambio en producción** (desplegar, migrar, cambiar configuración): volcado
+>   manual con el comando de [03-despliegue.md](./03-despliegue.md), § *Trampa del despliegue que
+>   muerde cada vez*, y comprobar que el fichero existe, no está vacío y `pg_restore --list` lo lee.
+>   Si no, no se sigue. Las lecturas (`docker ps`, `cat`) no necesitan copia.
+> - **La copia automática diaria no se activa todavía.** La decide el autor; no se monta ni se
+>   propone como tarea.
+> - **Una restauración de esta base sigue sin probarse** (`03-despliegue.md`, § *Copias de
+>   seguridad*, punto 5). Hasta entonces, cada volcado es una copia que nadie ha restaurado.
 
 > ## Alineado con el código el 2026-09-05, y lo que eso enseñó
 >
@@ -601,7 +602,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (CL-13: el parche de dependencias). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
@@ -734,7 +735,7 @@ conservan los de 2A.3 como rótulo de la hoja, y cambiarlos barre e2e (no en est
 (5) `mezclarScales` expone tablas de escala que no son «un número que se suma» (Ataque Furtivo
 como número de dados) — hoy ninguna actividad las usa.
 
-## Dejado por «puerta de efectos» (2026-09-14) — cerrada en rama, sin fusionar ni desplegar
+## Dejado por «puerta de efectos» (2026-09-14) — fusionada a `main` el 2026-09-14 y desplegada (medición del 2026-10-03 en el `07`)
 
 Rama `puerta-de-efectos/antes-del-paso-3`; revisión Opus de la rama entera en dos mitades
 (`.superpowers/sdd/2026-09-13-puerta-de-efectos/review-api-final.md`: 3 críticos, 3 importantes,
@@ -772,18 +773,7 @@ Las unitarias prueban el orden de las sentencias (`jsonb_set … WHERE appliedEv
 (exactamente un 2xx y un 409, un solo `HP_CHANGED`) y dos `POST /xp` iguales en `Promise.all` (los
 dos 2xx, XP final es la suma). Escrita, no corrida (la corre el orquestador).
 
-## Desplegar `main` (`84ed965`): reglas de la mesa + desbordes — **hecho el 2026-09-14 (`b6bbeb0` en producción, comprobado en el contenedor)**
-
-**Abierta, del autor.** `main` lleva dos tandas fusionadas el 2026-09-13 que producción (`6d2b2ca`) no
-tiene. Qué trae el despliegue: **una migración aditiva** (`20260913100000_table_rules`: tres columnas/
-tabla nuevas con defaults; la API la aplica sola al arrancar con `prisma migrate deploy`), **ninguna
-variable de entorno nueva**, y ningún cambio de topología (`TRUST_PROXY` sigue en 2). Comprobar
-después: `docker ps` con API y web `healthy`, `curl` 200, el bloque «Reglas de la mesa» en Ajustes de
-una campaña, y el panel de ataque entero sobre un PNJ con encuentro activo (el caso que abrió la
-tanda de desbordes). Cierra cuando `docs/00-INDEX.md` y esta ficha digan el commit que sirve el
-servidor, medido allí y no de memoria.
-
-## Dejado por «reglas de la mesa» (2026-09-13) — fusionada a `main` el mismo día, sin desplegar
+## Dejado por «reglas de la mesa» (2026-09-13) — fusionada a `main` el mismo día y desplegada el 2026-09-14
 
 Rama `reglas-de-la-mesa/antes-del-paso-3`; revisión Opus de la rama entera en
 `.superpowers/sdd/2026-09-13-reglas-de-la-mesa/final-review.md` (0 críticos, 4 importantes —los
@@ -1304,9 +1294,10 @@ jugadores de verdad no entran hasta que haya una versión jugable **con tiempo r
 recargar la página para cada acción es incómodo y eso es la fase 4. Lo que esta prueba busca es
 que la base aguante.
 
-**Lo que sigue siendo cierto:** la copia de seguridad rota (el bloque que abre este documento)
-tiene su fecha de caducidad en el día que existan datos que a alguien le dolería perder, y ese día
-llegará con el tiempo real, no con esta prueba.
+**2026-10-03: ese día llegó.** Hay gente usando la plataforma, y el autor pide un volcado manual
+antes de cada cambio en producción; la copia automática todavía no se activa. Está en la sección
+«La copia de seguridad de esta base: copia manual antes de cada cambio en producción» de este
+documento. La cita del autor de arriba (2026-09-03) se conserva tal cual: era cierta cuando la dijo.
 
 ## P2 — Ruta de mejora del nivel
 

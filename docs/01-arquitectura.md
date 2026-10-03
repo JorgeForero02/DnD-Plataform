@@ -34,7 +34,9 @@ Controlador → Servicio → Prisma
 - El **controlador** no toma decisiones de negocio: valida con el pipe de Zod, saca el
   `userId` del JWT y delega.
 - El **servicio** decide: quién puede ver qué, quién puede escribir, qué se filtra.
-- **Prisma** es el único que habla con la base. Ningún controlador la toca.
+- **Prisma** es el único que habla con la base. Ningún controlador la toca, **salvo uno a
+  propósito**: `apps/api/src/health/health.controller.ts` hace `SELECT 1` para que el sondeo de
+  salud mida la cadena entera (ficha D3, 2026-09-05). La prueba de arquitectura lo exime por nombre.
 
 `MembershipService` (en `campaigns/`) es el dueño único de la pregunta *"¿este usuario
 pertenece a esta campaña y con qué rol?"*: `requireMember`, `requireDM`, `getMembership`.
@@ -110,8 +112,8 @@ junte por su cuenta es cómo una de ellas acaba sin pintarse.
 **El catálogo generado (3A.1, 2026-09-14) añade dos directorios al mapa**, uno fuera de `apps/`
 y otro dentro de `rules/catalog/`: `scripts/convertir-catalogo.mjs` + `scripts/convertir-catalogo/`
 es el conversor —Foundry YAML + el SRD 5.1 español → los cuatro JSON de abajo, por huella
-estructural y tablas a mano, puro y probado con `node --test` (`pnpm catalogo:test`, 47
-unitarias)—, y `apps/api/src/rules/catalog/generado/` son sus **ficheros generados y
+estructural y tablas a mano, puro y probado con `node --test` (`pnpm catalogo:test`; cuántas, lo
+dice el corredor)—, y `apps/api/src/rules/catalog/generado/` son sus **ficheros generados y
 commiteados** (`spells-srd.json`, `class-features-srd.json`, `race-features-srd.json`,
 `class-scales-srd.json`, `rechazos.md`), leídos una sola vez al arrancar por `apps/api/src/rules/catalog/generado/index.ts`
 con Zod (`spellsCatalogSchema` y hermanos en `packages/shared/src/catalog.schema.ts`) y fundidos

@@ -3,7 +3,9 @@
 > **Si producción va por detrás de `main`, y cuánto, no se escribe aquí: se mide.**
 > `git diff --name-only <imagen desplegada>..HEAD`, y qué imagen corre se comprueba en el
 > servidor (`docker ps`), nunca de memoria. Nada de lo de abajo cambia; lo que cambia es **qué
-> versión hay arriba**. Medido el 2026-09-12: producción sirve `6d2b2ca` y coincide con `main`.
+> versión hay arriba**. La imagen se mide con `ssh vps1new "docker ps --filter name=5awvsn1dnkexhcjzg7kjwom6 --format '{{.Names}} {{.Image}}'"`; la última medición fechada está en [07-historial.md](./07-historial.md).
+> **Ese comando entra en el servidor de producción**: solo lee, pero lo lanza el autor, o un agente con su
+> permiso explícito en la sesión.
 >
 > **Esta cabecera volvió a caducar, y van cuatro.** Hasta el 2026-09-07 decía que producción
 > servía «lo que se subió el 2026-09-02» y que la fase 2.5 y el reseño de la mesa (B0–B5) estaban
@@ -131,13 +133,13 @@ de Traefik antes de dar el despliegue por bueno.
   Desde el parche del 2026-10-03 la versión es `@fastify/proxy-addr` 5.1.1 y `TRUST_PROXY` llega a
   Fastify como función de saltos; el resultado es el mismo, y lo fija `configure-app.spec.ts`, caso
   `TRUST_PROXY=2`.
-- **CI en GitHub Actions verde** en cada push a `main` y en cada PR (`.github/workflows/ci.yml`),
-  con dos trabajos: `test` (instala, genera Prisma, aplica migraciones contra un Postgres de
-  servicio, y corre `pnpm lint`, `pnpm format:check`, `pnpm check:docs`, `pnpm check:estado`,
-  `pnpm test` y `pnpm --filter @dnd/api test:e2e` — **`pnpm build` no está entre ellos**, ver
-  [06-pendientes.md](./06-pendientes.md)) y `e2e-browser` (instala Playwright y corre `pnpm
-  --filter @dnd/web e2e` contra la API y la web reales, subiendo el reporte como artefacto si
-  falla). **El lint corre desde el 2026-08-31**; ver [07-historial.md](./07-historial.md).
+- **CI en GitHub Actions** en cada push a `main` y en cada PR (`.github/workflows/ci.yml`), con dos
+  trabajos: `test` (instala, audita las dependencias de producción, genera Prisma, aplica migraciones
+  contra un Postgres de servicio y corre los pasos de `pnpm verify` —`pnpm build` incluido desde el
+  2026-09-05— y los e2e de API) y `e2e-browser` (Playwright contra la API y la web reales, con el
+  reporte como artefacto si falla). **El CI está en rojo desde el 2026-09-07**: lo tumba siempre
+  `e2e-browser`; el trabajo `test` pasaba entero el 2026-09-19. Ficha en
+  [06-pendientes.md](./06-pendientes.md). El lint corre desde el 2026-08-31.
 
 ## Una sola pila, no dos aplicaciones
 
@@ -351,6 +353,11 @@ puesta, provocar un error de prueba y confirmar que llega. Y hacer las tres comp
 **La base de datos es lo único irreemplazable de esta pila.** Las imágenes se reconstruyen
 del repositorio y el `index.html` no vale nada; las campañas, los personajes y las entidades
 no están en ningún otro sitio.
+
+**Desde el 2026-10-03 hay gente usando la plataforma: antes de cualquier cambio en producción se hace
+un volcado manual** con el comando de § *Trampa del despliegue que muerde cada vez*, y se comprueba que
+el fichero existe, no está vacío y `pg_restore --list` lo lee. La copia automática todavía no se activa:
+lo decide el autor ([06-pendientes.md](./06-pendientes.md), sección de la copia de seguridad).
 
 **Lo primero, y no es una formalidad: la base de este proyecto vive DENTRO de una pila de
 Compose, así que NO es un recurso de base de datos de Coolify y no aparece en su pantalla de

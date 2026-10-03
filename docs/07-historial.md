@@ -108,6 +108,34 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Producción medida y documentación al día (2026-10-03) — solo documentación
+
+Qué — según la medición del orquestador del 2026-10-03, hecha **antes** del parche de dependencias
+(`docker ps` en `vps1new`, auditoría de la plantilla), `dnd.supportive.pro` servía las imágenes
+etiquetadas `a4883f0`, el código de `main` en ese momento (`a4883f0..dcf472b` solo toca documentación).
+Si el parche ya se desplegó, lo que sirve se mide con el comando del `00`. Los documentos decían `6d2b2ca` (`00-INDEX`, `03`,
+`como-seguir`, `06`) o `a0020a6` (`como-seguir`, `06`), y varias entradas de este fichero llevan «sin
+desplegar» en el título («Correcciones de interfaz de la auditoría (2026-09-19)», «3A.2» y «Fusión a `main`
+de PNJ del mundo y la mesa»): **esas entradas no se reescriben; esta las supera.** El estado a mano del
+`00` y la crónica del `como-seguir` se movieron enteros a `_archivo/`, y los dos documentos dan ahora el
+comando. También: `01` declara la excepción de `health.controller.ts`; el conteo de `catalogo:test`, el
+61 % de `docs/superpowers/` y la cifra partida de `como-seguir` dejan de estar escritos a mano;
+`como-seguir` ya no dice que el banco está sin estrenar (se estrenó el 2026-09-07); `03` ya no dice que
+el CI está en verde (rojo desde el 2026-09-07 por `e2e-browser`) ni que `pnpm build` falta en él; la
+cabecera del `06` dice que aún guarda secciones cerradas, y una de ellas se archivó. Y la decisión de no
+hacer copias de seguridad de la base (2026-09-05) se archivó entera: desde el 2026-10-03 hay gente
+usando la plataforma y el autor pide un volcado manual antes de cada cambio en producción; la copia
+automática todavía no se activa (`06` y `03`, § *Copias de seguridad*). De paso, en la nota fechada de
+CL-13 del `06` se corrigió que solo `fastify` lleva `override` (`fast-uri` sube dentro de su rango) y se
+separó con una línea en blanco de su `Aceptación`, que quedaba pegada al párrafo.
+
+Por qué — la auditoría de adopción y su refutación lo midieron; un hash escrito a mano en el documento
+que se lee primero caducó cinco veces. Lo de las copias, porque lo pidió el autor el 2026-10-03.
+
+Revertir — `git revert <hash>`; los ficheros nuevos de `_archivo/` se borran con él.
+
+---
+
 ## Parche de dependencias: `fastify`, `fast-uri` y `@nestjs/platform-fastify` (2026-10-03) — rama `fix/fastify-trust-proxy`
 
 Qué — `pnpm audit --prod` daba 19 (9 high: `fastify` 5.11.3 ×4, `fast-uri` ×4, `@nestjs/platform-fastify`

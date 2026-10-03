@@ -1,8 +1,8 @@
 # Decisiones
 
 Una línea por decisión tomada, con el enlace a dónde está razonada. **Esto no sustituye a los
-specs**: sustituye a leerlos. `docs/superpowers/` son 13.662 líneas —el 61% de toda la
-documentación— y `scripts/check-docs.mjs` las exime de todas sus comprobaciones a propósito,
+specs**: sustituye a leerlos. `docs/superpowers/` es la mayor parte de la documentación (se mide
+con `find docs/superpowers -name '*.md' | xargs cat | wc -l`) y `scripts/check-docs.mjs` las exime de todas sus comprobaciones a propósito,
 porque un spec es el encargo del día que se escribió y no se reescribe después. Eso las hace
 seguras de conservar y **caras de releer**: quien las abre buscando «¿por qué el peso está en
 onzas?» carga cuarenta documentos para encontrar una frase.

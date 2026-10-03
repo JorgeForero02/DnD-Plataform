@@ -162,11 +162,17 @@ for (const file of [...walk(docsDir), ...rootMdFiles]) {
     // a number at the end of a line and its word at the start of the next slipped past a
     // line-by-line test (docs/01-arquitectura.md, `pnpm catalogo:test` count). The pair is
     // reported on THIS line only when the number is here and the word on the next one; a count
-    // wholly inside the next line is reported when the loop gets there.
+    // wholly inside the next line is reported when the loop gets there. Skipped on purpose: a
+    // Markdown heading as the first line, and a trailing number glued to a date, a version, a
+    // `file:NN` or a word ("2026-10-03" / "e2e ...", "## Fase 2" / "Pruebas ...").
     if (!COUNTS_EXEMPT.includes(rel)) {
       const next = lines[i + 1] ?? "";
-      const pair =
-        next.includes(IGNORE) || FENCE_RE.test(next) ? null : `${line} ${next.trimStart()}`;
+      const joinable =
+        !next.includes(IGNORE) &&
+        !FENCE_RE.test(next) &&
+        !/^\s*#/.test(line) &&
+        /(?<![\w.:-])\d{1,5}$/.test(line.trimEnd());
+      const pair = joinable ? `${line} ${next.trimStart()}` : null;
       const split = pair ? pair.match(COUNT_RE) : null;
       const crossesBreak =
         split !== null && split.index < line.length && split.index + split[0].length > line.length;

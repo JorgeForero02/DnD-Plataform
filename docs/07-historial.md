@@ -108,6 +108,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Registro de auditorías (2026-10-03) — solo documentación
+
+Qué — `docs/auditorias/README.md` con las cinco auditorías que había (interfaz del 2026-09-02, mesa de
+agentes, mecánica de 2B, cola larga, interfaz del 2026-09-19), reconstruidas de sus informes; lo que no
+consta se dice. De paso, tres retoques a `11-invariantes.md`: el reloj declara que no hay prueba de que
+no retroceda (lo impide `advanceClockSchema`), la hoja derivada aclara qué comprueba su prueba, y la
+sintonización nombra a `InventoryService` y a `MAX_ATTUNED_ITEMS` como dueño.
+Por qué — plantilla (D18): sin registro, una auditoría no se puede comparar con la anterior.
+Revertir — borrar la carpeta y su fila del `00`; revertir los tres retoques del `11`.
+
+---
+
 ## Invariantes con dueño y prueba (2026-10-03) — solo documentación
 
 Qué — `11-invariantes.md`: visibilidad y sus cinco niveles, membresía, hoja derivada, PNJ = `Character`,

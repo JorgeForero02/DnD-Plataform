@@ -108,6 +108,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Fichas de la adopción de la plantilla (2026-10-03) — solo documentación
+
+Qué — sección «Dejado por la adopción de la plantilla de agentes» en `06-pendientes.md` con AD-1 (CI rojo
+desde el 2026-09-07 por `e2e-browser`), AD-2 (`fastify` por `override` hasta Nest 12), AD-3 (cuatro avisos
+moderados que piden mayores), AD-4 (lo que no ve la prueba de arquitectura), AD-5 (el `01` sobre su tope),
+AD-6 (medir que solo `web` alcanza a la API, la suposición del ADR 0001) y AD-7 (los e2e de API en
+paralelo fallan con `ECONNRESET`; en serie pasan).
+Por qué — lo que el plan deja abierto tiene que estar en el tablero, no en un informe.
+Revertir — borrar la sección y esta entrada.
+
+---
+
 ## Producción medida y documentación al día (2026-10-03) — solo documentación
 
 Qué — según la medición del orquestador del 2026-10-03, hecha **antes** del parche de dependencias

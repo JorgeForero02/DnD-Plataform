@@ -240,6 +240,70 @@ el VTT externo dentro del marco: fuera de este código, pero hay que declararlo.
 declaración de accesibilidad solo si aplica la EAA (una microempresa está exenta). **Aceptación:** el
 e2e falla con una violación `serious` o `critical`.
 
+## Dejado por la adopción de la plantilla de agentes (2026-10-03)
+
+**Para qué sirve esta sección:** lo que la adopción de la plantilla dejó abierto a propósito, con qué hacer.
+Los IDs nacen **sin la prioridad dentro**; su prefijo `AD-n` («adopción») es provisional y el triaje del
+tablero lo cambia por el de su área (regla A.4 del `04`). Plan: `superpowers/plans/2026-10-03-adopcion-plantilla.md`.
+
+### AD-1 · El CI está en rojo desde el 2026-09-07: lo tumba `e2e-browser`
+
+**Medido el 2026-10-03** con la API pública de GitHub: las 100 últimas ejecuciones del workflow terminan
+en `failure`; la última verde es del 2026-09-07 (`7e7f92b`). En la de `a4883f0` (2026-09-19) el trabajo
+`test` pasó entero y falló el paso `pnpm --filter @dnd/web e2e` de `e2e-browser`, sin informe subido.
+**Qué hacer:** leer el registro de esa ejecución (pide sesión en GitHub) o reproducir la suite de
+navegador en local con `WORKTREE_SLOT=1`; arreglar la causa, no el síntoma. **Depende de:** nada.
+**Relacionada:** `03-despliegue.md` pide CI verde para desplegar, y hoy no puede cumplirse.
+
+### AD-2 · `fastify` llega por un `override`, no por su rango
+
+Nest 11 fija `fastify` con versión exacta (5.11.3 hasta `@nestjs/platform-fastify` 11.2.7); el parche del
+2026-10-03 lo fuerza a 5.12.5 desde el `package.json` raíz. **Qué hacer:** subir a Nest 12 (solo ESM, Node
+≥ 20.19) y quitar el `override`. **Depende de:** nada. **Relacionada:** CL-13.
+
+### AD-3 · Cuatro avisos moderados que piden versiones mayores
+
+`react-router` ×3 (arreglado en v7) y `@opentelemetry/core` ×1 (vía `@sentry/node@8`, arreglado en
+Sentry 10). Fuera del umbral `high` del CI. **Depende de:** nada. **Relacionada:** CL-13, AD-2.
+
+### AD-4 · La prueba de arquitectura no ve `import()` dinámico ni lo transitivo
+
+`no-restricted-imports` de ESLint mira cada `import` estático de cada fichero (`eslint.config.mjs`, bloque
+«Regla de dependencias»). **No ve** `import()` dinámico, **ni** que un fichero permitido importe a su vez uno
+prohibido (si `rules/engine.ts` importa `./monster` y `monster.ts` importara `catalog/`, nada saltaría).
+`require()` en TypeScript ya lo prohíbe otra regla, `@typescript-eslint/no-require-imports` (refutación
+P20, medido en copia). Hoy ningún cruce de capas usa esas formas. **Qué hacer:** si aparece un
+`import()` que cruce capas, añadir `no-restricted-syntax` para él; para lo transitivo, una herramienta de
+grafo de dependencias (p. ej. `dependency-cruiser`) si el problema llega a darse. **Depende de:** nada.
+
+### AD-5 · `01-arquitectura.md` pasa de su tope
+
+455 líneas contra un tope de 150 (plantilla). Techo declarado en el `04`: solo baja. **Qué hacer:** plan
+propio, sección a sección, moviendo lo histórico a `_archivo/`. **Depende de:** el triaje del tablero.
+
+### AD-6 · Comprobar que solo `web` alcanza a la API
+
+La función de saltos de `TRUST_PROXY` confía en el vecino inmediato sin mirar su IP (el ADR 0001,
+enlazado desde `decisiones.md`, D-AD-1). Es seguro mientras solo el nginx de `web` hable con
+`api:3000`. **No está medido** si otro contenedor de la red de Coolify llega a la API. **Qué hacer (el
+autor, o un agente con su permiso; solo lectura, no necesita copia de seguridad):**
+`ssh vps1new "docker network ls"` para ver las redes de la pila, y luego
+`ssh vps1new "docker network inspect <red> --format '{{range .Containers}}{{.Name}} {{end}}'"` con cada una.
+Si en la red de la API aparece algo más que `web`, `api` y `db`, revisar el ADR. **Depende de:** nada.
+**Relacionada:** ADR 0001.
+
+### AD-7 · Los e2e de API en paralelo fallan con `ECONNRESET` en dos suites
+
+**Medido el 2026-10-03, antes de tocar nada:** `pnpm --filter @dnd/api test:e2e` (Jest en paralelo, el
+modo por defecto) dio dos veces seguidas rojo en `apps/api/test/lanzar-conjuros.e2e-spec.ts` y
+`apps/api/test/libro-de-conjuros.e2e-spec.ts`: `read ECONNRESET` en las peticiones que siembran el
+catálogo de conjuros, y luego 404 en cascada. Cada suite sola pasa, y **la suite entera en serie pasa
+entera** (`cd apps/api && pnpm exec jest --config test/jest-e2e.json --runInBand`). Por eso las
+comparaciones del plan de adopción se hicieron en serie. **Qué hacer:** averiguar si es carga (dos
+peticiones pesadas a la vez sobre la misma base) o un límite de tiempo del cliente de pruebas, y que la
+suite pase también en paralelo, o declarar `--runInBand` en el script `test:e2e` como decisión.
+**Depende de:** nada. **Relacionada:** AD-1 (el CI corre los e2e de API en paralelo).
+
 ## Dejado por la auditoría de interfaz (2026-09-19)
 
 La auditoría ([archivada](./_archivo/auditoria-interfaz-2026-09-19.md), ~95 hallazgos sobre el
@@ -601,7 +665,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

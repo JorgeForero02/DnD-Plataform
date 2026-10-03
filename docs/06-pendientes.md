@@ -268,17 +268,18 @@ Sentry 10). Fuera del umbral `high` del CI. **Depende de:** nada. **Relacionada:
 
 ### AD-4 · La prueba de arquitectura no ve `import()` dinámico ni lo transitivo
 
-`no-restricted-imports` de ESLint mira cada `import` estático de cada fichero (`eslint.config.mjs`, bloque
-«Regla de dependencias»). **No ve** `import()` dinámico, **ni** que un fichero permitido importe a su vez uno
+Cuando exista la prueba de arquitectura (la añade la Task 12 del plan de adopción: `no-restricted-imports` de
+ESLint en `eslint.config.mjs`, bloque «Regla de dependencias»), mirará cada `import` estático de cada fichero.
+**No verá** `import()` dinámico, **ni** que un fichero permitido importe a su vez uno
 prohibido (si `rules/engine.ts` importa `./monster` y `monster.ts` importara `catalog/`, nada saltaría).
 `require()` en TypeScript ya lo prohíbe otra regla, `@typescript-eslint/no-require-imports` (refutación
-P20, medido en copia). Hoy ningún cruce de capas usa esas formas. **Qué hacer:** si aparece un
+P20, medido en copia). Hoy la regla aún no existe y ningún cruce de capas usa esas formas. **Qué hacer:** si aparece un
 `import()` que cruce capas, añadir `no-restricted-syntax` para él; para lo transitivo, una herramienta de
 grafo de dependencias (p. ej. `dependency-cruiser`) si el problema llega a darse. **Depende de:** nada.
 
 ### AD-5 · `01-arquitectura.md` pasa de su tope
 
-455 líneas contra un tope de 150 (plantilla). Techo declarado en el `04`: solo baja. **Qué hacer:** plan
+`wc -l docs/01-arquitectura.md` daba 457 el 2026-10-03, contra un tope de 150 (plantilla). Techo declarado en el `04`: solo baja. **Qué hacer:** plan
 propio, sección a sección, moviendo lo histórico a `_archivo/`. **Depende de:** el triaje del tablero.
 
 ### AD-6 · Comprobar que solo `web` alcanza a la API

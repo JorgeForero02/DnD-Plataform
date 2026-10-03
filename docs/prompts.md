@@ -27,18 +27,18 @@ Reglas de la sesión:
 
 ## 2 · Correr una tarea del banco
 
-**Sesión nueva, contexto limpio.** Se pega **solo el enunciado** de la tarea, tal cual está en
+**Subagente nuevo, contexto limpio, de uno en uno.** El orquestador lanza cada tarea como subagente y le pega **solo el enunciado** de la tarea y el límite de subagentes (como mucho 2, un solo nivel, y el encargo de cada hijo les prohíbe lanzar más), tal cual está en
 [10-banco-de-tareas.md](./10-banco-de-tareas.md):
 
 ```text
-<el enunciado de T1, T2 o T3, y nada más>
+<el enunciado de T1, T2, T3 o T4, y nada más>
 ```
 
 **Lo que NO se hace:** decirle que es una prueba, recordarle las reglas, corregirle por el camino,
 ni ayudarle cuando se atasca. Un agente advertido no se comporta como uno trabajando, y entonces
 la corrida no mide nada.
 
-Al terminar, **el autor** llena las cinco dimensiones y la fila del historial de corridas.
+Al terminar, **el orquestador** llena las cinco dimensiones y la fila del historial de corridas (decisión del autor, 2026-10-03: el banco lo lanza y lo puntúa el orquestador).
 
 ## 3 · Cambiar el proceso (una regla, `CLAUDE.md`, una skill, el modelo)
 
@@ -46,8 +46,8 @@ El hábito que hace que el banco sirva:
 
 ```text
 Voy a cambiar <la regla / CLAUDE.md / la skill / el modelo>.
-Antes de tocarlo: corro las tres tareas de docs/10-banco-de-tareas.md en sesiones limpias y
-anoto el resultado. Después del cambio, las tres otra vez.
+Antes de tocarlo: corro las cuatro tareas de docs/10-banco-de-tareas.md en sesiones limpias y
+anoto el resultado. Después del cambio, las cuatro otra vez.
 Si algo empeoró, el sospechoso es el cambio, no el agente.
 ```
 

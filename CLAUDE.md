@@ -37,7 +37,7 @@ lanza sin que lo pida el autor**, y lo lanza él a mano.
 | `docs/como-seguir.md` | **Si no sabes por dónde entrar**: qué ya está puesto, qué sigue y qué no decide un agente. |
 | `docs/decisiones.md` | **Una línea por decisión tomada, con enlace a su razonamiento.** Sustituye a releer `docs/superpowers/`, que son la mayor parte de la documentación y están fuera del camino de lectura |
 | `docs/prompts.md` | **Prompts listos para pegar** que sirven cualquier día: arrancar sesión, correr el banco, encargar a un subagente. |
-| `docs/10-banco-de-tareas.md` | **Antes y después de cambiar una regla, este fichero o una skill**: tres tareas fijas que dicen si el cambio mejoró o empeoró. |
+| `docs/10-banco-de-tareas.md` | **Antes y después de cambiar una regla, este fichero o una skill**: cuatro tareas fijas que dicen si el cambio mejoró o empeoró. |
 | `docs/04-convenciones.md` | Nivel de verificación, convenciones de API y web, precedencia |
 | `docs/08-pruebas.md` | **Qué prueba cada capa, qué no cubre, la regla de Playwright y qué demuestra cada suite.** Fuente única de los conteos. Léelo también antes de escribir un e2e nuevo — absorbió al antiguo mapa de e2e, que ya no existe como documento aparte |
 | `docs/01-arquitectura.md` | Monorepo, capas, módulos, dirección de dependencias |

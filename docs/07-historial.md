@@ -108,6 +108,19 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Banco de tareas: T4 y nueva regla de quién lo corre (2026-10-03) — solo documentación
+
+Qué — T4 («últimas tiradas de un personaje», sin mencionar seguridad) añadida a `10-banco-de-tareas.md`;
+el banco pasa a **cuatro tareas** (corregido en `00-INDEX`, `como-seguir`, `prompts` y `CLAUDE.md`).
+Regla nueva, por decisión del autor: el banco lo lanza el orquestador como subagentes con contexto
+limpio, de uno en uno, y lo puntúa también el orquestador (cinco dimensiones); el autor ya no abre las
+sesiones ni puntúa. Cada tarea del banco admite como mucho 2 subagentes, un solo nivel. La corrida
+«antes» la hace a continuación el orquestador y su resultado va en la tabla del banco.
+Por qué — la plantilla mide el proceso antes y después de cambiar reglas.
+Revertir — `git revert <hash>`.
+
+---
+
 ## Fichas de la adopción de la plantilla (2026-10-03) — solo documentación
 
 Qué — sección «Dejado por la adopción de la plantilla de agentes» en `06-pendientes.md` con AD-1 (CI rojo

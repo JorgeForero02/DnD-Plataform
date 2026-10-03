@@ -27,7 +27,7 @@ Esto es el estado del **andamiaje**: la puerta, las reglas y el sistema de agent
 | **Los cuatro pasos antes de abrir una ficha**, con su frontera de cuatro casos | [04-convenciones.md](./04-convenciones.md) |
 | **Frontera del encargo de ficheros *y* de herramientas**, por rol, y comprobada al cerrar la tanda | [04-convenciones.md](./04-convenciones.md), § *Trabajo con varios agentes a la vez* |
 | **Tabla de observabilidad de la tanda** en el ledger | Ídem |
-| **Banco de tres tareas-tipo** para medir el proceso | [10-banco-de-tareas.md](./10-banco-de-tareas.md) |
+| **Banco de cuatro tareas-tipo** para medir el proceso | [10-banco-de-tareas.md](./10-banco-de-tareas.md) |
 | **Prompts que sirven cualquier día** | [prompts.md](./prompts.md) |
 
 ## Qué sigue, en este orden

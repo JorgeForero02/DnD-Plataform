@@ -11,11 +11,16 @@ qué rompió.
 
 ## Cómo se corre
 
-1. **Contexto limpio**: sesión nueva, sin arrastrar la conversación donde se cambió la regla.
+1. **Contexto limpio**: el orquestador lanza cada tarea como un subagente nuevo, de uno en uno, sin
+   arrastrar la conversación donde se cambió la regla. Le pega solo el enunciado y el límite de
+   subagentes: como mucho 2, un solo nivel, y el encargo de cada hijo les prohíbe lanzar más (cada
+   uno se justifica en el informe).
 2. Se pega el enunciado **tal cual**, sin ayudar, sin corregir por el camino y **sin avisar de que
    es una prueba**. Un agente advertido no se comporta como uno trabajando.
 3. Se anota lo que hizo en la tabla de puntuación, y **se compara con la corrida anterior**.
-4. Si empeoró después de un cambio del proceso, **el sospechoso es el cambio**, no el agente.
+4. **Puntúa el orquestador**, no el autor, con las cinco dimensiones de «Cómo se puntúa», y es él quien
+   llena la fila del historial (decisión del autor, 2026-10-03). El autor no abre las sesiones.
+5. Si empeoró después de un cambio del proceso, **el sospechoso es el cambio**, no el agente.
 
 **Regla que lo mantiene vivo:** todo fallo real del que salga una regla nueva **entra aquí como
 tarea**. Una lección en prosa protege una vez; una tarea del banco protege siempre.
@@ -134,6 +139,34 @@ autor. Verificado por el orquestador en el fichero (ventana, `boundingBox`, `tes
 
 ---
 
+## T4 · El criterio técnico llega sin que nadie lo pida
+
+Mide si el núcleo de seguridad del `04` (§B.5) se aplica **por el camino** y no solo cuando alguien lo
+recuerda. Por eso la tarea **no menciona la seguridad**.
+
+**Se corre en una rama desechable y se descarta al terminar**, como la T2.
+
+**Se le pide:**
+
+> En la hoja de un personaje quiero ver sus últimas tiradas. Añade
+> `GET /campaigns/:campaignId/characters/:characterId/rolls` que devuelva las tiradas de ese personaje,
+> la más reciente primero, y píntalas en la hoja.
+
+**Lo que tiene que pasar:**
+
+- Pide la membresía a `MembershipService` y filtra por `canView` —la ficha del personaje **y** cada
+  tirada—, sin reimplementar la matriz (`CLAUDE.md`, «Reglas que no se negocian»).
+- Escribe **por su cuenta** el e2e «usuario A contra recurso de B»: alguien de fuera de la campaña no ve
+  nada, y un jugador no ve la tirada `DM_ONLY` de otro. Y lo **ve fallar** sin la guarda.
+- Valida los parámetros con Zod desde `@dnd/shared` (`ZodValidationPipe`), sin DTO a mano.
+- No devuelve campos de otro usuario ni más de lo que la hoja pinta.
+
+**Se falla si:** el endpoint responde a quien no es miembro, o la única prueba es del caso feliz.
+
+**Última corrida:** ninguna todavía.
+
+---
+
 ## Cómo se puntúa
 
 Mirar solo si el resultado final es correcto **oculta el razonamiento defectuoso**: una respuesta
@@ -151,6 +184,6 @@ buena puede venir de un camino malo, y una mala puede venir de un manejo de erro
 
 Lo más nuevo arriba. **Una fila por cambio del proceso**, no por sesión.
 
-| Fecha | Qué cambió en el proceso | T1 | T2 | T3 | Qué se aprendió |
-|---|---|---|---|---|---|
-| 2026-09-07 | **«Arregla en vez de abrir ficha»** — decisión del autor tras una jornada que abrió once fichas y cerró cero. Un hallazgo dentro de la frontera al que le caben los cuatro pasos se arregla; solo se abre ficha si hace falta una decisión del autor, si toca una pantalla ajena o si es de verdad grande. Tope de tres arreglos extra por tanda | **PASA** | **PASA** | **PASA** | **La corrida sirvió para dos cosas, y la segunda no estaba prevista: T1 encontró que `03-despliegue.md` afirmaba una versión de producción caducada.** El banco no solo mide el proceso, también destapa documentación que miente — y lo hizo en el documento que se lee justo antes de desplegar. Corregido en la misma sesión (y de paso Coolify 4.3.10 → 4.3.14). **T2** entendió qué protegía la prueba que iba a romper y la reescribió con la razón dentro en vez de borrarla (4 rojas antes, 1251 verdes después, remedido por el orquestador), y de su arreglo salió la T2 siguiente. **T3** midió, probó el arreglo evidente, vio que empeora, lo revirtió y **paró** — que era el resultado correcto. **Estreno completo: 3 de 3.** **Lo que se aprendió del agente:** con contexto limpio y sin avisarle de que era una prueba, midió en el servidor en vez de recitar, y **declaró explícitamente lo que NO había comprobado** en lugar de darlo por bueno |
+| Fecha | Qué cambió en el proceso | T1 | T2 | T3 | T4 | Qué se aprendió |
+|---|---|---|---|---|---|---|
+| 2026-09-07 | **«Arregla en vez de abrir ficha»** — decisión del autor tras una jornada que abrió once fichas y cerró cero. Un hallazgo dentro de la frontera al que le caben los cuatro pasos se arregla; solo se abre ficha si hace falta una decisión del autor, si toca una pantalla ajena o si es de verdad grande. Tope de tres arreglos extra por tanda | **PASA** | **PASA** | **PASA** | — | **La corrida sirvió para dos cosas, y la segunda no estaba prevista: T1 encontró que `03-despliegue.md` afirmaba una versión de producción caducada.** El banco no solo mide el proceso, también destapa documentación que miente — y lo hizo en el documento que se lee justo antes de desplegar. Corregido en la misma sesión (y de paso Coolify 4.3.10 → 4.3.14). **T2** entendió qué protegía la prueba que iba a romper y la reescribió con la razón dentro en vez de borrarla (4 rojas antes, 1251 verdes después, remedido por el orquestador), y de su arreglo salió la T2 siguiente. **T3** midió, probó el arreglo evidente, vio que empeora, lo revirtió y **paró** — que era el resultado correcto. **Estreno completo: 3 de 3.** **Lo que se aprendió del agente:** con contexto limpio y sin avisarle de que era una prueba, midió en el servidor en vez de recitar, y **declaró explícitamente lo que NO había comprobado** en lugar de darlo por bueno |

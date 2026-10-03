@@ -40,6 +40,22 @@ describe("buildAdapter()", () => {
     expect(ip).toBe("203.0.113.7");
   });
 
+  // Production's value (docker-compose.prod.yml): Traefik, then nginx. Added with the fastify
+  // 5.12 patch, which stopped honouring a numeric trustProxy — see buildAdapter()'s comment.
+  it("TRUST_PROXY=2 resolves to the hop the outer proxy appended, ignoring anything further left", async () => {
+    process.env.TRUST_PROXY = "2";
+    const instance = buildAdapter().getInstance();
+    instance.get("/__ip", async (req) => ({ ip: req.ip }));
+    await instance.ready();
+    const res = await instance.inject({
+      method: "GET",
+      url: "/__ip",
+      headers: { "x-forwarded-for": "198.51.100.9, 203.0.113.7, 10.0.0.9" },
+    });
+    await instance.close();
+    expect((JSON.parse(res.payload) as { ip: string }).ip).toBe("203.0.113.7");
+  });
+
   // Fix round 2, finding 1 / fix round 3: buildAdapter() is called as an ARGUMENT to
   // NestFactory.create() in main.ts — before ConfigModule.forRoot() ever loads apps/api/.env —
   // so TRUST_PROXY set only in that file was silently ignored, and buildAdapter() fell back to

@@ -36,9 +36,9 @@ export function loadBootEnv(options?: dotenv.DotenvConfigOptions): void {
  * trust-proxy.e2e-spec.ts).
  *
  * TRUST_PROXY (env var, documented in .env.example): the number of proxy hops to trust in
- * front of the API, or unset/0 for none. Passed straight through to Fastify's `trustProxy`
- * option as a NUMBER, not a boolean — the two behave completely differently for
- * X-Forwarded-For resolution, and that difference is a real vulnerability, not a style choice:
+ * front of the API, or unset/0 for none. It reaches Fastify's `trustProxy` option as a hop
+ * FUNCTION built from that number (see below), never as a boolean — the two behave completely
+ * differently for X-Forwarded-For resolution, and that difference is a real vulnerability:
  *
  * - `trustProxy: true` ("trust every hop") makes Fastify take the LEFTMOST entry of
  *   X-Forwarded-For — whatever the ORIGINAL, outermost client sent. nginx's
@@ -48,9 +48,18 @@ export function loadBootEnv(options?: dotenv.DotenvConfigOptions): void {
  *   straight to the attacker: sending a different X-Forwarded-For on every request produced a
  *   different throttler key every time, and the per-IP rate limit added for hallazgo 3 never
  *   actually engaged in production.
- * - `trustProxy: N` (a number) trusts exactly N hops counting IN from the socket connection —
- *   i.e. it reads the value the Nth trusted proxy itself appended, ignoring anything further
- *   left that a client (trusted or not) supplied.
+ * - A hop count N trusts exactly N hops counting IN from the socket connection — i.e. it reads
+ *   the value the Nth trusted proxy itself appended, ignoring anything further left that a
+ *   client (trusted or not) supplied.
+ *
+ *   **It goes to Fastify as a FUNCTION, `(address, hop) => hop < N`, not as the number**
+ *   (2026-10-03, dependency patch). From fastify 5.12.1 a numeric `trustProxy` trusts NOTHING:
+ *   `getTrustProxyFn` returns `() => false` ("hop-count-only trust cannot validate the
+ *   immediate peer") and the type no longer accepts a number. With the number, every request
+ *   in production would resolve to the nginx container's IP and the per-IP login limit would
+ *   become one shared bucket. The function is exactly what fastify 5.11 did with the number.
+ *   It is safe here for the same reason the number was: the API publishes no port and only
+ *   `web` reaches it (docker-compose.prod.yml), so the immediate peer is always nginx.
  *
  *   **Production sits behind TWO proxies, not one: Traefik and then nginx**, so the value there
  *   is `TRUST_PROXY=2` (`docker-compose.prod.yml`). This comment said "exactly one trusted proxy
@@ -69,7 +78,8 @@ export function buildAdapter(): FastifyAdapter {
   loadBootEnv(); // see loadBootEnv()'s own comment for why this call lives here, not just in main.ts
   const trustProxyHops = Number(process.env.TRUST_PROXY ?? 0);
   return new FastifyAdapter({
-    trustProxy: trustProxyHops > 0 ? trustProxyHops : false,
+    trustProxy:
+      trustProxyHops > 0 ? (_address: string, hop: number) => hop < trustProxyHops : false,
   });
 }
 

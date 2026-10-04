@@ -90,8 +90,8 @@ La partida de prueba con dos cuentas (`D-OP-3`), y lo que el tablero diga que du
 
 ## Lo que un agente no decide
 
-- **Cuándo se despliega.** El despliegue es manual y lo lanza el autor
-  ([03-despliegue.md](./03-despliegue.md)); esa decisión existe porque las migraciones corren
+- **Cuándo se despliega.** El despliegue es manual: lo lanza el autor, o quien orquesta el plan
+  con su aprobación explícita ([03-despliegue.md](./03-despliegue.md), D-AD-9); esa decisión existe porque las migraciones corren
   solas al arrancar el contenedor.
 - **Qué ficha del tablero sigue viva.** Ver el punto 1.
 - **Qué regla ya no sirve.** Una regla se archiva con su motivo original intacto, y saber cuál

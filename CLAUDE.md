@@ -73,7 +73,8 @@ pnpm dev:web                             # web en :5173
   pantalla: la forma legible se escribe una vez por dominio y todo lo demás la importa. **Si un texto de
   la interfaz explica una regla del servidor y los dos discrepan, el que miente es el texto.** Las demás
   reglas de interfaz vinculantes están en el `04`, § *Reglas de interfaz que salieron del reseño*.
-- **El despliegue no se lanza sin que lo pida el autor**, y lo lanza él. `TRUST_PROXY` vale **2**
+- **El despliegue no se lanza sin la aprobación explícita del autor**; lo lanza él, o quien orquesta el plan
+  con esa aprobación. Un agente con un encargo suelto no despliega nunca. `TRUST_PROXY` vale **2**
   (Traefik y nginx) y llega a Fastify como función de saltos ([ADR 0001](docs/adr/0001-trust-proxy-por-saltos.md)).
   Lo que de verdad protege el límite de intentos es que Traefik descarte el `X-Forwarded-For` del
   cliente: si cambia la topología, se recuenta.

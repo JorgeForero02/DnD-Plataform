@@ -22,11 +22,7 @@ exactamente lo que hacía `fastify` 5.11 con el número. En producción vale 2.
 
 ## Suposición que se probó
 
-**Ninguna todavía.** La decisión supone que nadie salvo el nginx de `web` habla con la API. Está sin
-medir y tiene ficha propia en `06-pendientes.md` (AD-6). Lo que sí está probado es la aritmética:
-`configure-app.spec.ts`, caso `TRUST_PROXY=2`.
-
-**2026-10-03:** medida, y no se cumple del todo: en la red de la API también está Traefik (`coolify-proxy`). Detalle y riesgo en la ficha AD-6.
+**Medida el 2026-10-03: no se cumple del todo.** La decisión supone que nadie salvo el nginx de `web` habla con la API; en su red también está Traefik (`coolify-proxy`). Detalle y riesgo en la ficha AD-6 de `06-pendientes.md`. Lo que sí está probado es la aritmética: `configure-app.spec.ts`, caso `TRUST_PROXY=2`.
 
 ## Alternativas descartadas
 
@@ -40,8 +36,7 @@ medir y tiene ficha propia en `06-pendientes.md` (AD-6). Lo que sí está probad
 ## Consecuencias
 
 La función confía en el vecino inmediato sin comprobar su IP. **Es seguro solo mientras la API no sea
-alcanzable sin pasar por nginx**: hoy no publica puertos y solo `web` la alcanza. No se ha verificado si
-otro contenedor de la red de Coolify puede llegar a `api:3000` (ficha AD-6 de `06-pendientes.md`).
+alcanzable sin pasar por nginx**: hoy no publica puertos; en su red están `web`, `db` y Traefik (medido el 2026-10-03, ficha AD-6), que solo enruta a `web` y descarta el `X-Forwarded-For` del cliente.
 
 ## Cuándo revisarse
 

@@ -914,7 +914,7 @@ de otro. La protección era la prosa del encargo, no el sistema.
 
 ```text
 Y esto es lo que NO haces, pase lo que pase:
-- No despliegas ni tocas producción. El despliegue lo lanza el autor a mano.
+- No despliegas ni tocas producción. El despliegue no es tuyo: lo lanza el autor, o quien orquesta el plan con su aprobación explícita.
 - No corres Playwright ni los e2e de API: los corre el orquestador, y uno a la vez.
 - No dejas un `dev:api` arrancado a mano cuando termines, ni compilas la API mientras
   corre una tanda.

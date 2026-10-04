@@ -108,6 +108,21 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Arreglos de la revisión final de la adopción (2026-10-03) — solo documentación
+
+Qué — I1: quién lanza el despliegue. `CLAUDE.md`, D-AD-5 y los textos para subagentes (`04`, `10`,
+`prompts`, `como-seguir`) dejan de decir «lo lanza el autor a mano» y dicen que lo lanza el autor, o quien
+orquesta el plan con su aprobación explícita; nace D-AD-9 en `decisiones.md`. I2: el ADR 0001 (§ *Suposición
+que se probó* y § *Consecuencias*) y la ficha AD-6 ya no dicen que la red está «sin medir» tras la medición.
+Menores: las líneas «Corrida anterior» del banco llevan su etiqueta («antes de adoptar la plantilla»),
+`03-despliegue.md` enlaza la excepción del parche de seguridad y el plan del triaje atribuye el límite de 2
+hijos al orquestador, no al autor.
+Por qué — la revisión del rango entero encontró reglas que se contradecían con la instrucción del autor del
+2026-10-03 y un ADR que contradecía su propia ficha.
+Revertir — `git revert <hash>`.
+
+---
+
 ## Plan del triaje del `06` escrito; el banco «después» se corrió (ver su entrada) (2026-10-03) — solo documentación
 
 Qué — nace [el plan del triaje completo del `06` por áreas](./superpowers/plans/2026-10-03-triaje-06.md)

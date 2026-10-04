@@ -287,7 +287,7 @@ propio, sección a sección, moviendo lo histórico a `_archivo/`. **Depende de:
 
 La función de saltos de `TRUST_PROXY` confía en el vecino inmediato sin mirar su IP (el ADR 0001,
 enlazado desde `decisiones.md`, D-AD-1). Es seguro mientras solo el nginx de `web` hable con
-`api:3000`. **No está medido** si otro contenedor de la red de Coolify llega a la API. **Qué hacer (un
+`api:3000`. Hasta el 2026-10-03 no estaba medido si otro contenedor llegaba a la API; la medición está a continuación. **Qué hacer (un
 agente puede lanzarlo sin preguntar, D-AD-8; solo lectura, no necesita copia de seguridad):**
 `ssh vps1new "docker network ls"` para ver las redes de la pila, y luego
 `ssh vps1new "docker network inspect <red> --format '{{range .Containers}}{{.Name}} {{end}}'"` con cada una.
@@ -690,7 +690,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; AD-6 medida; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

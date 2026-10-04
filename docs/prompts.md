@@ -21,7 +21,7 @@ Reglas de la sesión:
 - Los cuatro pasos antes de abrir una ficha (docs/04-convenciones.md), con su frontera.
 - Una duda de reglas se resuelve con el SRD, en inglés, y la cita va en el commit.
 - Si toca una pantalla, se mide en el navegador: jsdom no maqueta.
-- No despliegas. Producción la mueve el autor a mano.
+- No despliegas. El despliegue no es tuyo: lo lanza el autor, o quien orquesta el plan con su aprobación explícita.
 - Documentación en el mismo commit, y `pnpm verify` verde sin saltarse el gancho.
 ```
 

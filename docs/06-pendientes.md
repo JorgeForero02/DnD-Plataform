@@ -353,6 +353,8 @@ explícita del autor (D-AD-9):** empujar `main`; copia de la base volcada al PC 
 `03-despliegue.md` y un intento desde otra red, que hace el autor); entrada nueva en el `07`. Si la copia sale
 vacía o falla el humo, se para. **Depende de:** nada. **Relacionada:** AD-1, ADR 0001.
 
+**2026-10-03, hecho salvo un punto** (aprobado por el autor): empujado `11749e1`, copia previa en el PC leída por `pg_restore`, desplegado y comprobado (detalle en el `07`). **Falta solo** la prueba desde una segunda red, que hace el autor: con el límite recién agotado desde una red, un intento desde datos móviles tiene que dar 401, no 429.
+
 ### AD-11 · Nunca se ha probado restaurar una copia de esta base
 
 La copia diaria de las 04:00 incluye esta base (medido el 2026-10-03) y antes de cada cambio en producción se
@@ -735,7 +737,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (fichas AD-1…AD-13 de la adopción y la tabla «Lo que decide el autor»; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (AD-10 casi cerrada: parche desplegado; fichas AD-1…AD-13 de la adopción y la tabla «Lo que decide el autor»; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

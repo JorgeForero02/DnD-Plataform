@@ -108,6 +108,14 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Parche de dependencias desplegado (2026-10-03) — solo documentación
+
+Qué — con la aprobación del autor (D-AD-9), quien orquestaba el plan de adopción empujó `main` (`11749e1`) y desplegó por la API de Coolify (despliegue `ed8xeautujpuzf3nuwcwo5oj`, estado `finished`, commit `11749e1`, el mismo que `HEAD`). **Copia previa:** `pg_dump --format=custom` volcado por `ssh` a este PC, sin escribir en el servidor (fichero pre-fastify-2026-10-03-2126.dump, 107.719 bytes, en la carpeta backups-dnd del autor, fuera del repositorio); `pg_restore --list` la lee con 32 entradas `TABLE DATA`. **Después:** `api`, `web` y `db` en `healthy` con la imagen `11749e1`; dentro de la imagen, `fastify@5.12.5`; la API arrancó sin errores. **Humo, sin escrituras** (logins fallidos contra una cuenta que no existe): `/api/health` 200; seis logins desde una red, cinco 401 y un 429; seis más con `X-Forwarded-For` falsificado y un minuto después, cinco 401 y un 429, así que la cabecera del cliente no salta el límite. **La prueba desde una segunda red** (datos móviles) queda para el autor.
+Por qué — cierra lo que la entrada del parche dejó «no verificado» en producción (ficha AD-10).
+Revertir — desplegar la imagen anterior (`a4883f0`) desde Coolify; la base no cambió (el parche no trae migraciones) y la copia previa está en el PC.
+
+---
+
 ## Lo que decide el autor, en el tablero (2026-10-03) — solo documentación
 
 Qué — en `06-pendientes.md`, sección de la adopción: tabla «Lo que decide el autor» y fichas nuevas AD-10 (desplegar el parche, con su aprobación), AD-11 (probar una restauración de la base), AD-12 (ejecutar el triaje del tablero) y AD-13 (¿N2?).

@@ -47,8 +47,8 @@ por su cuenta**.
 «Regla de dependencias»): la web no importa de `apps/api`; ningún `*.controller.ts` importa
 `PrismaService` ni `@prisma/client`, salvo `apps/api/src/health/health.controller.ts`; y
 `apps/api/src/rules/engine.ts` no importa nada de `catalog/` (la tercera regla está razonada en la sección
-«Las tres capas de la fase 2A» de este fichero). Lo que el control no ve: `import()` dinámico, ni que un
-fichero permitido importe a su vez uno prohibido; `require()` ya lo prohíbe otra regla de ESLint
+«Las tres capas de la fase 2A» de este fichero). Lo que el control no ve: el `import()` dinámico ni lo transitivo (que un
+fichero permitido importe, a su vez, uno prohibido); `require()` ya lo prohíbe otra regla de ESLint
 (ficha AD-4 de [06-pendientes.md](./06-pendientes.md)).
 
 ## Módulos de la API

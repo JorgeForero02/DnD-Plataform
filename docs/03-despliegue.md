@@ -133,10 +133,9 @@ de Traefik antes de dar el despliegue por bueno.
   Desde el parche del 2026-10-03 la versión es `@fastify/proxy-addr` 5.1.1 y `TRUST_PROXY` llega a
   Fastify como función de saltos; el resultado es el mismo, y lo fija `configure-app.spec.ts`, caso
   `TRUST_PROXY=2`.
-- **CI en GitHub Actions** en cada push a `main` y en cada PR (`.github/workflows/ci.yml`), con dos
+- **CI en GitHub Actions** en cada push a `main`, `fix/**`, `chore/**` o `docs/**`, en cada PR y a mano (`.github/workflows/ci.yml`), con dos
   trabajos: `test` (instala, audita las dependencias de producción, genera Prisma, aplica migraciones
-  contra un Postgres de servicio y corre los pasos de `pnpm verify` —`pnpm build` incluido desde el
-  2026-09-05— y los e2e de API) y `e2e-browser` (Playwright contra la API y la web reales, con el
+  contra un Postgres de servicio y corre `pnpm verify` y los e2e de API) y `e2e-browser` (Playwright contra la API y la web reales, con el
   reporte como artefacto si falla). **El CI está en rojo desde el 2026-09-07**: lo tumba siempre
   `e2e-browser`; el trabajo `test` pasaba entero el 2026-09-19. Ficha en
   [06-pendientes.md](./06-pendientes.md). El lint corre desde el 2026-08-31.

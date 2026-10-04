@@ -1,7 +1,16 @@
 name: CI
 on:
-  push: { branches: [main] }
+  # Ramas de trabajo además de main: el repositorio no usa PR (un solo desarrollador, decisión
+  # U-2 en docs/04-convenciones.md), así que sin esto una rama empujada no se probaría nunca
+  # antes del merge. workflow_dispatch permite lanzarlo a mano sobre cualquier rama.
+  push: { branches: [main, "fix/**", "chore/**", "docs/**"] }
   pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -37,16 +46,10 @@ jobs:
       - run: pnpm audit --prod --audit-level=high
       - run: pnpm --filter @dnd/api prisma:generate
       - run: pnpm --filter @dnd/api exec prisma migrate deploy
-      # Before lint on purpose: packages/shared has to be built for the API to compile
-      # against it, and one type error is cheaper to read than nine hundred red tests
-      # with a single cause.
-      - run: pnpm build
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm check:docs
-      - run: pnpm check:estado
-      - run: pnpm check:historial
-      - run: pnpm test
+      # The same command the pre-commit hook runs (build first, then lint — which carries the
+      # architecture rule —, format, the three doc checks and the unit suites). Its definition
+      # lives in package.json, not here: two copies of the step list drift apart.
+      - run: pnpm verify
       - run: pnpm --filter @dnd/api test:e2e
 
   # Los e2e de navegador van aparte: necesitan los binarios de Playwright y dos

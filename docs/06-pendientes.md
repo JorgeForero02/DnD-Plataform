@@ -270,6 +270,8 @@ navegador en local con `WORKTREE_SLOT=1`; arreglar la causa, no el síntoma. **D
 **Relacionada:** `03-despliegue.md` pide CI verde para desplegar, y hoy no puede cumplirse.
 **2026-10-03:** en local, `apps/web/e2e/tablero-en-la-mesa.spec.ts` (la prueba de 1280 px) falla: la cabecera del registro mide 51 px y el límite es 48. Puede ser parte de lo que tumba `e2e-browser`.
 
+**Medido el 2026-10-03 en el CI** (ejecución de `a8a5dd9`): el trabajo `test` pasó entero, e2e de API en paralelo incluidos; `e2e-browser` cayó con **5 fallos fijos**, 1 inestable (`nervio-en-vivo.spec.ts`), 1 saltada y 209 en verde. Los cinco, que se repetirán en cada ejecución hasta arreglarlos: `barra-de-acciones.spec.ts` («apuntar desde el elenco, lanzar contra el chip, la fila que se apaga, y Esquivar»), `color-de-personaje.spec.ts` («el color de un personaje se elige, se guarda y es el mismo en el elenco y en el hilo»), `desbordes.spec.ts` («hoja de PJ (Brann): la lista de objetivos al atacar cabe en el cliente de su ancestro»), `elegir-camino.spec.ts` («elegir camino en la hoja hace aparecer su rasgo, sin recargar») y `tablero-en-la-mesa.spec.ts` («con sala guardada, el marco ocupa el centro sin scroll de página y el registro lateral scrollea por panel»). Todos en `apps/web/e2e/`. El cambio del 2026-10-03 no toca ninguna de esas pantallas.
+
 ### AD-2 · `fastify` llega por un `override`, no por su rango
 
 Nest 11 fija `fastify` con versión exacta (5.11.3 hasta `@nestjs/platform-fastify` 11.2.7); el parche del
@@ -737,7 +739,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (AD-10 casi cerrada: parche desplegado; fichas AD-1…AD-13 de la adopción y la tabla «Lo que decide el autor»; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (AD-1 con los cinco e2e que tumban el CI; AD-10 casi cerrada: parche desplegado; fichas AD-1…AD-13 de la adopción y la tabla «Lo que decide el autor»; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

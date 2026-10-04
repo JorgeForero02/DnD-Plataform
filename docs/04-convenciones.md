@@ -60,11 +60,6 @@ plantilla de agentes (carpeta *plantillas › docs*, fuera de este repositorio),
    ficha, las cerradas juntas a un fichero `pendientes-cerrados-<fecha>` de `_archivo/`.
 9. **Variante ligera** para tableros pequeños (menos de unas veinte fichas o hasta cuatro áreas).
 
-**Hoy el `06` no cumple A.4** (excepción declarada en § *Precedencia*): está repartido por origen y tiene
-IDs con prioridad dentro (`P1`…`P4`). Lo pone en regla el triaje, con su propio plan. **Las fichas nuevas
-ya nacen sin la prioridad dentro del ID**; su prefijo (`AD-n`, de la adopción) es provisional y el triaje lo
-cambia por el de su área.
-
 ## Nivel de verificación: **N1**
 
 El comando que define el nivel es:
@@ -83,16 +78,16 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
 | Conteos generados | `pnpm check:estado` | `verify` | obligatorio; cuenta **declaraciones** (decisión D-POD-4) |
 | Tope del historial | `pnpm check:historial` | `verify` | obligatorio, verde |
 | Unitarias | `pnpm test` | `verify` | obligatorio, verde (una se salta si faltan las fuentes del catálogo) |
-| e2e de API | `pnpm --filter @dnd/api test:e2e` | CI (trabajo `test`) y a mano con Docker | obligatorio fuera de `verify`; en local, en serie: `cd apps/api && pnpm exec jest --config test/jest-e2e.json --runInBand` (en paralelo dos suites fallan con ECONNRESET, ficha AD-7) |
-| e2e de navegador | `pnpm --filter @dnd/web e2e` | CI (trabajo `e2e-browser`) y a mano | obligatorio fuera de `verify`; **rojo en CI desde el 2026-09-07** (ficha AD-1) |
-| Dependencias | `pnpm audit --prod --audit-level=high` | CI | 0 high tras el parche del 2026-10-03; 4 moderate que piden mayores (AD-3) |
+| e2e de API | `pnpm --filter @dnd/api test:e2e` | CI (trabajo `test`) y a mano con Docker | obligatorio fuera de `verify`; en local, en serie: `cd apps/api && pnpm exec jest --config test/jest-e2e.json --runInBand` (en paralelo dos suites fallan con ECONNRESET, ficha TEST-02) |
+| e2e de navegador | `pnpm --filter @dnd/web e2e` | CI (trabajo `e2e-browser`) y a mano | obligatorio fuera de `verify`; **rojo en CI desde el 2026-09-07** (ficha TEST-01) |
+| Dependencias | `pnpm audit --prod --audit-level=high` | CI | 0 high tras el parche del 2026-10-03; 4 moderate que piden mayores (DEP-04) |
 | Cobertura con umbral | — | — | N2 no declarado, pendiente de decisión del autor |
 | Mutación | — | — | N3 no declarado |
 
 **El gancho corre `verify` entero porque es autocontenido**: ni Docker ni `.env` (medido el 2026-10-03 en
 una copia sin los dos). **Techos que solo bajan:** `01-arquitectura.md` (tope 150; se mide con
-`wc -l docs/01-arquitectura.md`, ficha AD-5); los 4 avisos moderados de AD-3. `06-pendientes.md` no tiene
-tope hasta el triaje (`wc -l docs/06-pendientes.md`).
+`wc -l docs/01-arquitectura.md`, ficha DOC-02); los 4 avisos moderados de DEP-04. `06-pendientes.md` no tiene
+tope de líneas: lo acota A.4 (una fila por ficha, tres líneas de detalle).
 
 - `pnpm build` compila los tres paquetes (`tsc` / `nest build` / `vite build`) y hace de
   **type-check**.
@@ -763,18 +758,18 @@ cómo está hoy aquí. «Techo» = se sabe que falta, con su ficha.
 
 | # | Regla | Estado | Evidencia |
 |---|---|---|---|
-| 1 | Autorización en el servidor, por objeto, con prueba «A contra recurso de B» | ✅, con un techo: AD-9 (y sin mapa endpoint → prueba) | `MembershipService` y `canView` (`CLAUDE.md`); los e2e de API que comprueban 403/404 a quien no es miembro se cuentan con el primer comando de debajo de la tabla; techo: los registros de sucesos y de tiradas devuelven la fila entera a quien ve el suceso (ficha AD-9 de [06-pendientes.md](./06-pendientes.md)) |
+| 1 | Autorización en el servidor, por objeto, con prueba «A contra recurso de B» | ✅, con un techo: SEG-01 (y sin mapa endpoint → prueba) | `MembershipService` y `canView` (`CLAUDE.md`); los e2e de API que comprueban 403/404 a quien no es miembro se cuentan con el primer comando de debajo de la tabla; techo: los registros de sucesos y de tiradas devuelven la fila entera a quien ve el suceso (ficha SEG-01 de [06-pendientes.md](./06-pendientes.md)) |
 | 2 | La interfaz toma el permiso de la ruta que llama | regla declarada (`CLAUDE.md`), sin prueba transversal | § *Web* |
 | 3 | Entrada validada en el borde, lista blanca | ✅ | Zod desde `@dnd/shared` con `ZodValidationPipe` en los controladores |
 | 4 | Consultas parametrizadas | ✅ | solo `$queryRaw` y `$executeRaw` de plantilla etiquetada; el segundo comando de debajo de la tabla sale vacío |
 | 5 | Secretos fuera del repo, de los logs y del frontend | ✅ | `.env` ignorado; `apps/api/src/common/jwt-secret.ts` exige 32 caracteres; nada en `VITE_*` |
-| 6 | Datos personales mínimos y fuera de los logs | techo | ficha CL-4 (Sentry sin datos personales) |
+| 6 | Datos personales mínimos y fuera de los logs | techo | ficha LEGAL-04 (Sentry sin datos personales) |
 | 7 | El esquema solo cambia por migración; ningún default que sincronice | ✅ | `prisma migrate deploy` en el `CMD` de `apps/api/Dockerfile`; ni `db push` ni sincronización |
 | 8 | Integridad en la base | ✅ | índices únicos parciales: un encuentro activo por sesión, una ranura un objeto ([11-invariantes.md](./11-invariantes.md)) |
 | 9 | Lo atómico en la misma transacción | ✅ | `PrismaService.transaction` ([01-arquitectura.md](./01-arquitectura.md), «Un `tx?` opcional») |
 | 10 | Falla cerrado | ✅ | `canView` niega a quien no es miembro (`apps/api/src/common/visibility.spec.ts`, «non-member … sees nothing»); el pipe de Zod rechaza con 400 |
 | 11 | Dependencias auditadas en CI con umbral | ✅ desde el 2026-10-03 | `.github/workflows/ci.yml`, `pnpm audit --prod --audit-level=high` |
-| 12 | Un patrón nuevo nombra su problema, y **la regla de dependencias del `01` se comprueba en `verify`** | ✅ desde el 2026-10-03 | `eslint.config.mjs`, bloque «Regla de dependencias»; no ve `import()` dinámico ni lo transitivo (ficha AD-4) |
+| 12 | Un patrón nuevo nombra su problema, y **la regla de dependencias del `01` se comprueba en `verify`** | ✅ desde el 2026-10-03 | `eslint.config.mjs`, bloque «Regla de dependencias»; no ve `import()` dinámico ni lo transitivo (ficha TEST-05) |
 
 Los dos comandos de las filas 1 y 4 (con `-e` repetido no hace falta escapar ninguna barra, y se copian
 igual desde el fichero que desde GitHub):
@@ -1046,9 +1041,8 @@ proponerlas:
 | Todo cambio en rama | **Solo el código y la documentación que lo acompaña**; un cambio que solo toca documentación va directo a `main` | Usuario, 2026-10-03 (§ *Git*) |
 | `git-guard` | No aplica | Una sola identidad de git |
 | `05-runbook.md` | `05` es **Datos**; los comandos y trampas viven en `02-entorno.md` y `03-despliegue.md` | A.3 prohíbe renumerar |
-| `06` por áreas (A.4) | **Hasta el triaje** el `06` sigue por origen; las fichas nuevas ya nacen con ID sin prioridad | El triaje es trabajo largo con plan propio |
 | Conteos del corredor (`check-conteos`) | `check:estado` cuenta **declaraciones**; los casos de e2e se anotan a mano en `08-pruebas.md` | Decisión D-POD-4: leer el informe de cuatro corredores haría caro el gancho |
 | Prueba de arquitectura con dependency-cruiser | **ESLint `no-restricted-imports`** en `eslint.config.mjs` | Corre en `pnpm lint`, sin dependencia nueva (desde el 2026-10-03) |
 | Validación con `ValidationPipe` (regla de NestJS) | **Zod desde `@dnd/shared`** con `ZodValidationPipe` | La forma de los datos vive una sola vez (`CLAUDE.md`) |
-| Desplegar con CI verde (`03-despliegue.md`) | El parche de seguridad del 2026-10-03 se despliega cuando pasan `verify` y los e2e de API, aunque `e2e-browser` siga rojo | Decisión del usuario: seguridad primero; ficha AD-1 |
+| Desplegar con CI verde (`03-despliegue.md`) | El parche de seguridad del 2026-10-03 se despliega cuando pasan `verify` y los e2e de API, aunque `e2e-browser` siga rojo | Decisión del usuario: seguridad primero; ficha TEST-01 |
 | `trustProxy` con direcciones de confianza | **Función de saltos** | [ADR 0001](./adr/0001-trust-proxy-por-saltos.md) |

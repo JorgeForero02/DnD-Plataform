@@ -6,7 +6,7 @@ paths:
 # Backend NestJS + Fastify + Prisma (`apps/api`)
 
 Versiones del repo (2026-10-03): NestJS 11 (`@nestjs/platform-fastify` 11.2.x, con `fastify` 5.12 forzado
-por un `override`, ficha AD-2), Prisma 5, Jest 29 + Supertest, Zod 3. La regla de la plantilla describe
+por un `override`, ficha DEP-03), Prisma 5, Jest 29 + Supertest, Zod 3. La regla de la plantilla describe
 Nest 12 y Prisma 7: **no aplica hasta actualizar**. *(comunidad)* = práctica extendida; *(decisión del
 repo)* = manda aquí. Si algo choca con `docs/04-convenciones.md`, manda el `04`.
 

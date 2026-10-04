@@ -49,7 +49,7 @@ por su cuenta**.
 `apps/api/src/rules/engine.ts` no importa nada de `catalog/` (la tercera regla está razonada en la sección
 «Las tres capas de la fase 2A» de este fichero). Lo que el control no ve: el `import()` dinámico ni lo transitivo (que un
 fichero permitido importe, a su vez, uno prohibido); `require()` ya lo prohíbe otra regla de ESLint
-(ficha AD-4 de [06-pendientes.md](./06-pendientes.md)).
+(ficha TEST-05 de [06-pendientes.md](./06-pendientes.md)).
 
 ## Módulos de la API
 

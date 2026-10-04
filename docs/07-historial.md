@@ -108,6 +108,14 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## El tablero de pendientes, por áreas (2026-10-03) — solo documentación
+
+Qué — triaje completo de `06-pendientes.md` con el plan `superpowers/plans/2026-10-03-triaje-06.md`: el tablero repartido por origen pasa a **nueve áreas** (`LEGAL`, `SEG`, `MESA`, `HOJA`, `MUNDO`, `UI`, `DEP`, `TEST`, `DOC`), sin área de preguntas (lo que espera al autor lleva la marca **Decide el autor** dentro de su área) y con la escala P0–P3 de la plantilla, reasignada ficha a ficha. De los 305 puntos del tablero viejo salen **133 fichas abiertas**, **53 resueltas** y **13 descartadas** (cada cierre con su commit, su prueba o su decisión, comprobados por quien orquestó), y el resto eran reglas, historia o secciones vacías. Cuatro agentes de solo lectura, de uno en uno, juzgaron los bloques y un revisor de contexto limpio contrastó el resultado; ninguno escribió nada. Las nueve fichas que espera el autor (AD-1, AD-6, AD-8, AD-9, AD-10…AD-13 y la mesa a 390 px) se movieron sin juzgarlas. En `_archivo/` quedan la copia literal del tablero viejo, la tabla de equivalencias y las cerradas; en el `04` sale la excepción «`06` por áreas», y los documentos vivos que citaban un ID viejo llevan el nuevo.
+Por qué — la regla A.4 del `04` y la Task 15 del plan de adopción: el tablero por origen ya no se leía de un vistazo (1700 líneas, siete secciones con «cerrada» en el título, remisiones colgantes).
+Revertir — `git revert` de los dos commits del triaje; la copia literal permite además restaurar el `06` de antes con `cp docs/_archivo/pendientes-tablero-viejo-2026-10-03.md docs/06-pendientes.md`.
+
+---
+
 ## Parche de dependencias desplegado (2026-10-03) — solo documentación
 
 Qué — con la aprobación del autor (D-AD-9), quien orquestaba el plan de adopción empujó `main` (`11749e1`) y desplegó por la API de Coolify (despliegue `ed8xeautujpuzf3nuwcwo5oj`, estado `finished`, commit `11749e1`, el mismo que `HEAD`). **Copia previa:** `pg_dump --format=custom` volcado por `ssh` a este PC, sin escribir en el servidor (fichero pre-fastify-2026-10-03-2126.dump, 107.719 bytes, en la carpeta backups-dnd del autor, fuera del repositorio); `pg_restore --list` la lee con 32 entradas `TABLE DATA`. **Después:** `api`, `web` y `db` en `healthy` con la imagen `11749e1`; dentro de la imagen, `fastify@5.12.5`; la API arrancó sin errores. **Humo, sin escrituras** (logins fallidos contra una cuenta que no existe): `/api/health` 200; seis logins desde una red, cinco 401 y un 429; seis más con `X-Forwarded-For` falsificado y un minuto después, cinco 401 y un 429, así que la cabecera del cliente no salta el límite. **La prueba desde una segunda red** (datos móviles) queda para el autor.

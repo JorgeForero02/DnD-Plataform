@@ -22,7 +22,7 @@ exactamente lo que hacía `fastify` 5.11 con el número. En producción vale 2.
 
 ## Suposición que se probó
 
-**Medida el 2026-10-03: no se cumple del todo.** La decisión supone que nadie salvo el nginx de `web` habla con la API; en su red también está Traefik (`coolify-proxy`). Detalle y riesgo en la ficha AD-6 de `06-pendientes.md`. Lo que sí está probado es la aritmética: `configure-app.spec.ts`, caso `TRUST_PROXY=2`.
+**Medida el 2026-10-03: no se cumple del todo.** La decisión supone que nadie salvo el nginx de `web` habla con la API; en su red también está Traefik (`coolify-proxy`). Detalle y riesgo en la ficha SEG-02 de `06-pendientes.md`. Lo que sí está probado es la aritmética: `configure-app.spec.ts`, caso `TRUST_PROXY=2`.
 
 ## Alternativas descartadas
 
@@ -36,11 +36,11 @@ exactamente lo que hacía `fastify` 5.11 con el número. En producción vale 2.
 ## Consecuencias
 
 La función confía en el vecino inmediato sin comprobar su IP. **Es seguro solo mientras la API no sea
-alcanzable sin pasar por nginx**: hoy no publica puertos; en su red están `web`, `db` y Traefik (medido el 2026-10-03, ficha AD-6), que solo enruta a `web` y descarta el `X-Forwarded-For` del cliente.
+alcanzable sin pasar por nginx**: hoy no publica puertos; en su red están `web`, `db` y Traefik (medido el 2026-10-03, ficha SEG-02), que solo enruta a `web` y descarta el `X-Forwarded-For` del cliente.
 
 ## Cuándo revisarse
 
 - Si cambia la topología: la API gana dominio propio, se quita Traefik o nginx, o se añade un CDN
   delante — el número se **recuenta**, no se hereda.
 - Si la comprobación de dos redes de `03-despliegue.md` da `429` desde la segunda red.
-- Si `fastify` vuelve a cambiar `trustProxy` (revisar al subir de mayor) o si se pasa a Nest 12 (AD-2).
+- Si `fastify` vuelve a cambiar `trustProxy` (revisar al subir de mayor) o si se pasa a Nest 12 (DEP-03).

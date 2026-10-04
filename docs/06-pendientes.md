@@ -287,8 +287,8 @@ propio, sección a sección, moviendo lo histórico a `_archivo/`. **Depende de:
 
 La función de saltos de `TRUST_PROXY` confía en el vecino inmediato sin mirar su IP (el ADR 0001,
 enlazado desde `decisiones.md`, D-AD-1). Es seguro mientras solo el nginx de `web` hable con
-`api:3000`. **No está medido** si otro contenedor de la red de Coolify llega a la API. **Qué hacer (el
-autor, o un agente con su permiso; solo lectura, no necesita copia de seguridad):**
+`api:3000`. **No está medido** si otro contenedor de la red de Coolify llega a la API. **Qué hacer (un
+agente puede lanzarlo sin preguntar, D-AD-8; solo lectura, no necesita copia de seguridad):**
 `ssh vps1new "docker network ls"` para ver las redes de la pila, y luego
 `ssh vps1new "docker network inspect <red> --format '{{range .Containers}}{{.Name}} {{end}}'"` con cada una.
 Si en la red de la API aparece algo más que `web`, `api` y `db`, revisar el ADR. **Depende de:** nada.

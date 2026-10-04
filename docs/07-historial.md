@@ -108,6 +108,19 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Plan del triaje del `06` escrito; el banco «después» se corrió (ver su entrada) (2026-10-03) — solo documentación
+
+Qué — nace [el plan del triaje completo del `06` por áreas](./superpowers/plans/2026-10-03-triaje-06.md)
+(Task 15 del plan de adopción, DND-28). Escrito, no ejecutado: cuatro bloques de unas 400 líneas sobre
+las 1651 del `06`, un agente de solo lectura por bloque y de uno en uno, un revisor final y como mucho dos
+hijos por agente de bloque (5 agentes seguros, 13 como máximo, número que se le da al autor antes de
+lanzar nada). AD-9, AD-6, AD-1 y P2 solo se trasladan. El banco «después» (DND-20) está en la entrada de
+abajo.
+Por qué — A.4 del `04` pide el triaje con plan propio, y la excepción «`06` sin A.4» se borra al terminarlo.
+Revertir — `git revert <hash>`.
+
+---
+
 ## Banco «después» de adoptar la plantilla, y lo que destapó (2026-10-03) — solo documentación
 
 Qué — se registra la corrida «después» del banco de tareas en `10-banco-de-tareas.md`: T1, T2 y T3 PASA

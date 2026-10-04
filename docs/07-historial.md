@@ -108,6 +108,22 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## CI con `verify`, permisos mínimos y ramas de trabajo; controles vistos fallar (2026-10-03) — rama `chore/puerta-plantilla`
+
+Qué — el trabajo `test` del CI llama a `pnpm verify` en vez de repetir sus pasos; `permissions: contents:
+read`; se dispara en `main`, `fix/**`, `chore/**`, `docs/**`, en PR y a mano; `concurrency`. El workflow se
+validó en local (`js-yaml` lo lee con los tres disparadores, los permisos y `pnpm verify` en su sitio;
+Prettier limpio; dos `node-version: 22`); **su primera ejecución en GitHub está pendiente del push**, así que
+aún no se afirma nada sobre el resultado de `test` allí. **Visto:** el gancho pasa en un clon sin Docker ni
+`.env` (con el Postgres local parado); bloquea un commit con un error de tipos; `check:historial` con
+`LIMIT` a 100 y `check:estado` con un número tocado fallan, y vuelven a pasar al restaurarlos. El rojo de
+`test` no se fabricó: un commit que rompa `verify` no pasa el gancho, y saltárselo está prohibido; `test`
+llama al mismo comando que el gancho, que sí se vio fallar. `e2e-browser` sigue en rojo (AD-1).
+Por qué — plantilla (C3, C10): el CI llama al mismo comando que el gancho, y cada control se ve fallar.
+Revertir — `git revert -m 1 <hash del merge>`.
+
+---
+
 ## La regla de dependencias del `01` se comprueba en `verify` (2026-10-03) — rama `chore/puerta-plantilla`
 
 Qué — tres bloques `no-restricted-imports` en `eslint.config.mjs`: web ↛ `apps/api`; controladores ↛

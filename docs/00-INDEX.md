@@ -12,8 +12,7 @@ propio plan cuando se llega. Contenido legal limitado a SRD 5.1 / OGL.
 **Qué imagen sirve producción, y qué la separa de `main`, no se escribe aquí: se mide.**
 `ssh vps1new "docker ps --filter name=5awvsn1dnkexhcjzg7kjwom6 --format '{{.Names}} {{.Image}} {{.Status}}'"`
 da la etiqueta de la imagen, y `git diff --name-only <etiqueta>..HEAD -- apps packages` lo que falta
-por desplegar. **Ese `ssh` entra en el servidor de producción.** Solo lee, pero lo lanza el autor, o un
-agente con su permiso explícito en la sesión; un agente no lo corre por su cuenta para «medir».
+por desplegar. Ese comando entra en el servidor de producción, pero solo lee: un agente puede lanzarlo sin preguntar (decisión del autor, 2026-10-03). Lo que escriba o cambie algo en el servidor, y el despliegue, sigue pidiendo la aprobación explícita del autor.
 La última medición fechada está en [07-historial.md](./07-historial.md). El texto que
 vivía aquí hasta el 2026-10-03, y que caducó cinco veces, está entero en
 [_archivo/00-INDEX-estado-a-mano-hasta-2026-10-03.md](./_archivo/00-INDEX-estado-a-mano-hasta-2026-10-03.md).

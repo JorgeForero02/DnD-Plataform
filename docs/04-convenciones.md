@@ -15,7 +15,7 @@ tenía. Si buscas una regla de la plantilla:
 | Parte C nivel y pasos | § *Nivel de verificación* |
 | Excepciones | § *Precedencia*, «Excepciones declaradas frente a la plantilla de agentes» |
 | Atribución de los commits | § *Git* |
-| Reglas por stack | `.claude/rules/frontend-react.md` y `.claude/rules/backend-nestjs.md` (se cargan por `paths:`) |
+| Reglas por stack | `.claude/rules/frontend-react.md` y `.claude/rules/backend-nestjs.md` (se cargan por `paths:`; carga aún sin comprobar en una sesión nueva; ver el `07`) |
 
 ## A · Documentación
 
@@ -704,7 +704,7 @@ ejecución es idéntico. Ejemplo vivo: `src/features/campaigns/members.ts`.
 ## Git
 
 - **Código en rama y `git merge --no-ff`; un cambio que solo toca documentación va directo a `main`**
-  (decisión del usuario, 2026-10-03). La documentación que acompaña a un cambio de código va en su rama.
+  (decisión del usuario, 2026-10-03). La documentación que acompaña a un cambio de código va en su rama. **Fusionar a `main` lo hace quien orquesta el plan, o el autor; un agente con un encargo suelto deja su rama sin fusionar y lo dice.**
 - **Un commit por tarea**, con su prueba en verde antes de commitear (lo exige el gancho).
 - Mensajes en formato Conventional Commits, en inglés: `feat(web):`, `fix(api):`.
 - **Atribución veraz:** un commit hecho con un agente lleva `Co-Authored-By: <modelo que lo hizo>

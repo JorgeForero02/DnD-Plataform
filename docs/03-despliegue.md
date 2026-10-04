@@ -4,8 +4,7 @@
 > `git diff --name-only <imagen desplegada>..HEAD`, y qué imagen corre se comprueba en el
 > servidor (`docker ps`), nunca de memoria. Nada de lo de abajo cambia; lo que cambia es **qué
 > versión hay arriba**. La imagen se mide con `ssh vps1new "docker ps --filter name=5awvsn1dnkexhcjzg7kjwom6 --format '{{.Names}} {{.Image}}'"`; la última medición fechada está en [07-historial.md](./07-historial.md).
-> **Ese comando entra en el servidor de producción**: solo lee, pero lo lanza el autor, o un agente con su
-> permiso explícito en la sesión.
+> Ese comando entra en el servidor de producción, pero solo lee: un agente puede lanzarlo sin preguntar (decisión del autor, 2026-10-03). Lo que escriba o cambie algo en el servidor, y el despliegue, sigue pidiendo la aprobación explícita del autor.
 >
 > **Esta cabecera volvió a caducar, y van cuatro.** Hasta el 2026-09-07 decía que producción
 > servía «lo que se subió el 2026-09-02» y que la fase 2.5 y el reseño de la mesa (B0–B5) estaban

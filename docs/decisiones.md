@@ -703,6 +703,7 @@ Decisiones del autor del 2026-10-03 y la que forzó el parche de dependencias.
 | D-AD-5 | **Los parches de seguridad van primero** y los despliega el autor en cuanto pasan `verify` y los e2e de API, aunque `e2e-browser` siga rojo (ficha AD-1) |
 | D-AD-6 | **Volcado manual de la base antes de cualquier cambio en producción**, porque desde el 2026-10-03 hay gente usando la plataforma. La copia automática diaria del servidor (04:00) ya incluye esta base (medido el 2026-10-03); **no se monta ninguna copia automática nueva**, y una restauración de esta base sigue sin probarse. Sustituye a la decisión del 2026-09-05 de no hacer copias ([06-pendientes.md](./06-pendientes.md), sección de la copia de seguridad) |
 | D-AD-7 | **El banco de tareas lo lanza y lo puntúa el orquestador**, como subagentes de contexto limpio, de uno en uno, con un máximo de 2 subagentes cada uno y de un solo nivel. El autor no abre las sesiones ni puntúa ([10-banco-de-tareas.md](./10-banco-de-tareas.md), «Cómo se corre») |
+| D-AD-8 | **`ssh` a producción de solo lectura, o para traer una copia al PC, sin preguntar**; lo que escriba o cambie el servidor y el despliegue piden la aprobación explícita del autor |
 
 ## Lo demás que hay en `superpowers/`
 

@@ -108,6 +108,22 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Banco «después» de adoptar la plantilla, y lo que destapó (2026-10-03) — solo documentación
+
+Qué — se registra la corrida «después» del banco de tareas en `10-banco-de-tareas.md`: T1, T2 y T3 PASA
+(T1 y T2 mejoran, T3 igual) y T4 PASA con reservas (empeora). Corrección de la regla de Git (R22) en el
+`04`, § Git, y en `CLAUDE.md`: fusionar a `main` lo hace quien orquesta el plan, o el autor; un agente
+con un encargo suelto deja su rama sin fusionar y lo dice. Regla nueva de `ssh` a producción de solo
+lectura (decisión del autor, 2026-10-03), reflejada en `00-INDEX.md` y `03-despliegue.md` y recogida como
+D-AD-8 en `decisiones.md`. En el mapa del `04`, la fila «Reglas por stack» avisa de que la carga por
+`paths:` sigue sin comprobarse en una sesión nueva.
+Por qué — la plantilla pide medir el proceso después de cambiar reglas, y el banco encontró una regresión
+causada por una regla: T4 intentó fusionar por su cuenta porque la regla de rama no decía quién fusiona.
+T1 avisó además de que leer en producción pedía un permiso que el autor ya había dado.
+Revertir — `git revert <hash>`.
+
+---
+
 ## `.claude/` viaja con el repositorio: reglas por stack (2026-10-03) — rama `chore/reglas-stack`
 
 Qué — `.gitignore` deja de ignorar `.claude/` entero (solo `settings.local.json*` y `worktrees/`) y añade

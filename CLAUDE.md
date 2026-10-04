@@ -68,7 +68,7 @@ pnpm dev:web                             # web en :5173
   en el `04`.
 - **Evidencia antes que afirmación.** Si algo falla, se dice y se pega la salida.
 - **Código en rama y `merge --no-ff`; solo documentación directo a `main`.** Un commit por tarea, en
-  inglés (Conventional Commits), con atribución veraz.
+  inglés (Conventional Commits), con atribución veraz. **Fusionar a `main` lo hace quien orquesta el plan, o el autor; un agente con un encargo suelto deja su rama sin fusionar y lo dice.**
 - **Código en inglés, interfaz y documentación en español**, y ningún valor de enumeración llega a la
   pantalla: la forma legible se escribe una vez por dominio y todo lo demás la importa. **Si un texto de
   la interfaz explica una regla del servidor y los dos discrepan, el que miente es el texto.** Las demás

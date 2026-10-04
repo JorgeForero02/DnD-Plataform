@@ -294,7 +294,7 @@ function SalaDelTablero({
   const [valor, setValor] = useState(url ?? "");
   const [error, setError] = useState<string | null>(null);
 
-  // Revisión de fichas, IMPORTANT #1 (docs/04-convenciones.md:460, «el botón de guardar nunca
+  // Revisión de fichas, IMPORTANT #1 (docs/04-convenciones.md, § «Reglas de interfaz que salieron del reseño», «el botón de guardar nunca
   // se deshabilita»): un campo vacío no bloquea el botón, se explica con el error del propio
   // `Field` y no llega a llamar al PATCH.
   const onGuardar = () => {

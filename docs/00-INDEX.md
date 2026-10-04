@@ -99,7 +99,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 > `pnpm verify` falla si no coincide con lo que el script generaría — ver
 > `scripts/update-estado.mjs`.
 >
-> - **Generado sobre el commit** `47b54db` **(rama `main`)** — instantánea de la
+> - **Generado sobre el commit** `64c1cce` **(rama `chore/puerta-plantilla`)** — instantánea de la
 >   última vez que alguien ejecutó `pnpm update:estado`, no un valor comprobado:
 >   `pnpm verify` solo vuelve a calcular las pruebas unitarias de abajo, nunca este
 >   commit ni esta rama, así que pueden quedar desactualizados varios commits — no
@@ -108,7 +108,7 @@ Lo único que sí vive aquí es el bloque de abajo, y no lo escribe una persona:
 >   que imprime el corredor**: un bloque `it.each` cuenta como la declaración que es y no
 >   como los casos que ejecuta, y hay más de cuarenta. Sirve para que nadie edite el número
 >   a mano —`check:estado` lo caza—, no para citar cuántas pruebas hay: eso lo dice
->   `pnpm test`. Ver el comentario al principio del script, y la ficha I9 de
->   [06-pendientes.md](./06-pendientes.md). Los conteos de e2e están en
+>   `pnpm test`. Ver el comentario al principio del script, y la decisión D-POD-4 de
+>   [decisiones.md](./decisiones.md). Los conteos de e2e están en
 >   [08-pruebas.md](./08-pruebas.md).
 <!-- estado:fin -->

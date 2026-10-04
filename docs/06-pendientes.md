@@ -269,12 +269,12 @@ Sentry 10). Fuera del umbral `high` del CI. **Depende de:** nada. **Relacionada:
 
 ### AD-4 · La prueba de arquitectura no ve `import()` dinámico ni lo transitivo
 
-Cuando exista la prueba de arquitectura (la añade la Task 12 del plan de adopción: `no-restricted-imports` de
-ESLint en `eslint.config.mjs`, bloque «Regla de dependencias»), mirará cada `import` estático de cada fichero.
-**No verá** `import()` dinámico, **ni** que un fichero permitido importe a su vez uno
+La prueba de arquitectura existe desde el 2026-10-03 (`no-restricted-imports` de ESLint en
+`eslint.config.mjs`, bloque «Regla de dependencias») y mira cada `import` estático de cada fichero.
+**No ve** `import()` dinámico, **ni** que un fichero permitido importe a su vez uno
 prohibido (si `rules/engine.ts` importa `./monster` y `monster.ts` importara `catalog/`, nada saltaría).
 `require()` en TypeScript ya lo prohíbe otra regla, `@typescript-eslint/no-require-imports` (refutación
-P20, medido en copia). Hoy la regla aún no existe y ningún cruce de capas usa esas formas. **Qué hacer:** si aparece un
+P20, medido en copia). Hoy ningún cruce de capas usa esas formas. **Qué hacer:** si aparece un
 `import()` que cruce capas, añadir `no-restricted-syntax` para él; para lo transitivo, una herramienta de
 grafo de dependencias (p. ej. `dependency-cruiser`) si el problema llega a darse. **Depende de:** nada.
 
@@ -688,7 +688,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción, AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

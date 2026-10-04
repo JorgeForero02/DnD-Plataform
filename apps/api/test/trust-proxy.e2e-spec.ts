@@ -73,7 +73,7 @@ describe("trustProxy + X-Forwarded-For (e2e)", () => {
   // - It reuses "10.0.0.1" — the exact leftmost value the test above already sent once — as
   //   the CONSTANT leftmost across every request here, and pairs it with a genuinely NEW
   //   rightmost ("198.51.100.42", never used above).
-  // - Under the correct mode (key = rightmost, trustProxy: 1): "198.51.100.42" is a fresh,
+  // - Under the correct mode (key = rightmost, TRUST_PROXY=1): "198.51.100.42" is a fresh,
   //   isolated bucket regardless of what leftmost value rides along with it — AUTH_RATE_LIMIT
   //   attempts get 401, the next one gets 429, exactly like the test above.
   // - Under the pre-fix bug (key = leftmost, trustProxy: true): "10.0.0.1" already carries ONE

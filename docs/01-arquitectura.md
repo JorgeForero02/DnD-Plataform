@@ -36,12 +36,20 @@ Controlador → Servicio → Prisma
 - El **servicio** decide: quién puede ver qué, quién puede escribir, qué se filtra.
 - **Prisma** es el único que habla con la base. Ningún controlador la toca, **salvo uno a
   propósito**: `apps/api/src/health/health.controller.ts` hace `SELECT 1` para que el sondeo de
-  salud mida la cadena entera (ficha D3, 2026-09-05). Hoy ninguna prueba comprueba esta regla.
+  salud mida la cadena entera (ficha D3, 2026-09-05). La prueba de arquitectura (bloque «Regla de dependencias» de `eslint.config.mjs`) lo exime por nombre.
 
 `MembershipService` (en `campaigns/`) es el dueño único de la pregunta *"¿este usuario
 pertenece a esta campaña y con qué rol?"*: `requireMember`, `requireDM`, `getMembership`.
 Cualquier módulo que necesite eso importa `CampaignsModule`; **nadie recalcula la membresía
 por su cuenta**.
+
+**Se comprueba en `pnpm verify`**, con `no-restricted-imports` de ESLint (`eslint.config.mjs`, bloque
+«Regla de dependencias»): la web no importa de `apps/api`; ningún `*.controller.ts` importa
+`PrismaService` ni `@prisma/client`, salvo `apps/api/src/health/health.controller.ts`; y
+`apps/api/src/rules/engine.ts` no importa nada de `catalog/` (la tercera regla está razonada en la sección
+«Las tres capas de la fase 2A» de este fichero). Lo que el control no ve: el `import()` dinámico ni lo transitivo (que un
+fichero permitido importe, a su vez, uno prohibido); `require()` ya lo prohíbe otra regla de ESLint
+(ficha AD-4 de [06-pendientes.md](./06-pendientes.md)).
 
 ## Módulos de la API
 

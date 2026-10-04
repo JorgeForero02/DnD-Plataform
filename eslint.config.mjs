@@ -118,6 +118,66 @@ export default tseslint.config(
     },
   },
 
+  // Regla de dependencias de docs/01-arquitectura.md, comprobada por la máquina: es la prueba de
+  // arquitectura de la plantilla (04 §B.5, regla 12) y corre dentro de `pnpm verify` con el
+  // resto de `pnpm lint`. Tres reglas que hoy se cumplen. Lo que NO ve: `import()` dinámico, ni que
+  // un fichero permitido importe a su vez uno prohibido (lo transitivo). `require()` ya lo prohíbe
+  // @typescript-eslint/no-require-imports. Hoy nada cruza capas por esas vías; ficha AD-4.
+  {
+    files: ["apps/web/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "(^|/)apps/api(/|$)|(^|/)api/src(/|$)|^@dnd/api(/|$)",
+              message:
+                "La web nunca importa de apps/api: lo compartido vive en @dnd/shared (docs/01-arquitectura.md, «Dirección de dependencias»).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/api/src/**/*.controller.ts"],
+    // Excepción declarada en docs/01-arquitectura.md: el sondeo de salud hace `SELECT 1` y es
+    // el único controlador que habla con la base, a propósito (ficha D3, 2026-09-05).
+    ignores: ["apps/api/src/health/health.controller.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "(^|/)prisma/prisma\\.service$|^@prisma/client$",
+              message:
+                "Controlador → Servicio → Prisma: ningún controlador toca la base (docs/01-arquitectura.md).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/api/src/rules/engine.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "(^|/)catalog(/|$)",
+              message:
+                "El motor no importa nada de catalog/: el catálogo conoce al motor, no al revés (docs/01-arquitectura.md, «Las tres capas de la fase 2A»).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Formatting belongs to Prettier; this must stay last.
   prettier,
 );

@@ -76,7 +76,7 @@ pnpm verify   =   pnpm build && pnpm lint && pnpm format:check && pnpm check:doc
 | Paso | Comando | Dónde corre | Estado (2026-10-03) |
 |---|---|---|---|
 | Type-check | `pnpm build` | `verify` (gancho y CI) | obligatorio, verde |
-| Lint | `pnpm lint` | `verify` | obligatorio, verde; aún sin la prueba de arquitectura, que entra con el plan de adopción (AD-4) |
+| Lint, incluida la prueba de arquitectura | `pnpm lint` | `verify` | obligatorio, verde; incluye la regla de dependencias del `01` (bloque «Regla de dependencias» de `eslint.config.mjs`) |
 | Formato | `pnpm format:check` | `verify` | obligatorio, verde |
 | Documentación | `pnpm check:docs` | `verify` | obligatorio, verde |
 | Conteos generados | `pnpm check:estado` | `verify` | obligatorio; cuenta **declaraciones** (decisión D-POD-4) |
@@ -112,10 +112,12 @@ tope hasta el triaje (`wc -l docs/06-pendientes.md`).
   comas finales). `pnpm format` lo aplica.
   **El Markdown está excluido a propósito** (`.prettierignore`): la documentación se escribe a
   mano y sus saltos de línea y tablas son deliberados.
-- `pnpm check:docs` (`scripts/check-docs.mjs`) comprueba mecánicamente tres reglas de
-  documentación: rutas citadas entre comillas invertidas que no existen, `fichero:NN` con la
-  línea fuera de rango, y conteos de pruebas escritos fuera de su fuente única. Antes de
-  `test` a propósito: falla rápido y barato.
+- `pnpm check:docs` (`scripts/check-docs.mjs`) comprueba mecánicamente seis reglas de
+  documentación: conteos de pruebas escritos fuera de su fuente única (también si la cifra y la
+  palabra caen en dos líneas seguidas, desde el 2026-10-03), rutas citadas entre comillas invertidas
+  que no existen, `fichero:NN` con la línea fuera de rango, fechas en el futuro, fichas tachadas en
+  el `06` y una «Última revisión» del `06` más vieja que su fecha más nueva. Antes de `test` a
+  propósito: falla rápido y barato.
 - `pnpm check:estado` (`scripts/update-estado.mjs --check`) comprueba **los dos bloques que
   ese script genera** y falla si alguien editó cualquiera a mano: los **conteos de unitarias**
   del bloque de estado de [00-INDEX.md](./00-INDEX.md), y desde el 2026-09-03 los **ficheros de
@@ -157,13 +159,7 @@ tope hasta el triaje (`wc -l docs/06-pendientes.md`).
 
 **Lo aplica `.githooks/pre-commit`, que bloquea el commit si `pnpm verify` falla.** El gancho
 se conecta solo en el `prepare` de la raíz (`scripts/install-git-hooks.mjs`), que **nunca
-falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. **CI no
-corre exactamente lo mismo**: repite `build`, `lint`, `format:check`, `check:docs`, `check:estado`,
-`check:historial` y `test` paso a paso y añade los e2e. **`pnpm build` entró el 2026-09-05**
-(`.github/workflows/ci.yml:47`) y va **antes de `lint`**: `packages/shared` tiene que estar
-construido para que la API compile contra él, y un error de tipos es más barato de leer que
-novecientas pruebas rojas con una sola causa. Hasta ese día no corría, y un fallo de compilación que
-las pruebas no tocaran llegaba a `main` en verde.
+falla si no hay repositorio git** porque las imágenes Docker se construyen sin `.git`. **CI corre el mismo `pnpm verify`** (desde el 2026-10-03; antes repetía sus pasos uno a uno) y añade el audit de dependencias, los e2e de API y, en un trabajo aparte, los de navegador. Dentro de `verify`, `pnpm build` va **antes de `lint`**: `packages/shared` tiene que estar construido para que la API compile contra él, y un error de tipos es más barato de leer que novecientas pruebas rojas con una sola causa.
 
 **No se desactiva el gancho para saltárselo.** Si el control molesta, se arregla el código o
 se cambia el control como decisión declarada aquí.
@@ -777,7 +773,7 @@ cómo está hoy aquí. «Techo» = se sabe que falta, con su ficha.
 | 9 | Lo atómico en la misma transacción | ✅ | `PrismaService.transaction` ([01-arquitectura.md](./01-arquitectura.md), «Un `tx?` opcional») |
 | 10 | Falla cerrado | ✅ | `canView` niega a quien no es miembro (`apps/api/src/common/visibility.spec.ts`, «non-member … sees nothing»); el pipe de Zod rechaza con 400 |
 | 11 | Dependencias auditadas en CI con umbral | ✅ desde el 2026-10-03 | `.github/workflows/ci.yml`, `pnpm audit --prod --audit-level=high` |
-| 12 | Un patrón nuevo nombra su problema, y **la regla de dependencias del `01` se comprueba en `verify`** | techo hasta la prueba de arquitectura del plan de adopción | no existe todavía: la añade el plan de adopción (Task 12) como bloque «Regla de dependencias» de `eslint.config.mjs` (ficha AD-4) |
+| 12 | Un patrón nuevo nombra su problema, y **la regla de dependencias del `01` se comprueba en `verify`** | ✅ desde el 2026-10-03 | `eslint.config.mjs`, bloque «Regla de dependencias»; no ve `import()` dinámico ni lo transitivo (ficha AD-4) |
 
 Los dos comandos de las filas 1 y 4 (con `-e` repetido no hace falta escapar ninguna barra, y se copian
 igual desde el fichero que desde GitHub):
@@ -1051,7 +1047,7 @@ proponerlas:
 | `05-runbook.md` | `05` es **Datos**; los comandos y trampas viven en `02-entorno.md` y `03-despliegue.md` | A.3 prohíbe renumerar |
 | `06` por áreas (A.4) | **Hasta el triaje** el `06` sigue por origen; las fichas nuevas ya nacen con ID sin prioridad | El triaje es trabajo largo con plan propio |
 | Conteos del corredor (`check-conteos`) | `check:estado` cuenta **declaraciones**; los casos de e2e se anotan a mano en `08-pruebas.md` | Decisión D-POD-4: leer el informe de cuatro corredores haría caro el gancho |
-| Prueba de arquitectura con dependency-cruiser | **ESLint `no-restricted-imports`** en `eslint.config.mjs` | Corre en `pnpm lint`, sin dependencia nueva, en cuanto la añada el plan de adopción (Task 12); hoy aún no existe (ficha AD-4) |
+| Prueba de arquitectura con dependency-cruiser | **ESLint `no-restricted-imports`** en `eslint.config.mjs` | Corre en `pnpm lint`, sin dependencia nueva (desde el 2026-10-03) |
 | Validación con `ValidationPipe` (regla de NestJS) | **Zod desde `@dnd/shared`** con `ZodValidationPipe` | La forma de los datos vive una sola vez (`CLAUDE.md`) |
 | Desplegar con CI verde (`03-despliegue.md`) | El parche de seguridad del 2026-10-03 se despliega cuando pasan `verify` y los e2e de API, aunque `e2e-browser` siga rojo | Decisión del usuario: seguridad primero; ficha AD-1 |
 | `trustProxy` con direcciones de confianza | **Función de saltos** | [ADR 0001](./adr/0001-trust-proxy-por-saltos.md) |

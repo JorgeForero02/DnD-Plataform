@@ -108,6 +108,46 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## CI con `verify`, permisos mínimos y ramas de trabajo; controles vistos fallar (2026-10-03) — rama `chore/puerta-plantilla`
+
+Qué — el trabajo `test` del CI llama a `pnpm verify` en vez de repetir sus pasos; `permissions: contents:
+read`; se dispara en `main`, `fix/**`, `chore/**`, `docs/**`, en PR y a mano; `concurrency`. El workflow se
+validó en local (`js-yaml` lo lee con los tres disparadores, los permisos y `pnpm verify` en su sitio;
+Prettier limpio; dos `node-version: 22`); **su primera ejecución en GitHub está pendiente del push**, así que
+aún no se afirma nada sobre el resultado de `test` allí. **Visto:** el gancho pasa en un clon sin Docker ni
+`.env` (con el Postgres local parado); bloquea un commit con un error de tipos; `check:historial` con
+`LIMIT` a 100 y `check:estado` con un número tocado fallan, y vuelven a pasar al restaurarlos. El rojo de
+`test` no se fabricó: un commit que rompa `verify` no pasa el gancho, y saltárselo está prohibido; `test`
+llama al mismo comando que el gancho, que sí se vio fallar. `e2e-browser` sigue en rojo (AD-1).
+Por qué — plantilla (C3, C10): el CI llama al mismo comando que el gancho, y cada control se ve fallar.
+Revertir — `git revert -m 1 <hash del merge>`.
+
+---
+
+## La regla de dependencias del `01` se comprueba en `verify` (2026-10-03) — rama `chore/puerta-plantilla`
+
+Qué — tres bloques `no-restricted-imports` en `eslint.config.mjs`: web ↛ `apps/api`; controladores ↛
+`PrismaService`/`@prisma/client` (salvo `health`); motor ↛ `catalog/`. **Visto fallar** con seis
+mutaciones (import, `import type`, efecto lateral y `export *` en la web; `PrismaService` en un
+controlador; `./catalog` en el motor), restauradas a mano. De paso, dos comentarios de `CampaignSettings` que citaban el `04`
+por número de línea (ya desplazado) lo citan por sección, y un comentario de `trust-proxy.e2e-spec.ts` dice `TRUST_PROXY=1`.
+Por qué — plantilla §B.5 (12): una regla que no comprueba una máquina es una intención.
+Revertir — `git revert <hash>`.
+
+---
+
+## `check-docs` ve una cifra partida en dos líneas (2026-10-03) — rama `chore/puerta-plantilla`
+
+Qué — la comprobación de conteos mira también el par «esta línea + la siguiente»; la cabecera del script y
+el `04` dicen las seis reglas que tiene (decían tres). El bloque generado del `00` deja de remitir a la
+ficha I9, que se cerró como decisión D-POD-4. **Visto fallar:** «hay 999 / pruebas» en `02-entorno.md` →
+`conteo`; lo mismo en el `07` → nada (exento); una ruta inexistente → `ruta`; `main.ts:99999` → `línea`.
+Por qué — `01-arquitectura.md` decía «47 / unitarias» con 63 reales y el control no lo veía (refutación de
+la auditoría de adopción).
+Revertir — `git revert <hash>`.
+
+---
+
 ## `CLAUDE.md` corto y `AGENTS.md` con su línea (2026-10-03) — solo documentación
 
 Qué — `CLAUDE.md` pasa de 126 líneas y trece lecturas a la forma de la plantilla: qué es y stack, tres

@@ -120,6 +120,7 @@ D-AD-8 en `decisiones.md`. En el mapa del `04`, la fila «Reglas por stack» avi
 Por qué — la plantilla pide medir el proceso después de cambiar reglas, y el banco encontró una regresión
 causada por una regla: T4 intentó fusionar por su cuenta porque la regla de rama no decía quién fusiona.
 T1 avisó además de que leer en producción pedía un permiso que el autor ya había dado.
+Además, la ficha AD-6 (`06`) se midió con un `ssh` de solo lectura: en la red de la API también está Traefik (`coolify-proxy`), riesgo bajo; anotado en la ficha y en el ADR 0001, § «Suposición que se probó».
 Revertir — `git revert <hash>`.
 
 ---

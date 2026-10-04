@@ -294,6 +294,8 @@ agente puede lanzarlo sin preguntar, D-AD-8; solo lectura, no necesita copia de 
 Si en la red de la API aparece algo más que `web`, `api` y `db`, revisar el ADR. **Depende de:** nada.
 **Relacionada:** ADR 0001.
 
+**Medido el 2026-10-03** (`ssh` de solo lectura, `docker network inspect` de la red de la API): en ella están `web`, `api`, `db` **y `coolify-proxy` (Traefik)**. La suposición del ADR («solo nginx habla con la API») no se cumple a nivel de red: Traefik también podría alcanzar `api:3000`. **Riesgo bajo:** Traefik solo enruta a `web` (las etiquetas del dominio están solo en ese servicio, `03-despliegue.md`, § *Procedimiento*), no hay ningún otro contenedor en la red, y Traefik descarta el `X-Forwarded-For` del cliente. Queda abierta para que el autor decida si se aísla la API en una red interna solo con `web` y `db`.
+
 ### AD-7 · Los e2e de API en paralelo fallan con `ECONNRESET` en dos suites
 
 **Medido el 2026-10-03, antes de tocar nada:** `pnpm --filter @dnd/api test:e2e` (Jest en paralelo, el
@@ -688,7 +690,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; AD-6 medida; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del

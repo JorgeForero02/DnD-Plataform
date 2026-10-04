@@ -26,6 +26,8 @@ exactamente lo que hacía `fastify` 5.11 con el número. En producción vale 2.
 medir y tiene ficha propia en `06-pendientes.md` (AD-6). Lo que sí está probado es la aritmética:
 `configure-app.spec.ts`, caso `TRUST_PROXY=2`.
 
+**2026-10-03:** medida, y no se cumple del todo: en la red de la API también está Traefik (`coolify-proxy`). Detalle y riesgo en la ficha AD-6.
+
 ## Alternativas descartadas
 
 - **`trustProxy: true`**: toma la entrada de más a la izquierda de `X-Forwarded-For`, la que pone el

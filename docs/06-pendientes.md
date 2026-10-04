@@ -51,8 +51,8 @@ retoman hasta que él las reabra.
 | [Interfaz](#ui--interfaz) (`UI`) | 30 | 0 | 21 | 8 |
 | [Despliegue y CI](#dep--despliegue-y-ci) (`DEP`) | 4 | 2 | 2 | 2 |
 | [Pruebas](#test--pruebas) (`TEST`) | 12 | 1 | 10 | 3 |
-| [Documentación](#doc--documentación) (`DOC`) | 2 | 0 | 1 | 1 |
-| **Total** | **133** | **4** | **72** | **49** |
+| [Documentación](#doc--documentación) (`DOC`) | 3 | 0 | 2 | 1 |
+| **Total** | **134** | **4** | **73** | **49** |
 
 ## Dependencias entre áreas
 
@@ -262,6 +262,7 @@ Lo que solo es pantalla: textos, accesibilidad de un componente, maquetación y 
 |---|---|---|---|---|
 | `DOC-01` | P2 | S | Revisar el triaje del 2026-10-03 y autorizar el push | **Decide el autor.** El plan `superpowers/plans/2026-10-03-triaje-06.md` se ejecutó el 2026-10-03 y este tablero es su resultado; las dos preguntas de su Task 0 las contestó el autor (sin área de preguntas, escala P0–P3). Falta que el autor lo revise y autorice el push. **Antes:** AD-12. **Depende de:** — · **Relacionada:** DOC-02, `04-convenciones.md` § A.4 |
 | `DOC-02` | P2 | M | Plan propio para bajar `01-arquitectura.md` hacia 150 líneas, moviendo lo histórico a `_archivo/` | Techo declarado en el `04`: solo baja. La ficha vieja medía 457 líneas el 2026-10-03; hoy `wc -l` da 465, contra un tope de 150 de la plantilla. **Antes:** AD-5. **Depende de:** DOC-01 · **Relacionada:** DOC-01 |
+| `DOC-03` | P3 | S | Corregir las citas de documentos vivos que mandan al `06` a fichas archivadas antes del triaje | `01-arquitectura.md` cita las fichas **P2-0** y **P2-0b** «en 06-pendientes.md»; `08-pruebas.md`, la «ficha P1» (y dice que «está abierto») y la «ficha P3»; `09-jugar.md`, las fichas `P2-4` y `P2-5`. Ninguna estaba ya en el tablero antes del triaje: hay que apuntar cada cita a su fichero de `_archivo/` y comprobar si lo que afirma sigue siendo cierto. **Antes:** — (encontrado al cambiar los IDs viejos en la Task 9 del triaje). **Depende de:** — · **Relacionada:** DOC-02 |
 
 
 ---

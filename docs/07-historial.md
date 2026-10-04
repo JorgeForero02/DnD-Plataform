@@ -108,6 +108,14 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Lo que el triaje dejó a la vista (2026-10-03) — solo documentación
+
+Qué — ficha nueva `DOC-03`: seis citas de documentos vivos (`01`, `08`, `09`) mandan al `06` a fichas que se archivaron antes del triaje (P2-0, P2-0b, P1, P3, P2-4, P2-5); el triaje no las tocó porque no tenían ID nuevo. La fila del `06` en `00-INDEX.md` deja de describir el tablero viejo. Dos trampas del triaje, para la próxima tanda: ESLint recoge cualquier `.mjs` dentro de `.superpowers/` (los scripts auxiliares van al scratchpad de la sesión), y el gancho de pre-commit pasó de los 600 s en el segundo commit, cuando el plan contaba con 3–5 minutos.
+Por qué — cerrar el triaje sin dejar en una conversación lo que encontró.
+Revertir — `git revert <hash>`.
+
+---
+
 ## El tablero de pendientes, por áreas (2026-10-03) — solo documentación
 
 Qué — triaje completo de `06-pendientes.md` con el plan `superpowers/plans/2026-10-03-triaje-06.md`: el tablero repartido por origen pasa a **nueve áreas** (`LEGAL`, `SEG`, `MESA`, `HOJA`, `MUNDO`, `UI`, `DEP`, `TEST`, `DOC`), sin área de preguntas (lo que espera al autor lleva la marca **Decide el autor** dentro de su área) y con la escala P0–P3 de la plantilla, reasignada ficha a ficha. De los 305 puntos del tablero viejo salen **133 fichas abiertas**, **53 resueltas** y **13 descartadas** (cada cierre con su commit, su prueba o su decisión, comprobados por quien orquestó), y el resto eran reglas, historia o secciones vacías. Cuatro agentes de solo lectura, de uno en uno, juzgaron los bloques y un revisor de contexto limpio contrastó el resultado; ninguno escribió nada. Las nueve fichas que espera el autor (AD-1, AD-6, AD-8, AD-9, AD-10…AD-13 y la mesa a 390 px) se movieron sin juzgarlas. En `_archivo/` quedan la copia literal del tablero viejo, la tabla de equivalencias y las cerradas; en el `04` sale la excepción «`06` por áreas», y los documentos vivos que citaban un ID viejo llevan el nuevo.

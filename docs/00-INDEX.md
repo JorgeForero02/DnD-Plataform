@@ -39,7 +39,7 @@ Lo que tiene, por fases (capacidades, no estado de despliegue):
 | [03-despliegue.md](./03-despliegue.md) | Coolify + Docker en **vps1new**, dominio `dnd.supportive.pro`. **En producción desde el 2026-09-02** |
 | [04-convenciones.md](./04-convenciones.md) | Nivel de verificación declarado, convenciones de API y de web |
 | [05-datos.md](./05-datos.md) | Esquema Prisma, migraciones, el modelo de visibilidad |
-| [06-pendientes.md](./06-pendientes.md) | Deuda técnica y decisiones abiertas, con prioridad |
+| [06-pendientes.md](./06-pendientes.md) | Tareas abiertas **por área** (regla A.4 del `04`), con prioridad P0–P3 y la marca «Decide el autor» |
 | [07-historial.md](./07-historial.md) | Qué se entregó, por qué y cómo revertirlo |
 | [09-jugar.md](./09-jugar.md) | **Cómo se usa, en dos mitades: montar la mesa (DM) y jugar tu personaje (jugador).** Incluye lo que sigue arbitrándose a mano. No lleva estado de ingeniería: es la guía de uso |
 | [08-pruebas.md](./08-pruebas.md) | **Pruebas, entero.** Qué prueba cada capa, qué NO cubre, la regla de Playwright, y **qué demuestra cada suite** —de API y de navegador— más lo que ningún recorrido cubre. Léelo antes de dar una tarea por terminada y antes de escribir un e2e nuevo. Es la **fuente única de los conteos**. Absorbió al antiguo mapa de e2e, que ya no existe como documento aparte |

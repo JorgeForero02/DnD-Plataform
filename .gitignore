@@ -14,8 +14,17 @@ apps/web/capturas-salida/
 # Worktrees de los agentes: una copia entera del repositorio dentro del repositorio. Tambien
 # estan fuera de lint y de formato (eslint.config.mjs, .prettierignore) porque su copia de
 # `prototipo/` no casa con la entrada de la raiz y hacia fallar `pnpm verify` para todos.
-.claude/
+.claude/worktrees/
+.claude/settings.local.json
+.claude/settings.local.json.bak.*
 
 # Cache incremental de tsc.
 *.tsbuildinfo
 seed.env
+
+# Secretos con otros nombres: solo el ejemplo viaja con el repositorio (la lectura por agentes
+# no se bloquea: decisión U-1 en docs/04-convenciones.md).
+.env.*
+!.env.example
+*.pem
+*.key

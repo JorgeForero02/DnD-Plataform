@@ -108,6 +108,18 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## La regla de dependencias del `01` se comprueba en `verify` (2026-10-03) — rama `chore/puerta-plantilla`
+
+Qué — tres bloques `no-restricted-imports` en `eslint.config.mjs`: web ↛ `apps/api`; controladores ↛
+`PrismaService`/`@prisma/client` (salvo `health`); motor ↛ `catalog/`. **Visto fallar** con seis
+mutaciones (import, `import type`, efecto lateral y `export *` en la web; `PrismaService` en un
+controlador; `./catalog` en el motor), restauradas a mano. De paso, dos comentarios de `CampaignSettings` que citaban el `04`
+por número de línea (ya desplazado) lo citan por sección, y un comentario de `trust-proxy.e2e-spec.ts` dice `TRUST_PROXY=1`.
+Por qué — plantilla §B.5 (12): una regla que no comprueba una máquina es una intención.
+Revertir — `git revert <hash>`.
+
+---
+
 ## `check-docs` ve una cifra partida en dos líneas (2026-10-03) — rama `chore/puerta-plantilla`
 
 Qué — la comprobación de conteos mira también el par «esta línea + la siguiente»; la cabecera del script y

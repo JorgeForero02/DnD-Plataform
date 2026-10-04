@@ -149,7 +149,7 @@ describe("CampaignSettings — la Sala del tablero (pulido, C1 bis)", () => {
     await waitFor(() => expect(update).toHaveBeenCalledWith("c1", { boardRoomUrl: null }));
   });
 
-  // Revisión de fichas, IMPORTANT #1 — docs/04-convenciones.md:460, «el botón de guardar nunca
+  // Revisión de fichas, IMPORTANT #1 — docs/04-convenciones.md, § «Reglas de interfaz que salieron del reseño», «el botón de guardar nunca
   // se deshabilita»: un campo vacío se explica con el error del propio `Field`, no bloqueando
   // el botón, y no llama al PATCH.
   it("Guardar con el campo vacío no llama al PATCH y explica el error", async () => {

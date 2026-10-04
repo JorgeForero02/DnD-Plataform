@@ -108,6 +108,19 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## `.claude/` viaja con el repositorio: reglas por stack (2026-10-03) — rama `chore/reglas-stack`
+
+Qué — `.gitignore` deja de ignorar `.claude/` entero (solo `settings.local.json*` y `worktrees/`) y añade
+`.env.*` con `!.env.example`, `*.pem` y `*.key`. Nacen `.claude/rules/frontend-react.md` y
+`backend-nestjs.md` (Prisma dentro), ajustadas a React 18 / Nest 11 / Prisma 5 y con fuentes oficiales;
+viajan también `.claude/agents/` y `.claude/skills/` (decisión DP-6), leídos antes: ningún fichero con
+secretos. Las fuentes nuevas se contrastaron con la documentación oficial. Carga por `paths:` sin
+comprobar en una sesión nueva: queda pendiente (solo se comprobó que cada glob casa con ficheros reales).
+Por qué — plantilla (R4, R6).
+Revertir — `git revert -m 1 <hash del merge>`.
+
+---
+
 ## CI con `verify`, permisos mínimos y ramas de trabajo; controles vistos fallar (2026-10-03) — rama `chore/puerta-plantilla`
 
 Qué — el trabajo `test` del CI llama a `pnpm verify` en vez de repetir sus pasos; `permissions: contents:

@@ -15,6 +15,7 @@ tenía. Si buscas una regla de la plantilla:
 | Parte C nivel y pasos | § *Nivel de verificación* |
 | Excepciones | § *Precedencia*, «Excepciones declaradas frente a la plantilla de agentes» |
 | Atribución de los commits | § *Git* |
+| Reglas por stack | `.claude/rules/frontend-react.md` y `.claude/rules/backend-nestjs.md` (se cargan por `paths:`) |
 
 ## A · Documentación
 

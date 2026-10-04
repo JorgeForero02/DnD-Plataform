@@ -245,13 +245,15 @@ tanda vive en `.superpowers/`, que está en `.gitignore` y no viaja con el clon:
 - **El sistema `dnd5e` de Foundry** (MIT), solo como estructura de datos y **su código nunca se
   ejecuta**: clona <https://github.com/foundryvtt/dnd5e> (o descarga su fuente) y apunta
   `FOUNDRY_SOURCE_DIR` a la carpeta `packs/_source` de dentro — en esta máquina,
-  `C:\Users\gogam\Desktop\Trabajo\Mine\referencia-foundry-dnd5e\packs\_source`. **Edición 2014
+  `C:\Users\gogam\Desktop\Trabajo\Mine\dnd-trabajo\referencias\referencia-foundry-dnd5e\packs\_source`. **Edición 2014
   (SRD 5.1), sin el sufijo `24`**: el conversor rechaza cualquier ítem cuyo
   `system.source.rules` no sea `"2014"`.
 - **El SRD 5.1 en español** (CC-BY 4.0): descarga
   <https://media.wizards.com/2023/downloads/dnd/SRD_CC_v5.1_ES.pdf> (`SRD_CC_v5.1_ES.pdf`) y
   extrae su texto con `pymupdf` (`fitz.open(pdf).get_text()` por página, concatenado) a un
-  `.txt` — en esta máquina, `C:\Users\gogam\Desktop\Trabajo\Mine\referencia-srd-es\srd-5.1-es.txt`.
+  `.txt` — en esta máquina, `C:\Users\gogam\Desktop\Trabajo\Mine\dnd-trabajo\referencias\referencia-srd-es\srd-5.1-es.txt`.
+  (El material de D&D que vive fuera del repositorio —prompts, prototipos, referencias, copias de la base,
+  worktrees— está todo en `Mine\dnd-trabajo`, con su `README.md`; desde el 2026-10-03.)
   Apunta `SRD_ES_TXT` a ese fichero.
 
 ```bash

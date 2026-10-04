@@ -228,7 +228,7 @@ Lo que solo es pantalla: textos, accesibilidad de un componente, maquetación y 
 | `UI-27` | P3 | M | URL para los tres cajones y reagrupar los diez destinos en tres grupos | **Decide el autor.** Compatible con D-R-8/9. **Antes:** auditoría de interfaz 14.1/14.4/21.11. **Depende de:** 3B (D-CF-161) · **Relacionada:** — |
 | `UI-28` | P3 | M | Pantalla de prueba de las animaciones y preferencia global Completos / Discretos / Ninguno | **Decide el autor.** Medido: Aplazada por D-CF-161; `grep "Discretos"` en `apps/web/src` vacío. **Antes:** auditoría de interfaz 19.2/19.3. **Depende de:** 3B (D-CF-161) · **Relacionada:** — |
 | `UI-29` | P3 | M | Dados 3D con `dice-box` si el autor lo retoma | **Decide el autor.** Opción autoalojable `dice-box` (BabylonJS/AmmoJS); coste: peso y reescribir `DadoTridimensional.tsx`. **Antes:** anexo del pulido #13. **Depende de:** — · **Relacionada:** — |
-| `UI-30` | P3 | S | Añadir al prototipo navegable el estado 20.1, el ataque resuelto | Fuera del repositorio: es el prototipo navegable prototipo-dnd.html de la carpeta Mine. Quedaba «para la próxima pasada, tras desplegar», y ya se desplegó. **Antes:** auditoría de interfaz §20, 20.1. **Depende de:** — · **Relacionada:** — |
+| `UI-30` | P3 | S | Añadir al prototipo navegable el estado 20.1, el ataque resuelto | Fuera del repositorio: es el prototipo navegable prototipo-dnd.html, en dnd-trabajo/prototipos (carpeta Mine). Quedaba «para la próxima pasada, tras desplegar», y ya se desplegó. **Antes:** auditoría de interfaz §20, 20.1. **Depende de:** — · **Relacionada:** — |
 
 ## DEP — Despliegue y CI
 

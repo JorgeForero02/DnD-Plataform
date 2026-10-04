@@ -108,6 +108,14 @@ número de pruebas, resultado de la revisión— vive en el ledger
 
 ---
 
+## Lo que decide el autor, en el tablero (2026-10-03) — solo documentación
+
+Qué — en `06-pendientes.md`, sección de la adopción: tabla «Lo que decide el autor» y fichas nuevas AD-10 (desplegar el parche, con su aprobación), AD-11 (probar una restauración de la base), AD-12 (ejecutar el triaje del tablero) y AD-13 (¿N2?).
+Por qué — el autor pidió que lo que queda para él esté en el tablero, no en una conversación.
+Revertir — `git revert <hash>`.
+
+---
+
 ## Arreglos de la revisión final de la adopción (2026-10-03) — solo documentación
 
 Qué — I1: quién lanza el despliegue. `CLAUDE.md`, D-AD-5 y los textos para subagentes (`04`, `10`,

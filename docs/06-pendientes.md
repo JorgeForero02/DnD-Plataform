@@ -246,6 +246,20 @@ e2e falla con una violación `serious` o `critical`.
 Los IDs nacen **sin la prioridad dentro**; su prefijo `AD-n` («adopción») es provisional y el triaje del
 tablero lo cambia por el de su área (regla A.4 del `04`). Plan: `superpowers/plans/2026-10-03-adopcion-plantilla.md`.
 
+**Lo que decide el autor (2026-10-03).** Ningún agente lo resuelve por su cuenta:
+
+| Ficha | La decisión |
+|---|---|
+| AD-10 | Aprobar el push, la copia de la base, el despliegue del parche y la prueba de humo |
+| AD-9 | Cómo recortar lo que `/events` y `/rolls` devuelven a quien no es el DM (seguridad) |
+| AD-6 | Si se aísla la API en una red interna sin Traefik |
+| AD-1 | Arreglar el CI rojo antes de seguir desplegando, o seguir con la excepción |
+| AD-8 | Si los criterios del banco salen del repositorio |
+| AD-11 | Cuándo se prueba restaurar una copia de esta base |
+| AD-12 | Las dos preguntas de la Task 0 del triaje del tablero, y cuándo se ejecuta |
+| AD-13 | Si se declara el nivel N2 (cobertura con umbral) |
+| P2 | El diseño de la mesa a 390 px (D-CF-26) |
+
 ### AD-1 · El CI está en rojo desde el 2026-09-07: lo tumba `e2e-browser`
 
 **Medido el 2026-10-03** con la API pública de GitHub: las 100 últimas ejecuciones del workflow terminan
@@ -328,6 +342,37 @@ identificadores opacos, no nombres ni hojas. **Qué hacer (decide el autor):** d
 solo los campos que pinta la pantalla, y quitar o anonimizar lo que apunte a un personaje que no puede
 ver. Cambia lo que reciben el panel de dados, la vista de sesión y el hilo, así que lleva sus e2e. **Depende
 de:** nada. **Relacionada:** `canView` en `apps/api/src/common/visibility.ts`.
+
+### AD-10 · Desplegar el parche de seguridad (espera la aprobación del autor)
+
+Producción sirve `a4883f0`, que todavía lleva las 9 vulnerabilidades altas de `fastify`, `fast-uri` y
+`@nestjs/platform-fastify`. El parche está en `main` y en GitHub desde el 2026-10-03, y la revisión final del
+plan de adopción lo dio por listo para desplegar. **Qué hacer, en este orden, cada paso con la aprobación
+explícita del autor (D-AD-9):** empujar `main`; copia de la base volcada al PC y comprobada con
+`pg_restore --list`; despliegue en Coolify; prueba de humo (`/api/health`, las tandas de logins fallidos de
+`03-despliegue.md` y un intento desde otra red, que hace el autor); entrada nueva en el `07`. Si la copia sale
+vacía o falla el humo, se para. **Depende de:** nada. **Relacionada:** AD-1, ADR 0001.
+
+### AD-11 · Nunca se ha probado restaurar una copia de esta base
+
+La copia diaria de las 04:00 incluye esta base (medido el 2026-10-03) y antes de cada cambio en producción se
+hace un volcado manual, pero **ninguna de las dos se ha restaurado nunca**. Hasta entonces son copias que
+nadie sabe si sirven. **Qué hacer:** restaurar un volcado en un contenedor desechable y comparar el número
+de filas con producción, como pide `03-despliegue.md`, § *Copias de seguridad*, punto 5. **Depende de:**
+nada. **Relacionada:** D-AD-6.
+
+### AD-12 · Ejecutar el triaje del tablero
+
+El plan está escrito: `superpowers/plans/2026-10-03-triaje-06.md`, con entre 5 y 13 agentes y nunca más de 2
+vivos a la vez. Su Task 0 hace dos preguntas al autor antes de lanzar nada: si `Q` es un área o una marca
+(«Decide el autor») y qué escala de prioridad se usa (P0–P3 de la plantilla o P1–P4 de aquí). **Depende
+de:** las respuestas del autor. **Relacionada:** AD-5, la regla A.4 del `04`.
+
+### AD-13 · ¿Se declara el nivel N2?
+
+El repositorio está en N1: `pnpm verify` sin umbral de cobertura. La plantilla deja N2 (cobertura con umbral)
+como decisión del autor, y nadie la ha tomado. Hasta entonces el `04` dice «N2 no declarado, pendiente de
+decisión del autor». **Depende de:** nada.
 
 ## Dejado por la auditoría de interfaz (2026-09-19)
 
@@ -690,7 +735,7 @@ Deuda conocida y decisiones abiertas. Cada línea: qué, por qué importa, y la 
 que existe. **Subir de nivel de verificación o pagar deuda es una tarea con su ficha, nunca
 un efecto colateral de la siguiente funcionalidad.**
 
-Última revisión: **2026-10-03** (fichas AD-1…AD-7 de la adopción; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
+Última revisión: **2026-10-03** (fichas AD-1…AD-13 de la adopción y la tabla «Lo que decide el autor»; AD-6 medida y su frase de «sin medir» corregida en la revisión final; AD-4 en presente, la prueba de arquitectura ya existe; AD-8 y AD-9, P2 remedida; CL-13: el parche de dependencias; cabecera, «sin desplegar» que ya no lo era, la sección «Desplegar `main`» archivada y la decisión nueva sobre copias de seguridad). Antes, **2026-09-26** (la sección «Cumplimiento legal», arriba: quince fichas `CL-n`
 contra el spec global de cumplimiento, sin código). Antes, **2026-09-13, noche** (la ficha «Desbordes» se cerró en la rama `desbordes/antes-del-paso-3`
 y está archivada en `_archivo/pendientes-cerrados-2026-09-13-desbordes.md`; queda la de la experiencia, que va
 a puerta de efectos). Antes, el mismo día (cierre de la tanda del pulido — Tarea 15: los 24 puntos del
